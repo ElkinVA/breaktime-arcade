@@ -40,7 +40,7 @@ EXCLUDE_DIRS=(
     staticfiles .tailwind
     media pgdata redis-data backups
     test-results playwright-report .playwright
-    dist build .backups certs var
+    dist build .backups certs creds var
 )
 
 # Расширения для исключения
@@ -57,6 +57,7 @@ EXCLUDE_NAMES=(
     .DS_Store Thumbs.db desktop.ini
     package-lock.json yarn.lock pnpm-lock.yaml uv.lock
     project_dump.txt project_dump.log
+audit.txt ba_audit_report.txt
 )
 
 # Расширения исходников
@@ -85,6 +86,7 @@ TREE="$TMP_DIR/tree"
 n_ok=0; n_skip=0; n_empty=0; n_big=0; n_bin=0; total_bytes=0
 
 is_excluded_name() {
+  if [[ "${1,,}" == diagnostics_*.txt ]]; then return 0; fi
     local base="$1" name ext
     base="${base,,}"
     for name in "${EXCLUDE_NAMES[@]}"; do
