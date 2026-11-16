@@ -1,0 +1,35 @@
+<header class="bg-surface border-b border-text/10">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-6">
+            <a href="/{{ current_language_code }}/" class="text-xl font-display font-bold text-accent">
+                Breaktime Arcade
+            </a>
+            <nav class="hidden md:flex gap-4">
+                <a href="/{{ current_language_code }}/games/" class="hover:text-accent">
+                    {% load ba_i18n %}{% ba_t "nav.games" %}
+                </a>
+                <a href="/{{ current_language_code }}/genres/" class="hover:text-accent">
+                    {% ba_t "nav.genres" %}
+                </a>
+            </nav>
+        </div>
+
+        <div class="flex items-center gap-4">
+            {% include "partials/language_switcher.html" %}
+            {% include "partials/theme_toggle.html" %}
+
+            {% if user.is_authenticated %}
+                <a href="/{{ current_language_code }}/account/" class="hover:text-accent">
+                    {{ user.profile.nickname }}
+                </a>
+            {% else %}
+                <a href="/{{ current_language_code }}/auth/login/" class="hover:text-accent">
+                    {% ba_t "auth.login" %}
+                </a>
+                <a href="/{{ current_language_code }}/auth/register/" class="btn btn-primary">
+                    {% ba_t "auth.register" %}
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</header>

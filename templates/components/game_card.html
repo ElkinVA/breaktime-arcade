@@ -1,0 +1,24 @@
+<a href="/{{ current_language_code }}/games/{{ game.slug }}/" class="game-card group">
+    <div class="game-card__image">
+        {% if game.cover %}
+            <img src="{{ game.cover.url }}"
+                 alt="{{ game.cover_alt }}"
+                 loading="lazy"
+                 class="w-full h-full object-cover">
+        {% else %}
+            <div class="w-full h-full bg-text/10 flex items-center justify-center">
+                <span class="text-muted">{% load ba_i18n %}{% ba_t "ui.no_cover" %}</span>
+            </div>
+        {% endif %}
+    </div>
+    <div class="game-card__body">
+        <h3 class="game-card__title group-hover:text-accent">{{ game.name }}</h3>
+        <p class="game-card__description">{{ game.short_description }}</p>
+        <div class="game-card__meta">
+            <span class="game-card__genre">{{ game.primary_genre.name }}</span>
+            {% if game.avg_rating %}
+                <span class="game-card__rating">★ {{ game.avg_rating|floatformat:1 }}</span>
+            {% endif %}
+        </div>
+    </div>
+</a>

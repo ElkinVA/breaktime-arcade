@@ -1,0 +1,5 @@
+<button type="{{ type|default:'button' }}"
+        class="btn {% if variant %}btn-{{ variant }}{% else %}btn-primary{% endif %} {% if size %}btn-{{ size }}{% endif %} {{ class }}"
+        {% if disabled %}disabled{% endif %}>
+    {{ slot }}
+</button>

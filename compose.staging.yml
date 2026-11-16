@@ -1,0 +1,82 @@
+# compose.staging.yml — staging overlay (§2.5, §2.21).
+#
+# Запуск ТОЛЬКО через wrapper (он добавляет project-name и env-file):
+#   ./infra/scripts/staging.sh up
+#   ./infra/scripts/staging.sh down
+#   ./infra/scripts/staging.sh status
+#
+# Прямой запуск требует:
+#   docker compose -p ba-staging -f compose.yml -f compose.staging.yml \
+#     --env-file .env.staging up -d
+#
+# Отличия от production-образа — только конфигурация:
+#   - DJANGO_SETTINGS_MODULE=config.settings.staging
+#   - BA_NOINDEX=True, X-Robots-Tag, robots.txt disallow-all
+#   - Basic auth + IP allowlist в nginx
+#   - mailpit для sandbox-почты
+#   - отдельные секреты (.env.staging) и отдельный PostgreSQL volume
+
+services:
+  web:
+    env_file: [.env.staging]
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.staging
+    # порт 8000 не публикуется (доступ только через nginx)
+
+  worker:
+    env_file: [.env.staging]
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.staging
+    depends_on:
+      web: { condition: service_healthy }
+
+  beat:
+    env_file: [.env.staging]
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.staging
+
+  backup:
+    env_file: [.env.staging]
+
+  restore-check:
+    env_file: [.env.staging]
+
+  db:
+    env_file: [.env.staging]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ba_staging}
+      POSTGRES_USER: ${POSTGRES_USER:-ba}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env.staging}
+
+  nginx:
+    env_file: [.env.staging]
+    depends_on:
+      web: { condition: service_healthy }
+    ports:
+      - "${STAGING_PORT:-8444}:8443"
+    volumes:
+      - ./infra/nginx/staging.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/staging-robots.txt:/etc/nginx/static/robots.txt:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ./certs/htpasswd:/etc/nginx/htpasswd:ro
+      - static_data:/app/staticfiles:ro
+      - media_data:/app/media:ro
+    healthcheck:
+      # BA-002: реальный listener, не только синтаксис конфига
+      test: ["CMD-SHELL", "nc -z -w 3 127.0.0.1 8443 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    networks: [internal, edge]
+    ports:
+      - "127.0.0.1:8026:8025"
+    environment:
+      MP_MAX_MESSAGES: "5000"
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 128M }

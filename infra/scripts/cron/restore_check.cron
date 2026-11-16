@@ -1,0 +1,2 @@
+# Ежемесячная проверка восстановления — 1-е число, 04:00 UTC (§2.5).
+0 4 1 * * root cd /app && docker compose -f compose.prod.yml exec -T web python manage.py restore_check >> /var/log/ba-restore-check.log 2>&1

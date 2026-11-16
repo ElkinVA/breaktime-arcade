@@ -1,0 +1,13 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@source "../../../templates";
+@source "../../../apps";
+
+@theme inline {
+  --color-bg: var(--ba-bg);
+  --color-surface: var(--ba-surface);
+  --color-text: var(--ba-text);
+  --color-accent: var(--ba-accent);
+  --radius-card: var(--ba-radius-card);
+}

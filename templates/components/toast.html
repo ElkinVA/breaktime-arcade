@@ -1,0 +1,9 @@
+<div class="toast toast-{{ variant|default:'info' }}" role="alert">
+    <div class="toast__content">
+        {% if icon %}
+            <span class="toast__icon">{{ icon }}</span>
+        {% endif %}
+        <p class="toast__message">{{ message }}</p>
+    </div>
+    <button type="button" class="toast__close" data-toast-close>&times;</button>
+</div>

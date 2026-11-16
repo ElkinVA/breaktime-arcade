@@ -1,0 +1,85 @@
+# Профиль разработки dev-lite: пик ≈2.4 ГБ, лимит 3.8 GiB (§2.5).
+services:
+  web:
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      RUN_MIGRATIONS: "1"
+      RUN_COLLECTSTATIC: "1"
+    volumes:
+      - .:/app
+      - static_data:/app/staticfiles
+      - media_data:/app/media
+      - app_var:/app/var
+    ports:
+      - "127.0.0.1:8000:8000"
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 1024M }
+
+  worker:
+    command: ["celery", "-A", "config", "worker", "-l", "info", "--pool=solo", "--concurrency=1"]
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+    volumes:
+      - .:/app
+      - media_data:/app/media
+      - app_var:/app/var
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 512M }
+
+  beat:
+    profiles: ["manual"]
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+    volumes:
+      - .:/app
+      - app_var:/app/var
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 192M }
+
+  db:
+    command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=30", "-c", "work_mem=4MB"]
+    deploy:
+      resources:
+        limits: { cpus: "1.0", memory: 768M }
+
+  redis-cache:
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru", "--save", "", "--appendonly", "no"]
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 128M }
+
+  redis-broker:
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes"]
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 128M }
+
+  nginx:
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./infra/nginx/dev.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+      - ./var/runtime:/app/runtime:ro
+      - static_data:/app/staticfiles:ro
+      - media_data:/app/media:ro
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 128M }
+
+  # Только dev: почтовый sandbox. В staging/production не используется.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    networks: [internal, edge]
+    ports:
+      - "127.0.0.1:8025:8025"
+    environment:
+      MP_MAX_MESSAGES: "5000"
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 128M }

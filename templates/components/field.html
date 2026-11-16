@@ -1,0 +1,18 @@
+<div class="field">
+    {% if label %}
+        <label for="{{ id }}" class="field__label">{{ label }}</label>
+    {% endif %}
+    <input type="{{ type|default:'text' }}"
+           id="{{ id }}"
+           name="{{ name }}"
+           value="{{ value|default:'' }}"
+           class="field__input {% if error %}field__input--error{% endif %}"
+           {% if required %}required{% endif %}
+           {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}>
+    {% if error %}
+        <p class="field__error">{{ error }}</p>
+    {% endif %}
+    {% if help_text %}
+        <p class="field__help">{{ help_text }}</p>
+    {% endif %}
+</div>

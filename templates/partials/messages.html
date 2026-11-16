@@ -1,0 +1,9 @@
+{% if messages %}
+    <div class="max-w-7xl mx-auto px-4 py-4 space-y-2">
+        {% for message in messages %}
+            <div class="p-4 rounded-lg bg-surface border border-text/10 {% if message.tags %}border-{{ message.tags }}{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}

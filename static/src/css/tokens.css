@@ -1,0 +1,29 @@
+/* Значения по умолчанию. В production перекрываются файлом /theme-<hash>.css (§2.7). */
+:root {
+  --ba-bg: #0f1115;
+  --ba-surface: #171a21;
+  --ba-text: #e8eaf0;
+  --ba-muted: #9aa3b2;
+  --ba-accent: #39ff88;
+  --ba-danger: #ff5c72;
+  --ba-radius-card: 14px;
+  --ba-space-unit: 4px;
+  --ba-font-body: system-ui, "Segoe UI", Roboto, sans-serif;
+  --ba-font-display: "Segoe UI", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --ba-bg: #f6f7fb;
+    --ba-surface: #ffffff;
+    --ba-text: #14161c;
+    --ba-muted: #5a6270;
+  }
+}
+
+:root[data-theme="light"] {
+  --ba-bg: #f6f7fb;
+  --ba-surface: #ffffff;
+  --ba-text: #14161c;
+  --ba-muted: #5a6270;
+}

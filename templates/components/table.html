@@ -1,0 +1,26 @@
+<div class="overflow-x-auto">
+    <table class="table w-full">
+        <thead>
+            <tr>
+                {% for header in headers %}
+                    <th class="table__th">{{ header }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                <tr class="table__tr">
+                    {% for cell in row %}
+                        <td class="table__td">{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="{{ headers|length }}" class="table__td text-center text-muted">
+                        {% load ba_i18n %}{% ba_t "ui.no_data" %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

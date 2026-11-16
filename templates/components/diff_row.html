@@ -1,0 +1,15 @@
+<div class="diff-row {% if conflict %}diff-row--conflict{% endif %}">
+    <div class="diff-row__field">{{ field }}</div>
+    <div class="diff-row__current">{{ current_value|default:"—" }}</div>
+    <div class="diff-row__new">{{ new_value|default:"—" }}</div>
+    <div class="diff-row__actions">
+        {% if conflict %}
+            <button type="button" class="btn btn-sm" data-diff-action="accept">
+                {% load ba_i18n %}{% ba_t "crm.accept" %}
+            </button>
+            <button type="button" class="btn btn-sm" data-diff-action="keep">
+                {% ba_t "crm.keep" %}
+            </button>
+        {% endif %}
+    </div>
+</div>

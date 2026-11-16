@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="{{ current_language_code }}" {% if current_language.is_rtl %}dir="rtl"{% endif %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f1115">
+    <title>{% block title %}Breaktime Arcade{% endblock %}</title>
+
+    <link rel="stylesheet" href="{{ theme_css_url }}">
+    <link rel="stylesheet" href="/static/dist/app.css">
+
+    {% block extra_head %}{% endblock %}
+
+    <script nonce="{{ csp_nonce }}">
+        // Тема из cookie до загрузки DOM
+        const theme = document.cookie.split('; ').find(row => row.startsWith('ba_theme='));
+        if (theme) {
+            document.documentElement.dataset.theme = theme.split('=')[1];
+        }
+    </script>
+</head>
+<body class="bg-bg text-text font-body">
+    <a href="#main-content" class="sr-only focus:not-sr-only">
+        {% load ba_i18n %}{% ba_t "ui.skip_to_content" %}
+    </a>
+
+    {% include "partials/header.html" %}
+
+    <main id="main-content" class="min-h-[calc(100dvh-8rem)]">
+        {% include "partials/messages.html" %}
+        {% block content %}{% endblock %}
+    </main>
+
+    {% include "partials/footer.html" %}
+
+    <script src="/static/dist/vendor/htmx.min.js" nonce="{{ csp_nonce }}"></script>
+    <script type="module" src="/static/src/js/main.js" nonce="{{ csp_nonce }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

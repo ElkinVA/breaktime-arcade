@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Django
+/media/
+/staticfiles/
+/static/dist/*
+!/static/dist/.gitkeep
+
+# Секреты и локальные материалы
+.env
+.env.*
+!.env.example
+/certs/*
+!/certs/.gitkeep
+
+# Данные инфраструктуры
+/pgdata/
+/redis-data/
+/backups/
+
+# Инструменты
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+/test-results/
+/playwright-report/
+node_modules/
+
+# Снимки кода
+project_dump.txt
+project_dump.log
+
+# ОС
+.DS_Store
+Thumbs.db
+
+# Staging secrets (§2.5)
+.env.staging
+creds/staging_basic_auth.txt
+certs/htpasswd
+infra/nginx/staging.conf
+# --- локальные артефакты аудита/диагностики (файлы остаются на месте) ---
+ba_audit.sh
+ba_audit_report.txt
+ba_fix_deepseek.sh
+ba_git_init.sh
+audit.txt
+diagnostics_*.txt
+dev-env-audit/
+dev-env-audit.sh
+setup-claude-code-deepseek-ubuntu.sh
+*.log
+.backups/
+creds/
+var/
+.claude/settings.local.json
+!.env.staging.example
+windows/rootCA.pem

@@ -1,0 +1,8 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<h2>Security Alert</h2>
+<p>{{ message }}</p>
+<p>If this wasn't you, please change your password immediately.</p>
+<p><a href="{{ account_url }}" class="btn">Go to Account</a></p>
+{% endblock %}
