@@ -3,7 +3,7 @@
 # Без изменения конфигов, без пересборки, без удаления volumes.
 set -uo pipefail   # НЕ -e: curl при connection refused выходит с кодом 7
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")"
 
 COMPOSE=(docker compose -p ba-staging -f compose.yml -f compose.staging.yml --env-file .env.staging)
 FAIL=0

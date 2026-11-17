@@ -63,3 +63,7 @@ var/
 .claude/settings.local.json
 !.env.staging.example
 windows/rootCA.pem
+ba_fix_all.sh
+ba_verify.sh
+ba_diag2.sh
+ba_fix_stage2.sh
