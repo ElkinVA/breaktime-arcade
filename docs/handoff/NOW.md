@@ -70,10 +70,10 @@ live-порт не проверялся (в dev-БД нет опубликова
 
 ## Git
 
-- `ba`: `main`, HEAD `c935237` (feat: App F server session/ticket slice,
-  APPF-SESSION-001); финальная фиксация реестров — отдельный docs-коммит.
-  Ранее: `cd9c333` (BA-AUTONOMY-003 records), tag `ba-autonomy-003`,
-  checkpoint `214af0d` / tag `checkpoint-2026-11-20-pre-autonomy`.
+- `ba`: `main`, HEAD `d248d0e` (owner decision package). APPF-SESSION-001:
+  product `c935237`, records `16946f6`. Ранее: `cd9c333` (BA-AUTONOMY-003),
+  tag `ba-autonomy-003`, checkpoint `214af0d` /
+  tag `checkpoint-2026-11-20-pre-autonomy`.
 - `ai-dev`: `main`, HEAD `d09a3f1`, tag `ai-dev-autonomy-003`.
 - Backup: `~/backups/20261120-pre-autonomy/` (worktree tar + git bundles).
 

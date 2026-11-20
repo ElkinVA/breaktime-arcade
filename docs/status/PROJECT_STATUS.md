@@ -341,12 +341,13 @@ App F и решениями владельца.
 
 ```text
 Branch: main
-HEAD: c935237 (feat: App F server session/ticket slice, APPF-SESSION-001)
+HEAD: d248d0e (docs: owner decision package for App F continuation)
+APPF-SESSION-001: product c935237, records 16946f6
 Checkpoint: 214af0d, tag checkpoint-2026-11-20-pre-autonomy
 Tag: ba-autonomy-003 (предыдущий пакет)
 ai-dev HEAD: d09a3f1344bf8d45cc019893213e504174c50b6f
 ai-dev tag: ai-dev-autonomy-003
-Status: финальная фиксация реестров — отдельный docs-коммит
+Status: clean
 Remote: отсутствует
 ```
 
