@@ -778,6 +778,26 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   приёмка — владелец.
 - **Отчёт:** `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`.
 
+### BA-DEVCONTROL-001 — Telegram Dev Control
+
+- **ID:** BA-DEVCONTROL-001.
+- **Результат:** отдельный stdlib-сервис `devcontrol/`: long polling,
+  owner-only, `/status` `/report` `/progress` `/next` `/tasks` `/continue`
+  `/pause` `/resume` `/stop` `/logs` `/ask`, кнопки; управление одной
+  фоновой сессией через `claude --bg`/`agents --json`/`logs`/`stop`;
+  state/events/inbox в `~/.local/state/ba-devcontrol`; токен в
+  `creds/telegram.env` (0600); узкий permissions, hooks Stop/
+  PermissionRequest/SessionEnd; systemd unit.
+- **Проверки:** 23 unit tests (fakes); full 353/2 skipped; ruff/mypy;
+  live `--bg` probe (id/sessionId/state/logs/stop); Stop hook записал
+  `turn_done`; широкий allow-list отклонён auto-mode, суженный прошёл
+  no-tools probe.
+- **Статус:** **IMPLEMENTED / PARTIAL — READ-ONLY CONTROL PLANE**:
+  мониторинг/отчёты/задачи/hooks работают; автономный `/continue` выключен и
+  gated до sandbox или явного risk acceptance владельца (R-039); нужен
+  токен/live Telegram.
+- **Отчёт:** `docs/foundation/BA-DEVCONTROL-001_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,
@@ -806,6 +826,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`;
 - `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`;
 - `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`;
+- `docs/foundation/BA-DEVCONTROL-001_REPORT.md`;
 - `tests/integration/test_catalog_public.py`;
 - `tests/integration/test_game_sessions.py`;
 - `reports/BA_AUDIT_20261118_162920.zip` (исторический generated-отчёт).

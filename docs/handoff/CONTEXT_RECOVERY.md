@@ -127,6 +127,10 @@
 - BA-ZIP-EXTRACT-001 — **TECHNICALLY ACCEPTED** (agent, OD-TECH-001);
   продуктовая приёмка — владелец: потоковая safe-extraction (byte caps,
   CRC, канонические пути, atomic rename); security review accept.
+- BA-DEVCONTROL-001 — **IMPLEMENTED / AWAITING OWNER SETUP + REVIEW**:
+  отдельный Telegram-сервис `devcontrol/` (owner-only, `claude --bg`,
+  state/events/hooks); live Telegram не проверен — нужен токен владельца;
+  runtime `~/.local/state/ba-devcontrol`.
 - BA-ZIP-WORKER-001 — **TECHNICALLY ACCEPTED** (agent, OD-TECH-001);
   продуктовая приёмка — владелец: отдельный
   Compose-сервис `zip-worker` (`zipnet` только с broker, prefork,

@@ -1,7 +1,8 @@
 # NOW — Breaktime Arcade
 
 **Дата:** 2026-11-20
-**Текущий пакет:** BA-ZIP-WORKER-001 (изолированный extraction worker);
+**Текущий пакет:** BA-DEVCONTROL-001 (Telegram Dev Control) и
+BA-ZIP-WORKER-001 (изолированный extraction worker);
 App F server slices: SESSION-002, RESULT-001, LEADERBOARD-001, STORAGE-001,
 PLAYTIME-001, RATINGS-001, POPULARITY-001; ZIP: PREFLIGHT-001, EXTRACT-001,
 WORKER-001
@@ -31,18 +32,38 @@ statvfs 150 МБ; ATTEMPTS/quarantine; CANCEL + `cancel_check`; JSON-аудит;
 cleaner. 22 new tests; full 330 passed, 2 skipped. Отчёт —
 `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`.
 
+**BA-DEVCONTROL-001** — отдельный stdlib-сервис `devcontrol/`
+(@breaktime_arcade_dev_bot): owner-only long polling, команды/кнопки,
+одна фоновая сессия через `claude --bg`/`agents --json`/`logs`/`stop`,
+state/events/inbox в `~/.local/state/ba-devcontrol`, узкий permissions,
+hooks Stop/PermissionRequest/SessionEnd. 23 tests; full 353/2 skipped;
+live `--bg` probe + Stop hook прошли. Статус — **IMPLEMENTED / PARTIAL —
+READ-ONLY CONTROL PLANE**: мониторинг/отчёты/задачи/hooks работают; нужен
+токен владельца (setup_token.py) и live Telegram. Автономный `/continue`
+выключен по умолчанию и **gated** до sandbox-тест-раннера или явного risk
+acceptance владельца (R-039: test execution в контейнере с секретами).
+Отчёт — `docs/foundation/BA-DEVCONTROL-001_REPORT.md`, README —
+`devcontrol/README.md`.
+
 ## Следующий шаг
 
-1. Продуктовая приёмка владельцем ZIP PREFLIGHT/EXTRACT/WORKER
+1. Владелец: `python3 devcontrol/setup_token.py --verify`, затем
+   `python3 devcontrol/bot.py` или `./devcontrol/install_service.sh`;
+   live `/start`/`/status`. Без токена бот не запускает сессии.
+2. Автономный запуск по умолчанию **выключен**. Нужно решение владельца:
+   (A) sandboxed test runner без секретов/egress — рекомендуемый путь;
+   (B) явно принять host-user/test-execution риск и включить opt-in;
+   (C) оставить read-only control plane. R-038/R-039.
+3. Продуктовая приёмка владельцем ZIP PREFLIGHT/EXTRACT/WORKER
    (техническая приёмка агентом уже выполнена, OD-TECH-001).
-2. R-035 hardening/publish: fsync родительского каталога/audit, method
+4. R-035 hardening/publish: fsync родительского каталога/audit, method
    allowlist, раздельные коды чтения/записи.
-3. R-036: pre-existing глобальный `CELERY_TASK_ACKS_LATE=True` — отдельное
+5. R-036: pre-existing глобальный `CELERY_TASK_ACKS_LATE=True` — отдельное
    решение владельца/аудит идемпотентности default-очереди.
-4. R-037: retention `zip_uploads` (source/CANCEL) — в upload endpoint/web.
-5. Независимый READY-пакет — **BA-QUALITY-002** (dev-only), если владелец
+6. R-037/R-038: retention `zip_uploads`; live Telegram/Dev Control.
+7. Независимый READY-пакет — **BA-QUALITY-002** (dev-only), если владелец
    не выберет ZIP-продолжение.
-6. manifest/catalog/locales — после BA-GAME-2.2; SDK/iframe/host protocol —
+8. manifest/catalog/locales — после BA-GAME-2.2; SDK/iframe/host protocol —
    после утверждения BA-SDK-1.1 v1.1.0 и BA-GAME-2.2; EventLog/verifier —
    после схем сообщений.
 
@@ -69,7 +90,8 @@ cleaner. 22 new tests; full 330 passed, 2 skipped. Отчёт —
 
 ```text
 pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
-pytest (full)              -> 330 passed, 2 skipped, 1 warning
+pytest (full)              -> 353 passed, 2 skipped, 1 warning
+pytest tests/unit/test_devcontrol.py -> 23 passed
 ruff check apps config tests -> All checks passed
 ruff format --check        -> 348 files already formatted
 mypy                       -> Success: no issues found in 321 source files
@@ -113,6 +135,8 @@ host E2E (13 сценариев, после локальной настройк�
 - R-035: fsync родительского каталога/audit, method allowlist — deferred.
 - R-036: pre-existing глобальный `acks_late` — платформенный риск.
 - R-037: retention `zip_uploads` вне scope.
+- R-038: Dev Control live Telegram не проверен; auto-mode может потребовать
+  одобрения permissions; mid-turn injection нет (inbox на границе задачи).
 - App F в целом заблокирован SDK/ENV/BA-GAME и retention.
 
 ## Ссылки
@@ -121,6 +145,7 @@ host E2E (13 сценариев, после локальной настройк�
 `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`, `RISK_REGISTER.md`,
 `docs/tasks/BA-ZIP-WORKER-001_PLAN.md`,
 `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`,
+`docs/foundation/BA-DEVCONTROL-001_REPORT.md`, `devcontrol/README.md`,
 `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`,
 `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`,
 `docs/tasks/APPF-SESSION-002_PLAN.md`,

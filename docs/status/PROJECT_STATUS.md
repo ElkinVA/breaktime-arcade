@@ -253,6 +253,23 @@ statvfs reserve; ATTEMPTS/quarantine; `cancel_check`; JSON-аудит; cleanup.
 code/security review — **accept**; остатки R-033/R-035/R-036/R-037.
 Отчёт — `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`.
 
+## 1.13. BA Dev Control — Telegram-пульт автономной разработки
+
+**BA-DEVCONTROL-001** — **IMPLEMENTED / PARTIAL — READ-ONLY CONTROL
+PLANE**; автономный `/continue` выключен по умолчанию и gated до sandbox
+или явного risk acceptance владельца (R-039).
+Отдельный stdlib-сервис `devcontrol/` (не Django): long polling, owner-only
+авторизация, `/status` `/report` `/progress` `/next` `/tasks` `/continue`
+`/pause` `/resume` `/stop` `/logs` `/ask`, inline-кнопки. Управляет одной
+фоновой сессией через поддерживаемые `claude --bg` / `agents --json` /
+`logs` / `stop`; state/events/inbox в `~/.local/state/ba-devcontrol` (0700,
+0600, atomic, flock); токен — `creds/telegram.env` (0600, вне Git).
+Узкий permissions + `denyInsteadOfPrompting`, без bypass/auto; hooks
+Stop/PermissionRequest/SessionEnd. 23 tests; full 353/2 skipped; live probe
+`--bg` + Stop hook. Нужны токен владельца и live Telegram-проверка; первый
+автономный запуск может требовать одобрения permission-конфигурации.
+Отчёт — `docs/foundation/BA-DEVCONTROL-001_REPORT.md`.
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -292,6 +309,7 @@ code/security review — **accept**; остатки R-033/R-035/R-036/R-037.
 | BA-ZIP-PREFLIGHT-001 | **TECHNICALLY ACCEPTED** (agent); product — owner | Metadata-only ZIP preflight; 16 tests; full 297/2 skipped; review accept; R-033 extraction sandbox — следующий пакет |
 | BA-ZIP-EXTRACT-001 | **TECHNICALLY ACCEPTED** (agent); product — owner | Streaming safe extraction; 11 tests; full 308/2 skipped; security review accept; worker isolation — BA-ZIP-WORKER-001 |
 | BA-ZIP-WORKER-001 | **TECHNICALLY ACCEPTED** (agent); product — owner | Отдельный `zip-worker` (`zipnet`, prefork, read_only, limits, cancel, audit); 22 new tests; full 330/2 skipped; code/security review accept; R-033/R-035/R-036/R-037 |
+| BA-DEVCONTROL-001 | **IMPLEMENTED / PARTIAL — READ-ONLY CONTROL PLANE** | Мониторинг/отчёты/задачи/ask/hooks; автономный launch gated (R-039); 23 tests; full 353/2; нужен токен/live Telegram |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
 Статусы `COMPLETED`, `ACCEPTED`, `PARTIAL` и `NOT_ACCEPTED` не

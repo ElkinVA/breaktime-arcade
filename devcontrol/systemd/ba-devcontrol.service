@@ -1,0 +1,19 @@
+[Unit]
+Description=BA Dev Control Telegram bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/elkinva/projects/ba
+ExecStart=/usr/bin/python3 /home/elkinva/projects/ba/devcontrol/bot.py
+Environment=PYTHONUNBUFFERED=1
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Optional AI provider environment (ANTHROPIC_BASE_URL/AUTH_TOKEN/models), 0600.
+EnvironmentFile=-%h/.config/ba/deepseek.env
+Restart=on-failure
+RestartSec=10
+# The token is read by the bot from creds/telegram.env (0600), not from the unit.
+
+[Install]
+WantedBy=default.target

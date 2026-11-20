@@ -390,6 +390,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Review | План: code/security **accept** after conditions; реализация: security **ACCEPT**, code **ACCEPT** с pre-existing R-036; остатки R-033/R-035/R-036/R-037 |
 | Источник | `docs/foundation/BA-ZIP-WORKER-001_REPORT.md` |
 
+## BA-DEVCONTROL-001 — Telegram Dev Control
+
+| Поле | Значение |
+|---|---|
+| Тип | Инфраструктурный компонент; не аудит этапа |
+| Результат | Отдельный stdlib-сервис: owner-only Telegram long polling, команды/кнопки, `claude --bg`/agents/logs/stop, state/events/inbox, hooks Stop/PermissionRequest/SessionEnd, systemd unit |
+| Проверки | 23 unit tests; full 353/2 skipped; ruff/mypy; live `--bg` probe (id/sessionId/state/logs/stop); Stop hook `turn_done`; hardened permissions; security review conditions fixed |
+| Статус | **IMPLEMENTED / PARTIAL — READ-ONLY CONTROL PLANE**: мониторинг/отчёты работают; автономный launch gated (R-039); нет live Telegram (токен) |
+| Review | security review: BLOCKER sandbox-escape закрыт opt-in/deny; MAJOR test-execution остаётся → code review **REJECT** для включения автономного режима |
+| Источник | `docs/foundation/BA-DEVCONTROL-001_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.
