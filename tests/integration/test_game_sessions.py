@@ -22,7 +22,7 @@ from apps.accounts.models import AnonymousIdentity, User
 from apps.accounts.services.anonymous import COOKIE_NAME
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.gameplay.api import throttling
-from apps.gameplay.models import GameSession
+from apps.gameplay.models import GameSession, UserGamePlaytime
 from apps.gameplay.services.sessions import SessionError, activate_session, heartbeat
 
 LOCMEM_CACHES = {
@@ -115,6 +115,12 @@ def _service_request(token: str):
     request = RequestFactory().post("/")
     request.user = AnonymousUser()
     request.COOKIES[COOKIE_NAME] = token
+    return request
+
+
+def _user_request(user: User):
+    request = RequestFactory().post("/")
+    request.user = user
     return request
 
 
@@ -815,3 +821,58 @@ def test_client_ip_middleware_trusts_only_proxy_networks() -> None:
     untrusted = RequestFactory().get("/", REMOTE_ADDR="8.8.8.8", HTTP_X_FORWARDED_FOR="203.0.113.5")
     middleware(untrusted)
     assert untrusted.META["REMOTE_ADDR"] == "8.8.8.8"
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_user_heartbeat_credits_playtime() -> None:
+    game = _game(technical_id="playtime_game")
+    user = User.objects.create_user(login="sven", password="correct horse battery staple")
+    client, csrf = _client(user)
+    result = _create(client, csrf, game)
+    _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    session = GameSession.objects.get(pk=result["session_id"])
+    base = timezone.now() - timedelta(seconds=100)
+    GameSession.objects.filter(pk=session.pk).update(
+        activated_at=base, last_heartbeat_at=base, credited_ms=0
+    )
+    heartbeat(_user_request(user), session.pk, now=base + timedelta(seconds=30))
+    playtime = UserGamePlaytime.objects.get(user=user, game=game)
+    assert playtime.verified_seconds == 30
+
+    heartbeat(_user_request(user), session.pk, now=base + timedelta(seconds=40))
+    playtime.refresh_from_db()
+    assert playtime.verified_seconds == 40
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_guest_and_preview_heartbeats_do_not_credit_playtime() -> None:
+    game = _game(technical_id="no_playtime_game")
+    guest, csrf = _client()
+    result = _create(guest, csrf, game)
+    _activate(guest, csrf, str(result["session_id"]), str(result["ticket"]))
+    session = GameSession.objects.get(pk=result["session_id"])
+    base = timezone.now() - timedelta(seconds=100)
+    GameSession.objects.filter(pk=session.pk).update(
+        activated_at=base, last_heartbeat_at=base, credited_ms=0
+    )
+    token = guest.cookies[COOKIE_NAME].value
+    heartbeat(_service_request(token), session.pk, now=base + timedelta(seconds=30))
+
+    user = User.objects.create_user(login="tara", password="correct horse battery staple")
+    preview = GameSession.objects.create(
+        game=game,
+        game_version=game.current_version,
+        subject_type=GameSession.SUBJECT_USER,
+        subject_id=user.id,
+        mode=GameSession.MODE_PREVIEW,
+        state=GameSession.STATE_ACTIVE,
+        seed="preview-playtime",
+        max_session_seconds=1800,
+        credited_ms=0,
+        activated_at=base,
+        last_heartbeat_at=base,
+    )
+    heartbeat(_user_request(user), preview.pk, now=base + timedelta(seconds=30))
+    assert not UserGamePlaytime.objects.exists()

@@ -18,7 +18,8 @@ import secrets
 from datetime import datetime, timedelta
 from uuid import UUID
 
-from django.db import connection, transaction
+from django.db import IntegrityError, connection, transaction
+from django.db.models import F
 from django.http import HttpRequest, HttpResponse
 from django.utils import timezone
 from django.utils.translation import get_language
@@ -29,7 +30,7 @@ from apps.accounts.services.anonymous import (
     get_or_create_anonymous_identity,
 )
 from apps.catalog.models import Game
-from apps.gameplay.models import GameSession
+from apps.gameplay.models import GameSession, UserGamePlaytime
 
 TICKET_TTL_SECONDS = 60
 ACTIVATION_WINDOW_SECONDS = 300
@@ -274,15 +275,46 @@ def heartbeat(
             delta_ms = int(
                 max(0, min((current - last).total_seconds() * 1000, MAX_HEARTBEAT_DELTA_MS))
             )
+            previous_credited = session.credited_ms
             session.credited_ms = min(
                 session.credited_ms + delta_ms,
                 session.max_session_seconds * 1000,
             )
+            applied_ms = session.credited_ms - previous_credited
             session.last_heartbeat_at = current
             session.save(update_fields=["credited_ms", "last_heartbeat_at", "updated_at"])
+            if (
+                applied_ms > 0
+                and session.subject_type == GameSession.SUBJECT_USER
+                and session.mode == GameSession.MODE_USER
+            ):
+                _credit_playtime(session.subject_id, session.game_id, applied_ms)
 
     if expired:
         raise SessionError("E_SESSION_EXPIRED", "Session is expired", 410)
+
+
+def _credit_playtime(user_id: UUID, game_id: UUID, delta_ms: int) -> None:
+    """§2.12.3: credited time only for mode=user, never for service modes."""
+    seconds = delta_ms // 1000
+    if seconds <= 0:
+        return
+    updated = UserGamePlaytime.objects.filter(user_id=user_id, game_id=game_id).update(
+        verified_seconds=F("verified_seconds") + seconds
+    )
+    if updated:
+        return
+    try:
+        with transaction.atomic():
+            UserGamePlaytime.objects.create(
+                user_id=user_id,
+                game_id=game_id,
+                verified_seconds=seconds,
+            )
+    except IntegrityError:
+        UserGamePlaytime.objects.filter(user_id=user_id, game_id=game_id).update(
+            verified_seconds=F("verified_seconds") + seconds
+        )
 
 
 def _build_context(

@@ -113,11 +113,13 @@ def anonymize_user(user: User) -> None:
     AccountToken.objects.filter(user=user).delete()
 
     # DB-001: anonymise results, remove leaderboard rows in the same flow.
+    from apps.gameplay.models import UserGamePlaytime
     from apps.gameplay.services.results import anonymize_user_results
     from apps.gameplay.services.storage import delete_user_storage
 
     anonymize_user_results(user)
     delete_user_storage(user)
+    UserGamePlaytime.objects.filter(user=user).delete()
 
     user.is_active = False
     user.login = f"deleted-{hashlib.sha256(str(user.pk).encode()).hexdigest()[:20]}"
