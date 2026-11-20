@@ -1,7 +1,7 @@
 # CONTEXT_RECOVERY — Breaktime Arcade
 
 Краткая инструкция для нового сеанса Claude Code после `/compact` или потери истории чата. Не полагаться на память предыдущей сессии, старые отчёты или сообщения исполнителя как на доказательство.  
-**Дата актуализации:** 2026-11-20 (APPF-SESSION-001).  
+**Дата актуализации:** 2026-11-20 (APPF-SESSION-002, APPF-RESULT-001).  
 **Первый документ новой сессии — `NOW.md`; полные реестры — по необходимости.**
 
 **Реестры — рабочий источник проектного контекста, но не нормативная база.**
@@ -413,3 +413,18 @@ DRAFT-документы не являются нормативными и не 
   `docs/decisions/APPF-OWNER-DECISION-PACKAGE.md`; затем
   result/leaderboard/storage только после BA-SDK/ENV/BA-GAME и решений
   по DB-001…DB-008.
+
+## 27. APPF-SESSION-002 и APPF-RESULT-001
+
+- Throttle: subject 30/ч + IP 600/ч (/64), heartbeat 3/мин на сессию,
+  structured 429, `redis-throttle` noeviction, `ClientIPMiddleware`
+  (XFF только от доверенных прокси). Отчёт —
+  `docs/foundation/APPF-SESSION-002_REPORT.md`.
+- Result: `POST /api/v1/sessions/{id}/result`, GameResult +
+  LeaderboardEntry, DB-001/002/003 (CHECK субъекта, триггеры), гость 403
+  без записи, preview/autotest `is_test` без рекордов, идемпотентность,
+  100-параллельный тест. Отчёт — `docs/foundation/APPF-RESULT-001_REPORT.md`.
+- Оба среза — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**, review
+  code-reviewer/security-auditor accept/без блокеров.
+- Следующие: Storage → публичный Leaderboard API → SDK/iframe → EventLog;
+  retention и challenge — решения владельца.

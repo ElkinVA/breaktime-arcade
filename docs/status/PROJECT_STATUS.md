@@ -150,6 +150,23 @@ Pro возвращает план/вердикт без tool-вызовов. П�
 только graph-зависимость, schema не менялась. Это осознанное исключение из
 правила «применённые миграции не редактировать».
 
+## 1.3. App F: throttle hardening — APPF-SESSION-002
+
+**APPF-SESSION-002** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**;
+блокеры review сняты. Лимиты приведены к Приложению E: создание сессий
+30/час субъект + 600/час IP (/64), heartbeat 3/мин на сессию, structured 429,
+отдельный `redis-throttle` (noeviction), `ClientIPMiddleware` для реального
+IP из nginx. 37 session tests; отчёт —
+`docs/foundation/APPF-SESSION-002_REPORT.md`.
+
+## 1.4. App F: результат и рекорды — APPF-RESULT-001
+
+**APPF-RESULT-001** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**;
+`POST /api/v1/sessions/{id}/result` с `Idempotency-Key`, `GameResult` +
+`LeaderboardEntry`, DB-001/002/003 (CHECK субъекта, триггеры консистентности),
+гость 403 без записи, 100-параллельный тест. 19 tests; отчёт —
+`docs/foundation/APPF-RESULT-001_REPORT.md`.
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -179,6 +196,8 @@ Pro возвращает план/вердикт без tool-вызовов. П�
 | BA-APPF-002 | **NOT_STARTED** | Не запускалась; не отражать как выполненную |
 | BA-AUTONOMY-003 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Pro text-only plan done; guards; NOW; docs pointers; 185 tests; security review **accept**; owner acceptance pending |
 | APPF-SESSION-001 | **ACCEPTED** (владелец, 2026-11-20) | GameSession/ticket/activate/heartbeat §2.12.1–2.12.4; 24 tests (3 конкурентных); полный suite 209; code/security review **accept**; evidence в AUDIT_REGISTER |
+| APPF-SESSION-002 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Throttle Прил. E: subject 30/ч + IP 600/ч, heartbeat 3/мин, redis-throttle, реальный IP; блокеры review сняты |
+| APPF-RESULT-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Result API + GameResult + LeaderboardEntry; DB-001/002/003; 19 tests; review |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
 Статусы `COMPLETED`, `ACCEPTED`, `PARTIAL` и `NOT_ACCEPTED` не
@@ -221,9 +240,9 @@ Pro возвращает план/вердикт без tool-вызовов. П�
 
 ## 4. Что не готово
 
-- App F runtime: серверный session/ticket срез есть (`apps/gameplay`);
-  result/leaderboard/storage, `apps/leaderboards`, `apps/ratings`,
-  `sdk/1.1.0/ba-sdk.js`, `static/src/js/host_protocol.js` и
+- App F runtime: серверные session/ticket и result/leaderboard-срезы есть
+  (`apps/gameplay`); storage, `apps/leaderboards` (публичный API),
+  `apps/ratings`, `sdk/1.1.0/ba-sdk.js`, `static/src/js/host_protocol.js` и
   `static/src/js/player.js` по-прежнему отсутствуют/пусты.
 - SDK 1.1 и BA-ENV-1.1: оригиналы отсутствуют; DRAFT не утверждены.
 - App F: postMessage, origin/source, sessionId/requestId runtime, states,
@@ -241,8 +260,8 @@ Pro возвращает план/вердикт без tool-вызовов. П�
 - Каталог: рейтинг/популярность/голоса, бейдж покрытия, публичный play
   runtime, benchmark/план запроса на объёме. Persisted vector/GIN,
   unaccent/ranking/bulk и M2M жанров/тегов есть.
-- `/api/v1/` реализован только для sessions/activate/heartbeat; result,
-  leaderboard, storage и остальные endpoints отсутствуют. Полноценные
+- `/api/v1/` реализован для sessions/activate/heartbeat/result; публичный
+  GET leaderboard, storage и остальные endpoints отсутствуют. Полноценные
   CRM/2FA/роли, модерация, аналитика, pipeline, production
   compose/Nginx/monitoring/WAL/PITR/S3 не готовы.
 - SQL design не реализован в Django-моделях/миграциях; DB-001…DB-008

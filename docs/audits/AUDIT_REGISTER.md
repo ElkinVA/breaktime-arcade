@@ -278,6 +278,30 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Ограничения | subject без FK до DB-001; [PROP]-контракт context; retention GameSession §2.22; R-030; graph-правка `catalog.0001` — осознанное исключение |
 | Источник | `TASK_HISTORY.md`, `docs/tasks/APPF-SESSION-001_PLAN.md`, `docs/foundation/APPF-SESSION-001_REPORT.md` |
 
+## APPF-SESSION-002 — throttle hardening (техническая работа)
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая реализация Приложения E; не аудит этапа |
+| Цель | subject/IP-лимиты, heartbeat на сессию, structured 429, redis-throttle, реальный IP |
+| Результат | Throttle-классы, ClientIPMiddleware, exceptions handler, redis-throttle, +13 тестов |
+| Проверки | 37 session tests; полный suite 241/2 skipped; lint/types/migrations; XFF end-to-end |
+| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Review | code-reviewer/security-auditor — блокеров нет; staging smoke и узкий TRUSTED_PROXY_IPS — pre-prod |
+| Источник | `docs/foundation/APPF-SESSION-002_REPORT.md` |
+
+## APPF-RESULT-001 — результат и рекорды (техническая работа)
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая реализация §2.11–§2.13/§2.22–§2.23; не аудит этапа |
+| Цель | `POST /sessions/{id}/result`, GameResult, LeaderboardEntry, DB-001/002/003 |
+| Результат | Модели/миграции 0003–0005, API, триггеры, идемпотентность, 19 tests (100 parallel) |
+| Проверки | 19 result tests; полный suite 241/2 skipped; lint/types/migrations |
+| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Review | code-reviewer/security-auditor — **accept**, блокеров нет; retention JSONB — owner |
+| Источник | `docs/foundation/APPF-RESULT-001_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

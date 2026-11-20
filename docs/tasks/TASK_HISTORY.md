@@ -646,6 +646,31 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   SDK/iframe, GamePlaytime, preview/autotest и ZIP pipeline вне среза;
   DB-001, BA-SDK-1.1/BA-ENV-1.1, BA-GAME-2.2 остаются.
 
+### APPF-SESSION-002 — throttle hardening
+
+- **ID:** APPF-SESSION-002.
+- **Назначение:** привести лимиты к Приложению E и закрыть мульти-identity
+  обход после APPF-SESSION-001 (OD-APPF-020…026).
+- **Результат:** subject 30/час + IP 600/час (/64), heartbeat 3/мин на
+  сессию, structured 429, `ClientIPMiddleware` (XFF только от доверенных
+  прокси), отдельный `redis-throttle` (noeviction), fail-open с
+  rate-limited логом; +13 тестов.
+- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; review
+  code-reviewer/security-auditor — блокеров нет.
+- **Отчёт:** `docs/foundation/APPF-SESSION-002_REPORT.md`.
+
+### APPF-RESULT-001 — результат и таблица рекордов
+
+- **ID:** APPF-RESULT-001.
+- **Назначение:** `POST /api/v1/sessions/{id}/result` с `Idempotency-Key`,
+  `GameResult` + `LeaderboardEntry`, DB-001/002/003.
+- **Результат:** миграции gameplay.0003–0005 (модели, триггеры, PROTECT);
+  гость 403 без записи; preview/autotest `is_test` без лидерборда;
+  идемпотентность; advisory-lock; 100-параллельный тест; 19 tests.
+- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; review
+  code-reviewer/security-auditor — **accept**, блокеров нет.
+- **Отчёт:** `docs/foundation/APPF-RESULT-001_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,
