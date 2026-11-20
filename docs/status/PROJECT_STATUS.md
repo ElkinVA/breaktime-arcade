@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-19 (BA-CATALOG-005).  
+**Дата актуализации:** 2026-11-20 (BA-AUTONOMY-003).  
 Документ — краткая панель текущего состояния. Нормативные требования
 определяются только утверждёнными ТЗ и решениями владельца; отчёты агентов,
 аудиты и реестры не заменяют приёмку.
@@ -110,6 +110,21 @@ INDEPENDENT REVIEW**: `unaccent()` применяется в persisted vector и
 bulk/import; backfill-миграция `catalog.0005`; 8 integration tests. План
 запроса на объёме и ratings/popularity/play остаются.
 
+## 1.1. AI infrastructure — BA-AUTONOMY-003
+
+**BA-AUTONOMY-003** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**.
+Основная сессия остаётся Flash; Pro (`architect`, `code-reviewer`,
+`security-auditor`) работает в text-only режиме: Flash передаёт бриф,
+Pro возвращает план/вердикт без tool-вызовов. Причина — реальный Pro
+вызов маршрутизируется, но tool-использование ненадёжно (`leading-only`).
+`ANTHROPIC_DEFAULT_OPUS_MODEL` изменён на `deepseek-v4-pro` (backup
+`~/.bashrc`); Sonnet/Haiku/subagent default — Flash. Добавлены
+`ba-plan`, `bash_guard.py`, guard для `ai-dev`, `NOW.md`; исправлены
+указатели `docs/spec` → `technical_specification/`. Текущий полный suite —
+185 passed, 2 skipped, coverage 82,34 %; реестровые 81,65 %/177 —
+исторический срез BA-QUALITY-001. Детали —
+`docs/foundation/BA-AUTONOMY-003_REPORT.md`.
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -137,6 +152,7 @@ bulk/import; backfill-миграция `catalog.0005`; 8 integration tests. Пл
 | Предыдущий аудит App F | **COMPLETED** | Отчёт существует; вывод: runtime App F отсутствует, проверены только схемы/валидатор |
 | BA-APPF-001 | **COMPLETED**; не принят | Подготовлены 45 проектных решений; 29 Blocker, 17 вопросов владельцу |
 | BA-APPF-002 | **NOT_STARTED** | Не запускалась; не отражать как выполненную |
+| BA-AUTONOMY-003 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Pro text-only plan done; guards; NOW; docs pointers; 185 tests; security review **accept**; owner acceptance pending |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
 Статусы `COMPLETED`, `ACCEPTED`, `PARTIAL` и `NOT_ACCEPTED` не

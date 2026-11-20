@@ -1,6 +1,6 @@
 # TASK_HISTORY — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-19 (BA-DOC-002).  
+**Дата актуализации:** 2026-11-20 (BA-AUTONOMY-003).  
 Хронология подтверждённых работ и аудитов. Запись не является приёмкой.
 Точные даты ранних работ в постоянных файлах не зафиксированы; ниже указано
 «дата не зафиксирована», а не выдуманная дата. Статусы: `COMPLETED`,
@@ -596,7 +596,29 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   -> BA-CATALOG-003 (PARTIAL; FTS/trigram; no persisted vector)
   -> BA-CATALOG-004 (PARTIAL; persisted vector/GIN/backfill)
   -> BA-CATALOG-005 (IMPLEMENTED / AWAITING INDEPENDENT REVIEW; unaccent/rank/bulk)
+  -> BA-AUTONOMY-003 (IMPLEMENTED / AWAITING OWNER ACCEPTANCE; AI infrastructure)
 ```
+
+### BA-AUTONOMY-003 — AI infrastructure
+
+- **ID:** BA-AUTONOMY-003.
+- **Назначение:** привести AI-инфраструктуру в рабочее состояние:
+  Pro text-only план/review, Flash-исполнение, Bash-guard, изоляция
+  `ba`/`ai-dev`, NOW/контекст, исправление указателей.
+- **Результат:** `ba-plan`; обновлены skills/agents; `bash_guard.py`;
+  `ai-dev/.claude` guard; `docs/handoff/NOW.md`; `CLAUDE.md`/README/
+  `CONTEXT_RECOVERY` указывают на `technical_specification/`;
+  `ANTHROPIC_DEFAULT_OPUS_MODEL=deepseek-v4-pro`; тесты 185 passed,
+  2 skipped; lint 333; mypy 316.
+- **Модели:** план — `architect`/`deepseek-v4-pro` text-only; реализация —
+  Flash; review — `code-reviewer`/`security-auditor`/v4-pro text-only.
+- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; независимый
+  Pro security-review — **accept** (2026-11-20); findings 1–8 исправлены;
+  остаточный R-027 принят; приёмка владельцем pending.
+- **Отчёт:** `docs/foundation/BA-AUTONOMY-003_REPORT.md`;
+  план — `docs/tasks/BA-AUTONOMY-003_PLAN.md`.
+- **Остаток/зависимости:** приёмка владельцем; следующий срез —
+  `APPF-SESSION-001` (GameSession/LaunchTicket/API §2.12).
 
 ## 4. Источники и пробелы
 

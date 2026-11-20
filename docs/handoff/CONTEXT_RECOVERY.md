@@ -1,7 +1,8 @@
 # CONTEXT_RECOVERY — Breaktime Arcade
 
 Краткая инструкция для нового сеанса Claude Code после `/compact` или потери истории чата. Не полагаться на память предыдущей сессии, старые отчёты или сообщения исполнителя как на доказательство.  
-**Дата актуализации:** 2026-11-19 (BA-CATALOG-005).
+**Дата актуализации:** 2026-11-20 (BA-AUTONOMY-003).  
+**Первый документ новой сессии — `NOW.md`; полные реестры — по необходимости.**
 
 **Реестры — рабочий источник проектного контекста, но не нормативная база.**
 Нормативные требования определяются только утверждёнными ТЗ и решениями
@@ -57,6 +58,7 @@
 
 ## 4. Практический порядок чтения
 
+0. `docs/handoff/NOW.md` — текущий пакет, статус, следующий шаг, блокеры и последние фактические проверки.
 1. `docs/status/PROJECT_STATUS.md` — фактический этап, статусы, ограничения и следующий допустимый шаг.
 2. `docs/decisions/OWNER_DECISIONS.md` — раздел A: решения владельца; разделы B/C: нормативные/технические требования и ограничения задач.
 3. `docs/audits/AUDIT_REGISTER.md` — аудиты, замечания и их статусы.
@@ -64,7 +66,7 @@
 5. `docs/tasks/TASK_HISTORY.md` — история задач и связь с документами.
 6. `CLAUDE.md` — правила проекта, стек, запреты и процесс.
 7. Нормативные ТЗ: `technical_specification/ts_site.txt` (BA-PLAT-4.2 + BA-GAME-2.2) и `technical_specification/ts_game.txt` (BA-GAME-2.2).
-8. `ai-dev/docs/project-reference/README.md` — provenance, SHA-256, различия и пробелы ТЗ.
+8. `../ai-dev/docs/project-reference/README.md` — provenance, SHA-256, различия и пробелы ТЗ (read-only sibling).
 9. `git status --short`, `git branch --show-current`, `git rev-parse HEAD` — фактическое рабочее состояние.
 
 Если `PROJECT_STATUS.md` или `OWNER_DECISIONS.md` отсутствуют, противоречат ТЗ или друг другу — **остановиться и запросить решение владельца**. Не восстанавливать контекст догадками.
@@ -377,3 +379,18 @@ DRAFT-документы не являются нормативными и не 
 - Benchmark/EXPLAIN на объёме, ratings/popularity/play не реализованы.
 - Статус пакета — **IMPLEMENTED / AWAITING INDEPENDENT REVIEW**; каталог
   в целом остаётся PARTIAL.
+
+## 25. BA-AUTONOMY-003 — AI infrastructure
+
+- Основная сессия остаётся Flash; Pro (`architect`, `code-reviewer`,
+  `security-auditor`) работает в text-only режиме: Flash передаёт бриф,
+  Pro возвращает план/вердикт без tool-вызовов.
+- Факт: v4-pro маршрутизируется (`message.model=deepseek-v4-pro`), но
+  tool-использование ненадёжно (`leading-only`); text-only — обязательный
+  паттерн, а не опция.
+- Добавлены `ba-plan`, Bash-guard, обновлены `ba-development`,
+  `ba-code-review`, `ba-testing`, `ba-project-audit`.
+- Введён `NOW.md`; указатели `docs/spec` исправлены на
+  `technical_specification/`; `ai-dev` — read-only sibling.
+- Следующий продуктовый срез — APPF-SESSION-001 (GameSession/LaunchTicket,
+  §2.12.1–2.12.4), без SDK/ENV/BA-GAME.

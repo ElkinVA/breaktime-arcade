@@ -28,6 +28,8 @@ PROTECTED_RELATIVE_PREFIXES = {
     ("reports",),
     ("infra", "nginx", "staging.conf"),
     (".claude", "settings.local.json"),
+    (".claude", "settings.json"),
+    (".claude", "hooks"),
 }
 
 # These are protected even when a tool addresses them outside the project.

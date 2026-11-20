@@ -2,19 +2,29 @@
 
 ## Нормативная база (источник истины)
 BA-PLAT-4.2 (ред. 12.11.2026) + BA-GAME-2.2, BA-SDK-1.1, BA-ENV-1.1.
-Навигация: docs/handoff/. Полное ТЗ: docs/spec/.
+Навигация: docs/handoff/ (первый документ — NOW.md). Полное ТЗ: technical_specification/.
+Provenance: ../ai-dev/docs/project-reference/README.md.
 При конфликте: ТЗ > фактический код > handoff. Не выдумывать требования,
 endpoints, поля, версии и результаты проверок.
 
 ## Текущее состояние: КАРКАС, не MVP
-Реализовано: core (uuid7/citext, middleware+CSP, JSON-логи, healthz/readyz,
-storage), accounts.User + Argon2, catalog (модели+миграции), i18n (6 языков,
-словари, тег ba_t), theme (токены->CSS), crm — только бэкапы/restore-check,
-dev-lite и staging nginx.
-ПУСТО/заглушки: gameplay, leaderboards, ratings, pipeline, moderation,
-analytics, content; все schemas/*.json; sdk/1.1.0/ba-sdk.js; games-src/*;
-compose.prod.yml; infra/nginx/prod.conf.j2; monitoring; docs/.
-Views каталога и CRM — stub. Не считать их работающей функциональностью.
+Актуальная панорама — `docs/status/PROJECT_STATUS.md` и `docs/handoff/NOW.md`.
+Реализованы срезы: core, accounts §2.10 (**PARTIAL**), 2FA staff (**PARTIAL**),
+catalog (**PARTIAL**: published-only, фильтры, поиск, detail/genre/HTMX),
+i18n (6 языков), theme, CRM backup/restore-check, dev-lite/staging nginx.
+App F (gameplay, leaderboards, ratings, SDK, player/runtime) **не реализован**;
+`schemas/*.json` содержат DRAFT App F; `sdk/1.1.0/ba-sdk.js` и `games-src/*` пусты.
+Views каталога — частично, CRM — stub. Не считать это принятой функциональностью.
+
+## AI workflow (обязательно)
+- Сначала `docs/handoff/NOW.md` + `PROJECT_STATUS.md` + `BACKLOG.md`;
+  полные реестры — по необходимости.
+- Pro (`architect`, `code-reviewer`, `security-auditor`) планирует и проверяет
+  в text-only режиме; Flash реализует и запускает проверки.
+- Никакого self-review; `IMPLEMENTED` ≠ `ACCEPTED`. Приёмка — только владелец.
+- После пакета обновить NOW, шесть реестров и PROJECT_STATUS; указать модели.
+- Защищённые файлы (`CLAUDE.md`, ТЗ, `.env`, `certs/`, `creds/`) — только с
+  явного разрешения; секреты не выводить.
 
 ## Стек — менять запрещено без письменного согласования
 Python 3.14, Django 5.2 LTS, DRF, PostgreSQL 18 (psycopg 3, НЕ psycopg2),

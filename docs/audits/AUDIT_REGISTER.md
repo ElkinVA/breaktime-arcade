@@ -252,6 +252,19 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Артефакты | `docs/contracts/`, `docs/foundation/`, `schemas/messages/`, `docs/foundation/BA-FOUNDATION-002_REPORT.md` (запрошенный `reports/...` заблокирован guard-хуком) |
 | Примечание | Не считать этот раздел независимым аудитом или приёмкой этапа 0 |
 
+## BA-AUTONOMY-003 — AI infrastructure (техническая работа)
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая работа по AI-инфраструктуре; не независимый аудит этапа |
+| Цель | Pro text-only планирование/review, Flash-исполнение; guards; изоляция `ba`/`ai-dev`; NOW; указатели |
+| Результат | `ba-plan`; обновлены skills/agents/settings; `bash_guard.py`; `ai-dev/.claude` guard; `NOW.md`; docs pointer fixes; `ANTHROPIC_DEFAULT_OPUS_MODEL=deepseek-v4-pro` |
+| Проверки | `make test` 185 passed, 2 skipped; `make lint` 333; `make types` 316; guard tests 19/19 и 16/16 |
+| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Review | Независимый Pro security-review — **accept** (2026-11-20); findings 1–8 исправлены; остаточный R-027 принят; owner acceptance pending |
+| Ограничения | R-026 (Pro leading-only), R-027 (guard heuristic), R-028 (ai-dev registration), R-029 (context drift) |
+| Источник | `TASK_HISTORY.md`, `docs/tasks/BA-AUTONOMY-003_PLAN.md`, `docs/foundation/BA-AUTONOMY-003_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

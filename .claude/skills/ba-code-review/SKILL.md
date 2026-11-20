@@ -1,6 +1,6 @@
 ---
 name: ba-code-review
-description: Независимый review diff Breaktime Arcade на дефекты, регрессии, безопасность и соответствие ТЗ. Использовать после реализации и перед release.
+description: Независимый Pro-review diff Breaktime Arcade. Flash готовит бриф и evidence, вердикт выносит text-only code-reviewer (deepseek-v4-pro).
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -8,23 +8,32 @@ tools: Read, Grep, Glob, Bash
 
 Read-only review. Не редактируй код во время review.
 
-## Проверь
+## Кто проверяет
 
-1. Соответствие точному пункту ТЗ и acceptance criteria.
-2. Корректность: граничные случаи, ошибки, транзакции, конкурентность,
-   идемпотентность, backward compatibility.
-3. Безопасность: permissions/deny-by-default, CSRF/CSP, origin validation,
-   throttling, секреты, path traversal/zip-slip, XSS/SSRF.
-4. Данные: миграции, constraints, immutable поля, индексы, отсутствие
-   destructive-операций.
-5. Тесты: покрывают ли изменение, действительно ли они запускались, нет ли
-   ложных PASS.
-6. Diff: `git diff --stat`, `git diff`, `git diff --check`; проверь, что
-   защищённые файлы не изменены.
+Независимый вердикт выносит субагент `code-reviewer`
+(`deepseek-v4-pro`) в **text-only** режиме. Flash не проверяет сам себя и
+не пересказывает свои выводы как review. Если `code-reviewer` недоступен,
+зафиксируй это; не подменяй Pro-review self-review на Flash.
 
-## Формат
+## Что передаёт Flash
 
-Для каждого замечания: severity (blocker/major/minor), файл:строка,
-сценарий отказа, предлагаемое исправление. Не переписывай код без запроса.
-Если замечаний нет — перечисли, что именно проверено и какие области не
-проверены.
+- точный пункт ТЗ и acceptance criteria;
+- `git diff` и список изменённых файлов;
+- фактические `make test` / `make lint` / `make types` с exit code;
+- релевантные выдержки файлов (не весь проект);
+- известные риски и что не проверено;
+- для security-sensitive — дополнительно `security-auditor`.
+
+## Вердикт
+
+`VERDICT: accept | reject | incomplete` + findings:
+severity (blocker/major/minor), файл:строка, сценарий отказа, исправление.
+Если замечаний нет — что проверено и что не проверено.
+
+## Правила
+
+- Максимум 2 итерации Flash → Pro → Flash → Pro.
+- Второй `reject` или противоречие — остановка и один вопрос владельцу.
+- `accept` от Pro не равен `ACCEPTED` владельцем; статус —
+  `IMPLEMENTED / AWAITING OWNER ACCEPTANCE`.
+- Не ослабляй permissions/CSRF/CSP/секреты ради прохождения review.

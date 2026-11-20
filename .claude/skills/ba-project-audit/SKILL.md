@@ -1,6 +1,6 @@
 ---
 name: ba-project-audit
-description: Провести read-only аудит проекта Breaktime Arcade и соответствия BA-PLAT-4.2/BA-GAME-2.2. Использовать при запросах «аудит проекта», «проверь соответствие ТЗ», «что реализовано», «проверь текущее состояние».
+description: Read-only аудит Breaktime Arcade и соответствия BA-PLAT-4.2/BA-GAME-2.2; проверка текущего состояния и реестров.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -10,8 +10,10 @@ Read-only skill. Не изменяй файлы проекта.
 
 ## Порядок
 
-1. Прочитай `CLAUDE.md`, `README.md`, `docs/project-reference/README.md`,
-   `docs/architecture.md`, `docs/api.md` и релевантные разделы ТЗ.
+1. Прочитай `CLAUDE.md`, `README.md`, `docs/handoff/NOW.md`,
+   `docs/status/PROJECT_STATUS.md`, `docs/status/BACKLOG.md` и релевантные
+   разделы ТЗ. Provenance — `technical_specification/` и
+   `../ai-dev/docs/project-reference/README.md` (read-only sibling).
 2. Проверь происхождение и SHA-256 нормативных файлов; не копируй полные
    ТЗ в отчёт без необходимости.
 3. Сними baseline: `git status --short --branch`, `git log -10 --oneline`,
