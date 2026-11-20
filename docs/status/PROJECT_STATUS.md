@@ -306,19 +306,21 @@ App F и решениями владельца.
 - Нормативные ТЗ: `technical_specification/ts_site.txt`,
   `technical_specification/ts_game.txt`.
 
-## 9. Git-снимок BA-CATALOG-005
+## 9. Git-снимок BA-AUTONOMY-003
 
 ```text
 Branch: main
-HEAD: 1fc96b40b6c11b1fcb20e1e5a833a65d166c8340
-Status entries: 163 (101 modified, 62 untracked)
-Staged: 0
+HEAD: cc18dd970185e60e4c0fb262f1de0d9effc020e4 (BA-AUTONOMY-003)
+Checkpoint: 214af0d, tag checkpoint-2026-11-20-pre-autonomy
+Tag: ba-autonomy-003
+ai-dev HEAD: d09a3f1344bf8d45cc019893213e504174c50b6f
+ai-dev tag: ai-dev-autonomy-003
+Status: clean
 Remote: отсутствует
 ```
 
-Снимок read-only; существующие пользовательские изменения сохранены;
-`git add`/commit/reset/checkout/restore не выполнялись. Значительная часть
-изменений относится к предыдущим пакетам и остаётся uncommitted.
+Снимок отражает инфраструктурный коммит; финальная фиксация реестров —
+отдельный docs-коммит. Изменения продукта не выполнялись.
 
 ## 10. Ограничения доказательной базы
 

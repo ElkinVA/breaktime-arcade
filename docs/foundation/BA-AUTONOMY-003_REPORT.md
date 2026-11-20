@@ -2,7 +2,9 @@
 
 **Дата:** 2026-11-20  
 **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**  
-**План:** `docs/tasks/BA-AUTONOMY-003_PLAN.md`  
+**План:** `docs/tasks/BA-AUTONOMY-003_PLAN.md`
+**Коммиты:** `ba` `cc18dd9` (tag `ba-autonomy-003`), `ai-dev`
+`d09a3f1` (tag `ai-dev-autonomy-003`); checkpoint `214af0d`/`152aa07`.  
 **NOW:** `docs/handoff/NOW.md`
 
 ## 1. Итог

@@ -50,10 +50,13 @@ make types  -> ранее exit 0; 316 source files
 
 ## Git
 
-- `ba`: `main`, HEAD `214af0d` (checkpoint + tag
-  `checkpoint-2026-11-20-pre-autonomy`); инфраструктурные изменения —
-  в работе, отдельный commit после проверок.
-- `ai-dev`: `main`, HEAD `152aa07` (checkpoint + tag).
+- `ba`: `main`, HEAD `cc18dd9` (BA-AUTONOMY-003), tag `ba-autonomy-003`;
+  checkpoint `214af0d` / tag `checkpoint-2026-11-20-pre-autonomy`.
+- `ai-dev`: `main`, HEAD `d09a3f1` (AI infrastructure), tag
+  `ai-dev-autonomy-003`; checkpoint `152aa07` / tag
+  `checkpoint-2026-11-20-pre-autonomy`.
+- Финальная фиксация реестров — отдельный docs-коммит; product-код не
+  изменялся.
 - Backup: `~/backups/20261120-pre-autonomy/` (worktree tar + git bundles).
 
 ## Активные риски
