@@ -1,6 +1,6 @@
 # BACKLOG — Breaktime Arcade
 
-**Дата:** 2026-11-20 (APPF-SESSION-001).  
+**Дата:** 2026-11-20 (BA-ZIP-PREFLIGHT-001).  
 Единый backlog. Статусы: `IN_PROGRESS`, `READY`, `BLOCKED`,
 `DONE_NOT_ACCEPTED`, `ACCEPTED`. Приоритет: `Blocker`, `Critical`, `Major`,
 `Minor`, `Improvement`.
@@ -36,6 +36,8 @@
 | APPF-PLAYTIME-001 | `UserGamePlaytime`, зачёт credited_ms для mode=user | Major | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | review accept; 40 session tests; отчёт `docs/foundation/APPF-PLAYTIME-001_REPORT.md` |
 | APPF-RATINGS-001 | Оценки 1–5, порог playtime, лимиты, агрегат (§2.9) | Major | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | review accept; 10 tests (гонки); антифрод §2.9.6 — owner-gap; отчёт `docs/foundation/APPF-RATINGS-001_REPORT.md` |
 | APPF-POPULARITY-001 | GamePlayCredit/GameDailyStats, close endpoint (§2.8) | Major | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | review accept; 8 tests; R-032 guest inflation — owner-gap; отчёт `docs/foundation/APPF-POPULARITY-001_REPORT.md` |
+| BA-ZIP-PREFLIGHT-001 | Metadata-only preflight ZIP (§2.14.2/§2.14.7): структура, пути, типы, лимиты, коллизии, расширения, SHA-256, diagnostics | Critical | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | 16 unit tests; full 297/2 skipped; code/security review accept; не зависит от SDK/ENV/GAME; отчёт `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md` |
+| BA-ZIP-EXTRACT-001 | Изолированная распаковка ZIP: sandbox CPU/RAM/time/disk/network, потоковые byte caps, CRC, отказ symlink, повторная валидация путей | Critical | **READY** | Зависит только от BA-ZIP-PREFLIGHT-001; контракт стадии зафиксирован в `docs/tasks/BA-ZIP-PREFLIGHT-001_PLAN.md` |
 | APPF-RETENTION | Таблица сроков хранения и юридические вопросы | Major | **PREPARED / AWAITING OWNER** | `docs/decisions/RETENTION_PROPOSAL.md`; сроки не утверждены |
 | BA-APPF-002 | Реализация App F по BA-APPF-001 | Blocker | **READY (частично)** — DB-001/005/006/007 утверждены, DB-002/003/004/008 делегированы | Result/Leaderboard/Storage можно проектировать; SDK/iframe ждут утверждения BA-SDK/ENV и BA-GAME |
 | BA-DB-SCHEMA-002 | Исправления DB-001…DB-008 в SQL/моделях | Blocker | **BLOCKED** | Нужны решения владельца по APPF-DEC-035/039/040/041 |

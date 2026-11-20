@@ -5,7 +5,7 @@
 Результаты тестов считаются техническими доказательствами, но не заменяют
 решение владельца.
 
-Дата фиксации: 2026-11-19 (актуализация BA-CATALOG-005).
+Дата фиксации: 2026-11-20 (актуализация BA-ZIP-PREFLIGHT-001).
 Источник записей: отчёты аудитов в истории работ BA. Для BA-AUDIT-002/
 BA-AUDIT-003 и BA-DOC-AUDIT-001 отдельные постоянные файлы в проекте не
 найдены; для App F существует
@@ -356,6 +356,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
 | Review | code-reviewer/security-auditor — **accept**; R-032 guest identity inflation — owner-gap |
 | Источник | `docs/foundation/APPF-POPULARITY-001_REPORT.md` |
+
+## BA-ZIP-PREFLIGHT-001 — безопасная проверка ZIP (техническая работа)
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая реализация §2.14.2/§2.14.7; не аудит этапа |
+| Результат | Metadata-only `preflight_zip`: пути/типы/лимиты/коллизии/расширения/служебные файлы, SHA-256, стабильные diagnostics; без распаковки и исполнения |
+| Проверки | 16 unit tests (path traversal, canonical/duplicate, symlink, encryption, forged sizes, NFKC, ZIP bomb, DD/ZIP64); full suite 297/2 skipped; ruff/mypy зелёные |
+| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Review | code-reviewer — **accept**; security-auditor — **ACCEPT** после исправления M-1/M-2/m-1/m-3/m-6; остаток O-1…O-5/m-4…m-7 — R-034 (non-blocking) |
+| Источник | `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md` |
 
 ## Общие ограничения
 

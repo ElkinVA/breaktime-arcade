@@ -1,6 +1,6 @@
 # TASK_HISTORY — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-20 (APPF-SESSION-001).  
+**Дата актуализации:** 2026-11-20 (BA-ZIP-PREFLIGHT-001).  
 Хронология подтверждённых работ и аудитов. Запись не является приёмкой.
 Точные даты ранних работ в постоянных файлах не зафиксированы; ниже указано
 «дата не зафиксирована», а не выдуманная дата. Статусы: `COMPLETED`,
@@ -718,6 +718,27 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   R-032 (guest identity inflation) — owner-gap.
 - **Отчёт:** `docs/foundation/APPF-POPULARITY-001_REPORT.md`.
 
+### BA-ZIP-PREFLIGHT-001 — безопасная metadata-only проверка ZIP
+
+- **ID:** BA-ZIP-PREFLIGHT-001.
+- **Результат:** `apps/pipeline/validation/codes.py` (стабильные коды,
+  severity, лимиты), `structure.py` (`preflight_zip`), 16 unit tests.
+  Проверяются: ZIP ≤25 МБ, распакованный ≤100 МБ, ratio ≤100:1, ≤2000
+  файлов, файл ≤20 МБ; абсолютные пути/`..`/backslash/управляющие и
+  bidi-символы; NFKC и канонизация путей; symlink/спецфайлы/шифрование;
+  подмена размеров local vs central; дубликаты и регистро-коллизии;
+  Windows-reserved/trailing dot/space/>255 байт; allowlist расширений;
+  `.git`/`.DS_Store`/`__MACOSX`/`node_modules`/`*.map`; SHA-256.
+  Распаковка и исполнение не выполняются (тест запрещает `extract`/
+  `extractall`).
+- **Проверки:** full suite — 297 passed, 2 skipped, 1 warning; ruff check/
+  format, mypy — зелёные; code-reviewer/security-auditor — **accept**;
+  M-1/M-2/m-1/m-3/m-6 исправлены; остаток O-1…O-5/m-4…m-7 — R-034
+  (non-blocking); extraction sandbox — следующая стадия.
+- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; не зависит от
+  BA-SDK-1.1/BA-ENV-1.1/BA-GAME-2.2.
+- **Отчёт:** `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,
@@ -743,6 +764,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/BA-CATALOG-004_REPORT.md`;
 - `docs/foundation/BA-CATALOG-005_REPORT.md`;
 - `docs/foundation/APPF-SESSION-001_REPORT.md`;
+- `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`;
 - `tests/integration/test_catalog_public.py`;
 - `tests/integration/test_game_sessions.py`;
 - `reports/BA_AUDIT_20261118_162920.zip` (исторический generated-отчёт).

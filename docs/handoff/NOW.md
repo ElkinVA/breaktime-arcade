@@ -2,10 +2,13 @@
 
 **Дата:** 2026-11-20
 **Текущий пакет:** App F server slices: SESSION-002, RESULT-001,
-LEADERBOARD-001, STORAGE-001, PLAYTIME-001, RATINGS-001, POPULARITY-001
-**Статус:** SESSION-001 **ACCEPTED**; остальные срезы **IMPLEMENTED /
-AWAITING OWNER ACCEPTANCE**, independent review (code-reviewer/
-security-auditor, deepseek-v4-pro, text-only) — accept.
+LEADERBOARD-001, STORAGE-001, PLAYTIME-001, RATINGS-001, POPULARITY-001;
+ZIP pipeline: BA-ZIP-PREFLIGHT-001
+**Статус:** SESSION-001 **ACCEPTED**; остальные срезы и ZIP preflight —
+**IMPLEMENTED / AWAITING OWNER ACCEPTANCE**, independent review
+(code-reviewer/security-auditor, deepseek-v4-pro, text-only). ZIP preflight:
+code-reviewer/security-auditor — **accept**; M-1/M-2/m-1/m-3/m-6
+исправлены; остаток O-1…O-5/m-4…m-7 — R-034 (non-blocking).
 
 ## Активная задача
 
@@ -16,9 +19,18 @@ GameResult, LeaderboardEntry, DB-001/002/003), публичный leaderboard
 TTL гостя, активная сессия + 60/min). Throttle — Приложение E
 (subject 30/ч + IP 600/ч, heartbeat 3/мин, redis-throttle, реальный IP).
 
+ZIP pipeline: **BA-ZIP-PREFLIGHT-001** — metadata-only `preflight_zip`
+(25/100/20 МБ, 2000 файлов, 100:1, пути/типы/коллизии/расширения,
+NFKC/symlink/encryption/forged sizes, SHA-256, diagnostics) без
+распаковки; 16 tests. Следующий независимый пакет —
+**BA-ZIP-EXTRACT-001** (sandbox: CPU/RAM/time/disk/network, потоковые
+caps, CRC, отказ symlink, повторная валидация путей).
+
 ## Следующий шаг
 
-1. SDK/iframe/host protocol — после утверждения BA-SDK-1.1 v1.1.0 и
+1. BA-ZIP-EXTRACT-001 — изолированная распаковка (не зависит от
+   SDK/ENV/GAME); затем manifest/catalog/locales — после BA-GAME-2.2.
+   SDK/iframe/host protocol — после утверждения BA-SDK-1.1 v1.1.0 и
    BA-GAME-2.2; EventLog/verifier — после схем сообщений.
 2. Серверные API-срезы App F (sessions/result/leaderboard/storage,
    playtime, ratings) готовы к приёмке владельцем.
@@ -53,9 +65,11 @@ pytest tests/integration/test_leaderboard_api.py -> 7 passed
 pytest tests/integration/test_game_storage.py  -> 12 passed
 pytest tests/integration/test_game_ratings.py  -> 10 passed
 pytest tests/integration/test_game_popularity.py -> 8 passed
-pytest (full)              -> 281 passed, 2 skipped
-make lint                  -> All checks passed; 336 files formatted
-make types                 -> Success: no issues found in 317 source files
+pytest tests/unit/test_zip_preflight.py -> 16 passed
+pytest (full)              -> 297 passed, 2 skipped, 1 warning
+ruff check apps config tests -> All checks passed
+ruff format --check        -> 344 files already formatted
+mypy                       -> Success: no issues found in 320 source files
 makemigrations --check     -> No changes detected
 migrate --plan             -> No planned migration operations
 ./verify_stack.sh          -> СТЕК ЗДОРОВ (redis-throttle healthy)
@@ -98,4 +112,6 @@ XFF: запросы через nginx из web/worker -> разные IP-баке
 `docs/tasks/APPF-RESULT-001_PLAN.md`,
 `docs/foundation/APPF-SESSION-002_REPORT.md`,
 `docs/foundation/APPF-RESULT-001_REPORT.md`,
+`docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`,
+`docs/runbook/FULL_DEPLOYMENT_FROM_ZERO.md`,
 `docs/decisions/APPF-OWNER-DECISION-PACKAGE.md`.

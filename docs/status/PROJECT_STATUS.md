@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-20 (APPF-SESSION-001).  
+**Дата актуализации:** 2026-11-20 (BA-ZIP-PREFLIGHT-001).  
 Документ — краткая панель текущего состояния. Нормативные требования
 определяются только утверждёнными ТЗ и решениями владельца; отчёты агентов,
 аудиты и реестры не заменяют приёмку.
@@ -14,7 +14,8 @@
 
 Принятие **Documentation Block 1** (BA-DOC-001 + FIX-01/02/03) не означает
 принятия технического этапа 0, этапа 1 или `BA-STAGE-1.1`. App F в целом не
-реализован и не готов к приёмке; серверный session/ticket срез
+готов к приёмке: реализованы отдельные серверные срезы, клиентский runtime
+отсутствует; серверный session/ticket срез
 **APPF-SESSION-001** **ACCEPTED** владельцем 2026-11-20; `BA-APPF-002`
 **не запускалась**.
 
@@ -207,6 +208,23 @@ mode user/guest, окно 30 мин), `POST /sessions/{id}/close`; review accept
 8 tests; R-032 (guest identity inflation) — owner-gap; отчёт —
 `docs/foundation/APPF-POPULARITY-001_REPORT.md`.
 
+## 1.10. ZIP pipeline: безопасный preflight — BA-ZIP-PREFLIGHT-001
+
+**BA-ZIP-PREFLIGHT-001** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**.
+Metadata-only проверка игрового ZIP без распаковки и исполнения:
+`apps/pipeline/validation/codes.py` (стабильные коды/severity/лимиты) и
+`structure.py` (`preflight_zip`). Проверяются лимиты (25/100/20 МБ,
+2000 файлов, 100:1), абсолютные пути/`..`/backslash, NFKC, symlink/
+спецфайлы/шифрование, подмена размеров local vs central, дубликаты и
+регистро-коллизии, Windows-reserved, allowlist расширений и служебные
+файлы; возвращаются SHA-256 и структурированные diagnostics для CRM.
+16 unit tests; full suite — 297 passed, 2 skipped; ruff/mypy зелёные;
+code-reviewer — accept; security-auditor — **accept** после устранения
+M-1/M-2 (остаток O-1…O-5/m-4…m-7 — R-034). Срез не зависит от
+BA-SDK-1.1/BA-ENV-1.1/BA-GAME-2.2; изолированная распаковка —
+следующий пакет BA-ZIP-EXTRACT-001. R-033 фиксирует границу metadata-only.
+Отчёт — `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`.
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -243,6 +261,7 @@ mode user/guest, окно 30 мин), `POST /sessions/{id}/close`; review accept
 | APPF-PLAYTIME-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | UserGamePlaytime mode=user; 40 session tests; review accept |
 | APPF-RATINGS-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Оценки/порог/лимиты/агрегат; 10 tests; review accept; антифрод owner-gap |
 | APPF-POPULARITY-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Play credit/daily stats/close; 8 tests; review accept; R-032 owner-gap |
+| BA-ZIP-PREFLIGHT-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Metadata-only ZIP preflight; 16 tests; full 297/2 skipped; review accept; R-033 extraction sandbox — следующий пакет |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
 Статусы `COMPLETED`, `ACCEPTED`, `PARTIAL` и `NOT_ACCEPTED` не
@@ -271,6 +290,9 @@ mode user/guest, окно 30 мин), `POST /sessions/{id}/close`; review accept
   теги (M2M), фильтры — BA-CATALOG-002; FTS+trigram — BA-CATALOG-003;
   persisted `search_vector`/GIN — BA-CATALOG-004; `unaccent`/ranking/bulk —
   BA-CATALOG-005.
+- ZIP preflight: metadata-only структура/пути/типы/лимиты/коллизии/
+  расширения, SHA-256, diagnostics; без распаковки; BA-ZIP-PREFLIGHT-001 —
+  **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; extraction sandbox не готов.
 - Browser E2E: регистрация/вход/смена пароля/deletion window; полный набор
   13 E2E passed; BA-STAGE-2.3 — **IMPLEMENTED / AWAITING INDEPENDENT REVIEW**.
 - Публичная i18n-оболочка и языковая маршрутизация BA-STAGE-1.1
@@ -285,20 +307,24 @@ mode user/guest, окно 30 мин), `POST /sessions/{id}/close`; review accept
 
 ## 4. Что не готово
 
-- App F runtime: серверные session/ticket, result/leaderboard и storage
-  срезы есть (`apps/gameplay`, `apps/leaderboards`); `apps/ratings`,
-  `sdk/1.1.0/ba-sdk.js`, `static/src/js/host_protocol.js` и
-  `static/src/js/player.js` по-прежнему отсутствуют/пусты.
+- App F runtime: серверные срезы session/ticket, result, leaderboard,
+  storage, playtime, ratings и popularity реализованы (частично принят
+  только SESSION-001); `sdk/1.1.0/ba-sdk.js`,
+  `static/src/js/host_protocol.js` и `static/src/js/player.js`
+  по-прежнему отсутствуют/пусты.
 - SDK 1.1 и BA-ENV-1.1: оригиналы отсутствуют; DRAFT не утверждены.
-- App F: postMessage, origin/source, sessionId/requestId runtime, states,
-  idempotency, leaderboard, storage, EventLog/verifier и rate limit не
-  реализованы. Наличие схем и `apps/core/contracts.py` не является сквозной
-  системой.
+- App F client/runtime: postMessage, origin/source, sessionId/requestId
+  runtime, states, SDK injection, EventLog/verifier и replay не
+  реализованы. Наличие серверных API не является сквозной системой.
+- ZIP pipeline: preflight реализован; изолированная распаковка, manifest/
+  catalog/locales, SDK injection, runtime bundle и публикация — не
+  реализованы.
 - Аккаунты §2.10: утверждённые тексты/версии Terms и Privacy, страницы
   `/legal/terms/` и `/legal/privacy/`; история игр, личные рекорды и места;
-  обработка bounce/недоставляемых адресов; удаление `GameResult`/
-  `LeaderboardEntry`/`GameRatingVote`/`GameStorage`/`UserGamePlaytime`
-  (модели ещё не реализованы); подключение `AnonymousIdentity` к первому
+  обработка bounce/недоставляемых адресов; сквозная проверка удаления
+  аккаунта для `GameResult`/`LeaderboardEntry`/`GameRatingVote`/
+  `GameStorage`/`UserGamePlaytime` (модели реализованы в App F-срезах);
+  подключение `AnonymousIdentity` к первому
   запросу, требующему субъекта; 2FA персонала: офлайн-код восстановления
   владельца, отдельный журнал входов/SecurityEvent, уведомления о смене
   ролей и CRM step-up.
@@ -306,11 +332,13 @@ mode user/guest, окно 30 мин), `POST /sessions/{id}/close`; review accept
   runtime, benchmark/план запроса на объёме. Persisted vector/GIN,
   unaccent/ranking/bulk и M2M жанров/тегов есть.
 - `/api/v1/` реализован для sessions/activate/heartbeat/result,
-  leaderboard/me-best и storage; rating, reports, locales и остальные
-  endpoints отсутствуют. Полноценные CRM/2FA/роли, модерация, аналитика,
-  pipeline, production compose/Nginx/monitoring/WAL/PITR/S3 не готовы.
-- SQL design не реализован в Django-моделях/миграциях; DB-001…DB-008
-  требуют исправлений до App F (см. BA-APPF-001).
+  leaderboard/me-best, storage, ratings и close; reports, locales и
+  остальные endpoints отсутствуют. Полноценные CRM/2FA/роли, модерация,
+  аналитика, ZIP pipeline (кроме preflight), production compose/Nginx/
+  monitoring/WAL/PITR/S3 не готовы.
+- SQL design частично реализован в Django-моделях/миграциях App F-срезов;
+  DB-001/002/003/008 закрыты в коде, DB-004/005 и сквозная схема — до
+  импорта/CRM (см. BA-APPF-001).
 
 ## 5. Блокирующие вопросы
 
@@ -327,8 +355,9 @@ mode user/guest, окно 30 мин), `POST /sessions/{id}/close`; review accept
 5. **Production infrastructure**: compose.prod, production Nginx,
    monitoring, WAL/PITR/S3, backup target.
 6. **Docker base images** Python/Node не digest-pinned.
-7. **Git remote/backup** отсутствуют; рабочее дерево в основном
-   uncommitted/untracked.
+7. **Git remote** создан: приватный `ElkinVA/breaktime-arcade` (SSH),
+   `main` запушен. Локальный backup существует; production backup/WAL/PITR
+   не готовы.
 8. **Legal texts/versions** для Terms/Privacy отсутствуют; в настройках
    используется `draft`. Утверждать текст и версии должен владелец/юрист.
 9. **Email provider/bounce policy** не заданы; без них нельзя завершить
@@ -431,7 +460,8 @@ Remote: отсутствует
   не доказательство приёмки.
 - Тесты BA-FIX-003 в документационных задачах не перезапускались; их
   результаты остаются заявленными исполнителем.
-- Этап 0 не закрыт; App F не реализован; BA-APPF-002 не запускалась.
+- Этап 0 не закрыт; App F реализован частично (серверные срезы), клиентский
+  runtime отсутствует; BA-APPF-002 не запускалась.
 - BA-STAGE-2.1: результаты тестов/lint/mypy/check и HTTP-проверок
   зафиксированы в `docs/foundation/BA-STAGE-2.1_REPORT.md`; это self-check
   исполнителя, не независимый аудит и не приёмка §2.10.

@@ -1,7 +1,7 @@
 # CONTEXT_RECOVERY — Breaktime Arcade
 
 Краткая инструкция для нового сеанса Claude Code после `/compact` или потери истории чата. Не полагаться на память предыдущей сессии, старые отчёты или сообщения исполнителя как на доказательство.  
-**Дата актуализации:** 2026-11-20 (APPF-SESSION-002, APPF-RESULT-001).  
+**Дата актуализации:** 2026-11-20 (BA-ZIP-PREFLIGHT-001).  
 **Первый документ новой сессии — `NOW.md`; полные реестры — по необходимости.**
 
 **Реестры — рабочий источник проектного контекста, но не нормативная база.**
@@ -117,9 +117,14 @@
 - BA-CATALOG-005 — **IMPLEMENTED / AWAITING INDEPENDENT REVIEW**:
   unaccent/rank/bulk; benchmark не выполнен. Следующий пакет —
   `BA-QUALITY-002`.
-- App F — **не реализован**; предыдущий аудит находится в
-  `docs/foundation/BA-AUDIT-APP-F-REPORT.md`. `BA-APPF-001` — только
-  подготовка решений; `BA-APPF-002` — **NOT_STARTED**.
+- App F — реализованы серверные срезы (session/ticket, result,
+  leaderboard, storage, playtime, ratings, popularity); принят только
+  APPF-SESSION-001, остальные — AWAITING OWNER ACCEPTANCE; клиентский
+  runtime/SDK/EventLog отсутствует. `BA-APPF-001` — подготовка решений;
+  `BA-APPF-002` — **NOT_STARTED**.
+- BA-ZIP-PREFLIGHT-001 — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**:
+  metadata-only проверка ZIP; extraction sandbox — следующий пакет
+  BA-ZIP-EXTRACT-001.
 - Прохождение тестов не является приёмкой; отчёт исполнителя не является
   результатом независимого аудита.
 - Staging не затрагивать без отдельного разрешения. В текущей зоне
