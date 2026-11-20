@@ -708,6 +708,16 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   антифрод §2.9.6 — owner-gap.
 - **Отчёт:** `docs/foundation/APPF-RATINGS-001_REPORT.md`.
 
+### APPF-POPULARITY-001 — популярность и close
+
+- **ID:** APPF-POPULARITY-001.
+- **Результат:** `GamePlayCredit`/`GameDailyStats`, зачёт при завершении
+  (≥15 с, mode user/guest, окно 30 мин), `POST /sessions/{id}/close`,
+  серверная длительность для гейта; 8 tests.
+- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; review — accept;
+  R-032 (guest identity inflation) — owner-gap.
+- **Отчёт:** `docs/foundation/APPF-POPULARITY-001_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,

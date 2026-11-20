@@ -346,6 +346,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Review | code-reviewer/security-auditor — **accept**; антифрод §2.9.6 — owner-gap |
 | Источник | `docs/foundation/APPF-RATINGS-001_REPORT.md` |
 
+## APPF-POPULARITY-001 — популярность и close (техническая работа)
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая реализация §2.8; не аудит этапа |
+| Результат | `GamePlayCredit`/`GameDailyStats`, зачёт завершения (≥15 с, user/guest, окно 30 мин), `POST /sessions/{id}/close`, серверная длительность в гейте |
+| Проверки | 8 tests (гонки, UTC-границы, expired heartbeat, ownership); full 281/2 skipped; lint/types/migrations |
+| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Review | code-reviewer/security-auditor — **accept**; R-032 guest identity inflation — owner-gap |
+| Источник | `docs/foundation/APPF-POPULARITY-001_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

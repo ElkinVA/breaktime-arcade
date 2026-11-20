@@ -2,7 +2,7 @@
 
 **Дата:** 2026-11-20
 **Текущий пакет:** App F server slices: SESSION-002, RESULT-001,
-LEADERBOARD-001, STORAGE-001, PLAYTIME-001, RATINGS-001
+LEADERBOARD-001, STORAGE-001, PLAYTIME-001, RATINGS-001, POPULARITY-001
 **Статус:** SESSION-001 **ACCEPTED**; остальные срезы **IMPLEMENTED /
 AWAITING OWNER ACCEPTANCE**, independent review (code-reviewer/
 security-auditor, deepseek-v4-pro, text-only) — accept.
@@ -52,7 +52,8 @@ pytest tests/integration/test_game_results.py  -> 19 passed
 pytest tests/integration/test_leaderboard_api.py -> 7 passed
 pytest tests/integration/test_game_storage.py  -> 12 passed
 pytest tests/integration/test_game_ratings.py  -> 10 passed
-pytest (full)              -> 273 passed, 2 skipped
+pytest tests/integration/test_game_popularity.py -> 8 passed
+pytest (full)              -> 281 passed, 2 skipped
 make lint                  -> All checks passed; 336 files formatted
 make types                 -> Success: no issues found in 317 source files
 makemigrations --check     -> No changes detected

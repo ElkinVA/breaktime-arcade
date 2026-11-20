@@ -199,6 +199,14 @@ accept; 40 session tests; отчёт —
 review accept; 10 tests; антифрод §2.9.6 (IP/журнал) — owner-gap; отчёт —
 `docs/foundation/APPF-RATINGS-001_REPORT.md`.
 
+## 1.9. App F: популярность и close — APPF-POPULARITY-001
+
+**APPF-POPULARITY-001** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**;
+`GamePlayCredit`/`GameDailyStats`, зачёт при завершении сессии (≥15 с,
+mode user/guest, окно 30 мин), `POST /sessions/{id}/close`; review accept;
+8 tests; R-032 (guest identity inflation) — owner-gap; отчёт —
+`docs/foundation/APPF-POPULARITY-001_REPORT.md`.
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -234,6 +242,7 @@ review accept; 10 tests; антифрод §2.9.6 (IP/журнал) — owner-ga
 | APPF-STORAGE-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Storage 64 КиБ/revision/TTL; 12 tests; review accept |
 | APPF-PLAYTIME-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | UserGamePlaytime mode=user; 40 session tests; review accept |
 | APPF-RATINGS-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Оценки/порог/лимиты/агрегат; 10 tests; review accept; антифрод owner-gap |
+| APPF-POPULARITY-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Play credit/daily stats/close; 8 tests; review accept; R-032 owner-gap |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
 Статусы `COMPLETED`, `ACCEPTED`, `PARTIAL` и `NOT_ACCEPTED` не
