@@ -21,6 +21,7 @@ urlpatterns = [
     # Публичный API v1 (same-origin, без языкового префикса)
     path("api/v1/", include("apps.gameplay.api.urls")),
     path("api/v1/", include("apps.leaderboards.urls")),
+    path("api/v1/", include("apps.ratings.api.urls")),
 ]
 
 # Языковые префиксы для публичных страниц

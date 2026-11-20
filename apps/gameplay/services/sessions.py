@@ -300,7 +300,8 @@ def _credit_playtime(user_id: UUID, game_id: UUID, delta_ms: int) -> None:
     if seconds <= 0:
         return
     updated = UserGamePlaytime.objects.filter(user_id=user_id, game_id=game_id).update(
-        verified_seconds=F("verified_seconds") + seconds
+        verified_seconds=F("verified_seconds") + seconds,
+        updated_at=timezone.now(),
     )
     if updated:
         return
@@ -313,7 +314,8 @@ def _credit_playtime(user_id: UUID, game_id: UUID, delta_ms: int) -> None:
             )
     except IntegrityError:
         UserGamePlaytime.objects.filter(user_id=user_id, game_id=game_id).update(
-            verified_seconds=F("verified_seconds") + seconds
+            verified_seconds=F("verified_seconds") + seconds,
+            updated_at=timezone.now(),
         )
 
 

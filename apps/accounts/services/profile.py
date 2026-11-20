@@ -116,10 +116,12 @@ def anonymize_user(user: User) -> None:
     from apps.gameplay.models import UserGamePlaytime
     from apps.gameplay.services.results import anonymize_user_results
     from apps.gameplay.services.storage import delete_user_storage
+    from apps.ratings.services.voting import remove_user_ratings
 
     anonymize_user_results(user)
     delete_user_storage(user)
     UserGamePlaytime.objects.filter(user=user).delete()
+    remove_user_ratings(user)
 
     user.is_active = False
     user.login = f"deleted-{hashlib.sha256(str(user.pk).encode()).hexdigest()[:20]}"

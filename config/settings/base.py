@@ -311,6 +311,8 @@ REST_FRAMEWORK = {
         "storage_session": "60/min",
         # Read hardening for public leaderboards (Приложение E не задаёт ставку).
         "leaderboard_read": "120/min",
+        "rating": "20/day",
+        "rating_read": "120/min",
     },
     "UNAUTHENTICATED_USER": "django.contrib.auth.models.AnonymousUser",
 }

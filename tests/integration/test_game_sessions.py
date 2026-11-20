@@ -876,3 +876,52 @@ def test_guest_and_preview_heartbeats_do_not_credit_playtime() -> None:
     )
     heartbeat(_user_request(user), preview.pk, now=base + timedelta(seconds=30))
     assert not UserGamePlaytime.objects.exists()
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_parallel_first_heartbeats_do_not_break_playtime_upsert() -> None:
+    game = _game(technical_id="playtime_race_game")
+    user = User.objects.create_user(login="ursula", password="correct horse battery staple")
+    base = timezone.now() - timedelta(seconds=100)
+    sessions = [
+        GameSession.objects.create(
+            game=game,
+            game_version=game.current_version,
+            subject_type=GameSession.SUBJECT_USER,
+            subject_id=user.id,
+            mode=GameSession.MODE_USER,
+            state=GameSession.STATE_ACTIVE,
+            seed=f"seed-{index}",
+            max_session_seconds=1800,
+            credited_ms=0,
+            activated_at=base,
+            last_heartbeat_at=base,
+        )
+        for index in range(2)
+    ]
+    barrier = threading.Barrier(2)
+    outcomes: list[str] = []
+    lock = threading.Lock()
+
+    def worker(session_pk) -> None:
+        try:
+            barrier.wait(timeout=10)
+            heartbeat(_user_request(user), session_pk, now=base + timedelta(seconds=30))
+        except SessionError as exc:
+            with lock:
+                outcomes.append(exc.code)
+        else:
+            with lock:
+                outcomes.append("ok")
+        finally:
+            connections.close_all()
+
+    threads = [threading.Thread(target=worker, args=(session.pk,)) for session in sessions]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+    assert outcomes == ["ok", "ok"]
+    playtime = UserGamePlaytime.objects.get(user=user, game=game)
+    assert playtime.verified_seconds == 60
