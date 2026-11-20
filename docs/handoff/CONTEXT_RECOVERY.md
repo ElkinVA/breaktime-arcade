@@ -405,7 +405,8 @@ DRAFT-документы не являются нормативными и не 
 - Subject — `(subject_type, subject_id)` без FK до DB-001; context-поля —
   [PROP] до BA-SDK-1.1. Результаты/leaderboard/storage/SDK вне среза.
 - Review: `code-reviewer` + `security-auditor` (deepseek-v4-pro, text-only)
-  — **accept**; статус **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**.
+  — **accept**; статус **ACCEPTED** владельцем 2026-11-20 (OD-STATUS-007),
+  evidence — `docs/audits/APPF-SESSION-001_REVIEW_EVIDENCE.md`.
 - Найден и исправлен дефект свежих БД: `catalog.0001` citext без
   зависимости от `core.0001_extensions` (добавлена graph-зависимость).
 - Следующий шаг — приёмка владельца и решения по

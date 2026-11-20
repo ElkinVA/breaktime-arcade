@@ -633,10 +633,12 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Дополнительно:** исправлен обход лимита активных через активацию и
   дефект миграции свежей БД (`catalog.0001` citext без зависимости от
   `core.0001_extensions`; добавлена только graph-зависимость).
-- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**.
+- **Статус:** **ACCEPTED владельцем 2026-11-20** (OD-STATUS-007).
 - **Review:** `code-reviewer` и `security-auditor` (deepseek-v4-pro,
   text-only) — **accept** (2026-11-20), после раунда исправлений
-  (throttle, конкурентные тесты, None-guard).
+  (throttle, конкурентные тесты, None-guard); третий раунд — проверка
+  полного текста тестов, accept; evidence —
+  `docs/audits/APPF-SESSION-001_REVIEW_EVIDENCE.md`.
 - **Дата:** 2026-11-20.
 - **Отчёт:** `docs/foundation/APPF-SESSION-001_REPORT.md`; план —
   `docs/tasks/APPF-SESSION-001_PLAN.md`.

@@ -1,8 +1,9 @@
 # APPF-SESSION-001 — серверный session/ticket срез App F
 
 **Дата:** 2026-11-20  
-**Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; независимый
-text-only review `code-reviewer` и `security-auditor` — **accept**  
+**Статус:** **ACCEPTED владельцем 2026-11-20** (OD-STATUS-007); независимый
+text-only review `code-reviewer` и `security-auditor` — **accept**;
+evidence — `docs/audits/APPF-SESSION-001_REVIEW_EVIDENCE.md`  
 **План:** `docs/tasks/APPF-SESSION-001_PLAN.md`  
 **NOW:** `docs/handoff/NOW.md`
 

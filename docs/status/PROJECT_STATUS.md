@@ -14,8 +14,8 @@
 
 Принятие **Documentation Block 1** (BA-DOC-001 + FIX-01/02/03) не означает
 принятия технического этапа 0, этапа 1 или `BA-STAGE-1.1`. App F в целом не
-реализован и не готов к приёмке; реализован только серверный session/ticket
-срез **APPF-SESSION-001** (ожидает приёмки владельца); `BA-APPF-002`
+реализован и не готов к приёмке; серверный session/ticket срез
+**APPF-SESSION-001** **ACCEPTED** владельцем 2026-11-20; `BA-APPF-002`
 **не запускалась**.
 
 Технические пакеты **BA-I18N-002** и **BA-STAGE-1.2-E2E** выполнены и не
@@ -129,9 +129,10 @@ Pro возвращает план/вердикт без tool-вызовов. П�
 
 ## 1.2. App F: серверный session/ticket срез — APPF-SESSION-001
 
-**APPF-SESSION-001** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**;
+**APPF-SESSION-001** — **ACCEPTED владельцем 2026-11-20** (OD-STATUS-007);
 независимый text-only review `code-reviewer` и `security-auditor`
-(deepseek-v4-pro) — **accept**.
+(deepseek-v4-pro) — **accept**; evidence —
+`docs/audits/APPF-SESSION-001_REVIEW_EVIDENCE.md`.
 
 Реализованы `GameSession`, одноразовый launch ticket, активация и heartbeat
 по §2.12.1–2.12.4: `POST /api/v1/sessions` (201
@@ -177,7 +178,7 @@ Pro возвращает план/вердикт без tool-вызовов. П�
 | BA-APPF-001 | **COMPLETED**; не принят | Подготовлены 45 проектных решений; 29 Blocker, 17 вопросов владельцу |
 | BA-APPF-002 | **NOT_STARTED** | Не запускалась; не отражать как выполненную |
 | BA-AUTONOMY-003 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Pro text-only plan done; guards; NOW; docs pointers; 185 tests; security review **accept**; owner acceptance pending |
-| APPF-SESSION-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | GameSession/ticket/activate/heartbeat §2.12.1–2.12.4; 24 tests (3 конкурентных); полный suite 209; code/security review **accept** |
+| APPF-SESSION-001 | **ACCEPTED** (владелец, 2026-11-20) | GameSession/ticket/activate/heartbeat §2.12.1–2.12.4; 24 tests (3 конкурентных); полный suite 209; code/security review **accept**; evidence в AUDIT_REGISTER |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
 Статусы `COMPLETED`, `ACCEPTED`, `PARTIAL` и `NOT_ACCEPTED` не

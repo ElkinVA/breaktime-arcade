@@ -2,7 +2,7 @@
 
 **Статус:** PLAN подтверждён Pro (text-only, 2026-11-20); реализация
 выполнена; независимый review `code-reviewer`/`security-auditor` — **accept**;
-приёмка — только владелец. `IMPLEMENTED` ≠ `ACCEPTED`.  
+**ACCEPTED владельцем 2026-11-20** (OD-STATUS-007).  
 **Дата:** 2026-11-20.  
 **Реализация:** Flash. **Review:** `code-reviewer`/`security-auditor` (v4-pro,
 text-only).

@@ -273,7 +273,7 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Цель | GameSession, одноразовый launch ticket, активация, heartbeat, CSRF, throttle, лимит ≤3 активных |
 | Результат | Модель + миграции 0001/0002; сервисы; `POST /api/v1/sessions`, `/activate`, `/heartbeat`; 24 integration tests (3 конкурентных); исправлен обход лимита через активацию и дефект миграции свежей БД |
 | Проверки | `pytest` 209 passed, 2 skipped; модуль 24 passed; `make lint` 335; `make types` 317; `makemigrations --check` — no changes; `migrate --plan` — пусто; `./verify_stack.sh` — здоров |
-| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Статус | **ACCEPTED владельцем 2026-11-20** (OD-STATUS-007); evidence — `APPF-SESSION-001_REVIEW_EVIDENCE.md` |
 | Review | `code-reviewer` + `security-auditor` (deepseek-v4-pro, text-only) — оба **accept** после раунда исправлений (throttle по живой identity, конкурентные тесты, None-guard) |
 | Ограничения | subject без FK до DB-001; [PROP]-контракт context; retention GameSession §2.22; R-030; graph-правка `catalog.0001` — осознанное исключение |
 | Источник | `TASK_HISTORY.md`, `docs/tasks/APPF-SESSION-001_PLAN.md`, `docs/foundation/APPF-SESSION-001_REPORT.md` |

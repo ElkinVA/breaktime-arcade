@@ -1,9 +1,10 @@
 # NOW — Breaktime Arcade
 
 **Дата:** 2026-11-20
-**Текущий пакет:** APPF-SESSION-001 — серверный session/ticket срез App F
-**Статус:** IMPLEMENTED / AWAITING OWNER ACCEPTANCE
-(Pro text-only review: code-reviewer + security-auditor — **accept**)
+**Текущий пакет:** APPF-SESSION-002 — throttle hardening (App F)
+**Статус:** APPF-SESSION-001 **ACCEPTED** владельцем 2026-11-20
+(Pro text-only review: code-reviewer + security-auditor — **accept**;
+evidence — `docs/audits/APPF-SESSION-001_REVIEW_EVIDENCE.md`)
 
 ## Активная задача
 
@@ -14,13 +15,19 @@ ZIP pipeline в срез не входят.
 
 ## Следующий шаг
 
-1. Приёмка/замечания владельца по APPF-SESSION-001.
-2. Следующий срез App F — только после решения нормативных пробелов:
-   `POST /result` + гость `E_GUEST_FORBIDDEN`, leaderboard, storage,
-   GamePlaytime (§2.12.5+) требуют BA-SDK-1.1/BA-ENV-1.1 и BA-GAME-2.2.
-3. Решения владельца по пакету `docs/decisions/APPF-OWNER-DECISION-PACKAGE.md`
-   (BA-SDK/ENV/BA-GAME, DB-001/005/006/007, [PROP]-подтверждения среза,
-   retention/throttle) — без них зависимые части App F не начинаются.
+1. APPF-SESSION-002 — throttle hardening: subject 30/ч + IP 600/ч,
+   heartbeat 3/мин на сессию, structured 429, redis-throttle; включает
+   тест-дефицит из evidence APPF-SESSION-001.
+2. BA-SDK-1.1 и BA-ENV-1.1: финальные версии v1.1.0 подготовлены и вынесены
+   владельцу на утверждение (`docs/contracts/*_v1.1.0.md`,
+   `docs/foundation/BA-SDK-ENV-1.1_REVIEW.md`).
+3. BA-GAME-2.2: сравнительный анализ и рекомендация подготовлены
+   (`docs/audits/BA-GAME-2.2_ARCHITECTURE_ANALYSIS.md`); выбор — за владельцем.
+4. APPF-SESSION-002 (throttle: subject 30/ч + IP 600/ч, heartbeat 3/мин на
+   сессию, redis-throttle) — сразу после фиксации среза.
+5. DB-001/005/006/007 утверждены; DB-002/003/004/008 — проектирование и
+   реализация техническим руководителем. Далее App F: Result → Leaderboard
+   → Storage → SDK/iframe → EventLog.
 
 ## Блокеры продукта
 
@@ -33,9 +40,12 @@ ZIP pipeline в срез не входят.
 
 ## Решения владельца, ожидающие
 
-- Приёмка APPF-SESSION-001.
-- Retention/cleanup GameSession по §2.22 (AnonymousIdentity уже чистятся
-  beat-задачей `accounts.cleanup_expired_account_records`).
+- Утверждение BA-SDK-1.1 v1.1.0 и BA-ENV-1.1 v1.1.0
+  (`docs/contracts/*_v1.1.0.md`).
+- Выбор канонического BA-GAME-2.2 после сравнительного анализа.
+- Retention/cleanup GameSession по §2.22/Прил. D
+  (`docs/decisions/RETENTION_PROPOSAL.md`); AnonymousIdentity уже чистятся
+  beat-задачей.
 - Отдельный Redis/noeviction для throttle-ключей (сейчас cache
   allkeys-lru может вытеснять счётчики).
 - Подтверждение [PROP]-контракта context (`strings`, `heartbeatIntervalSeconds`,
