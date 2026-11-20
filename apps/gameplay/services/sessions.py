@@ -1,0 +1,322 @@
+"""Server-side game session, launch ticket and heartbeat (§2.12.1–2.12.4).
+
+The SDK/iframe and result/leaderboard/storage pipeline are deliberately out of
+scope. Subject is stored as (subject_type, subject_id) without a FK until
+DB-001 is resolved; mode is assigned by the server.
+
+Time boundaries are inclusive: a ticket is accepted at exactly
+``ticket_expires_at`` and rejected after it; the 5-minute activation window
+and the idle/max-duration limits likewise expire only strictly after their
+deadline.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import hmac
+import secrets
+from datetime import datetime, timedelta
+from uuid import UUID
+
+from django.db import connection, transaction
+from django.http import HttpRequest, HttpResponse
+from django.utils import timezone
+from django.utils.translation import get_language
+
+from apps.accounts.models import AnonymousIdentity, UserProfile
+from apps.accounts.services.anonymous import (
+    get_anonymous_identity,
+    get_or_create_anonymous_identity,
+)
+from apps.catalog.models import Game
+from apps.gameplay.models import GameSession
+
+TICKET_TTL_SECONDS = 60
+ACTIVATION_WINDOW_SECONDS = 300
+IDLE_TIMEOUT_SECONDS = 30 * 60
+MAX_ACTIVE_SESSIONS = 3
+MAX_SESSION_SECONDS = 7200
+MAX_HEARTBEAT_DELTA_MS = 45_000
+
+
+class SessionError(Exception):
+    def __init__(self, code: str, message: str, status: int = 400) -> None:
+        self.code = code
+        self.message = message
+        self.status = status
+        super().__init__(message)
+
+
+def _hash(value: str) -> str:
+    return hashlib.sha256(value.encode()).hexdigest()
+
+
+def _now(value: datetime | None) -> datetime:
+    current = value or timezone.now()
+    if timezone.is_naive(current):
+        return timezone.make_aware(current)
+    return current
+
+
+def _advisory_key(subject_type: str, subject_id: UUID, game_id: UUID) -> int:
+    raw = f"{subject_type}:{subject_id}:{game_id}".encode()
+    return int.from_bytes(hashlib.blake2b(raw, digest_size=8).digest(), "big", signed=True)
+
+
+def _lock_subject_game(subject_type: str, subject_id: UUID, game_id: UUID) -> None:
+    key = _advisory_key(subject_type, subject_id, game_id)
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_advisory_xact_lock(%s)", [key])
+
+
+def _subject(
+    request: HttpRequest,
+    response: HttpResponse | None,
+    *,
+    create_guest: bool,
+) -> tuple[str, UUID, str, str | None]:
+    user = getattr(request, "user", None)
+    if user is not None and user.is_authenticated:
+        nickname = UserProfile.objects.filter(user=user).values_list("nickname", flat=True).first()
+        return GameSession.SUBJECT_USER, user.id, GameSession.MODE_USER, nickname
+
+    identity: AnonymousIdentity | None
+    if create_guest:
+        identity = get_or_create_anonymous_identity(request, response)
+    else:
+        identity = get_anonymous_identity(request)
+    if identity is None:
+        raise SessionError("E_OWNERSHIP", "Session does not belong to this subject", 403)
+    return GameSession.SUBJECT_ANON, identity.id, GameSession.MODE_GUEST, None
+
+
+def create_session(
+    request: HttpRequest,
+    response: HttpResponse,
+    *,
+    game_id: str,
+    now: datetime | None = None,
+) -> tuple[GameSession, str, datetime]:
+    current = _now(now)
+
+    game = (
+        Game.objects.select_related("current_version")
+        .filter(technical_id=game_id, status=Game.STATUS_PUBLISHED)
+        .first()
+    )
+    if game is None or game.current_version is None:
+        raise SessionError("E_SESSION_INVALID", "Game is not available", 404)
+
+    subject_type, subject_id, mode, _nickname = _subject(request, response, create_guest=True)
+    max_seconds = max(0, min(int(game.max_session_seconds or 1800), MAX_SESSION_SECONDS))
+    ticket = secrets.token_urlsafe(32)
+    ticket_hash = _hash(ticket)
+    seed = secrets.token_hex(16)
+    ticket_expires_at = current + timedelta(seconds=TICKET_TTL_SECONDS)
+
+    with transaction.atomic():
+        _lock_subject_game(subject_type, subject_id, game.id)
+        # Unactivated tickets never reach ``expired`` on their own; forget them
+        # lazily so a subject cannot accumulate rows without ever activating.
+        GameSession.objects.filter(
+            subject_type=subject_type,
+            subject_id=subject_id,
+            game=game,
+            state=GameSession.STATE_CREATED,
+            created_at__lt=current - timedelta(seconds=ACTIVATION_WINDOW_SECONDS),
+        ).update(state=GameSession.STATE_EXPIRED, updated_at=current)
+        active = GameSession.objects.filter(
+            subject_type=subject_type,
+            subject_id=subject_id,
+            game=game,
+            state=GameSession.STATE_ACTIVE,
+        ).count()
+        if active >= MAX_ACTIVE_SESSIONS:
+            raise SessionError("E_RATE_LIMIT", "Too many active sessions", 429)
+        session = GameSession.objects.create(
+            game=game,
+            game_version=game.current_version,
+            subject_type=subject_type,
+            subject_id=subject_id,
+            mode=mode,
+            state=GameSession.STATE_CREATED,
+            ticket_hash=ticket_hash,
+            ticket_expires_at=ticket_expires_at,
+            seed=seed,
+            max_session_seconds=max_seconds,
+        )
+    return session, ticket, ticket_expires_at
+
+
+def _load_owned_session(
+    request: HttpRequest,
+    session_id: UUID,
+    *,
+    lock: bool,
+) -> tuple[GameSession, str | None]:
+    subject_type, subject_id, _mode, nickname = _subject(request, None, create_guest=False)
+    queryset = GameSession.objects.select_related("game", "game_version")
+    if lock:
+        queryset = queryset.select_for_update()
+    session = queryset.filter(pk=session_id).first()
+    if session is None:
+        raise SessionError("E_SESSION_INVALID", "Session not found", 404)
+    if session.subject_type != subject_type or session.subject_id != subject_id:
+        raise SessionError("E_OWNERSHIP", "Session does not belong to this subject", 403)
+    return session, nickname
+
+
+def activate_session(
+    request: HttpRequest,
+    session_id: UUID,
+    *,
+    ticket: str,
+    binding_nonce: str,
+    now: datetime | None = None,
+) -> dict[str, object]:
+    current = _now(now)
+    expired = False
+    with transaction.atomic():
+        session, nickname = _load_owned_session(request, session_id, lock=True)
+        if session.state == GameSession.STATE_FINISHED:
+            raise SessionError("E_SESSION_FINISHED", "Session is finished", 410)
+        if session.state in {GameSession.STATE_EXPIRED, GameSession.STATE_ABORTED}:
+            raise SessionError("E_SESSION_EXPIRED", "Session is expired", 410)
+        if session.state != GameSession.STATE_CREATED:
+            raise SessionError("E_TICKET_INVALID", "Ticket is invalid", 400)
+
+        if current > session.created_at + timedelta(seconds=ACTIVATION_WINDOW_SECONDS):
+            session.state = GameSession.STATE_EXPIRED
+            session.save(update_fields=["state", "updated_at"])
+            expired = True
+        elif (
+            not session.ticket_hash
+            or not session.ticket_expires_at
+            or not hmac.compare_digest(_hash(ticket), session.ticket_hash)
+        ):
+            raise SessionError("E_TICKET_INVALID", "Ticket is invalid", 400)
+        elif current > session.ticket_expires_at:
+            session.state = GameSession.STATE_EXPIRED
+            session.save(update_fields=["state", "updated_at"])
+            expired = True
+        else:
+            nonce_hash = _hash(binding_nonce)
+            if session.binding_nonce_hash and not hmac.compare_digest(
+                nonce_hash, session.binding_nonce_hash
+            ):
+                raise SessionError("E_TICKET_INVALID", "Ticket is invalid", 400)
+
+            # §2.12.1: ≤3 active sessions per (subject, game), under the same
+            # advisory lock as creation. Creation-time counting alone is not
+            # enough: tickets issued at 2 active could otherwise activate to 4.
+            _lock_subject_game(session.subject_type, session.subject_id, session.game_id)
+            active = GameSession.objects.filter(
+                subject_type=session.subject_type,
+                subject_id=session.subject_id,
+                game_id=session.game_id,
+                state=GameSession.STATE_ACTIVE,
+            ).count()
+            if active >= MAX_ACTIVE_SESSIONS:
+                raise SessionError("E_RATE_LIMIT", "Too many active sessions", 429)
+
+            session.state = GameSession.STATE_ACTIVE
+            session.activated_at = current
+            session.last_heartbeat_at = current
+            session.binding_nonce_hash = nonce_hash
+            session.ticket_hash = None
+            session.ticket_expires_at = None
+            session.save(
+                update_fields=[
+                    "state",
+                    "activated_at",
+                    "last_heartbeat_at",
+                    "binding_nonce_hash",
+                    "ticket_hash",
+                    "ticket_expires_at",
+                    "updated_at",
+                ]
+            )
+            return _build_context(session, request, nickname)
+
+    if expired:
+        raise SessionError("E_SESSION_EXPIRED", "Session is expired", 410)
+    raise SessionError("E_TICKET_INVALID", "Ticket is invalid", 400)
+
+
+def heartbeat(
+    request: HttpRequest,
+    session_id: UUID,
+    *,
+    now: datetime | None = None,
+) -> None:
+    current = _now(now)
+    expired = False
+    with transaction.atomic():
+        session, _nickname = _load_owned_session(request, session_id, lock=True)
+        if session.state == GameSession.STATE_FINISHED:
+            raise SessionError("E_SESSION_FINISHED", "Session is finished", 410)
+        if session.state in {GameSession.STATE_EXPIRED, GameSession.STATE_ABORTED}:
+            raise SessionError("E_SESSION_EXPIRED", "Session is expired", 410)
+        if session.state != GameSession.STATE_ACTIVE:
+            raise SessionError("E_SESSION_INVALID", "Session is not active", 400)
+
+        last = session.last_heartbeat_at or session.activated_at or session.created_at
+        max_duration = (
+            session.activated_at is not None
+            and (current - session.activated_at).total_seconds() > session.max_session_seconds
+        )
+        idle = (current - last).total_seconds() > IDLE_TIMEOUT_SECONDS
+        if max_duration or idle:
+            session.state = GameSession.STATE_EXPIRED
+            session.save(update_fields=["state", "updated_at"])
+            expired = True
+        else:
+            delta_ms = int(
+                max(0, min((current - last).total_seconds() * 1000, MAX_HEARTBEAT_DELTA_MS))
+            )
+            session.credited_ms = min(
+                session.credited_ms + delta_ms,
+                session.max_session_seconds * 1000,
+            )
+            session.last_heartbeat_at = current
+            session.save(update_fields=["credited_ms", "last_heartbeat_at", "updated_at"])
+
+    if expired:
+        raise SessionError("E_SESSION_EXPIRED", "Session is expired", 410)
+
+
+def _build_context(
+    session: GameSession,
+    request: HttpRequest,
+    nickname: str | None,
+) -> dict[str, object]:
+    game = session.game
+    version = session.game_version
+    language = get_language() or game.default_language
+    return {
+        "sessionId": str(session.id),
+        "gameId": game.technical_id,
+        "gameVersion": version.semver,
+        "mode": session.mode,
+        "nickname": nickname,
+        "language": language,
+        "fallbackLanguage": game.default_language,
+        "strings": {},
+        "score": {
+            "type": game.score_type,
+            "unit": game.score_unit,
+            "direction": game.score_direction,
+            "minValue": game.score_min_value,
+            "maxValue": game.score_max_value,
+            "maxDeltaMs": MAX_HEARTBEAT_DELTA_MS,
+        },
+        "limits": {
+            "minPlaytimeSeconds": game.min_session_seconds,
+            "maxSessionSeconds": session.max_session_seconds,
+            "pauseOnBlur": game.pause_on_blur,
+            "heartbeatIntervalSeconds": 30,
+            "idleTimeoutSeconds": IDLE_TIMEOUT_SECONDS,
+        },
+        "trustLevel": "client_reported",
+        "seed": session.seed,
+    }

@@ -11,7 +11,11 @@ class Migration(migrations.Migration):
 
     initial = True
 
+    # citext columns require core.0001_extensions; without this edge a fresh
+    # database could apply catalog.0001 first and fail. Ordering-only fix: no
+    # operation of this applied migration changes.
     dependencies = [
+        ("core", "0001_extensions"),
     ]
 
     operations = [

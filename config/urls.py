@@ -18,6 +18,8 @@ urlpatterns = [
     path("", include("apps.theme.urls")),
     # CRM (без языкового префикса, с защищённым префиксом)
     path("crm/", include("apps.crm.urls", namespace="crm")),
+    # Публичный API v1 (same-origin, без языкового префикса)
+    path("api/v1/", include("apps.gameplay.api.urls")),
 ]
 
 # Языковые префиксы для публичных страниц

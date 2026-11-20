@@ -43,6 +43,17 @@ def _encode(identity_id: str) -> str:
     return signing.dumps(f"v1:{identity_id}:{int(time.time())}", salt=SIGNING_SALT, compress=True)
 
 
+def get_anonymous_identity(request: HttpRequest) -> AnonymousIdentity | None:
+    """Return the current non-expired guest identity without creating one."""
+    token = request.COOKIES.get(COOKIE_NAME, "")
+    if not token or _decode(token) is None:
+        return None
+    return AnonymousIdentity.objects.filter(
+        token_hash=_hash(token),
+        expires_at__gt=timezone.now(),
+    ).first()
+
+
 def get_or_create_anonymous_identity(
     request: HttpRequest,
     response: HttpResponse | None = None,
