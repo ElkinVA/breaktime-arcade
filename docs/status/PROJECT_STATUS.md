@@ -167,6 +167,22 @@ IP из nginx. 37 session tests; отчёт —
 гость 403 без записи, 100-параллельный тест. 19 tests; отчёт —
 `docs/foundation/APPF-RESULT-001_REPORT.md`.
 
+## 1.5. App F: публичный leaderboard — APPF-LEADERBOARD-001
+
+**APPF-LEADERBOARD-001** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**;
+`GET /api/v1/games/{id}/leaderboard?limit=10|100` и `/me/best`, порядок
+direction → achieved_at → user_id, строка `me`, только published-игры,
+read-throttle 120/min. Review accept; 7 tests; отчёт —
+`docs/foundation/APPF-LEADERBOARD-001_REPORT.md`.
+
+## 1.6. App F: хранилище игры — APPF-STORAGE-001
+
+**APPF-STORAGE-001** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**;
+`GET/PUT /api/v1/games/{id}/storage`, 64 КиБ, revision/If-Match, TTL гостя
+90 дней, активная сессия обязательна, DB-008 trigger `pg_column_size`.
+12 tests (включая гонку create); review — blockers устранены; отчёт —
+`docs/foundation/APPF-STORAGE-001_REPORT.md`.
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -198,6 +214,8 @@ IP из nginx. 37 session tests; отчёт —
 | APPF-SESSION-001 | **ACCEPTED** (владелец, 2026-11-20) | GameSession/ticket/activate/heartbeat §2.12.1–2.12.4; 24 tests (3 конкурентных); полный suite 209; code/security review **accept**; evidence в AUDIT_REGISTER |
 | APPF-SESSION-002 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Throttle Прил. E: subject 30/ч + IP 600/ч, heartbeat 3/мин, redis-throttle, реальный IP; блокеры review сняты |
 | APPF-RESULT-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Result API + GameResult + LeaderboardEntry; DB-001/002/003; 19 tests; review |
+| APPF-LEADERBOARD-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Публичный leaderboard + me/best; 7 tests; review accept |
+| APPF-STORAGE-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Storage 64 КиБ/revision/TTL; 12 tests; review blockers fixed |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
 Статусы `COMPLETED`, `ACCEPTED`, `PARTIAL` и `NOT_ACCEPTED` не
@@ -240,9 +258,9 @@ IP из nginx. 37 session tests; отчёт —
 
 ## 4. Что не готово
 
-- App F runtime: серверные session/ticket и result/leaderboard-срезы есть
-  (`apps/gameplay`); storage, `apps/leaderboards` (публичный API),
-  `apps/ratings`, `sdk/1.1.0/ba-sdk.js`, `static/src/js/host_protocol.js` и
+- App F runtime: серверные session/ticket, result/leaderboard и storage
+  срезы есть (`apps/gameplay`, `apps/leaderboards`); `apps/ratings`,
+  `sdk/1.1.0/ba-sdk.js`, `static/src/js/host_protocol.js` и
   `static/src/js/player.js` по-прежнему отсутствуют/пусты.
 - SDK 1.1 и BA-ENV-1.1: оригиналы отсутствуют; DRAFT не утверждены.
 - App F: postMessage, origin/source, sessionId/requestId runtime, states,
@@ -260,10 +278,10 @@ IP из nginx. 37 session tests; отчёт —
 - Каталог: рейтинг/популярность/голоса, бейдж покрытия, публичный play
   runtime, benchmark/план запроса на объёме. Persisted vector/GIN,
   unaccent/ranking/bulk и M2M жанров/тегов есть.
-- `/api/v1/` реализован для sessions/activate/heartbeat/result; публичный
-  GET leaderboard, storage и остальные endpoints отсутствуют. Полноценные
-  CRM/2FA/роли, модерация, аналитика, pipeline, production
-  compose/Nginx/monitoring/WAL/PITR/S3 не готовы.
+- `/api/v1/` реализован для sessions/activate/heartbeat/result,
+  leaderboard/me-best и storage; rating, reports, locales и остальные
+  endpoints отсутствуют. Полноценные CRM/2FA/роли, модерация, аналитика,
+  pipeline, production compose/Nginx/monitoring/WAL/PITR/S3 не готовы.
 - SQL design не реализован в Django-моделях/миграциях; DB-001…DB-008
   требуют исправлений до App F (см. BA-APPF-001).
 

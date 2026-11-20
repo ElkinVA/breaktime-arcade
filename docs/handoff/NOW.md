@@ -1,29 +1,31 @@
 # NOW — Breaktime Arcade
 
 **Дата:** 2026-11-20
-**Текущий пакет:** APPF-SESSION-002 (throttle) + APPF-RESULT-001 (результат)
-**Статус:** APPF-SESSION-001 **ACCEPTED** (владелец, 2026-11-20);
-APPF-SESSION-002 и APPF-RESULT-001 — **IMPLEMENTED / AWAITING OWNER
-ACCEPTANCE**, independent review (code-reviewer/security-auditor,
-deepseek-v4-pro, text-only).
+**Текущий пакет:** App F server slices: APPF-SESSION-002, RESULT-001,
+LEADERBOARD-001, STORAGE-001
+**Статус:** SESSION-001 **ACCEPTED**; остальные срезы **IMPLEMENTED /
+AWAITING OWNER ACCEPTANCE**, independent review (code-reviewer/
+security-auditor, deepseek-v4-pro, text-only) — accept.
 
 ## Активная задача
 
 App F последовательно: Result → Leaderboard → Storage → SDK/iframe →
-EventLog. Result-срез реализован: `POST /api/v1/sessions/{id}/result`,
-`GameResult`, `LeaderboardEntry`, DB-001/002/003. Throttle приведён к
-Приложению E (subject 30/ч + IP 600/ч, heartbeat 3/мин на сессию,
-redis-throttle, реальный IP из nginx).
+EventLog. Реализованы: result API (`POST /sessions/{id}/result`,
+GameResult, LeaderboardEntry, DB-001/002/003), публичный leaderboard
+(`limit=10|100`, me/best), storage (`GET/PUT`, 64 КиБ, revision/If-Match,
+TTL гостя, активная сессия + 60/min). Throttle — Приложение E
+(subject 30/ч + IP 600/ч, heartbeat 3/мин, redis-throttle, реальный IP).
 
 ## Следующий шаг
 
-1. Storage: `GET/PUT /api/v1/games/{id}/storage` (ETag/revision, If-Match,
-   64 КиБ, 256 ключей, TTL гостя 90 дней), затем публичный Leaderboard API.
-2. SDK/iframe/host protocol — после утверждения BA-SDK-1.1 v1.1.0 и
+1. SDK/iframe/host protocol — после утверждения BA-SDK-1.1 v1.1.0 и
    BA-GAME-2.2; EventLog/verifier — после схем сообщений.
+2. Серверные API-срезы App F (sessions/result/leaderboard/storage) готовы
+   к приёмке владельцем; storage требует активную игровую сессию
+   (семантика §2.22 «через родительскую сессию»).
 3. Ожидают владельца: утверждение BA-SDK-1.1/BA-ENV-1.1 v1.1.0, выбор
-   BA-GAME-2.2, retention-сроки, механизм challenge (O4), Redis/TLS
-   production-настройки.
+   BA-GAME-2.2, retention-сроки (включая sliding TTL гостя и очистку
+   anon-storage), challenge (O4), production-настройки.
 
 ## Блокеры продукта
 
@@ -48,7 +50,9 @@ redis-throttle, реальный IP из nginx).
 ```text
 pytest tests/integration/test_game_sessions.py -> 37 passed
 pytest tests/integration/test_game_results.py  -> 19 passed
-pytest (full)              -> 241 passed, 2 skipped
+pytest tests/integration/test_leaderboard_api.py -> 7 passed
+pytest tests/integration/test_game_storage.py  -> 12 passed
+pytest (full)              -> 260 passed, 2 skipped
 make lint                  -> All checks passed; 336 files formatted
 make types                 -> Success: no issues found in 317 source files
 makemigrations --check     -> No changes detected

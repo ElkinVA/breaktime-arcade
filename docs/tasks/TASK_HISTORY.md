@@ -671,6 +671,24 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   code-reviewer/security-auditor — **accept**, блокеров нет.
 - **Отчёт:** `docs/foundation/APPF-RESULT-001_REPORT.md`.
 
+### APPF-LEADERBOARD-001 — публичный API рекордов
+
+- **ID:** APPF-LEADERBOARD-001.
+- **Результат:** `GET games/{id}/leaderboard?limit=10|100` и `/me/best`;
+  порядок direction → achieved_at → user_id; `me`; published-only;
+  read-throttle 120/min; 7 tests.
+- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; review — accept.
+- **Отчёт:** `docs/foundation/APPF-LEADERBOARD-001_REPORT.md`.
+
+### APPF-STORAGE-001 — хранилище игры
+
+- **ID:** APPF-STORAGE-001.
+- **Результат:** `GET/PUT games/{id}/storage`, 64 КиБ, revision/If-Match,
+  TTL гостя 90 дней, активная сессия обязательна, per-session 60/min,
+  DB-008 trigger `pg_column_size`; 12 tests (гонка create, cleanup).
+- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; review — accept.
+- **Отчёт:** `docs/foundation/APPF-STORAGE-001_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,

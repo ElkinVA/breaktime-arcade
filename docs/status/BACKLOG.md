@@ -31,6 +31,8 @@
 | BA-ENV-1.1 | Финальная версия окружения v1.1.0 после Pro-review DRAFT | Blocker | **SUBMITTED FOR OWNER APPROVAL** | `docs/contracts/BA-ENV-1.1_v1.1.0.md`; открыты O4 (challenge), HSTS preload, провайдеры |
 | APPF-SESSION-002 | Throttle hardening: subject 30/ч + IP 600/ч, heartbeat 3/мин на сессию, structured 429, redis-throttle | Blocker | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Блокеры review сняты; 37 session tests; отчёт `docs/foundation/APPF-SESSION-002_REPORT.md` |
 | APPF-RESULT-001 | `POST /sessions/{id}/result` + GameResult + LeaderboardEntry, DB-001/002/003 | Blocker | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | 19 tests (100 parallel); review; отчёт `docs/foundation/APPF-RESULT-001_REPORT.md` |
+| APPF-LEADERBOARD-001 | Публичный `GET games/{id}/leaderboard` + `me/best` (§2.11) | Major | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | review accept; 7 tests; read-throttle; отчёт `docs/foundation/APPF-LEADERBOARD-001_REPORT.md` |
+| APPF-STORAGE-001 | `GET/PUT games/{id}/storage`: 64 КиБ, revision/If-Match, TTL гостя | Major | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | 8 tests; DB-008 trigger; review ожидается; отчёт `docs/foundation/APPF-STORAGE-001_REPORT.md` |
 | APPF-RETENTION | Таблица сроков хранения и юридические вопросы | Major | **PREPARED / AWAITING OWNER** | `docs/decisions/RETENTION_PROPOSAL.md`; сроки не утверждены |
 | BA-APPF-002 | Реализация App F по BA-APPF-001 | Blocker | **READY (частично)** — DB-001/005/006/007 утверждены, DB-002/003/004/008 делегированы | Result/Leaderboard/Storage можно проектировать; SDK/iframe ждут утверждения BA-SDK/ENV и BA-GAME |
 | BA-DB-SCHEMA-002 | Исправления DB-001…DB-008 в SQL/моделях | Blocker | **BLOCKED** | Нужны решения владельца по APPF-DEC-035/039/040/041 |

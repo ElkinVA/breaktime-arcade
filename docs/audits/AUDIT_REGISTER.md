@@ -302,6 +302,28 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Review | code-reviewer/security-auditor — **accept**, блокеров нет; retention JSONB — owner |
 | Источник | `docs/foundation/APPF-RESULT-001_REPORT.md` |
 
+## APPF-LEADERBOARD-001 — публичный API рекордов (техническая работа)
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая реализация §2.11/§2.23; не аудит этапа |
+| Результат | `GET games/{id}/leaderboard?limit=10|100`, `/me/best`; порядок/tie-break, me, published-only, read-throttle |
+| Проверки | 7 tests; полный suite 260/2 skipped; lint/types |
+| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Review | code-reviewer/security-auditor — **accept**; nickname-публичность — owner-верификация |
+| Источник | `docs/foundation/APPF-LEADERBOARD-001_REPORT.md` |
+
+## APPF-STORAGE-001 — хранилище игры (техническая работа)
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая реализация §2.22/§2.23; DB-008 делегирован |
+| Результат | `GET/PUT games/{id}/storage`; 64 КиБ, revision/If-Match, TTL гостя, активная сессия + 60/min, trigger `pg_column_size` |
+| Проверки | 12 tests (гонка create, cleanup); полный suite 260/2 skipped; lint/types/migrations |
+| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Review | code-reviewer/security-auditor — **accept** после устранения blockers; sliding TTL/retention — owner |
+| Источник | `docs/foundation/APPF-STORAGE-001_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.
