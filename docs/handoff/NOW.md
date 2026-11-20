@@ -18,8 +18,9 @@ ZIP pipeline в срез не входят.
 2. Следующий срез App F — только после решения нормативных пробелов:
    `POST /result` + гость `E_GUEST_FORBIDDEN`, leaderboard, storage,
    GamePlaytime (§2.12.5+) требуют BA-SDK-1.1/BA-ENV-1.1 и BA-GAME-2.2.
-3. Пакет рекомендаций владельцу по DB-001…DB-008 и [PROP]-контракту
-   context перед зависимыми частями App F.
+3. Решения владельца по пакету `docs/decisions/APPF-OWNER-DECISION-PACKAGE.md`
+   (BA-SDK/ENV/BA-GAME, DB-001/005/006/007, [PROP]-подтверждения среза,
+   retention/throttle) — без них зависимые части App F не начинаются.
 
 ## Блокеры продукта
 
@@ -95,4 +96,5 @@ live-порт не проверялся (в dev-БД нет опубликова
 `PROJECT_STATUS.md`, `BACKLOG.md`, `CONTEXT_RECOVERY.md`, `TASK_HISTORY.md`,
 `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`, `RISK_REGISTER.md`,
 `docs/tasks/APPF-SESSION-001_PLAN.md`,
-`docs/foundation/APPF-SESSION-001_REPORT.md`.
+`docs/foundation/APPF-SESSION-001_REPORT.md`,
+`docs/decisions/APPF-OWNER-DECISION-PACKAGE.md`.

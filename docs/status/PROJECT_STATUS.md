@@ -249,6 +249,9 @@ Pro возвращает план/вердикт без tool-вызовов. П�
 
 ## 5. Блокирующие вопросы
 
+Сводный пакет вопросов и рекомендаций —
+`docs/decisions/APPF-OWNER-DECISION-PACKAGE.md` (AWAITING OWNER DECISIONS).
+
 1. **BA-SDK-1.1 и BA-ENV-1.1** отсутствуют; DRAFT не являются нормой.
 2. **BA-GAME-2.2**: два варианта, канонический не выбран.
 3. **App F contract gaps**: `myBest`, `autotest:finish`, `ba.fail`,

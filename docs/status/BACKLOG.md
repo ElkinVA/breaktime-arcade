@@ -26,6 +26,7 @@
 | BA-AUTONOMY-003 | AI infrastructure: Pro text-only plan, Bash-guard, ai-dev isolation, NOW/context, docs pointers | Critical | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Pro plan done; security review **accept**; owner acceptance pending; 185 tests |
 | APPF-SESSION-001 | GameSession/LaunchTicket + `POST /api/v1/sessions`, `/activate`, `/heartbeat` (§2.12.1–2.12.4) | Blocker | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | 24 tests (3 конкурентных); code/security review **accept**; subject без FK до DB-001; result/leaderboard/storage вне среза |
 | BA-QUALITY-002 | Search benchmark/EXPLAIN, GIN для unaccent-выражения, низкое покрытие модулей | Major | **READY** | Следующий пакет; dev-only |
+| APPF-OWNER-DECISIONS | Пакет решений владельца: BA-SDK/ENV, BA-GAME, DB-001/005/006/007, [PROP]-подтверждения APPF-SESSION-001, retention/throttle | Blocker | **AWAITING OWNER DECISIONS** | `docs/decisions/APPF-OWNER-DECISION-PACKAGE.md`; без ответов зависимые части App F не начинаются |
 | BA-APPF-002 | Реализация App F по BA-APPF-001 | Blocker | **BLOCKED** | Нужны утверждение BA-APPF-001, BA-SDK/ENV, BA-GAME, исправления DB-001…008 |
 | BA-DB-SCHEMA-002 | Исправления DB-001…DB-008 в SQL/моделях | Blocker | **BLOCKED** | Нужны решения владельца по APPF-DEC-035/039/040/041 |
 | BA-PROD-001 | Production compose/Nginx/monitoring/WAL/PITR/S3 | Blocker | **BLOCKED** | Владелец: домены/TLS, хостинг, S3/CDN, backup |

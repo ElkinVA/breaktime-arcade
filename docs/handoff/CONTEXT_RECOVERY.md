@@ -408,5 +408,7 @@ DRAFT-документы не являются нормативными и не 
   — **accept**; статус **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**.
 - Найден и исправлен дефект свежих БД: `catalog.0001` citext без
   зависимости от `core.0001_extensions` (добавлена graph-зависимость).
-- Следующий шаг — приёмка владельца; затем result/leaderboard/storage
-  только после BA-SDK/ENV/BA-GAME и решений по DB-001…DB-008.
+- Следующий шаг — приёмка владельца и решения по
+  `docs/decisions/APPF-OWNER-DECISION-PACKAGE.md`; затем
+  result/leaderboard/storage только после BA-SDK/ENV/BA-GAME и решений
+  по DB-001…DB-008.
