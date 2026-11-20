@@ -406,7 +406,8 @@ App F и решениями владельца.
 
 ```text
 Branch: main
-HEAD: d248d0e (docs: owner decision package for App F continuation)
+HEAD: 1a0791b (docs: popularity and close records)
+App F server slices: 10907fd, 57fda8e, 3214abf, f319e18, 9b704d5
 APPF-SESSION-001: product c935237, records 16946f6
 Checkpoint: 214af0d, tag checkpoint-2026-11-20-pre-autonomy
 Tag: ba-autonomy-003 (предыдущий пакет)

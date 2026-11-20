@@ -71,8 +71,10 @@ XFF: запросы через nginx из web/worker -> разные IP-баке
 
 ## Git
 
-- `ba`: `main`, HEAD — коммиты APPF-SESSION-002/RESULT-001 (см. `git log`);
-  предыдущий `3584eff` (accept SESSION-001 + SDK/ENV v1.1.0).
+- `ba`: `main`, HEAD `1a0791b` (popularity/close records). App F server
+  slices: `10907fd` (result/throttle), `57fda8e` (leaderboard/storage),
+  `3214abf`/`f319e18` (playtime/ratings), `9b704d5` (popularity/close);
+  ранее `3584eff` (accept SESSION-001 + SDK/ENV v1.1.0).
 - `ai-dev`: `main`, HEAD `d09a3f1`, tag `ai-dev-autonomy-003`.
 - Backup: `~/backups/20261120-pre-autonomy/`.
 
