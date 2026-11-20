@@ -364,7 +364,7 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Тип | Техническая реализация §2.14.2/§2.14.7; не аудит этапа |
 | Результат | Metadata-only `preflight_zip`: пути/типы/лимиты/коллизии/расширения/служебные файлы, SHA-256, стабильные diagnostics; без распаковки и исполнения |
 | Проверки | 16 unit tests (path traversal, canonical/duplicate, symlink, encryption, forged sizes, NFKC, ZIP bomb, DD/ZIP64); full suite 297/2 skipped; ruff/mypy зелёные |
-| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Статус | **TECHNICALLY ACCEPTED** (agent, OD-TECH-001); продуктовая приёмка — владелец |
 | Review | code-reviewer — **accept**; security-auditor — **ACCEPT** после исправления M-1/M-2/m-1/m-3/m-6; остаток O-1…O-5/m-4…m-7 — R-034 (non-blocking) |
 | Источник | `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md` |
 
@@ -375,9 +375,20 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Тип | Техническая реализация §2.14.2; не аудит этапа |
 | Результат | Повторный preflight; streaming 64 КиБ; независимый byte count; лимиты 20/100 МБ, 2000 файлов; CRC; канонические пути; prefix-конфликты; O_EXCL/O_NOFOLLOW; atomic rename; cleanup |
 | Проверки | 11 unit tests (valid/hashes, limits, CRC, prefix, deep path/dirs, mutable data, destination exists, deadline/cleanup, symlink preflight); full 308/2 skipped; ruff/mypy |
-| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Статус | **TECHNICALLY ACCEPTED** (agent, OD-TECH-001); продуктовая приёмка — владелец |
 | Review | security-auditor — **ACCEPT** после MINOR-1…6/A/B; остаток durability/error taxonomy — R-035 |
 | Источник | `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md` |
+
+## BA-ZIP-WORKER-001 — изолированный extraction worker
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая реализация §2.14.2; не аудит этапа |
+| Результат | Отдельный `zip-worker` в `zipnet` только с broker; prefork 1; read_only/cap_drop/no-new-privileges/pids/mem/cpus/tmpfs; uploads ro / artifacts rw; O_NOFOLLOW/O_NONBLOCK + fstat + `/proc/self/fd`; flock; statvfs; ATTEMPTS/quarantine; CANCEL + cancel_check; JSON-аудит; cleanup |
+| Проверки | 22 new tests; full 330/2 skipped; ruff/mypy; compose config; E2E web→zip-worker→COMPLETED; network probes (db/cache/internet gaierror); queue bindings zip/zip |
+| Статус | **TECHNICALLY ACCEPTED** (agent, OD-TECH-001); продуктовая приёмка — владелец |
+| Review | План: code/security **accept** after conditions; реализация: security **ACCEPT**, code **ACCEPT** с pre-existing R-036; остатки R-033/R-035/R-036/R-037 |
+| Источник | `docs/foundation/BA-ZIP-WORKER-001_REPORT.md` |
 
 ## Общие ограничения
 

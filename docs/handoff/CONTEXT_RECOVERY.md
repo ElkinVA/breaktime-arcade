@@ -1,7 +1,7 @@
 # CONTEXT_RECOVERY — Breaktime Arcade
 
 Краткая инструкция для нового сеанса Claude Code после `/compact` или потери истории чата. Не полагаться на память предыдущей сессии, старые отчёты или сообщения исполнителя как на доказательство.  
-**Дата актуализации:** 2026-11-20 (BA-ZIP-PREFLIGHT-001).  
+**Дата актуализации:** 2026-11-20 (BA-ZIP-WORKER-001).
 **Первый документ новой сессии — `NOW.md`; полные реестры — по необходимости.**
 
 **Реестры — рабочий источник проектного контекста, но не нормативная база.**
@@ -122,12 +122,17 @@
   APPF-SESSION-001, остальные — AWAITING OWNER ACCEPTANCE; клиентский
   runtime/SDK/EventLog отсутствует. `BA-APPF-001` — подготовка решений;
   `BA-APPF-002` — **NOT_STARTED**.
-- BA-ZIP-PREFLIGHT-001 — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**:
-  metadata-only проверка ZIP.
-- BA-ZIP-EXTRACT-001 — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**:
-  потоковая safe-extraction (byte caps, CRC, канонические пути, atomic
-  rename); security review accept; OS-level worker sandbox —
-  BA-ZIP-WORKER-001.
+- BA-ZIP-PREFLIGHT-001 — **TECHNICALLY ACCEPTED** (agent, OD-TECH-001);
+  продуктовая приёмка — владелец: metadata-only проверка ZIP.
+- BA-ZIP-EXTRACT-001 — **TECHNICALLY ACCEPTED** (agent, OD-TECH-001);
+  продуктовая приёмка — владелец: потоковая safe-extraction (byte caps,
+  CRC, канонические пути, atomic rename); security review accept.
+- BA-ZIP-WORKER-001 — **TECHNICALLY ACCEPTED** (agent, OD-TECH-001);
+  продуктовая приёмка — владелец: отдельный
+  Compose-сервис `zip-worker` (`zipnet` только с broker, prefork,
+  read_only/limits, очередь `zip`, cancel, audit); code/security review
+  accept; остатки R-033/R-035/R-036/R-037. Отчёт —
+  `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`.
 - Прохождение тестов не является приёмкой; отчёт исполнителя не является
   результатом независимого аудита.
 - Staging не затрагивать без отдельного разрешения. В текущей зоне

@@ -50,8 +50,8 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd -g 10001 app \
  && useradd -u 10001 -g 10001 -M -s /usr/sbin/nologin app \
- && mkdir -p /app/staticfiles /app/media /app/var \
- && chown -R app:app /app
+ && mkdir -p /app/staticfiles /app/media /app/var /var/ba/zip/uploads /var/ba/zip/artifacts \
+ && chown -R app:app /app /var/ba/zip
 WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 COPY --chown=app:app . /app

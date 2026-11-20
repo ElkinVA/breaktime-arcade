@@ -29,7 +29,24 @@ class JsonFormatter(logging.Formatter):
         }
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
-        for key in ("event", "actor", "game_id", "session_id", "duration_ms"):
+        for key in (
+            "event",
+            "actor",
+            "game_id",
+            "session_id",
+            "duration_ms",
+            "job_id",
+            "task_id",
+            "package_hash",
+            "zip_bytes",
+            "extracted_bytes",
+            "file_count",
+            "outcome",
+            "error_code",
+            "attempts",
+            "queue",
+            "limits",
+        ):
             value = getattr(record, key, None)
             if value is not None:
                 payload[key] = value

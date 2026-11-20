@@ -1,14 +1,16 @@
 # NOW — Breaktime Arcade
 
 **Дата:** 2026-11-20
-**Текущий пакет:** App F server slices: SESSION-002, RESULT-001,
-LEADERBOARD-001, STORAGE-001, PLAYTIME-001, RATINGS-001, POPULARITY-001;
-ZIP pipeline: BA-ZIP-PREFLIGHT-001, BA-ZIP-EXTRACT-001
-**Статус:** SESSION-001 **ACCEPTED**; остальные срезы и ZIP preflight —
-**IMPLEMENTED / AWAITING OWNER ACCEPTANCE**, independent review
-(code-reviewer/security-auditor, deepseek-v4-pro, text-only). ZIP preflight:
-code-reviewer/security-auditor — **accept**; M-1/M-2/m-1/m-3/m-6
-исправлены; остаток O-1…O-5/m-4…m-7 — R-034 (non-blocking).
+**Текущий пакет:** BA-ZIP-WORKER-001 (изолированный extraction worker);
+App F server slices: SESSION-002, RESULT-001, LEADERBOARD-001, STORAGE-001,
+PLAYTIME-001, RATINGS-001, POPULARITY-001; ZIP: PREFLIGHT-001, EXTRACT-001,
+WORKER-001
+**Статус:** SESSION-001 **ACCEPTED**; App F-срезы — **IMPLEMENTED /
+AWAITING OWNER ACCEPTANCE**. ZIP preflight/extract/worker — **TECHNICALLY
+ACCEPTED** агентом (OD-TECH-001, 2026-11-20); продуктовая приёмка остаётся
+за владельцем. BA-ZIP-WORKER-001: plan + implementation review
+(code-reviewer/security-auditor, deepseek-v4-pro, text-only) — **ACCEPT**;
+остатки R-033/R-035/R-036/R-037 (non-blocking).
 
 ## Активная задача
 
@@ -19,29 +21,30 @@ GameResult, LeaderboardEntry, DB-001/002/003), публичный leaderboard
 TTL гостя, активная сессия + 60/min). Throttle — Приложение E
 (subject 30/ч + IP 600/ч, heartbeat 3/мин, redis-throttle, реальный IP).
 
-ZIP pipeline: **BA-ZIP-PREFLIGHT-001** — metadata-only `preflight_zip`
-(25/100/20 МБ, 2000 файлов, 100:1, пути/типы/коллизии/расширения,
-NFKC/symlink/encryption/forged sizes, SHA-256, diagnostics) без
-распаковки; 16 tests. Выполнен **BA-ZIP-EXTRACT-001** — потоковая
-safe-extraction: повторный preflight,
-64 КиБ чанки, независимый byte count, лимиты 20/100 МБ, CRC, канонические
-пути, prefix-конфликты, `O_EXCL|O_NOFOLLOW`, атомарный rename, cleanup;
-11 tests. **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; security-review —
-**accept** (MINOR-1…6/A/B исправлены; R-035). OS-level
-CPU/RAM/time/disk/network sandbox — **BA-ZIP-WORKER-001**.
+ZIP pipeline: **BA-ZIP-PREFLIGHT-001** — metadata-only `preflight_zip`;
+**BA-ZIP-EXTRACT-001** — streaming safe extraction (11 tests);
+**BA-ZIP-WORKER-001** — отдельный Compose-сервис `zip-worker`: сеть
+`zipnet` только с `redis-broker`; prefork 1; `read_only`, cap_drop ALL,
+no-new-privileges, pids/mem/cpus/tmpfs; `zip_uploads` ro / `zip_artifacts`
+rw; O_NOFOLLOW|O_NONBLOCK + fstat + `/proc/self/fd`; per-job flock;
+statvfs 150 МБ; ATTEMPTS/quarantine; CANCEL + `cancel_check`; JSON-аудит;
+cleaner. 22 new tests; full 330 passed, 2 skipped. Отчёт —
+`docs/foundation/BA-ZIP-WORKER-001_REPORT.md`.
 
 ## Следующий шаг
 
-1. BA-ZIP-WORKER-001 — OS-level sandbox для extraction worker
-   (CPU/RAM/time/disk/network, отмена, аудит); затем manifest/catalog/
-   locales — после BA-GAME-2.2. SDK/iframe/host protocol — после
-   утверждения BA-SDK-1.1 v1.1.0 и BA-GAME-2.2; EventLog/verifier —
+1. Продуктовая приёмка владельцем ZIP PREFLIGHT/EXTRACT/WORKER
+   (техническая приёмка агентом уже выполнена, OD-TECH-001).
+2. R-035 hardening/publish: fsync родительского каталога/audit, method
+   allowlist, раздельные коды чтения/записи.
+3. R-036: pre-existing глобальный `CELERY_TASK_ACKS_LATE=True` — отдельное
+   решение владельца/аудит идемпотентности default-очереди.
+4. R-037: retention `zip_uploads` (source/CANCEL) — в upload endpoint/web.
+5. Независимый READY-пакет — **BA-QUALITY-002** (dev-only), если владелец
+   не выберет ZIP-продолжение.
+6. manifest/catalog/locales — после BA-GAME-2.2; SDK/iframe/host protocol —
+   после утверждения BA-SDK-1.1 v1.1.0 и BA-GAME-2.2; EventLog/verifier —
    после схем сообщений.
-2. Серверные API-срезы App F (sessions/result/leaderboard/storage,
-   playtime, ratings) готовы к приёмке владельцем.
-3. Ожидают владельца: утверждение BA-SDK-1.1/BA-ENV-1.1 v1.1.0, выбор
-   BA-GAME-2.2, retention-сроки, антифрод §2.9.6 (IP/журнал), challenge
-   (O4), production-настройки.
 
 ## Блокеры продукта
 
@@ -50,36 +53,36 @@ CPU/RAM/time/disk/network sandbox — **BA-ZIP-WORKER-001**.
 - Retention GameSession/GameResult/Storage — сроки не утверждены.
 - Challenge после IP-порога не реализован (до O4 — 429).
 - Legal texts/versions, email provider/bounce, CRM roles/step-up.
-- Container E2E: Playwright driver без `libatomic.so.1`; host E2E — 13 passed.
+- Container E2E: Playwright driver без `libatomic.so.1`; host E2E — 13 passed;
+  локально нужны `LD_LIBRARY_PATH` (libasound) и Liberation Sans.
 
 ## Решения владельца, ожидающие
 
 - Утверждение BA-SDK-1.1/BA-ENV-1.1 v1.1.0.
 - Выбор канонического BA-GAME-2.2 (рекомендация — A).
 - Retention-сроки (`docs/decisions/RETENTION_PROPOSAL.md`).
-- Challenge mechanism (PoW/CAPTCHA, ЕС) и узкий `TRUSTED_PROXY_IPS` для
-  staging/prod.
-- Приёмка APPF-SESSION-002 и APPF-RESULT-001.
+- Challenge mechanism (PoW/CAPTCHA, ЕС) и узкий `TRUSTED_PROXY_IPS`.
+- Приёмка APPF-SESSION-002, APPF-RESULT-001, ZIP PREFLIGHT/EXTRACT/WORKER.
+- R-036: менять ли глобальный `acks_late` после аудита идемпотентности.
 
 ## Последние фактические проверки
 
 ```text
-pytest tests/integration/test_game_sessions.py -> 37 passed
-pytest tests/integration/test_game_results.py  -> 19 passed
-pytest tests/integration/test_leaderboard_api.py -> 7 passed
-pytest tests/integration/test_game_storage.py  -> 12 passed
-pytest tests/integration/test_game_ratings.py  -> 10 passed
-pytest tests/integration/test_game_popularity.py -> 8 passed
-pytest tests/unit/test_zip_preflight.py -> 16 passed
-pytest tests/unit/test_zip_extract.py -> 11 passed
-pytest (full)              -> 308 passed, 2 skipped, 1 warning
+pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
+pytest (full)              -> 330 passed, 2 skipped, 1 warning
 ruff check apps config tests -> All checks passed
-ruff format --check        -> 344 files already formatted
-mypy                       -> Success: no issues found in 320 source files
-makemigrations --check     -> No changes detected
-migrate --plan             -> No planned migration operations
-./verify_stack.sh          -> СТЕК ЗДОРОВ (redis-throttle healthy)
-XFF: запросы через nginx из web/worker -> разные IP-бакеты (172.19.0.3/5)
+ruff format --check        -> 348 files already formatted
+mypy                       -> Success: no issues found in 321 source files
+docker compose config --quiet -> OK
+./verify_stack.sh          -> СТЕК ЗДОРОВ (zip-worker healthy)
+E2E queue: web uploads -> enqueue_extraction -> zip-worker ->
+  artifacts/<uuid>/COMPLETED.json; audit received(0) -> extract(1, limits)
+  -> complete(1); regular worker receipt отсутствует
+zip-worker network: redis-broker 0; db/cache/api.deepseek.com -> gaierror
+zip-worker volumes: artifacts rw, uploads ro; uid/gid 10001; read_only=true;
+  pids=64; mem=512m; cpus=1.0; cap_drop=ALL; no-new-privileges
+queues: worker default/default + celery/celery; zip-worker zip/zip
+host E2E (13 сценариев, после локальной настройки) -> 13 passed
 ```
 
 ## Модели
@@ -87,21 +90,15 @@ XFF: запросы через nginx из web/worker -> разные IP-баке
 - План/ревью: `architect`, `code-reviewer`, `security-auditor` /
   `deepseek-v4-pro`, text-only (0 tool calls).
 - Реализация: основная сессия / `deepseek-flash[1m]`.
-- Факт маршрутизации подтверждается `message.model` в subagent-транскриптах.
+- Факт маршрутизации подтверждается `message.model` в транскриптах.
 
 ## Git
 
-- `ba`: `main`; ZIP-пакеты — `fa8a1a7` (BA-ZIP-PREFLIGHT-001) и
-  `4c44009` (BA-ZIP-EXTRACT-001); актуальный HEAD — `git log -1`.
-  Origin — приватный
-  `git@github.com:ElkinVA/breaktime-arcade.git` (SSH), ветка tracking
-  `origin/main`, теги `ba-autonomy-003` и
-  `checkpoint-2026-11-20-pre-autonomy` запушены. App F server slices:
-  `10907fd` (result/throttle), `57fda8e` (leaderboard/storage),
-  `3214abf`/`f319e18` (playtime/ratings), `9b704d5` (popularity/close),
-  `f43ab9d` (Git snapshot); ранее `3584eff` (accept SESSION-001 + SDK/ENV).
-  ZIP preflight — `fa8a1a7`; отчёт — `docs/foundation/
-  BA-ZIP-PREFLIGHT-001_REPORT.md`.
+- `ba`: `main`; HEAD `678fcbe` (= `origin/main` на момент проверки).
+  ZIP preflight — `fa8a1a7`, extract — `4c44009`; **BA-ZIP-WORKER-001
+  в рабочем дереве не закоммичен** (изменения: worker.py, tasks.py,
+  unpack.py, settings, compose, Dockerfile, entrypoint, tests, docs).
+  Origin — приватный `git@github.com:ElkinVA/breaktime-arcade.git`.
 - `ai-dev`: `main`, HEAD `d09a3f1`, tag `ai-dev-autonomy-003`.
 - Backup: `~/backups/20261120-pre-autonomy/`.
 
@@ -112,16 +109,23 @@ XFF: запросы через nginx из web/worker -> разные IP-баке
 - Fail-open throttle при отказе redis-throttle; рестарт сбрасывает счётчики.
 - NAT: 600/ч на IP — компромисс; challenge не реализован.
 - Retention JSONB/результатов не утверждён; R-030 residual.
+- R-033: нет жёсткой ФС-квоты; общий broker (вариант A).
+- R-035: fsync родительского каталога/audit, method allowlist — deferred.
+- R-036: pre-existing глобальный `acks_late` — платформенный риск.
+- R-037: retention `zip_uploads` вне scope.
 - App F в целом заблокирован SDK/ENV/BA-GAME и retention.
 
 ## Ссылки
 
 `PROJECT_STATUS.md`, `BACKLOG.md`, `CONTEXT_RECOVERY.md`, `TASK_HISTORY.md`,
 `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`, `RISK_REGISTER.md`,
+`docs/tasks/BA-ZIP-WORKER-001_PLAN.md`,
+`docs/foundation/BA-ZIP-WORKER-001_REPORT.md`,
+`docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`,
+`docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`,
 `docs/tasks/APPF-SESSION-002_PLAN.md`,
 `docs/tasks/APPF-RESULT-001_PLAN.md`,
 `docs/foundation/APPF-SESSION-002_REPORT.md`,
 `docs/foundation/APPF-RESULT-001_REPORT.md`,
-`docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`,
 `docs/runbook/FULL_DEPLOYMENT_FROM_ZERO.md`,
 `docs/decisions/APPF-OWNER-DECISION-PACKAGE.md`.

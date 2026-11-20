@@ -27,7 +27,7 @@ services:
 
   worker:
     <<: *dev-build
-    command: ["celery", "-A", "config", "worker", "-l", "info", "--pool=solo", "--concurrency=1"]
+    command: ["celery", "-A", "config", "worker", "-Q", "default,celery", "-l", "info", "--pool=solo", "--concurrency=1"]
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
     volumes:
@@ -37,6 +37,15 @@ services:
     deploy:
       resources:
         limits: { cpus: "0.5", memory: 512M }
+
+  zip-worker:
+    <<: *dev-build
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+    volumes:
+      - .:/app:ro
+      - zip_uploads:/var/ba/zip/uploads:ro
+      - zip_artifacts:/var/ba/zip/artifacts
 
   beat:
     <<: *dev-build

@@ -255,8 +255,9 @@ make ps
 
 - `compose.prod.yml`, production Nginx/monitoring/WAL/PITR/S3 — не заполнены.
 - Staging требует отдельных секретов и разрешения; staging.conf защищён.
-- SDK/iframe/EventLog и ZIP pipeline (кроме preflight) ждут утверждения
-  BA-SDK/ENV/GAME.
+- SDK/iframe/EventLog и manifest/catalog/locales ждут утверждения
+  BA-SDK/ENV/GAME. ZIP preflight/extract/worker реализованы и ожидают
+  приёмки владельцем; R-035/R-036/R-037 остаются.
 - E2E в контейнере ограничен `libatomic.so.1`; host E2E — отдельный venv.
 
 ## 11. Чек-лист продолжения на другом ПК
@@ -268,8 +269,9 @@ make ps
    `BACKLOG.md`; полные реестры — по необходимости.
 4. Не копировать `.env`, `certs/`, `creds/`, `var/backups/` из чата или
    старого ПК; сгенерировать заново либо передать защищённым каналом.
-5. Продолжить с первого `READY`-пакета в `BACKLOG.md`
-   (**BA-ZIP-EXTRACT-001**), не меняя порядок зависимостей.
+5. Продолжить с первого `READY`-пакета в `BACKLOG.md` (сейчас
+   **BA-QUALITY-002**, dev-only); BA-ZIP-EXTRACT-001/BA-ZIP-WORKER-001 —
+   **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**, не переделывать без причины.
 6. Перед задачей — ID, критерии приёмки, файлы, тесты; после — отчёт,
    обновление NOW/шести реестров/PROJECT_STATUS, проверки и независимый
    Pro text-only review.

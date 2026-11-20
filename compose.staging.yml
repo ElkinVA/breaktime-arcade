@@ -30,6 +30,11 @@ services:
     depends_on:
       web: { condition: service_healthy }
 
+  zip-worker:
+    env_file: [.env.staging]
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.staging
+
   beat:
     env_file: [.env.staging]
     environment:

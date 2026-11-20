@@ -210,7 +210,8 @@ mode user/guest, окно 30 мин), `POST /sessions/{id}/close`; review accept
 
 ## 1.10. ZIP pipeline: безопасный preflight — BA-ZIP-PREFLIGHT-001
 
-**BA-ZIP-PREFLIGHT-001** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**.
+**BA-ZIP-PREFLIGHT-001** — **TECHNICALLY ACCEPTED** (agent, OD-TECH-001);
+продуктовая приёмка — владелец.
 Metadata-only проверка игрового ZIP без распаковки и исполнения:
 `apps/pipeline/validation/codes.py` (стабильные коды/severity/лимиты) и
 `structure.py` (`preflight_zip`). Проверяются лимиты (25/100/20 МБ,
@@ -227,7 +228,8 @@ BA-SDK-1.1/BA-ENV-1.1/BA-GAME-2.2; изолированная распаковк
 
 ## 1.11. ZIP pipeline: безопасная распаковка — BA-ZIP-EXTRACT-001
 
-**BA-ZIP-EXTRACT-001** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**.
+**BA-ZIP-EXTRACT-001** — **TECHNICALLY ACCEPTED** (agent, OD-TECH-001);
+продуктовая приёмка — владелец.
 `apps/pipeline/services/unpack.py`: повторный preflight, потоковая
 распаковка чанками 64 КиБ, независимый счётчик фактических байт, лимиты
 20 МБ/файл и 100 МБ/итог, CRC, канонические пути, запрет file-vs-dir и
@@ -236,6 +238,20 @@ prefix-конфликтов, `O_EXCL|O_NOFOLLOW`, атомарный rename, о�
 CPU/RAM/time/disk/network-изоляция worker — отдельный срез
 BA-ZIP-WORKER-001; сервис даёт byte caps и cooperative deadline.
 Отчёт — `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`.
+
+## 1.12. ZIP pipeline: изолированный extraction worker — BA-ZIP-WORKER-001
+
+**BA-ZIP-WORKER-001** — **TECHNICALLY ACCEPTED** (agent, OD-TECH-001);
+продуктовая приёмка — владелец.
+Отдельный Compose-сервис `zip-worker` (prefork, очередь `zip`): сеть
+`zipnet` только с `redis-broker`; `read_only` rootfs, `cap_drop: ALL`,
+`no-new-privileges`, pids 64, mem 512m, cpus 1.0, tmpfs `/tmp` 64m;
+`zip_uploads` ro / `zip_artifacts` rw; source через
+`O_NOFOLLOW|O_NONBLOCK` + `fstat` + `/proc/self/fd`; per-job flock;
+statvfs reserve; ATTEMPTS/quarantine; `cancel_check`; JSON-аудит; cleanup.
+22 новых теста; full suite — 330 passed, 2 skipped; ruff/mypy зелёные;
+code/security review — **accept**; остатки R-033/R-035/R-036/R-037.
+Отчёт — `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`.
 
 ## 2. Статусы работ
 
@@ -273,8 +289,9 @@ BA-ZIP-WORKER-001; сервис даёт byte caps и cooperative deadline.
 | APPF-PLAYTIME-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | UserGamePlaytime mode=user; 40 session tests; review accept |
 | APPF-RATINGS-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Оценки/порог/лимиты/агрегат; 10 tests; review accept; антифрод owner-gap |
 | APPF-POPULARITY-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Play credit/daily stats/close; 8 tests; review accept; R-032 owner-gap |
-| BA-ZIP-PREFLIGHT-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Metadata-only ZIP preflight; 16 tests; full 297/2 skipped; review accept; R-033 extraction sandbox — следующий пакет |
-| BA-ZIP-EXTRACT-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Streaming safe extraction; 11 tests; full 308/2 skipped; security review accept; worker isolation — BA-ZIP-WORKER-001 |
+| BA-ZIP-PREFLIGHT-001 | **TECHNICALLY ACCEPTED** (agent); product — owner | Metadata-only ZIP preflight; 16 tests; full 297/2 skipped; review accept; R-033 extraction sandbox — следующий пакет |
+| BA-ZIP-EXTRACT-001 | **TECHNICALLY ACCEPTED** (agent); product — owner | Streaming safe extraction; 11 tests; full 308/2 skipped; security review accept; worker isolation — BA-ZIP-WORKER-001 |
+| BA-ZIP-WORKER-001 | **TECHNICALLY ACCEPTED** (agent); product — owner | Отдельный `zip-worker` (`zipnet`, prefork, read_only, limits, cancel, audit); 22 new tests; full 330/2 skipped; code/security review accept; R-033/R-035/R-036/R-037 |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
 Статусы `COMPLETED`, `ACCEPTED`, `PARTIAL` и `NOT_ACCEPTED` не
@@ -305,7 +322,9 @@ BA-ZIP-WORKER-001; сервис даёт byte caps и cooperative deadline.
   BA-CATALOG-005.
 - ZIP preflight: metadata-only структура/пути/типы/лимиты/коллизии/
   расширения, SHA-256, diagnostics; без распаковки; BA-ZIP-PREFLIGHT-001 —
-  **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; extraction sandbox не готов.
+  **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**. Safe extraction —
+  BA-ZIP-EXTRACT-001; изолированный `zip-worker` — BA-ZIP-WORKER-001;
+  обе работы ожидают приёмки владельцем.
 - Browser E2E: регистрация/вход/смена пароля/deletion window; полный набор
   13 E2E passed; BA-STAGE-2.3 — **IMPLEMENTED / AWAITING INDEPENDENT REVIEW**.
 - Публичная i18n-оболочка и языковая маршрутизация BA-STAGE-1.1

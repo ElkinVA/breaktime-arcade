@@ -11,6 +11,7 @@ from typing import cast
 import pytest
 
 from apps.pipeline.services.unpack import (
+    X_CANCELLED,
     X_CRC_MISMATCH,
     X_DESTINATION_EXISTS,
     X_LIMIT_FILE,
@@ -168,6 +169,24 @@ def test_deadline_and_cleanup(tmp_path: Path) -> None:
             deadline=time.monotonic() - 1,
         )
     assert error.value.code == X_TIMEOUT
+    assert not (tmp_path / "pkg").exists()
+    _no_staging(tmp_path)
+
+
+def test_cancel_check_aborts_and_cleans_up(tmp_path: Path) -> None:
+    calls = {"count": 0}
+
+    def cancel() -> bool:
+        calls["count"] += 1
+        return calls["count"] > 1
+
+    with pytest.raises(ExtractionError) as error:
+        extract_zip(
+            _zip({"index.html": b"x", "js/game.js": b"y"}),
+            tmp_path / "pkg",
+            cancel_check=cancel,
+        )
+    assert error.value.code == X_CANCELLED
     assert not (tmp_path / "pkg").exists()
     _no_staging(tmp_path)
 

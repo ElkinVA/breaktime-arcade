@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from kombu import Exchange, Queue
+
 BASE_DIR = Path(__file__).resolve().parents[2]
 
 
@@ -259,6 +261,31 @@ CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_TIMEZONE = "UTC"
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+# BA-ZIP-WORKER-001: the regular worker consumes only default/celery; the
+# isolated zip-worker consumes only the `zip` queue (see compose.yml).
+CELERY_TASK_QUEUES = (
+    Queue("default", Exchange("default", type="direct"), routing_key="default"),
+    Queue("celery", Exchange("celery", type="direct"), routing_key="celery"),
+    Queue("zip", Exchange("zip", type="direct"), routing_key="zip"),
+)
+CELERY_TASK_ROUTES = {
+    "apps.pipeline.tasks.extract_zip_task": {"queue": "zip"},
+    "apps.pipeline.tasks.cleanup_zip_staging": {"queue": "zip"},
+}
+CELERY_TASK_ANNOTATIONS = {
+    "apps.pipeline.tasks.extract_zip_task": {
+        "acks_late": True,
+        "reject_on_worker_lost": True,
+        "soft_time_limit": 55,
+        "time_limit": 60,
+    },
+    "apps.pipeline.tasks.cleanup_zip_staging": {
+        "acks_late": True,
+        "reject_on_worker_lost": True,
+        "soft_time_limit": 240,
+        "time_limit": 300,
+    },
+}
 CELERY_BEAT_SCHEDULE: dict[str, dict[str, object]] = {
     "backup-full-daily": {
         "task": "crm.backup_full",
@@ -289,6 +316,11 @@ CELERY_BEAT_SCHEDULE: dict[str, dict[str, object]] = {
         "task": "catalog.refresh_catalog_search_vectors",
         "schedule": 60 * 60 * 24,
         "options": {"expires": 60 * 60},
+    },
+    "pipeline-cleanup-zip-staging": {
+        "task": "apps.pipeline.tasks.cleanup_zip_staging",
+        "schedule": 60 * 60,
+        "options": {"queue": "zip", "expires": 60 * 10},
     },
 }
 
@@ -326,6 +358,17 @@ ADMIN_URL_PREFIX = env("ADMIN_URL_PREFIX", "crm/")
 
 # --- Резервное копирование (§2.5) --------------------------------------
 BACKUP_DIR = env("BACKUP_DIR", "/app/var/backups")
+
+# --- ZIP extraction worker (BA-ZIP-WORKER-001) --------------------------
+# uploads: written by web (source ZIP + CANCEL), read-only in zip-worker.
+# artifacts: written by zip-worker, read-only in web.
+ZIP_UPLOADS_ROOT = Path(env("ZIP_UPLOADS_ROOT", "/var/ba/zip/uploads"))
+ZIP_ARTIFACTS_ROOT = Path(env("ZIP_ARTIFACTS_ROOT", "/var/ba/zip/artifacts"))
+ZIP_JOB_DEADLINE_SECONDS = env_int("ZIP_JOB_DEADLINE_SECONDS", 50)
+ZIP_STAGING_TTL_SECONDS = env_int("ZIP_STAGING_TTL_SECONDS", 60 * 60)
+ZIP_COMPLETED_TTL_SECONDS = env_int("ZIP_COMPLETED_TTL_SECONDS", 60 * 60 * 24)
+ZIP_DISK_RESERVE_BYTES = env_int("ZIP_DISK_RESERVE_BYTES", 150 * 1024 * 1024)
+ZIP_JOB_MAX_BYTES = env_int("ZIP_JOB_MAX_BYTES", 120 * 1024 * 1024)
 BACKUP_RETENTION_DAYS = env_int("BACKUP_RETENTION_DAYS", 30)
 BA_BACKUP_CHECK_ENABLED = env_bool("BA_BACKUP_CHECK_ENABLED", True)
 BA_BACKUP_STALE_HOURS = env_int("BA_BACKUP_STALE_HOURS", 48)

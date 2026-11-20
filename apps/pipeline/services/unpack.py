@@ -21,6 +21,7 @@ import tempfile
 import time
 import unicodedata
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -43,6 +44,7 @@ X_CRC_MISMATCH = "X_CRC_MISMATCH"
 X_SIZE_MISMATCH = "X_SIZE_MISMATCH"
 X_ARCHIVE_BAD = "X_ARCHIVE_BAD"
 X_TIMEOUT = "X_TIMEOUT"
+X_CANCELLED = "X_CANCELLED"
 X_IO = "X_IO"
 
 _CHUNK = 64 * 1024
@@ -178,10 +180,13 @@ def extract_zip(
     max_total_bytes: int = MAX_UNCOMPRESSED_BYTES,
     max_files: int = MAX_FILES,
     deadline: float | None = None,
+    cancel_check: Callable[[], bool] | None = None,
 ) -> ExtractionResult:
     """Extract ``data`` into a new ``destination`` directory.
 
-    ``deadline`` is an absolute :func:`time.monotonic` value. CPU, RAM, disk
+    ``deadline`` is an absolute :func:`time.monotonic` value. ``cancel_check``
+    is polled at bounded intervals (64 KiB chunks) and aborts with
+    ``X_CANCELLED``; ``None`` preserves the previous behaviour. CPU, RAM, disk
     and network limits remain the responsibility of the isolated worker.
     """
     if not isinstance(data, bytes):
@@ -226,6 +231,8 @@ def extract_zip(
             for parts in sorted(dirs):
                 if deadline is not None and time.monotonic() > deadline:
                     raise ExtractionError(X_TIMEOUT, "Превышено время распаковки")
+                if cancel_check is not None and cancel_check():
+                    raise ExtractionError(X_CANCELLED, "Распаковка отменена")
                 _ensure_dir(staging, parts)
 
             extracted: list[ExtractedFile] = []
@@ -233,6 +240,8 @@ def extract_zip(
             for info, parts in files:
                 if deadline is not None and time.monotonic() > deadline:
                     raise ExtractionError(X_TIMEOUT, "Превышено время распаковки")
+                if cancel_check is not None and cancel_check():
+                    raise ExtractionError(X_CANCELLED, "Распаковка отменена")
                 _ensure_dir(staging, parts[:-1])
                 target = staging.joinpath(*parts)
                 flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
@@ -265,6 +274,8 @@ def extract_zip(
                                 )
                             if deadline is not None and time.monotonic() > deadline:
                                 raise ExtractionError(X_TIMEOUT, "Превышено время распаковки")
+                            if cancel_check is not None and cancel_check():
+                                raise ExtractionError(X_CANCELLED, "Распаковка отменена")
                             sink.write(chunk)
                             hasher.update(chunk)
                 except zipfile.BadZipFile:

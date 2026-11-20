@@ -33,6 +33,12 @@ services:
     environment:
       RUN_MIGRATIONS: "1"
       RUN_COLLECTSTATIC: "1"
+    volumes:
+      - static_data:/app/staticfiles
+      - media_data:/app/media
+      - app_var:/app/var
+      - zip_uploads:/var/ba/zip/uploads
+      - zip_artifacts:/var/ba/zip/artifacts:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
       interval: 15s
@@ -45,7 +51,7 @@ services:
 
   worker:
     <<: *app
-    command: ["celery", "-A", "config", "worker", "-l", "info"]
+    command: ["celery", "-A", "config", "worker", "-Q", "default,celery", "-l", "info"]
     environment:
       RUN_MIGRATIONS: "0"
     depends_on:
@@ -62,6 +68,53 @@ services:
     deploy:
       resources:
         limits: { cpus: "1.0", memory: 1024M }
+
+  # BA-ZIP-WORKER-001: isolated extraction worker.
+  # Network zipnet contains only this service and redis-broker; no edge/db/cache.
+  zip-worker:
+    image: ba/app:${IMAGE_TAG:-dev}
+    build:
+      context: .
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.14-slim-bookworm}
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
+        UV_VERSION: ${UV_VERSION:?задайте UV_VERSION в .env (make env)}
+    restart: unless-stopped
+    env_file: [.env]
+    user: "10001:10001"
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    entrypoint: ["/app/infra/scripts/entrypoint-zip-worker.sh"]
+    command: ["celery", "-A", "config", "worker", "-Q", "zip", "-n", "zip@%h",
+              "--pool=prefork", "--concurrency=1", "--prefetch-multiplier=1",
+              "--without-gossip", "--without-mingle", "-l", "info"]
+    environment:
+      RUN_MIGRATIONS: "0"
+      RUN_COLLECTSTATIC: "0"
+    volumes:
+      - zip_uploads:/var/ba/zip/uploads:ro
+      - zip_artifacts:/var/ba/zip/artifacts
+    networks: [zipnet]
+    depends_on:
+      redis-broker: { condition: service_healthy }
+    read_only: true
+    tmpfs:
+      - /tmp:rw,size=64m,mode=1777
+    pids_limit: 64
+    ulimits:
+      nofile: { soft: 1024, hard: 1024 }
+    cpus: "1.0"
+    mem_limit: 512m
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d zip@$$HOSTNAME -t 10 | grep -q pong"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
 
   beat:
     <<: *app
@@ -124,7 +177,7 @@ services:
     command: ["redis-server", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes", "--appendfsync", "everysec"]
     volumes:
       - redis_broker_data:/data
-    networks: [internal]
+    networks: [internal, zipnet]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -188,6 +241,9 @@ networks:
   internal:
     internal: true
   edge:
+  # BA-ZIP-WORKER-001: only zip-worker and redis-broker; no external gateway.
+  zipnet:
+    internal: true
 
 volumes:
   pgdata:
@@ -196,3 +252,5 @@ volumes:
   static_data:
   media_data:
   app_var:
+  zip_uploads:
+  zip_artifacts:

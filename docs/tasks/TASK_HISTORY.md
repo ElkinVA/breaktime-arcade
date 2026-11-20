@@ -735,8 +735,8 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   format, mypy — зелёные; code-reviewer/security-auditor — **accept**;
   M-1/M-2/m-1/m-3/m-6 исправлены; остаток O-1…O-5/m-4…m-7 — R-034
   (non-blocking); extraction sandbox — следующая стадия.
-- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; не зависит от
-  BA-SDK-1.1/BA-ENV-1.1/BA-GAME-2.2.
+- **Статус:** **TECHNICALLY ACCEPTED** (agent, OD-TECH-001); продуктовая
+  приёмка — владелец; не зависит от BA-SDK-1.1/BA-ENV-1.1/BA-GAME-2.2.
 - **Отчёт:** `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`.
 
 ### BA-ZIP-EXTRACT-001 — безопасная потоковая распаковка ZIP
@@ -751,9 +751,32 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Проверки:** full suite — 308 passed, 2 skipped; ruff/mypy — зелёные;
   независимый security-review — **accept** (MINOR-1…6, A/B и nit
   исправлены; R-035 — durability/error taxonomy).
-- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; OS-level
-  CPU/RAM/time/disk/network sandbox — BA-ZIP-WORKER-001.
+- **Статус:** **TECHNICALLY ACCEPTED** (agent, OD-TECH-001); продуктовая
+  приёмка — владелец; OS-level CPU/RAM/time/disk/network sandbox —
+  BA-ZIP-WORKER-001.
 - **Отчёт:** `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`.
+
+### BA-ZIP-WORKER-001 — изолированный extraction worker
+
+- **ID:** BA-ZIP-WORKER-001.
+- **Результат:** отдельный Compose-сервис `zip-worker`: сеть `zipnet`
+  только с `redis-broker`; prefork 1; `read_only`, cap_drop ALL,
+  no-new-privileges, pids 64, mem 512m, cpus 1.0, tmpfs `/tmp` 64m;
+  `zip_uploads` ro / `zip_artifacts` rw; source O_NOFOLLOW/O_NONBLOCK +
+  fstat + `/proc/self/fd`; per-job flock; statvfs 150 МБ; ATTEMPTS/
+  quarantine; CANCEL + `cancel_check`; JSON-аудит; cleanup.
+  `unpack.py` — только аддитивный `cancel_check` (default None).
+- **Проверки:** 22 new tests; full suite — 330 passed, 2 skipped;
+  ruff/mypy — зелёные; `docker compose config` OK; E2E web → uploads →
+  zip-worker → artifacts COMPLETED; db/cache/internet из zip-worker
+  недоступны; code/security review — **accept**.
+- **Остатки:** R-033 (нет жёсткой ФС-квоты; общий брокер), R-035
+  (fsync/error taxonomy), R-036 (pre-existing глобальный acks_late),
+  R-037 (retention `zip_uploads`); healthcheck под нагрузкой не
+  стресс-тестирован; SIGTERM-cancel не реализован.
+- **Статус:** **TECHNICALLY ACCEPTED** (agent, OD-TECH-001); продуктовая
+  приёмка — владелец.
+- **Отчёт:** `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`.
 
 ## 4. Источники и пробелы
 
@@ -782,6 +805,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/APPF-SESSION-001_REPORT.md`;
 - `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`;
 - `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`;
+- `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`;
 - `tests/integration/test_catalog_public.py`;
 - `tests/integration/test_game_sessions.py`;
 - `reports/BA_AUDIT_20261118_162920.zip` (исторический generated-отчёт).
