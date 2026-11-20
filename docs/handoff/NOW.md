@@ -91,8 +91,9 @@ XFF: запросы через nginx из web/worker -> разные IP-баке
 
 ## Git
 
-- `ba`: `main`; пакет — `fa8a1a7` (BA-ZIP-PREFLIGHT-001), docs-фиксация —
-  `5870685`; актуальный HEAD — `git log -1`. Origin — приватный
+- `ba`: `main`; ZIP-пакеты — `fa8a1a7` (BA-ZIP-PREFLIGHT-001) и
+  `4c44009` (BA-ZIP-EXTRACT-001); актуальный HEAD — `git log -1`.
+  Origin — приватный
   `git@github.com:ElkinVA/breaktime-arcade.git` (SSH), ветка tracking
   `origin/main`, теги `ba-autonomy-003` и
   `checkpoint-2026-11-20-pre-autonomy` запушены. App F server slices:
