@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import os
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -58,6 +59,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.core.middleware.ClientIPMiddleware",
     "apps.core.middleware.RequestIDMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -124,6 +126,15 @@ CACHES = {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": env("REDIS_CACHE_URL", "redis://redis-cache:6379/1"),
         "KEY_PREFIX": "ba",
+        "TIMEOUT": 300,
+        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+    },
+    # Throttle counters must not be evicted by cache pressure (OD-REDIS-001).
+    # Separate Redis instance with noeviction; counters are ephemeral.
+    "throttle": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": env("REDIS_THROTTLE_URL", "redis://redis-throttle:6379/0"),
+        "KEY_PREFIX": "ba-throttle",
         "TIMEOUT": 300,
         "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
     },
@@ -200,6 +211,15 @@ BA_CSP_DIRECTIVES = {
     "object-src": "'none'",
 }
 BA_PERMISSIONS_POLICY = "geolocation=(), microphone=(), camera=(), payment=()"
+
+# nginx overwrites X-Forwarded-For; accept it only from these proxy networks.
+BA_TRUSTED_PROXY_NETWORKS = tuple(
+    ipaddress.ip_network(value)
+    for value in env_list(
+        "TRUSTED_PROXY_IPS",
+        "127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16",
+    )
+)
 
 # --- Интернационализация ------------------------------------------------
 LANGUAGE_CODE = "en"
@@ -279,9 +299,12 @@ REST_FRAMEWORK = {
     # объявлять AllowAny, а не получать его из глобальной настройки.
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "EXCEPTION_HANDLER": "apps.core.exceptions.api_exception_handler",
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
     "DEFAULT_THROTTLE_RATES": {
+        # §2.12 / Приложение E: subject primary, IP secondary (600/hour).
         "sessions": "30/hour",
+        "sessions_ip": "600/hour",
         "results": "60/hour",
         "heartbeat": "3/min",
         "storage": "600/hour",

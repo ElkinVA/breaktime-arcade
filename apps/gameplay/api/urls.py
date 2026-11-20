@@ -6,6 +6,7 @@ from apps.gameplay.api.views import (
     SessionActivateView,
     SessionCreateView,
     SessionHeartbeatView,
+    SessionResultView,
 )
 
 urlpatterns = [
@@ -19,5 +20,10 @@ urlpatterns = [
         "sessions/<uuid:session_id>/heartbeat",
         SessionHeartbeatView.as_view(),
         name="session-heartbeat",
+    ),
+    path(
+        "sessions/<uuid:session_id>/result",
+        SessionResultView.as_view(),
+        name="session-result",
     ),
 ]

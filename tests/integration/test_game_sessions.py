@@ -5,23 +5,30 @@ import re
 import threading
 import time
 from datetime import timedelta
+from unittest.mock import PropertyMock, patch
 from uuid import UUID, uuid4
 
 import pytest
 from django.contrib.auth.models import AnonymousUser
-from django.core.cache import cache
+from django.core.cache import caches
 from django.db import connections
+from django.db.models import ProtectedError
+from django.http import HttpResponse
 from django.test import Client, RequestFactory, override_settings
 from django.utils import timezone
+from redis.exceptions import RedisError
 
 from apps.accounts.models import AnonymousIdentity, User
 from apps.accounts.services.anonymous import COOKIE_NAME
 from apps.catalog.models import Game, GameVersion, Genre
+from apps.gameplay.api import throttling
 from apps.gameplay.models import GameSession
 from apps.gameplay.services.sessions import SessionError, activate_session, heartbeat
 
 LOCMEM_CACHES = {
     "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    # Throttle uses a dedicated alias; tests keep the same separation.
+    "throttle": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
 }
 API = "/api/v1/sessions"
 NONCE = "n" * 32
@@ -29,15 +36,16 @@ NONCE = "n" * 32
 
 @pytest.fixture(autouse=True)
 def clear_cache() -> None:
-    from django.core.cache import cache
-
-    cache.clear()
+    # Runs outside override_settings, so only the default alias is safe here.
+    # The throttle alias is cleared in ``_client`` inside the test override.
+    caches["default"].clear()
     yield
-    cache.clear()
+    caches["default"].clear()
 
 
 def _client(user: User | None = None) -> tuple[Client, str]:
-    cache.clear()
+    caches["default"].clear()
+    caches["throttle"].clear()
     client = Client(enforce_csrf_checks=True)
     page = client.get("/en/auth/login/")
     assert page.status_code == 200
@@ -444,7 +452,7 @@ def test_valid_guest_identity_throttles_by_subject() -> None:
     identity = AnonymousIdentity.objects.latest("created_at")
     key = f"throttle_sessions_anon:{identity.id}"
     try:
-        cache.set(key, [time.time()] * 30, timeout=3600)
+        caches["throttle"].set(key, [time.time()] * 30, timeout=3600)
         response = client.post(
             API,
             data=json.dumps({"game_id": game.technical_id}),
@@ -452,7 +460,7 @@ def test_valid_guest_identity_throttles_by_subject() -> None:
             HTTP_X_CSRFTOKEN=csrf,
         )
     finally:
-        cache.delete(key)
+        caches["throttle"].delete(key)
     assert response.status_code == 429
 
 
@@ -461,10 +469,10 @@ def test_valid_guest_identity_throttles_by_subject() -> None:
 def test_garbage_guest_cookie_falls_back_to_ip_throttle() -> None:
     game = _game(technical_id="ip_bucket_game")
     client, csrf = _client()
-    key = "throttle_sessions_ip:127.0.0.1"
+    key = "throttle_sessions_nosubject:127.0.0.1"
     client.cookies[COOKIE_NAME] = "garbage-token"
     try:
-        cache.set(key, [time.time()] * 30, timeout=3600)
+        caches["throttle"].set(key, [time.time()] * 30, timeout=3600)
         response = client.post(
             API,
             data=json.dumps({"game_id": game.technical_id}),
@@ -472,7 +480,7 @@ def test_garbage_guest_cookie_falls_back_to_ip_throttle() -> None:
             HTTP_X_CSRFTOKEN=csrf,
         )
     finally:
-        cache.delete(key)
+        caches["throttle"].delete(key)
     assert response.status_code == 429
 
 
@@ -624,3 +632,186 @@ def test_concurrent_heartbeat_credits_once() -> None:
     assert _run_parallel([worker, worker]) == ["ok", "ok"]
     session = GameSession.objects.get(pk=session_pk)
     assert session.credited_ms == 10_000
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_heartbeat_http_endpoint_requires_csrf_and_returns_204() -> None:
+    game = _game(technical_id="hb_http_game")
+    client, csrf = _client()
+    result = _create(client, csrf, game)
+    _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    url = f"{API}/{result['session_id']}/heartbeat"
+    without_csrf = client.post(url)
+    assert without_csrf.status_code == 403
+    accepted = client.post(url, HTTP_X_CSRFTOKEN=csrf)
+    assert accepted.status_code == 204
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_heartbeat_throttle_is_per_session_with_structured_error() -> None:
+    game = _game(technical_id="hb_throttle_game")
+    client, csrf = _client()
+    first = _create(client, csrf, game)
+    _activate(client, csrf, str(first["session_id"]), str(first["ticket"]))
+    identity = AnonymousIdentity.objects.latest("created_at")
+    key = f"throttle_heartbeat_anon:{identity.id}:{first['session_id']}"
+    try:
+        caches["throttle"].set(key, [time.time()] * 3, timeout=60)
+        response = client.post(f"{API}/{first['session_id']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+    finally:
+        caches["throttle"].delete(key)
+    assert response.status_code == 429
+    assert response.json() == {"code": "E_RATE_LIMIT", "message": "Too many requests"}
+    assert "Retry-After" in response.headers
+
+    second = _create(client, csrf, game)
+    _activate(client, csrf, str(second["session_id"]), str(second["ticket"]))
+    other = client.post(f"{API}/{second['session_id']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+    assert other.status_code == 204
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_guest_ip_secondary_cap_applies_across_identities() -> None:
+    game = _game(technical_id="ip_cap_game")
+    first_client, first_csrf = _client()
+    _create(first_client, first_csrf, game)
+    second_client, second_csrf = _client()
+    _create(second_client, second_csrf, game)
+    ip_key = "throttle_sessions_ip:127.0.0.1"
+    try:
+        caches["throttle"].set(ip_key, [time.time()] * 600, timeout=3600)
+        for client, csrf in ((first_client, first_csrf), (second_client, second_csrf)):
+            response = client.post(
+                API,
+                data=json.dumps({"game_id": game.technical_id}),
+                content_type="application/json",
+                HTTP_X_CSRFTOKEN=csrf,
+            )
+            assert response.status_code == 429
+            assert response.json()["code"] == "E_RATE_LIMIT"
+    finally:
+        caches["throttle"].delete(ip_key)
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_authenticated_user_is_exempt_from_guest_ip_cap() -> None:
+    game = _game(technical_id="user_ip_cap_game")
+    user = User.objects.create_user(login="bob", password="correct horse battery staple")
+    client, csrf = _client(user)
+    ip_key = "throttle_sessions_ip:127.0.0.1"
+    try:
+        caches["throttle"].set(ip_key, [time.time()] * 600, timeout=3600)
+        result = _create(client, csrf, game)
+    finally:
+        caches["throttle"].delete(ip_key)
+    assert GameSession.objects.filter(pk=result["session_id"]).exists()
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_heartbeat_max_duration_boundary_is_inclusive() -> None:
+    game = _game(technical_id="max_duration_boundary_game")
+    client, csrf = _client()
+    result = _create(client, csrf, game)
+    _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    now = timezone.now()
+    GameSession.objects.filter(pk=result["session_id"]).update(
+        activated_at=now - timedelta(seconds=1800),
+        last_heartbeat_at=now - timedelta(seconds=10),
+    )
+    token = client.cookies[COOKIE_NAME].value
+    heartbeat(_service_request(token), UUID(str(result["session_id"])), now=now)
+    session = GameSession.objects.get(pk=result["session_id"])
+    assert session.state == GameSession.STATE_ACTIVE
+    assert session.credited_ms == 10_000
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_second_activation_after_expiry_is_gone() -> None:
+    game = _game(technical_id="repeat_expired_game")
+    client, csrf = _client()
+    result = _create(client, csrf, game)
+    GameSession.objects.filter(pk=result["session_id"]).update(
+        created_at=timezone.now() - timedelta(seconds=301)
+    )
+    first = _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    assert first.status_code == 410
+    second = _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    assert second.status_code == 410
+    assert second.json()["code"] == "E_SESSION_EXPIRED"
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_game_with_sessions_is_protected_from_delete() -> None:
+    game = _game(technical_id="protect_game")
+    client, csrf = _client()
+    _create(client, csrf, game)
+    with pytest.raises(ProtectedError):
+        game.delete()
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_throttle_fails_open_when_backend_is_unavailable() -> None:
+    game = _game(technical_id="throttle_down_game")
+    client, csrf = _client()
+    with patch.object(
+        throttling.ThrottleCacheMixin,
+        "cache",
+        new_callable=PropertyMock,
+        side_effect=RedisError("throttle backend down"),
+    ):
+        result = _create(client, csrf, game)
+    assert GameSession.objects.filter(pk=result["session_id"]).exists()
+
+
+def test_ipv6_is_aggregated_by_64_prefix() -> None:
+    first = RequestFactory().get("/", REMOTE_ADDR="2001:db8:0:1::1")
+    second = RequestFactory().get("/", REMOTE_ADDR="2001:db8:0:1::2")
+    other = RequestFactory().get("/", REMOTE_ADDR="2001:db8:0:2::1")
+    assert throttling._client_ip(first) == throttling._client_ip(second)
+    assert throttling._client_ip(first) != throttling._client_ip(other)
+
+
+def test_ipv4_mapped_address_uses_ipv4_bucket() -> None:
+    mapped = RequestFactory().get("/", REMOTE_ADDR="::ffff:203.0.113.7")
+    plain = RequestFactory().get("/", REMOTE_ADDR="203.0.113.7")
+    assert throttling._client_ip(mapped) == throttling._client_ip(plain)
+
+
+def test_guest_fallback_and_ip_throttle_use_different_keys() -> None:
+    request = RequestFactory().post("/", REMOTE_ADDR="203.0.113.7")
+    request.user = AnonymousUser()
+    assert throttling._subject_ident(request) == "nosubject:203.0.113.7"
+    ip_throttle = throttling.GuestIpRateThrottle()
+    assert ip_throttle.get_cache_key(request, view=None) == "throttle_sessions_ip:203.0.113.7"
+
+
+def test_rate_limits_match_appendix_e() -> None:
+    from django.conf import settings
+
+    rates = settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]
+    assert rates["sessions"] == "30/hour"
+    assert rates["sessions_ip"] == "600/hour"
+    assert rates["heartbeat"] == "3/min"
+
+
+def test_client_ip_middleware_trusts_only_proxy_networks() -> None:
+    from apps.core.middleware import ClientIPMiddleware
+
+    middleware = ClientIPMiddleware(lambda request: HttpResponse())
+    trusted = RequestFactory().get(
+        "/", REMOTE_ADDR="172.18.0.6", HTTP_X_FORWARDED_FOR="203.0.113.5"
+    )
+    middleware(trusted)
+    assert trusted.META["REMOTE_ADDR"] == "203.0.113.5"
+
+    untrusted = RequestFactory().get("/", REMOTE_ADDR="8.8.8.8", HTTP_X_FORWARDED_FOR="203.0.113.5")
+    middleware(untrusted)
+    assert untrusted.META["REMOTE_ADDR"] == "8.8.8.8"

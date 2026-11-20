@@ -10,8 +10,14 @@ from rest_framework.views import APIView  # type: ignore[import-untyped]
 from apps.gameplay.api.serializers import (
     SessionActivateSerializer,
     SessionCreateSerializer,
+    SessionResultSerializer,
 )
-from apps.gameplay.api.throttling import SubjectScopedRateThrottle
+from apps.gameplay.api.throttling import (
+    GuestIpRateThrottle,
+    SessionScopedRateThrottle,
+    SubjectScopedRateThrottle,
+)
+from apps.gameplay.services.results import submit_result
 from apps.gameplay.services.sessions import (
     SessionError,
     activate_session,
@@ -48,7 +54,7 @@ def _invalid_request() -> SessionError:
 class SessionCreateView(APIView):
     authentication_classes = [CsrfEnforcedSessionAuthentication]
     permission_classes = [AllowAny]
-    throttle_classes = [SubjectScopedRateThrottle]
+    throttle_classes = [SubjectScopedRateThrottle, GuestIpRateThrottle]
     throttle_scope = "sessions"
 
     def post(self, request):
@@ -97,7 +103,7 @@ class SessionActivateView(APIView):
 class SessionHeartbeatView(APIView):
     authentication_classes = [CsrfEnforcedSessionAuthentication]
     permission_classes = [AllowAny]
-    throttle_classes = [SubjectScopedRateThrottle]
+    throttle_classes = [SessionScopedRateThrottle]
     throttle_scope = "heartbeat"
 
     def post(self, request, session_id: UUID):
@@ -106,3 +112,36 @@ class SessionHeartbeatView(APIView):
         except SessionError as exc:
             return _error(exc)
         return Response(status=204)
+
+
+MAX_RESULT_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024
+
+
+class SessionResultView(APIView):
+    authentication_classes = [CsrfEnforcedSessionAuthentication]
+    permission_classes = [AllowAny]
+    throttle_classes = [SubjectScopedRateThrottle]
+    throttle_scope = "results"
+
+    def post(self, request, session_id: UUID):
+        content_length = int(request.META.get("CONTENT_LENGTH") or 0)
+        if content_length > MAX_RESULT_BODY_BYTES:
+            return _error(SessionError("E_PAYLOAD_TOO_LARGE", "Payload is too large", 413))
+        serializer = SessionResultSerializer(data=request.data)
+        if not serializer.is_valid():
+            return _error(_invalid_request())
+        idempotency_key = request.headers.get("Idempotency-Key", "")
+        if not idempotency_key:
+            return _error(_invalid_request())
+        try:
+            response = submit_result(
+                request,
+                session_id,
+                idempotency_key=idempotency_key,
+                value=serializer.validated_data["value"],
+                duration_ms=serializer.validated_data["durationMs"],
+                seed=serializer.validated_data.get("seed"),
+            )
+        except SessionError as exc:
+            return _error(exc)
+        return Response(response)
