@@ -5,6 +5,7 @@ from django.urls import path
 from apps.gameplay.api.storage_views import GameStorageView
 from apps.gameplay.api.views import (
     SessionActivateView,
+    SessionCloseView,
     SessionCreateView,
     SessionHeartbeatView,
     SessionResultView,
@@ -26,6 +27,11 @@ urlpatterns = [
         "sessions/<uuid:session_id>/result",
         SessionResultView.as_view(),
         name="session-result",
+    ),
+    path(
+        "sessions/<uuid:session_id>/close",
+        SessionCloseView.as_view(),
+        name="session-close",
     ),
     path(
         "games/<str:game_id>/storage",

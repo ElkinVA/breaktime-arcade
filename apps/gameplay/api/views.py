@@ -21,6 +21,7 @@ from apps.gameplay.services.results import submit_result
 from apps.gameplay.services.sessions import (
     SessionError,
     activate_session,
+    close_session,
     create_session,
     heartbeat,
 )
@@ -115,6 +116,20 @@ class SessionHeartbeatView(APIView):
 
 
 MAX_RESULT_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024
+
+
+class SessionCloseView(APIView):
+    authentication_classes = [CsrfEnforcedSessionAuthentication]
+    permission_classes = [AllowAny]
+    throttle_classes = [SubjectScopedRateThrottle]
+    throttle_scope = "sessions"
+
+    def post(self, request, session_id: UUID):
+        try:
+            close_session(request, session_id)
+        except SessionError as exc:
+            return _error(exc)
+        return Response(status=204)
 
 
 class SessionResultView(APIView):

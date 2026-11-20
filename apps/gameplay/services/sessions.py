@@ -268,8 +268,16 @@ def heartbeat(
         )
         idle = (current - last).total_seconds() > IDLE_TIMEOUT_SECONDS
         if max_duration or idle:
+            from apps.gameplay.services.popularity import credit_session
+
             session.state = GameSession.STATE_EXPIRED
             session.save(update_fields=["state", "updated_at"])
+            credit_session(
+                session,
+                duration_ms=session.credited_ms,
+                completed=False,
+                now=current,
+            )
             expired = True
         else:
             delta_ms = int(
@@ -292,6 +300,35 @@ def heartbeat(
 
     if expired:
         raise SessionError("E_SESSION_EXPIRED", "Session is expired", 410)
+
+
+def close_session(
+    request: HttpRequest,
+    session_id: UUID,
+    *,
+    now: datetime | None = None,
+) -> None:
+    """§2.23: finish a session without a result (idempotent 204)."""
+    current = _now(now)
+    with transaction.atomic():
+        session, _nickname = _load_owned_session(request, session_id, lock=True)
+        if session.state in {
+            GameSession.STATE_FINISHED,
+            GameSession.STATE_EXPIRED,
+            GameSession.STATE_ABORTED,
+        }:
+            return
+        if session.state == GameSession.STATE_ACTIVE:
+            from apps.gameplay.services.popularity import credit_session
+
+            credit_session(
+                session,
+                duration_ms=session.credited_ms,
+                completed=False,
+                now=current,
+            )
+        session.state = GameSession.STATE_ABORTED
+        session.save(update_fields=["state", "updated_at"])
 
 
 def _credit_playtime(user_id: UUID, game_id: UUID, delta_ms: int) -> None:

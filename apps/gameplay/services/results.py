@@ -217,6 +217,16 @@ def submit_result(
         session.state = GameSession.STATE_FINISHED
         session.finished_at = current
         session.save(update_fields=["state", "finished_at", "updated_at"])
+
+        from apps.gameplay.services.popularity import credit_session
+
+        # §2.8 counts server duration; use credited_ms, not the client value.
+        credit_session(
+            session,
+            duration_ms=session.credited_ms,
+            completed=True,
+            now=current,
+        )
         return response
 
 
