@@ -406,7 +406,8 @@ App F и решениями владельца.
 
 ```text
 Branch: main
-HEAD: 1a0791b (docs: popularity and close records)
+HEAD: f43ab9d (docs: sync App F git snapshot)
+Origin: git@github.com:ElkinVA/breaktime-arcade.git (private, SSH)
 App F server slices: 10907fd, 57fda8e, 3214abf, f319e18, 9b704d5
 APPF-SESSION-001: product c935237, records 16946f6
 Checkpoint: 214af0d, tag checkpoint-2026-11-20-pre-autonomy
