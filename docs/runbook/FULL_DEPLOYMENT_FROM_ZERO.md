@@ -146,7 +146,7 @@ make check        # ruff + mypy + pytest
 ```
 
 Текущий ожидаемый baseline — см. `docs/handoff/NOW.md` (на 2026-11-20:
-297 passed, 2 skipped, 1 warning; ruff/mypy зелёные). Если числа
+308 passed, 2 skipped, 1 warning; ruff/mypy зелёные). Если числа
 отличаются — сначала смотреть `NOW.md`/`PROJECT_STATUS.md`, затем
 `git log`.
 
@@ -240,7 +240,7 @@ make ps
 
 1. Клонировать `main` и убедиться, что рабочее дерево чистое:
    `git status`, `git log --oneline -3`.
-2. Пройти разделы 1–4, получить `297 passed, 2 skipped` в `make check`.
+2. Пройти разделы 1–4, получить `308 passed, 2 skipped` в `make check`.
 3. Прочитать `docs/handoff/NOW.md`, затем `PROJECT_STATUS.md` и
    `BACKLOG.md`; полные реестры — по необходимости.
 4. Не копировать `.env`, `certs/`, `creds/`, `var/backups/` из чата или

@@ -3,7 +3,7 @@
 **Дата:** 2026-11-20
 **Текущий пакет:** App F server slices: SESSION-002, RESULT-001,
 LEADERBOARD-001, STORAGE-001, PLAYTIME-001, RATINGS-001, POPULARITY-001;
-ZIP pipeline: BA-ZIP-PREFLIGHT-001
+ZIP pipeline: BA-ZIP-PREFLIGHT-001, BA-ZIP-EXTRACT-001
 **Статус:** SESSION-001 **ACCEPTED**; остальные срезы и ZIP preflight —
 **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**, independent review
 (code-reviewer/security-auditor, deepseek-v4-pro, text-only). ZIP preflight:
@@ -22,16 +22,21 @@ TTL гостя, активная сессия + 60/min). Throttle — Прило
 ZIP pipeline: **BA-ZIP-PREFLIGHT-001** — metadata-only `preflight_zip`
 (25/100/20 МБ, 2000 файлов, 100:1, пути/типы/коллизии/расширения,
 NFKC/symlink/encryption/forged sizes, SHA-256, diagnostics) без
-распаковки; 16 tests. Следующий независимый пакет —
-**BA-ZIP-EXTRACT-001** (sandbox: CPU/RAM/time/disk/network, потоковые
-caps, CRC, отказ symlink, повторная валидация путей).
+распаковки; 16 tests. Выполнен **BA-ZIP-EXTRACT-001** — потоковая
+safe-extraction: повторный preflight,
+64 КиБ чанки, независимый byte count, лимиты 20/100 МБ, CRC, канонические
+пути, prefix-конфликты, `O_EXCL|O_NOFOLLOW`, атомарный rename, cleanup;
+11 tests. **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; security-review —
+**accept** (MINOR-1…6/A/B исправлены; R-035). OS-level
+CPU/RAM/time/disk/network sandbox — **BA-ZIP-WORKER-001**.
 
 ## Следующий шаг
 
-1. BA-ZIP-EXTRACT-001 — изолированная распаковка (не зависит от
-   SDK/ENV/GAME); затем manifest/catalog/locales — после BA-GAME-2.2.
-   SDK/iframe/host protocol — после утверждения BA-SDK-1.1 v1.1.0 и
-   BA-GAME-2.2; EventLog/verifier — после схем сообщений.
+1. BA-ZIP-WORKER-001 — OS-level sandbox для extraction worker
+   (CPU/RAM/time/disk/network, отмена, аудит); затем manifest/catalog/
+   locales — после BA-GAME-2.2. SDK/iframe/host protocol — после
+   утверждения BA-SDK-1.1 v1.1.0 и BA-GAME-2.2; EventLog/verifier —
+   после схем сообщений.
 2. Серверные API-срезы App F (sessions/result/leaderboard/storage,
    playtime, ratings) готовы к приёмке владельцем.
 3. Ожидают владельца: утверждение BA-SDK-1.1/BA-ENV-1.1 v1.1.0, выбор
@@ -66,7 +71,8 @@ pytest tests/integration/test_game_storage.py  -> 12 passed
 pytest tests/integration/test_game_ratings.py  -> 10 passed
 pytest tests/integration/test_game_popularity.py -> 8 passed
 pytest tests/unit/test_zip_preflight.py -> 16 passed
-pytest (full)              -> 297 passed, 2 skipped, 1 warning
+pytest tests/unit/test_zip_extract.py -> 11 passed
+pytest (full)              -> 308 passed, 2 skipped, 1 warning
 ruff check apps config tests -> All checks passed
 ruff format --check        -> 344 files already formatted
 mypy                       -> Success: no issues found in 320 source files

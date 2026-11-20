@@ -225,6 +225,18 @@ BA-SDK-1.1/BA-ENV-1.1/BA-GAME-2.2; изолированная распаковк
 следующий пакет BA-ZIP-EXTRACT-001. R-033 фиксирует границу metadata-only.
 Отчёт — `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`.
 
+## 1.11. ZIP pipeline: безопасная распаковка — BA-ZIP-EXTRACT-001
+
+**BA-ZIP-EXTRACT-001** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**.
+`apps/pipeline/services/unpack.py`: повторный preflight, потоковая
+распаковка чанками 64 КиБ, независимый счётчик фактических байт, лимиты
+20 МБ/файл и 100 МБ/итог, CRC, канонические пути, запрет file-vs-dir и
+prefix-конфликтов, `O_EXCL|O_NOFOLLOW`, атомарный rename, очистка staging.
+11 unit tests; full suite — 308 passed, 2 skipped; ruff/mypy зелёные.
+CPU/RAM/time/disk/network-изоляция worker — отдельный срез
+BA-ZIP-WORKER-001; сервис даёт byte caps и cooperative deadline.
+Отчёт — `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`.
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -262,6 +274,7 @@ BA-SDK-1.1/BA-ENV-1.1/BA-GAME-2.2; изолированная распаковк
 | APPF-RATINGS-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Оценки/порог/лимиты/агрегат; 10 tests; review accept; антифрод owner-gap |
 | APPF-POPULARITY-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Play credit/daily stats/close; 8 tests; review accept; R-032 owner-gap |
 | BA-ZIP-PREFLIGHT-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Metadata-only ZIP preflight; 16 tests; full 297/2 skipped; review accept; R-033 extraction sandbox — следующий пакет |
+| BA-ZIP-EXTRACT-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Streaming safe extraction; 11 tests; full 308/2 skipped; security review accept; worker isolation — BA-ZIP-WORKER-001 |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
 Статусы `COMPLETED`, `ACCEPTED`, `PARTIAL` и `NOT_ACCEPTED` не
@@ -316,9 +329,9 @@ BA-SDK-1.1/BA-ENV-1.1/BA-GAME-2.2; изолированная распаковк
 - App F client/runtime: postMessage, origin/source, sessionId/requestId
   runtime, states, SDK injection, EventLog/verifier и replay не
   реализованы. Наличие серверных API не является сквозной системой.
-- ZIP pipeline: preflight реализован; изолированная распаковка, manifest/
-  catalog/locales, SDK injection, runtime bundle и публикация — не
-  реализованы.
+- ZIP pipeline: preflight и потоковая safe-extraction реализованы; OS-level
+  sandbox worker, manifest/catalog/locales, SDK injection, runtime bundle и
+  публикация — не реализованы.
 - Аккаунты §2.10: утверждённые тексты/версии Terms и Privacy, страницы
   `/legal/terms/` и `/legal/privacy/`; история игр, личные рекорды и места;
   обработка bounce/недоставляемых адресов; сквозная проверка удаления

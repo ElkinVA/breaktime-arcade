@@ -368,6 +368,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Review | code-reviewer — **accept**; security-auditor — **ACCEPT** после исправления M-1/M-2/m-1/m-3/m-6; остаток O-1…O-5/m-4…m-7 — R-034 (non-blocking) |
 | Источник | `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md` |
 
+## BA-ZIP-EXTRACT-001 — безопасная распаковка ZIP (техническая работа)
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая реализация §2.14.2; не аудит этапа |
+| Результат | Повторный preflight; streaming 64 КиБ; независимый byte count; лимиты 20/100 МБ, 2000 файлов; CRC; канонические пути; prefix-конфликты; O_EXCL/O_NOFOLLOW; atomic rename; cleanup |
+| Проверки | 11 unit tests (valid/hashes, limits, CRC, prefix, deep path/dirs, mutable data, destination exists, deadline/cleanup, symlink preflight); full 308/2 skipped; ruff/mypy |
+| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Review | security-auditor — **ACCEPT** после MINOR-1…6/A/B; остаток durability/error taxonomy — R-035 |
+| Источник | `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

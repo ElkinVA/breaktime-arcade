@@ -123,8 +123,11 @@
   runtime/SDK/EventLog отсутствует. `BA-APPF-001` — подготовка решений;
   `BA-APPF-002` — **NOT_STARTED**.
 - BA-ZIP-PREFLIGHT-001 — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**:
-  metadata-only проверка ZIP; extraction sandbox — следующий пакет
-  BA-ZIP-EXTRACT-001.
+  metadata-only проверка ZIP.
+- BA-ZIP-EXTRACT-001 — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**:
+  потоковая safe-extraction (byte caps, CRC, канонические пути, atomic
+  rename); security review accept; OS-level worker sandbox —
+  BA-ZIP-WORKER-001.
 - Прохождение тестов не является приёмкой; отчёт исполнителя не является
   результатом независимого аудита.
 - Staging не затрагивать без отдельного разрешения. В текущей зоне

@@ -739,6 +739,22 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   BA-SDK-1.1/BA-ENV-1.1/BA-GAME-2.2.
 - **Отчёт:** `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`.
 
+### BA-ZIP-EXTRACT-001 — безопасная потоковая распаковка ZIP
+
+- **ID:** BA-ZIP-EXTRACT-001.
+- **Результат:** `apps/pipeline/services/unpack.py` (`extract_zip`),
+  11 unit tests. Повторный preflight; чанки 64 КиБ; независимый счётчик
+  фактических байт; лимиты 20 МБ/файл, 100 МБ/итог, 2000 файлов; CRC;
+  канонические пути; запрет symlink/спецфайлов; file-vs-dir и prefix-
+  конфликты; `O_EXCL|O_NOFOLLOW`; staging 0700; атомарный rename;
+  очистка при ошибке. Содержимое не исполняется.
+- **Проверки:** full suite — 308 passed, 2 skipped; ruff/mypy — зелёные;
+  независимый security-review — **accept** (MINOR-1…6, A/B и nit
+  исправлены; R-035 — durability/error taxonomy).
+- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; OS-level
+  CPU/RAM/time/disk/network sandbox — BA-ZIP-WORKER-001.
+- **Отчёт:** `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,
@@ -765,6 +781,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/BA-CATALOG-005_REPORT.md`;
 - `docs/foundation/APPF-SESSION-001_REPORT.md`;
 - `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`;
+- `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`;
 - `tests/integration/test_catalog_public.py`;
 - `tests/integration/test_game_sessions.py`;
 - `reports/BA_AUDIT_20261118_162920.zip` (исторический generated-отчёт).
