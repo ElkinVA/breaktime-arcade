@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from django.urls import path
 
+from apps.gameplay.api.storage_views import GameStorageView
 from apps.gameplay.api.views import (
     SessionActivateView,
     SessionCreateView,
@@ -25,5 +26,10 @@ urlpatterns = [
         "sessions/<uuid:session_id>/result",
         SessionResultView.as_view(),
         name="session-result",
+    ),
+    path(
+        "games/<str:game_id>/storage",
+        GameStorageView.as_view(),
+        name="game-storage",
     ),
 ]

@@ -25,6 +25,8 @@ from rest_framework.throttling import (  # type: ignore[import-untyped]
 )
 
 from apps.accounts.services.anonymous import get_anonymous_identity
+from apps.catalog.models import Game
+from apps.gameplay.models import GameSession
 
 logger = logging.getLogger(__name__)
 
@@ -117,3 +119,38 @@ class SessionScopedRateThrottle(ThrottleCacheMixin, ResilientThrottleMixin, Simp
         if session_id is None:
             return None
         return f"throttle_heartbeat_{_subject_ident(request)}:{session_id}"
+
+
+class StorageSessionRateThrottle(ThrottleCacheMixin, ResilientThrottleMixin, SimpleRateThrottle):
+    """Storage bucket: 60/min per active game session (Приложение E)."""
+
+    scope = "storage_session"
+
+    def get_cache_key(self, request, view):
+        game_id = view.kwargs.get("game_id")
+        if game_id is None:
+            return None
+        game = Game.objects.filter(technical_id=game_id, status=Game.STATUS_PUBLISHED).first()
+        if game is None:
+            return None
+        user = getattr(request, "user", None)
+        if user is not None and user.is_authenticated:
+            session = GameSession.objects.filter(
+                game=game,
+                subject_type=GameSession.SUBJECT_USER,
+                subject_id=user.id,
+                state=GameSession.STATE_ACTIVE,
+            ).first()
+        else:
+            identity = get_anonymous_identity(request)
+            if identity is None:
+                return None
+            session = GameSession.objects.filter(
+                game=game,
+                subject_type=GameSession.SUBJECT_ANON,
+                subject_id=identity.id,
+                state=GameSession.STATE_ACTIVE,
+            ).first()
+        if session is None:
+            return None
+        return f"throttle_storage_session:{session.id}"

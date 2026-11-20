@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from rest_framework.exceptions import Throttled  # type: ignore[import-untyped]
+from rest_framework.exceptions import (  # type: ignore[import-untyped]
+    ParseError,
+    Throttled,
+)
 from rest_framework.views import exception_handler as drf_exception_handler  # type: ignore[import-untyped]
 
 
@@ -17,4 +20,6 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Any:
     response = drf_exception_handler(exc, context)
     if response is not None and isinstance(exc, Throttled):
         response.data = {"code": "E_RATE_LIMIT", "message": "Too many requests"}
+    elif response is not None and isinstance(exc, ParseError):
+        response.data = {"code": "E_INVALID_REQUEST", "message": "Invalid request"}
     return response
