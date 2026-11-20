@@ -1,6 +1,6 @@
 # TASK_HISTORY — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-20 (BA-AUTONOMY-003).  
+**Дата актуализации:** 2026-11-20 (APPF-SESSION-001).  
 Хронология подтверждённых работ и аудитов. Запись не является приёмкой.
 Точные даты ранних работ в постоянных файлах не зафиксированы; ниже указано
 «дата не зафиксирована», а не выдуманная дата. Статусы: `COMPLETED`,
@@ -617,8 +617,32 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   остаточный R-027 принят; приёмка владельцем pending.
 - **Отчёт:** `docs/foundation/BA-AUTONOMY-003_REPORT.md`;
   план — `docs/tasks/BA-AUTONOMY-003_PLAN.md`.
-- **Остаток/зависимости:** приёмка владельцем; следующий срез —
-  `APPF-SESSION-001` (GameSession/LaunchTicket/API §2.12).
+- **Остаток/зависимости:** приёмка владельцем.
+
+### APPF-SESSION-001 — серверный session/ticket срез App F
+
+- **ID:** APPF-SESSION-001.
+- **Назначение:** `GameSession`, одноразовый launch ticket, активация и
+  heartbeat по BA-PLAT-4.2 §2.12.1–2.12.4 / §2.23 без SDK/ENV/BA-GAME.
+- **Результат:** модель `GameSession` + миграции 0001/0002; сервисы
+  `create_session`/`activate_session`/`heartbeat`; `POST /api/v1/sessions`,
+  `/sessions/{id}/activate`, `/sessions/{id}/heartbeat`; CSRF для
+  анонимных; throttle по живой guest-identity (IP fallback); лимит ≤3
+  активных под advisory-lock при создании и активации; 24 integration
+  tests, включая 3 конкурентных.
+- **Дополнительно:** исправлен обход лимита активных через активацию и
+  дефект миграции свежей БД (`catalog.0001` citext без зависимости от
+  `core.0001_extensions`; добавлена только graph-зависимость).
+- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**.
+- **Review:** `code-reviewer` и `security-auditor` (deepseek-v4-pro,
+  text-only) — **accept** (2026-11-20), после раунда исправлений
+  (throttle, конкурентные тесты, None-guard).
+- **Дата:** 2026-11-20.
+- **Отчёт:** `docs/foundation/APPF-SESSION-001_REPORT.md`; план —
+  `docs/tasks/APPF-SESSION-001_PLAN.md`.
+- **Остаток/зависимости:** приёмка владельцем; result/leaderboard/storage,
+  SDK/iframe, GamePlaytime, preview/autotest и ZIP pipeline вне среза;
+  DB-001, BA-SDK-1.1/BA-ENV-1.1, BA-GAME-2.2 остаются.
 
 ## 4. Источники и пробелы
 
@@ -644,7 +668,9 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/BA-CATALOG-003_REPORT.md`;
 - `docs/foundation/BA-CATALOG-004_REPORT.md`;
 - `docs/foundation/BA-CATALOG-005_REPORT.md`;
+- `docs/foundation/APPF-SESSION-001_REPORT.md`;
 - `tests/integration/test_catalog_public.py`;
+- `tests/integration/test_game_sessions.py`;
 - `reports/BA_AUDIT_20261118_162920.zip` (исторический generated-отчёт).
 - **Не найдены:** отдельные первичные отчёты BA-FIX-001 (i18n),
   BA-FIX-002, BA-FIX-003, BA-AUDIT-002, BA-AUDIT-003 и BA-STAGE-1.1;

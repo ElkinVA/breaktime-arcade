@@ -265,6 +265,19 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Ограничения | R-026 (Pro leading-only), R-027 (guard heuristic), R-028 (ai-dev registration), R-029 (context drift) |
 | Источник | `TASK_HISTORY.md`, `docs/tasks/BA-AUTONOMY-003_PLAN.md`, `docs/foundation/BA-AUTONOMY-003_REPORT.md` |
 
+## APPF-SESSION-001 — серверный session/ticket срез App F (техническая работа)
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая реализация App F §2.12.1–2.12.4; не независимый аудит этапа |
+| Цель | GameSession, одноразовый launch ticket, активация, heartbeat, CSRF, throttle, лимит ≤3 активных |
+| Результат | Модель + миграции 0001/0002; сервисы; `POST /api/v1/sessions`, `/activate`, `/heartbeat`; 24 integration tests (3 конкурентных); исправлен обход лимита через активацию и дефект миграции свежей БД |
+| Проверки | `pytest` 209 passed, 2 skipped; модуль 24 passed; `make lint` 335; `make types` 317; `makemigrations --check` — no changes; `migrate --plan` — пусто; `./verify_stack.sh` — здоров |
+| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Review | `code-reviewer` + `security-auditor` (deepseek-v4-pro, text-only) — оба **accept** после раунда исправлений (throttle по живой identity, конкурентные тесты, None-guard) |
+| Ограничения | subject без FK до DB-001; [PROP]-контракт context; retention GameSession §2.22; R-030; graph-правка `catalog.0001` — осознанное исключение |
+| Источник | `TASK_HISTORY.md`, `docs/tasks/APPF-SESSION-001_PLAN.md`, `docs/foundation/APPF-SESSION-001_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-20 (BA-AUTONOMY-003).  
+**Дата актуализации:** 2026-11-20 (APPF-SESSION-001).  
 Документ — краткая панель текущего состояния. Нормативные требования
 определяются только утверждёнными ТЗ и решениями владельца; отчёты агентов,
 аудиты и реестры не заменяют приёмку.
@@ -13,8 +13,10 @@
 некритичными замечаниями.
 
 Принятие **Documentation Block 1** (BA-DOC-001 + FIX-01/02/03) не означает
-принятия технического этапа 0, этапа 1 или `BA-STAGE-1.1`. App F не
-реализован и не готов к приёмке; `BA-APPF-002` **не запускалась**.
+принятия технического этапа 0, этапа 1 или `BA-STAGE-1.1`. App F в целом не
+реализован и не готов к приёмке; реализован только серверный session/ticket
+срез **APPF-SESSION-001** (ожидает приёмки владельца); `BA-APPF-002`
+**не запускалась**.
 
 Технические пакеты **BA-I18N-002** и **BA-STAGE-1.2-E2E** выполнены и не
 требуют решения владельца: языковой реестр переживает отказ Redis,
@@ -31,8 +33,8 @@ REVIEW**, а не как приёмка.
 профиль/настройки, экспорт JSON, запрос удаления с окном 7 дней и Celery-
 анонимизация, Argon2id, HIBP-hook и rate limits. Пакет имеет статус
 **PARTIAL**, а не Done: отсутствуют утверждённые юридические тексты/версии,
-история игр и личные рекорды (модели gameplay/leaderboards ещё не
-реализованы), обработка bounce и полный cleanup игровых данных; анонимная
+история игр и личные рекорды (модели GameResult/leaderboards ещё не
+реализованы; есть только GameSession из APPF-SESSION-001), обработка bounce и полный cleanup игровых данных; анонимная
 идентичность подготовлена сервисом, но не подключена к запросам, требующим
 субъекта. 2FA персонала в этот пакет не входила.
 
@@ -125,6 +127,28 @@ Pro возвращает план/вердикт без tool-вызовов. П�
 исторический срез BA-QUALITY-001. Детали —
 `docs/foundation/BA-AUTONOMY-003_REPORT.md`.
 
+## 1.2. App F: серверный session/ticket срез — APPF-SESSION-001
+
+**APPF-SESSION-001** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**;
+независимый text-only review `code-reviewer` и `security-auditor`
+(deepseek-v4-pro) — **accept**.
+
+Реализованы `GameSession`, одноразовый launch ticket, активация и heartbeat
+по §2.12.1–2.12.4: `POST /api/v1/sessions` (201
+`{session_id, ticket, expires_at}`), `/activate` (200 `{context}`),
+`/heartbeat` (204). CSRF обязателен и для анонимных; throttle scopes
+`sessions`/`heartbeat` с ключом по живой guest-identity (IP — fallback);
+лимит «≤3 активных на (субъект, игра)» под advisory-lock и при создании, и
+при активации. Subject хранится как `(subject_type, subject_id)` без FK —
+временное техническое решение до DB-001. 24 integration tests (включая
+3 конкурентных сценария); полный suite — 209 passed, 2 skipped. Детали —
+`docs/foundation/APPF-SESSION-001_REPORT.md`.
+
+Найден и закрыт скрытый дефект: свежая БД не мигрировала
+(`catalog.0001` citext без зависимости от `core.0001_extensions`); добавлена
+только graph-зависимость, schema не менялась. Это осознанное исключение из
+правила «применённые миграции не редактировать».
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -153,6 +177,7 @@ Pro возвращает план/вердикт без tool-вызовов. П�
 | BA-APPF-001 | **COMPLETED**; не принят | Подготовлены 45 проектных решений; 29 Blocker, 17 вопросов владельцу |
 | BA-APPF-002 | **NOT_STARTED** | Не запускалась; не отражать как выполненную |
 | BA-AUTONOMY-003 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Pro text-only plan done; guards; NOW; docs pointers; 185 tests; security review **accept**; owner acceptance pending |
+| APPF-SESSION-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | GameSession/ticket/activate/heartbeat §2.12.1–2.12.4; 24 tests (3 конкурентных); полный suite 209; code/security review **accept** |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
 Статусы `COMPLETED`, `ACCEPTED`, `PARTIAL` и `NOT_ACCEPTED` не
@@ -195,9 +220,10 @@ Pro возвращает план/вердикт без tool-вызовов. П�
 
 ## 4. Что не готово
 
-- App F runtime: `apps/gameplay`, `apps/leaderboards`, `apps/ratings`,
+- App F runtime: серверный session/ticket срез есть (`apps/gameplay`);
+  result/leaderboard/storage, `apps/leaderboards`, `apps/ratings`,
   `sdk/1.1.0/ba-sdk.js`, `static/src/js/host_protocol.js` и
-  `static/src/js/player.js` пусты/0 байт.
+  `static/src/js/player.js` по-прежнему отсутствуют/пусты.
 - SDK 1.1 и BA-ENV-1.1: оригиналы отсутствуют; DRAFT не утверждены.
 - App F: postMessage, origin/source, sessionId/requestId runtime, states,
   idempotency, leaderboard, storage, EventLog/verifier и rate limit не
@@ -214,8 +240,10 @@ Pro возвращает план/вердикт без tool-вызовов. П�
 - Каталог: рейтинг/популярность/голоса, бейдж покрытия, публичный play
   runtime, benchmark/план запроса на объёме. Persisted vector/GIN,
   unaccent/ranking/bulk и M2M жанров/тегов есть.
-- `/api/v1/`, полноценные CRM/2FA/роли, модерация, аналитика, pipeline,
-  production compose/Nginx/monitoring/WAL/PITR/S3.
+- `/api/v1/` реализован только для sessions/activate/heartbeat; result,
+  leaderboard, storage и остальные endpoints отсутствуют. Полноценные
+  CRM/2FA/роли, модерация, аналитика, pipeline, production
+  compose/Nginx/monitoring/WAL/PITR/S3 не готовы.
 - SQL design не реализован в Django-моделях/миграциях; DB-001…DB-008
   требуют исправлений до App F (см. BA-APPF-001).
 
@@ -306,21 +334,18 @@ App F и решениями владельца.
 - Нормативные ТЗ: `technical_specification/ts_site.txt`,
   `technical_specification/ts_game.txt`.
 
-## 9. Git-снимок BA-AUTONOMY-003
+## 9. Git-снимок APPF-SESSION-001
 
 ```text
 Branch: main
-HEAD: cc18dd970185e60e4c0fb262f1de0d9effc020e4 (BA-AUTONOMY-003)
+HEAD: c935237 (feat: App F server session/ticket slice, APPF-SESSION-001)
 Checkpoint: 214af0d, tag checkpoint-2026-11-20-pre-autonomy
-Tag: ba-autonomy-003
+Tag: ba-autonomy-003 (предыдущий пакет)
 ai-dev HEAD: d09a3f1344bf8d45cc019893213e504174c50b6f
 ai-dev tag: ai-dev-autonomy-003
-Status: clean
+Status: финальная фиксация реестров — отдельный docs-коммит
 Remote: отсутствует
 ```
-
-Снимок отражает инфраструктурный коммит; финальная фиксация реестров —
-отдельный docs-коммит. Изменения продукта не выполнялись.
 
 ## 10. Ограничения доказательной базы
 

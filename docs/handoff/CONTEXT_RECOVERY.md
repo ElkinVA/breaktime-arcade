@@ -1,7 +1,7 @@
 # CONTEXT_RECOVERY — Breaktime Arcade
 
 Краткая инструкция для нового сеанса Claude Code после `/compact` или потери истории чата. Не полагаться на память предыдущей сессии, старые отчёты или сообщения исполнителя как на доказательство.  
-**Дата актуализации:** 2026-11-20 (BA-AUTONOMY-003).  
+**Дата актуализации:** 2026-11-20 (APPF-SESSION-001).  
 **Первый документ новой сессии — `NOW.md`; полные реестры — по необходимости.**
 
 **Реестры — рабочий источник проектного контекста, но не нормативная база.**
@@ -394,3 +394,19 @@ DRAFT-документы не являются нормативными и не 
   `technical_specification/`; `ai-dev` — read-only sibling.
 - Следующий продуктовый срез — APPF-SESSION-001 (GameSession/LaunchTicket,
   §2.12.1–2.12.4), без SDK/ENV/BA-GAME.
+
+## 26. APPF-SESSION-001 — серверный session/ticket срез App F
+
+- Реализованы `GameSession`, одноразовый launch ticket, activate/heartbeat
+  по §2.12.1–2.12.4; API `/api/v1/sessions`, `/activate`, `/heartbeat`.
+- CSRF обязателен для анонимных; throttle `sessions`/`heartbeat` с ключом
+  по живой guest-identity, IP — fallback; лимит ≤3 активных под
+  advisory-lock и при создании, и при активации.
+- Subject — `(subject_type, subject_id)` без FK до DB-001; context-поля —
+  [PROP] до BA-SDK-1.1. Результаты/leaderboard/storage/SDK вне среза.
+- Review: `code-reviewer` + `security-auditor` (deepseek-v4-pro, text-only)
+  — **accept**; статус **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**.
+- Найден и исправлен дефект свежих БД: `catalog.0001` citext без
+  зависимости от `core.0001_extensions` (добавлена graph-зависимость).
+- Следующий шаг — приёмка владельца; затем result/leaderboard/storage
+  только после BA-SDK/ENV/BA-GAME и решений по DB-001…DB-008.

@@ -141,6 +141,7 @@ de;q=0, при активном en -> en
 | TECH-CATALOG-003 | BA-CATALOG-003 добавляет query-time FTS (`SearchVector`/`SearchQuery`) и trigram fallback с config языка | `BA-CATALOG-003`; `apps/catalog/services/catalog.py`; 7 tests | **PARTIAL**; persisted vector/GIN/unaccent/ranking не реализованы |
 | TECH-CATALOG-004 | BA-CATALOG-004 заполняет `GameTranslation.search_vector` post_save и backfill-миграцией, использует GIN в поиске | `BA-CATALOG-004`; `apps/catalog/signals.py`; `catalog.0004` | **PARTIAL**; unaccent/ranking/bulk-refresh не реализованы |
 | TECH-CATALOG-005 | BA-CATALOG-005 добавляет `unaccent`, `SearchRank` и bulk-refresh задачи | `BA-CATALOG-005`; `apps/catalog/services/search.py`; `catalog.0005` | **IMPLEMENTED / AWAITING INDEPENDENT REVIEW**; benchmark не выполнен, ratings/play вне пакета |
+| TECH-GAMEPLAY-001 | APPF-SESSION-001 реализует серверный session/ticket срез §2.12.1–2.12.4: GameSession, одноразовый ticket, activate/heartbeat, CSRF для анонимных, throttle по identity, лимит ≤3 активных под advisory-lock | `APPF-SESSION-001`; `apps/gameplay/**`; `tests/integration/test_game_sessions.py` | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; review accept; не приёмка §2.12 и не решение владельца по DB-001/retention/[PROP]-контракту context |
 
 `TECH-HTTP-004` — прежнее групповое обозначение (ранее `OD-HTTP-004`); отдельной технической записи с этим ID больше нет. Ссылка на `TECH-HTTP-004` в защищённом `CONTEXT_RECOVERY.md` относится к группе `TECH-HTTP-004A/B/C`.
 
