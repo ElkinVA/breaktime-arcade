@@ -689,6 +689,25 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; review — accept.
 - **Отчёт:** `docs/foundation/APPF-STORAGE-001_REPORT.md`.
 
+### APPF-PLAYTIME-001 — подтверждённое игровое время
+
+- **ID:** APPF-PLAYTIME-001.
+- **Результат:** `UserGamePlaytime` + зачёт приращения credited_ms в
+  heartbeat только для mode=user; гости/preview/autotest исключены;
+  удаление при анонимизации; 40 session tests.
+- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; review — accept.
+- **Отчёт:** `docs/foundation/APPF-PLAYTIME-001_REPORT.md`.
+
+### APPF-RATINGS-001 — оценки игр
+
+- **ID:** APPF-RATINGS-001.
+- **Результат:** `GameRatingVote`/`GameRatingAggregate`, порог playtime,
+  возраст 1 ч, 1/24 ч, 5/30 дней, 20/сутки, транзакционный агрегат,
+  публичный summary; 10 tests (включая гонки).
+- **Статус:** **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**; review — accept;
+  антифрод §2.9.6 — owner-gap.
+- **Отчёт:** `docs/foundation/APPF-RATINGS-001_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,

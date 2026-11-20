@@ -1,8 +1,8 @@
 # NOW — Breaktime Arcade
 
 **Дата:** 2026-11-20
-**Текущий пакет:** App F server slices: APPF-SESSION-002, RESULT-001,
-LEADERBOARD-001, STORAGE-001
+**Текущий пакет:** App F server slices: SESSION-002, RESULT-001,
+LEADERBOARD-001, STORAGE-001, PLAYTIME-001, RATINGS-001
 **Статус:** SESSION-001 **ACCEPTED**; остальные срезы **IMPLEMENTED /
 AWAITING OWNER ACCEPTANCE**, independent review (code-reviewer/
 security-auditor, deepseek-v4-pro, text-only) — accept.
@@ -20,12 +20,11 @@ TTL гостя, активная сессия + 60/min). Throttle — Прило
 
 1. SDK/iframe/host protocol — после утверждения BA-SDK-1.1 v1.1.0 и
    BA-GAME-2.2; EventLog/verifier — после схем сообщений.
-2. Серверные API-срезы App F (sessions/result/leaderboard/storage) готовы
-   к приёмке владельцем; storage требует активную игровую сессию
-   (семантика §2.22 «через родительскую сессию»).
+2. Серверные API-срезы App F (sessions/result/leaderboard/storage,
+   playtime, ratings) готовы к приёмке владельцем.
 3. Ожидают владельца: утверждение BA-SDK-1.1/BA-ENV-1.1 v1.1.0, выбор
-   BA-GAME-2.2, retention-сроки (включая sliding TTL гостя и очистку
-   anon-storage), challenge (O4), production-настройки.
+   BA-GAME-2.2, retention-сроки, антифрод §2.9.6 (IP/журнал), challenge
+   (O4), production-настройки.
 
 ## Блокеры продукта
 
@@ -52,7 +51,8 @@ pytest tests/integration/test_game_sessions.py -> 37 passed
 pytest tests/integration/test_game_results.py  -> 19 passed
 pytest tests/integration/test_leaderboard_api.py -> 7 passed
 pytest tests/integration/test_game_storage.py  -> 12 passed
-pytest (full)              -> 260 passed, 2 skipped
+pytest tests/integration/test_game_ratings.py  -> 10 passed
+pytest (full)              -> 273 passed, 2 skipped
 make lint                  -> All checks passed; 336 files formatted
 make types                 -> Success: no issues found in 317 source files
 makemigrations --check     -> No changes detected

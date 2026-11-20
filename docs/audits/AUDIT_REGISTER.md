@@ -324,6 +324,28 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Review | code-reviewer/security-auditor — **accept** после устранения blockers; sliding TTL/retention — owner |
 | Источник | `docs/foundation/APPF-STORAGE-001_REPORT.md` |
 
+## APPF-PLAYTIME-001 — подтверждённое игровое время (техническая работа)
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая реализация §2.12.3; не аудит этапа |
+| Результат | `UserGamePlaytime`, зачёт credited_ms только mode=user, удаление при анонимизации, race-safe upsert |
+| Проверки | 40 session tests (включая параллельные heartbeat); full 273/2 skipped; lint/types/migrations |
+| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Review | code-reviewer/security-auditor — **accept** |
+| Источник | `docs/foundation/APPF-PLAYTIME-001_REPORT.md` |
+
+## APPF-RATINGS-001 — оценки игр (техническая работа)
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая реализация §2.9; не аудит этапа |
+| Результат | `GameRatingVote`/`GameRatingAggregate`, порог playtime, возраст, 1/24ч, 5/30д, 20/сутки, транзакционный агрегат, публичный summary |
+| Проверки | 10 tests (включая гонки); full 273/2 skipped; lint/types/migrations |
+| Статус | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** |
+| Review | code-reviewer/security-auditor — **accept**; антифрод §2.9.6 — owner-gap |
+| Источник | `docs/foundation/APPF-RATINGS-001_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

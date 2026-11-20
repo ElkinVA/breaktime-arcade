@@ -180,8 +180,24 @@ read-throttle 120/min. Review accept; 7 tests; отчёт —
 **APPF-STORAGE-001** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**;
 `GET/PUT /api/v1/games/{id}/storage`, 64 КиБ, revision/If-Match, TTL гостя
 90 дней, активная сессия обязательна, DB-008 trigger `pg_column_size`.
-12 tests (включая гонку create); review — blockers устранены; отчёт —
+12 tests (включая гонку create); review — accept; отчёт —
 `docs/foundation/APPF-STORAGE-001_REPORT.md`.
+
+## 1.7. App F: игровое время — APPF-PLAYTIME-001
+
+**APPF-PLAYTIME-001** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**;
+`UserGamePlaytime`, зачёт приращения credited_ms только для `mode=user`
+(гости/preview/autotest исключены), удаление при анонимизации; review
+accept; 40 session tests; отчёт —
+`docs/foundation/APPF-PLAYTIME-001_REPORT.md`.
+
+## 1.8. App F: оценки игр — APPF-RATINGS-001
+
+**APPF-RATINGS-001** — **IMPLEMENTED / AWAITING OWNER ACCEPTANCE**;
+оценки 1–5 после порога playtime, возраст 1 ч, 1/24 ч и 5/30 дней,
+20/сутки, транзакционный агрегат под advisory-lock, публичный summary;
+review accept; 10 tests; антифрод §2.9.6 (IP/журнал) — owner-gap; отчёт —
+`docs/foundation/APPF-RATINGS-001_REPORT.md`.
 
 ## 2. Статусы работ
 
@@ -215,7 +231,9 @@ read-throttle 120/min. Review accept; 7 tests; отчёт —
 | APPF-SESSION-002 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Throttle Прил. E: subject 30/ч + IP 600/ч, heartbeat 3/мин, redis-throttle, реальный IP; блокеры review сняты |
 | APPF-RESULT-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Result API + GameResult + LeaderboardEntry; DB-001/002/003; 19 tests; review |
 | APPF-LEADERBOARD-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Публичный leaderboard + me/best; 7 tests; review accept |
-| APPF-STORAGE-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Storage 64 КиБ/revision/TTL; 12 tests; review blockers fixed |
+| APPF-STORAGE-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Storage 64 КиБ/revision/TTL; 12 tests; review accept |
+| APPF-PLAYTIME-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | UserGamePlaytime mode=user; 40 session tests; review accept |
+| APPF-RATINGS-001 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Оценки/порог/лимиты/агрегат; 10 tests; review accept; антифрод owner-gap |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
 Статусы `COMPLETED`, `ACCEPTED`, `PARTIAL` и `NOT_ACCEPTED` не
