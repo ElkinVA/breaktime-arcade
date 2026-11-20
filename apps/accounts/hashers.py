@@ -1,4 +1,5 @@
 """Argon2id с параметрами §2.10.2."""
+
 from django.contrib.auth.hashers import Argon2PasswordHasher
 
 

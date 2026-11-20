@@ -1,12 +1,22 @@
 """Языковой префикс URL из активных языков БД (§2.6, §2.15)."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 from django.conf import settings
-from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse
 from django.utils import translation
+
+from apps.i18n.services.language_registry import (
+    CACHE_KEY,
+    CACHE_TTL,
+    LanguageRegistryUnavailable,
+    MissingFallbackLanguageError,
+    get_active_language_codes,
+    get_active_language_codes_for_routing,
+    invalidate_language_cache,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -15,23 +25,17 @@ if TYPE_CHECKING:
 
     GetResponse = Callable[[HttpRequest], HttpResponse]
 
-CACHE_KEY = "i18n:active_codes"
-CACHE_TTL = 600
-
-
-def get_active_language_codes() -> list[str]:
-    codes = cache.get(CACHE_KEY)
-    if codes is not None:
-        return codes
-    from apps.i18n.models import Language
-
-    codes = list(
-        Language.objects.filter(is_active=True)
-        .order_by("sort_order", "code")
-        .values_list("code", flat=True)
-    )
-    cache.set(CACHE_KEY, codes, CACHE_TTL)
-    return codes
+__all__ = [
+    "CACHE_KEY",
+    "CACHE_TTL",
+    "LanguageRegistryUnavailable",
+    "MissingFallbackLanguageError",
+    "LanguagePrefixMiddleware",
+    "get_active_language_codes",
+    "get_active_language_codes_for_routing",
+    "get_active_languages",
+    "invalidate_language_cache",
+]
 
 
 def get_active_languages() -> list[Language]:
@@ -48,7 +52,20 @@ class LanguagePrefixMiddleware:
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
         path = request.path_info
-        codes = get_active_language_codes()
+
+        # Health-пробы не должны зависеть от БД языковой конфигурации.
+        if path in {"/healthz", "/readyz"}:
+            return self.get_response(request)
+
+        # Единая проверка: en должен быть активен в БД, а список кодов
+        # доступен. Неожиданные исключения не маскируются под 503.
+        try:
+            codes = get_active_language_codes_for_routing()
+        except LanguageRegistryUnavailable:
+            response = HttpResponse(status=503)
+            response["Vary"] = "Accept-Language"
+            return response
+
         language_code = settings.LANGUAGE_CODE
 
         # Проверяем префикс /<lang>/
@@ -57,13 +74,9 @@ class LanguagePrefixMiddleware:
             if parts and parts[0] in codes:
                 language_code = parts[0]
                 translation.activate(language_code)
-                request.LANGUAGE_CODE = language_code  # type: ignore[attr-defined]
+                request.LANGUAGE_CODE = language_code
 
-        response = self.get_response(request)
-
-        translation.deactivate()
-        return response
-
-
-def invalidate_language_cache() -> None:
-    cache.delete(CACHE_KEY)
+        # Не деактивировать здесь: LocaleMiddleware расположен снаружи и
+        # читает активный язык в process_response для Content-Language.
+        # Каждый следующий запрос LocaleMiddleware активирует язык заново.
+        return self.get_response(request)

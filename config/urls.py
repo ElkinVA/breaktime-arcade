@@ -1,28 +1,30 @@
 """Корневые маршруты с языковыми префиксами (§2.6)."""
+
 from __future__ import annotations
 
 from django.conf import settings
 from django.conf.urls.i18n import i18n_patterns
 from django.conf.urls.static import static
 from django.urls import include, path
-from django.views.generic import RedirectView
 
 from apps.core import health
+from apps.i18n.views import root_redirect
 
 urlpatterns = [
     # Пробы живучести без языкового префикса
     path("healthz", health.healthz, name="healthz"),
     path("readyz", health.readyz, name="readyz"),
-
     # Тема
     path("", include("apps.theme.urls")),
-
     # CRM (без языкового префикса, с защищённым префиксом)
     path("crm/", include("apps.crm.urls", namespace="crm")),
 ]
 
 # Языковые префиксы для публичных страниц
 urlpatterns += i18n_patterns(
+    # Аккаунты и кабинет
+    path("auth/", include("apps.accounts.urls", namespace="accounts")),
+    path("account/", include("apps.accounts.account_urls", namespace="account")),
     # Каталог
     path("", include("apps.catalog.urls", namespace="catalog")),
     prefix_default_language=True,
@@ -30,7 +32,7 @@ urlpatterns += i18n_patterns(
 
 # Редирект корня / по Accept-Language
 urlpatterns += [
-    path("", RedirectView.as_view(url="/en/", permanent=False)),
+    path("", root_redirect, name="root_redirect"),
 ]
 
 if settings.DEBUG:

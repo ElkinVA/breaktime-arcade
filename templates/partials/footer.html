@@ -1,19 +1,12 @@
+{% load ba_i18n %}
 <footer class="bg-surface border-t border-text/10 mt-auto">
     <div class="max-w-7xl mx-auto px-4 py-8">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
                 <h3 class="font-display font-bold mb-4">Breaktime Arcade</h3>
                 <p class="text-muted text-sm">
-                    {% load ba_i18n %}{% ba_t "footer.tagline" %}
+                    {% ba_t "footer.tagline" %}
                 </p>
-            </div>
-            <div>
-                <h4 class="font-semibold mb-2">{% ba_t "footer.legal" %}</h4>
-                <ul class="space-y-1 text-sm">
-                    <li><a href="/{{ current_language_code }}/legal/terms/" class="hover:text-accent">{% ba_t "legal.terms" %}</a></li>
-                    <li><a href="/{{ current_language_code }}/legal/privacy/" class="hover:text-accent">{% ba_t "legal.privacy" %}</a></li>
-                    <li><a href="/{{ current_language_code }}/legal/cookies/" class="hover:text-accent">{% ba_t "legal.cookies" %}</a></li>
-                </ul>
             </div>
             <div>
                 <h4 class="font-semibold mb-2">{% ba_t "footer.contact" %}</h4>

@@ -7,6 +7,43 @@ cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ENV_FILE=".env.staging"
 CREDS_FILE="creds/staging_basic_auth.txt"
 
+LOCK_DIR="$PWD/creds/.locks"
+LOCK_FILE="$LOCK_DIR/staging.lock"
+
+acquire_staging_lock() {
+    command -v flock >/dev/null 2>&1 || {
+        echo "FAIL: flock не найден" >&2
+        return 1
+    }
+    mkdir -p "$LOCK_DIR" || return 1
+    chmod 700 "$LOCK_DIR" || return 1
+
+    # Re-entrant path: fd 9 must point to this exact lock file, and flock
+    # must succeed on the inherited open file description. Never trust an
+    # environment variable or an arbitrary fd as proof of lock ownership.
+    if [ -e "/proc/$$/fd/9" ] && [ "/proc/$$/fd/9" -ef "$LOCK_FILE" ]; then
+        if flock -n 9; then
+            return 0
+        fi
+        echo "ERROR: другая staging-операция уже выполняется" >&2
+        return 75
+    fi
+
+    if ! { exec 9>"$LOCK_FILE"; }; then
+        echo "FAIL: не удалось открыть $LOCK_FILE" >&2
+        return 1
+    fi
+    if ! flock -n 9; then
+        echo "ERROR: другая staging-операция уже выполняется" >&2
+        return 75
+    fi
+    return 0
+}
+
+if ! acquire_staging_lock; then
+    exit 75
+fi
+
 if [ -f "$ENV_FILE" ]; then
     echo "==> $ENV_FILE уже существует — пропускаю"
     exit 0
@@ -19,17 +56,34 @@ rand() {
     openssl rand -base64 64 | tr -d '\n=+/' | cut -c1-"$1"
 }
 
-# htpasswd: openssl passwd -apr1 (MD5-crypt, совместим с nginx)
+# htpasswd: bcrypt через htpasswd -B; пароль передаётся только через stdin.
 BASIC_USER="${STAGING_USER:-staging}"
-BASIC_PASS="$(rand 24)"
-HTPASSWD_HASH="$(openssl passwd -apr1 "$BASIC_PASS")"
-echo "${BASIC_USER}:${BASIC_PASS}" > "$CREDS_FILE"
+command -v htpasswd >/dev/null 2>&1 || {
+    echo "FAIL: htpasswd не найден (нужен пакет apache2-utils)" >&2
+    exit 1
+}
+
+PASS_FILE="$(mktemp)"
+trap 'rm -f "$PASS_FILE"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+chmod 600 "$PASS_FILE"
+rand 40 > "$PASS_FILE"
+
+{
+    printf '%s:' "$BASIC_USER"
+    cat "$PASS_FILE"
+} > "$CREDS_FILE"
 chmod 600 "$CREDS_FILE"
 
-cat > certs/htpasswd <<EOF
-${BASIC_USER}:${HTPASSWD_HASH}
-EOF
+htpasswd -B -C 10 -i -c certs/htpasswd "$BASIC_USER" < "$PASS_FILE"
 chmod 640 certs/htpasswd
+
+if ! htpasswd -v -i certs/htpasswd "$BASIC_USER" < "$PASS_FILE" >/dev/null 2>&1; then
+    echo "FAIL: сохранённый htpasswd не соответствует сгенерированному паролю" >&2
+    exit 1
+fi
 
 POSTGRES_PASSWORD="$(rand 32)"
 SECRET_KEY="$(rand 48)"
@@ -130,8 +184,8 @@ cat <<EOF
     certs/htpasswd            (chmod 640)
     ${CREDS_FILE}   (chmod 600)
 
-==> Basic auth: ${BASIC_USER} / ${BASIC_PASS}
-   (сохранено в ${CREDS_FILE}; не выводить в CI)
+==> Basic auth username: ${BASIC_USER}
+    Пароль сохранён в ${CREDS_FILE} (chmod 600); не выводить.
 
 Следующий шаг:
     ./infra/scripts/staging.sh up

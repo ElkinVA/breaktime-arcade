@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breaktime-arcade.local/schemas/messages/_envelope.json",
+  "title": "BA postMessage envelope",
+  "description": "Общий конверт сообщений BA-SDK 1.1 draft. Внешнее поле сессии — sessionId; внутреннее Python/БД — session_id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source",
+    "protocol",
+    "type",
+    "requestId",
+    "sessionId",
+    "payload"
+  ],
+  "properties": {
+    "source": {
+      "enum": [
+        "ba-sdk",
+        "ba-host"
+      ]
+    },
+    "protocol": {
+      "const": 1
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "sessionId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "payload": {
+      "type": "object"
+    }
+  }
+}

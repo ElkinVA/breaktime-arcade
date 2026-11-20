@@ -1,4 +1,5 @@
 """Служебная страница ядра. Заменяется порталом на блоке 2."""
+
 from __future__ import annotations
 
 from django.http import HttpRequest, JsonResponse

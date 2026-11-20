@@ -1,6 +1,14 @@
 # Профиль разработки dev-lite: пик ≈2.4 ГБ, лимит 3.8 GiB (§2.5).
+# INSTALL_DEV=true включает pytest/ruff/mypy в /opt/venv только для dev-образов;
+# staging/production собирают тот же Dockerfile с default=false.
+x-dev-build: &dev-build
+  build:
+    args:
+      INSTALL_DEV: "true"
+
 services:
   web:
+    <<: *dev-build
     command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
@@ -18,6 +26,7 @@ services:
         limits: { cpus: "1.0", memory: 1024M }
 
   worker:
+    <<: *dev-build
     command: ["celery", "-A", "config", "worker", "-l", "info", "--pool=solo", "--concurrency=1"]
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
@@ -30,6 +39,7 @@ services:
         limits: { cpus: "0.5", memory: 512M }
 
   beat:
+    <<: *dev-build
     profiles: ["manual"]
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
@@ -41,26 +51,32 @@ services:
         limits: { cpus: "0.25", memory: 192M }
 
   db:
+    image: postgres:18@sha256:b9f6b8ff03b62f3cfd9d9ba3fe56226a9991c79d3fb46fd46536263bf02be553
     command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=30", "-c", "work_mem=4MB"]
     deploy:
       resources:
         limits: { cpus: "1.0", memory: 768M }
 
   redis-cache:
+    image: redis:8-alpine@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3
     command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru", "--save", "", "--appendonly", "no"]
     deploy:
       resources:
         limits: { cpus: "0.25", memory: 128M }
 
   redis-broker:
+    image: redis:8-alpine@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3
     command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes"]
     deploy:
       resources:
         limits: { cpus: "0.25", memory: 128M }
 
   nginx:
+    image: nginxinc/nginx-unprivileged:1.29-alpine@sha256:0c79d56aee561a1d81c63f00eee5fb5fe29279560cdc55e91425133104c7fbe6
     ports:
       - "8443:8443"
+    group_add:
+      - "10002"
     volumes:
       - ./infra/nginx/dev.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/nginx/certs:ro
@@ -71,9 +87,17 @@ services:
       resources:
         limits: { cpus: "0.25", memory: 128M }
 
+  # Те же dev-образы, чтобы `make build` не перезаписал ba/app:dev
+  # образом без dev-зависимостей.
+  backup:
+    <<: *dev-build
+
+  restore-check:
+    <<: *dev-build
+
   # Только dev: почтовый sandbox. В staging/production не используется.
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:latest@sha256:aef2aacc11f075ec0fb6874275ee4a421e688e11a96ebb296134d1735c7761ce
     restart: unless-stopped
     networks: [internal, edge]
     ports:

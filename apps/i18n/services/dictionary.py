@@ -1,4 +1,5 @@
 """Сборка словаря интерфейса для шаблонов. Кеш Redis, инвалидация по сигналу."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -14,7 +15,7 @@ CACHE_TTL = 3600
 def get_dictionary(language: Language) -> dict[str, dict[str, str]]:
     """Возвращает {namespace: {key: value}} для опубликованных переводов."""
     key = CACHE_KEY.format(code=language.code)
-    cached = cache.get(key)
+    cached: dict[str, dict[str, str]] | None = cache.get(key)
     if cached is not None:
         return cached
 

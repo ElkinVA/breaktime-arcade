@@ -1,13 +1,13 @@
 """Плюрализация по CLDR через Babel."""
+
 from __future__ import annotations
 
-from babel.plural import to_python
+from babel import Locale
 
 
 def plural_form(count: int, language_code: str) -> str:
     """Возвращает CLDR-форму: one, few, many, other."""
     try:
-        func = to_python(language_code)
-        return func(count)
+        return Locale.parse(language_code).plural_form(count)
     except Exception:
         return "other"

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Create account — Breaktime Arcade{% endblock %}
+{% block content %}
+<section class="max-w-lg mx-auto px-4 py-10">
+    <h1 class="text-3xl font-display font-bold mb-2">Create account</h1>
+    <p class="text-muted mb-6">
+        Login, nickname and password are required. Email is optional and is the
+        only way to recover a password.
+    </p>
+    <form method="post" class="space-y-2">
+        {% csrf_token %}
+        {% include "accounts/_form.html" with form=form %}
+        <p class="text-xs text-muted mb-4">
+            By registering you accept the
+            <a class="text-accent" href="{{ terms_url }}">Terms</a> and
+            <a class="text-accent" href="{{ privacy_url }}">Privacy Policy</a>.
+            Without a confirmed email, password recovery is impossible.
+        </p>
+        <button type="submit" class="btn btn-primary px-6 py-2">Create account</button>
+    </form>
+    <p class="mt-4 text-sm">
+        Already registered?
+        <a class="text-accent" href="{% url 'accounts:login' %}">Log in</a>.
+    </p>
+</section>
+{% endblock %}

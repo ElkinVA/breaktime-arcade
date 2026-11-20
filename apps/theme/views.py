@@ -1,4 +1,5 @@
 """Раздача /theme-<hash>.css с immutable-кешем (§2.7)."""
+
 from __future__ import annotations
 
 from django.http import HttpRequest, HttpResponse, HttpResponseNotFound

@@ -1,3 +1,4 @@
+{% load portal_urls %}
 <div class="relative">
     <button type="button" class="flex items-center gap-2 hover:text-accent" data-dropdown-toggle="lang-menu">
         {{ current_language.name }}
@@ -7,7 +8,7 @@
     </button>
     <div id="lang-menu" class="hidden absolute right-0 mt-2 w-40 bg-surface border border-text/10 rounded-lg shadow-lg z-50">
         {% for lang in active_languages %}
-            <a href="/{{ lang.code }}/{{ request.path_info|slice:'4:' }}"
+            <a href="{% language_url lang.code %}"
                class="block px-4 py-2 hover:bg-text/5 {% if lang.code == current_language_code %}text-accent{% endif %}">
                 {{ lang.name }}
             </a>

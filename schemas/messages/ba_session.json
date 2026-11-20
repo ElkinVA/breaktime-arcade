@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breaktime-arcade.local/schemas/messages/ba_session.json",
+  "title": "ba:session",
+  "description": "Новый контекст после newSession.",
+  "allOf": [
+    {
+      "$ref": "_envelope.json"
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "ba:session"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "sessionId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "seed": {
+              "type": "string"
+            },
+            "context": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "sessionId",
+            "seed"
+          ]
+        },
+        "source": {
+          "const": "ba-host"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ]
+    }
+  ]
+}

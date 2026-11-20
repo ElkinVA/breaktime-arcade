@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breaktime-arcade.local/schemas/messages/ba_context.json",
+  "title": "ba:context",
+  "description": "Публичный контекст игры.",
+  "allOf": [
+    {
+      "$ref": "_envelope.json"
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "ba:context"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "sessionId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "gameId": {
+              "type": "string"
+            },
+            "gameVersion": {
+              "type": "string"
+            },
+            "mode": {
+              "enum": [
+                "guest",
+                "user",
+                "autotest",
+                "preview"
+              ]
+            },
+            "nickname": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "language": {
+              "type": "string"
+            },
+            "fallbackLanguage": {
+              "type": "string"
+            },
+            "strings": {
+              "type": "object"
+            },
+            "score": {
+              "type": "object"
+            },
+            "limits": {
+              "type": "object"
+            },
+            "trustLevel": {
+              "type": "string"
+            },
+            "seed": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sessionId",
+            "gameId",
+            "gameVersion",
+            "mode",
+            "nickname",
+            "language",
+            "fallbackLanguage",
+            "strings",
+            "score",
+            "limits",
+            "trustLevel",
+            "seed"
+          ]
+        },
+        "source": {
+          "const": "ba-host"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.core.validators import RegexValidator
@@ -46,14 +46,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     login = CitextField(max_length=30, unique=True, validators=[login_validator])
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    totp_secret = models.CharField(max_length=64, blank=True, default="")
     totp_confirmed_at = models.DateTimeField(null=True, blank=True)
+    totp_last_counter = models.BigIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     objects = UserManager()
 
     USERNAME_FIELD = "login"
-    REQUIRED_FIELDS: list[str] = []
+    REQUIRED_FIELDS: ClassVar[list[str]] = []
     EMAIL_FIELD = ""
 
     class Meta:

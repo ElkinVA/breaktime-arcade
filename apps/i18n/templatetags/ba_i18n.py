@@ -1,4 +1,5 @@
 """Шаблонный тег {% ba_t "namespace.key" param=value %} (§2.15)."""
+
 from __future__ import annotations
 
 from typing import Any

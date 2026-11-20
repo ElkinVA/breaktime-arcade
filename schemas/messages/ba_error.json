@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breaktime-arcade.local/schemas/messages/ba_error.json",
+  "title": "ba:error",
+  "description": "Ошибка стороны протокола.",
+  "allOf": [
+    {
+      "$ref": "_envelope.json"
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "ba:error"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "code": {
+              "type": "string",
+              "minLength": 1
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ]
+    }
+  ]
+}

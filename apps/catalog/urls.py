@@ -1,4 +1,5 @@
 """Маршруты каталога. Заглушки; наполняются блоками 3 и 5."""
+
 from __future__ import annotations
 
 from django.urls import path

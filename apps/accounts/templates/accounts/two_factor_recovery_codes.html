@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}New recovery codes — Breaktime Arcade{% endblock %}
+{% block content %}
+<section class="max-w-lg mx-auto px-4 py-10">
+    <h1 class="text-3xl font-display font-bold mb-2">New recovery codes</h1>
+    <p class="text-muted mb-4">Save these codes now; they will not be shown again.</p>
+    <ul class="font-mono text-sm rounded-xl border border-text/10 bg-surface p-4 grid grid-cols-2 gap-2">
+        {% for code in recovery_codes %}<li>{{ code }}</li>{% endfor %}
+    </ul>
+    {% if owner_recovery_code %}
+        <div class="mt-4 rounded-xl border border-yellow-500/40 bg-yellow-500/10 p-4 text-sm">
+            <p class="font-medium mb-1">New owner offline recovery code</p>
+            <code class="font-mono">{{ owner_recovery_code }}</code>
+        </div>
+    {% endif %}
+    <p class="mt-6"><a class="btn btn-primary px-6 py-2" href="{% url 'account:profile' %}">Continue</a></p>
+</section>
+{% endblock %}

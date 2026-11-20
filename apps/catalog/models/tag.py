@@ -30,7 +30,9 @@ class TagTranslation(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid7, db_default=UUID7(), editable=False)
     tag = models.ForeignKey(Tag, on_delete=models.CASCADE, related_name="translations")
-    language = models.ForeignKey("i18n.Language", on_delete=models.CASCADE, related_name="tag_translations")
+    language = models.ForeignKey(
+        "i18n.Language", on_delete=models.CASCADE, related_name="tag_translations"
+    )
     name = models.CharField(max_length=64)
     slug = CitextField(max_length=64)
     created_at = models.DateTimeField(auto_now_add=True)

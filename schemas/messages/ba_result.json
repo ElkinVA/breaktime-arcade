@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breaktime-arcade.local/schemas/messages/ba_result.json",
+  "title": "ba:result",
+  "description": "Ответ на отправку результата.",
+  "allOf": [
+    {
+      "$ref": "_envelope.json"
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "ba:result"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "status": {
+              "type": "string"
+            },
+            "rank": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "isPersonalBest": {
+              "type": "boolean"
+            },
+            "isRecord": {
+              "type": "boolean"
+            },
+            "trustLevel": {
+              "type": "string"
+            },
+            "code": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "status",
+            "rank",
+            "isPersonalBest",
+            "isRecord",
+            "trustLevel"
+          ]
+        },
+        "source": {
+          "const": "ba-host"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ]
+    }
+  ]
+}

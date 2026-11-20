@@ -1,4 +1,5 @@
 """Процент покрытия переводами для языка или игры."""
+
 from __future__ import annotations
 
 from apps.i18n.models import Language, TranslationEntry

@@ -1,6 +1,8 @@
 """Типы БД: citext и серверный генератор uuidv7() (PostgreSQL 18)."""
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from django.db import models
@@ -13,7 +15,7 @@ class CitextField(models.CharField):
     def db_type(self, connection: Any) -> str:
         return "citext"
 
-    def deconstruct(self) -> tuple[str, str, list[Any], dict[str, Any]]:
+    def deconstruct(self) -> tuple[str, str, Sequence[Any], dict[str, Any]]:
         name, _path, args, kwargs = super().deconstruct()
         return name, "apps.core.fields.CitextField", args, kwargs
 

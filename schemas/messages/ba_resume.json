@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breaktime-arcade.local/schemas/messages/ba_resume.json",
+  "title": "ba:resume",
+  "description": "Возобновление.",
+  "allOf": [
+    {
+      "$ref": "_envelope.json"
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "ba:resume"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "source": {
+          "const": "ba-host"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ]
+    }
+  ]
+}

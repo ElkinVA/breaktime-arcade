@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Regenerate recovery codes — Breaktime Arcade{% endblock %}
+{% block content %}
+<section class="max-w-md mx-auto px-4 py-10">
+    <h1 class="text-3xl font-display font-bold mb-2">Regenerate recovery codes</h1>
+    <p class="text-muted mb-6">Confirm with your password and current authenticator code.</p>
+    <form method="post">
+        {% csrf_token %}
+        {% include "accounts/_form.html" with form=form %}
+        <button type="submit" class="btn btn-primary px-6 py-2">Regenerate codes</button>
+        <a class="btn px-6 py-2" href="{% url 'account:profile' %}">Cancel</a>
+    </form>
+</section>
+{% endblock %}

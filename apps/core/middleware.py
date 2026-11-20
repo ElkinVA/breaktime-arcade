@@ -1,4 +1,5 @@
 """Request-id, заголовки безопасности и CSP с nonce (§2.20)."""
+
 from __future__ import annotations
 
 import secrets

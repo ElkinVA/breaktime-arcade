@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — Breaktime Arcade{% endblock %}
+{% block content %}
+<section class="max-w-4xl mx-auto px-4 py-10">
+    <p class="text-sm text-muted mb-2">
+        <a class="text-accent" href="{% url 'catalog:game_list' %}">← Catalog</a>
+        · {{ game.primary_genre.code }}
+    </p>
+    <h1 class="text-4xl font-display font-bold mb-4">{{ title }}</h1>
+    {% if translation %}
+        <p class="text-muted mb-6">{{ translation.short_description }}</p>
+        <div class="prose prose-invert max-w-none mb-6">{{ translation.description|linebreaks }}</div>
+        {% if translation.instructions %}
+            <h2 class="text-xl font-semibold mb-2">Instructions</h2>
+            <div class="text-muted mb-6">{{ translation.instructions|linebreaks }}</div>
+        {% endif %}
+    {% endif %}
+    <dl class="grid grid-cols-2 gap-3 text-sm mb-8">
+        <div><dt class="text-muted">Estimated time</dt><dd>~{{ game.estimated_play_minutes }} min</dd></div>
+        <div><dt class="text-muted">Mobile</dt><dd>{% if game.mobile_support %}yes{% else %}no{% endif %}</dd></div>
+        <div><dt class="text-muted">Default language</dt><dd>{{ game.default_language }}</dd></div>
+        <div><dt class="text-muted">Published</dt><dd>{{ game.published_at|date:"Y-m-d"|default:"—" }}</dd></div>
+    </dl>
+    <span class="btn px-6 py-2 text-muted" title="Game runtime is implemented in App F">
+        Play — runtime pending
+    </span>
+</section>
+{% endblock %}

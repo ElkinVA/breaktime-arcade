@@ -31,7 +31,9 @@ class GenreTranslation(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid7, db_default=UUID7(), editable=False)
     genre = models.ForeignKey(Genre, on_delete=models.CASCADE, related_name="translations")
-    language = models.ForeignKey("i18n.Language", on_delete=models.CASCADE, related_name="genre_translations")
+    language = models.ForeignKey(
+        "i18n.Language", on_delete=models.CASCADE, related_name="genre_translations"
+    )
     name = models.CharField(max_length=64)
     slug = CitextField(max_length=64, help_text="Уникален в рамках языка")
     description = models.TextField(max_length=500, blank=True)

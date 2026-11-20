@@ -67,3 +67,6 @@ ba_fix_all.sh
 ba_verify.sh
 ba_diag2.sh
 ba_fix_stage2.sh
+# --- аудиторские артефакты: остаются на диске/в backup, не в Git ---
+/reports/
+BA-FOUNDATION-001_AUDIT_PACKAGE.txt

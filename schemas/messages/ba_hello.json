@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breaktime-arcade.local/schemas/messages/ba_hello.json",
+  "title": "ba:hello",
+  "description": "Игра сообщает о готовности; сессия берётся из конверта.",
+  "allOf": [
+    {
+      "$ref": "_envelope.json"
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "ba:hello"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "source": {
+          "const": "ba-sdk"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breaktime-arcade.local/schemas/catalog.json",
+  "title": "BA-GAME-2.2 catalog/<lang>.json",
+  "description": "Контракт каталожного файла игры по BA-GAME-2.2 §11.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "shortDescription",
+    "description",
+    "instructions",
+    "controls",
+    "seoTitle",
+    "seoDescription",
+    "coverAlt",
+    "screenshotAlts"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "shortDescription": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "minLength": 300,
+      "maxLength": 1600
+    },
+    "instructions": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 600
+    },
+    "controls": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 400
+    },
+    "seoTitle": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "seoDescription": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "coverAlt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "screenshotAlts": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 4,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      }
+    }
+  }
+}

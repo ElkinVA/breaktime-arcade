@@ -9,7 +9,7 @@ PY      := $(COMPOSE) exec -T web python
 PYU     := $(COMPOSE) exec -T $(AS_USER) web python
 
 .PHONY: help env certs staging-up staging-down staging-reset staging-status staging-logs backup restore-check assets lock build up down restart ps logs migrate makemigrations \
-        superuser shell psql test lint fmt types check dump clean
+        superuser shell psql test coverage lint fmt types check dump clean
 
 help:
 > @grep -E '^[a-z-]+:' Makefile | sed 's/:.*//' | sort
@@ -63,6 +63,9 @@ psql:
 
 test:
 > $(PYU) -m pytest
+
+coverage:
+> $(PYU) -m pytest --cov=apps --cov-report=term-missing
 
 lint:
 > $(PYU) -m ruff check apps config tests

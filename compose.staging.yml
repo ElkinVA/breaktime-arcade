@@ -54,6 +54,8 @@ services:
       web: { condition: service_healthy }
     ports:
       - "${STAGING_PORT:-8444}:8443"
+    group_add:
+      - "10002"
     volumes:
       - ./infra/nginx/staging.conf:/etc/nginx/nginx.conf:ro
       - ./infra/nginx/staging-robots.txt:/etc/nginx/static/robots.txt:ro

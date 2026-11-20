@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breaktime-arcade.local/schemas/messages/ba_new_session.json",
+  "title": "ba:newSession",
+  "description": "Запрос новой сессии.",
+  "allOf": [
+    {
+      "$ref": "_envelope.json"
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "ba:newSession"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": false
+        },
+        "source": {
+          "const": "ba-sdk"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ]
+    }
+  ]
+}

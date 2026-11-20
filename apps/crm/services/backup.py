@@ -3,6 +3,7 @@
 Использует pg_dump / pg_restore / psql версии 18 (устанавливается в Dockerfile).
 Параметры подключения берутся из DATABASE_URL (основной) или POSTGRES_*.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -59,8 +60,19 @@ def _sha256(path: Path) -> str:
 
 def _finish(run: BackupRun) -> None:
     run.finished_at = timezone.now()
-    run.save(update_fields=["finished_at", "status", "size_bytes", "sha256",
-                            "file_path", "remote_uri", "error_message", "verified_at", "meta"])
+    run.save(
+        update_fields=[
+            "finished_at",
+            "status",
+            "size_bytes",
+            "sha256",
+            "file_path",
+            "remote_uri",
+            "error_message",
+            "verified_at",
+            "meta",
+        ]
+    )
 
 
 # --------------------------------------------------------------- full backup
@@ -74,14 +86,25 @@ def run_full_backup(output_dir: Path, retention_days: int = 30) -> BackupRun:
 
     cmd = [
         "pg_dump",
-        "-h", p["host"], "-p", p["port"], "-U", p["user"],
-        "--format=custom", "--compress=9",
-        "-f", str(out), p["db"],
+        "-h",
+        p["host"],
+        "-p",
+        p["port"],
+        "-U",
+        p["user"],
+        "--format=custom",
+        "--compress=9",
+        "-f",
+        str(out),
+        p["db"],
     ]
     logger.info("backup.start run=%s", run.id)
 
     try:
-        subprocess.run(cmd, env=_pg_env(), check=True, capture_output=True, text=True)
+        # Команда собрана из фиксированных аргументов и DATABASE_URL, не из ввода пользователя.
+        subprocess.run(  # noqa: S603
+            cmd, env=_pg_env(), check=True, capture_output=True, text=True
+        )
         run.file_path = str(out)
         run.size_bytes = out.stat().st_size
         run.sha256 = _sha256(out)
@@ -114,12 +137,13 @@ def _rotate(directory: Path, retention_days: int) -> None:
 # ----------------------------------------------------------- restore check
 def run_restore_check(backup_path: Path | None = None) -> BackupRun:
     """Восстанавливает последний успешный дамп в ba_restore_check и проверяет."""
-    run = BackupRun.objects.create(type=BackupRun.TYPE_RESTORE_CHECK, status=BackupRun.STATUS_RUNNING)
+    run = BackupRun.objects.create(
+        type=BackupRun.TYPE_RESTORE_CHECK, status=BackupRun.STATUS_RUNNING
+    )
 
     if backup_path is None:
         last = (
-            BackupRun.objects
-            .filter(type=BackupRun.TYPE_FULL, status=BackupRun.STATUS_SUCCESS)
+            BackupRun.objects.filter(type=BackupRun.TYPE_FULL, status=BackupRun.STATUS_SUCCESS)
             .order_by("-started_at")
             .first()
         )
@@ -145,17 +169,43 @@ def run_restore_check(backup_path: Path | None = None) -> BackupRun:
     commands = [
         base_psql + ["-c", f'DROP DATABASE IF EXISTS "{target_db}";'],
         base_psql + ["-c", f'CREATE DATABASE "{target_db}";'],
-        ["pg_restore",
-         "-h", p["host"], "-p", p["port"], "-U", p["user"],
-         "-d", target_db, "--no-owner", "--no-privileges", "--exit-on-error",
-         str(backup_path)],
-        ["psql", "-h", p["host"], "-p", p["port"], "-U", p["user"], "-d", target_db,
-         "-t", "-c", "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';"],
+        [
+            "pg_restore",
+            "-h",
+            p["host"],
+            "-p",
+            p["port"],
+            "-U",
+            p["user"],
+            "-d",
+            target_db,
+            "--no-owner",
+            "--no-privileges",
+            "--exit-on-error",
+            str(backup_path),
+        ],
+        [
+            "psql",
+            "-h",
+            p["host"],
+            "-p",
+            p["port"],
+            "-U",
+            p["user"],
+            "-d",
+            target_db,
+            "-t",
+            "-c",
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';",
+        ],
     ]
 
     try:
         for c in commands:
-            subprocess.run(c, env=env, check=True, capture_output=True, text=True)
+            # Команды фиксированы в коде; значения БД приходят из конфигурации.
+            subprocess.run(  # noqa: S603
+                c, env=env, check=True, capture_output=True, text=True
+            )
         run.status = BackupRun.STATUS_SUCCESS
         run.verified_at = timezone.now()
         run.meta = {"backup_path": str(backup_path)}
@@ -168,12 +218,16 @@ def run_restore_check(backup_path: Path | None = None) -> BackupRun:
 
     # Попытка дропнуть временную БД — не фатально при ошибке.
     try:
-        subprocess.run(
+        subprocess.run(  # noqa: S603
             base_psql + ["-c", f'DROP DATABASE IF EXISTS "{target_db}";'],
-            env=env, check=False, capture_output=True, text=True,
+            env=env,
+            check=False,
+            capture_output=True,
+            text=True,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        # Очистка не должна скрывать результат самой проверки восстановления.
+        logger.warning("restore-check: не удалось удалить %s: %s", target_db, exc)
 
     _finish(run)
     return run
@@ -182,8 +236,7 @@ def run_restore_check(backup_path: Path | None = None) -> BackupRun:
 def latest_backup_age_hours() -> float | None:
     """Возраст последнего успешного full-бэкапа в часах (None если нет)."""
     last = (
-        BackupRun.objects
-        .filter(type=BackupRun.TYPE_FULL, status=BackupRun.STATUS_SUCCESS)
+        BackupRun.objects.filter(type=BackupRun.TYPE_FULL, status=BackupRun.STATUS_SUCCESS)
         .order_by("-started_at")
         .first()
     )

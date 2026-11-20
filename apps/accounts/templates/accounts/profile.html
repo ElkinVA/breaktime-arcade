@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Account — Breaktime Arcade{% endblock %}
+{% block content %}
+<section class="max-w-2xl mx-auto px-4 py-10">
+    <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-3xl font-display font-bold">{{ profile.nickname }}</h1>
+            <p class="text-muted text-sm">Account settings and privacy.</p>
+        </div>
+        <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="text-sm text-muted hover:text-accent">Log out</button>
+        </form>
+    </div>
+
+    <div class="rounded-xl border border-text/10 bg-surface p-5 space-y-3">
+        <div><span class="text-muted">Email:</span>
+            {% if email_address %}
+                {{ email_address.email }}
+                {% if email_address.verified_at %}
+                    <span class="text-green-400">verified</span>
+                {% else %}
+                    <span class="text-yellow-400">not verified</span>
+                    <form method="post" action="{% url 'accounts:resend_verification' %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="text-accent underline">Resend confirmation</button>
+                    </form>
+                {% endif %}
+            {% else %}
+                <span class="text-muted">not set</span>
+            {% endif %}
+        </div>
+        <p><span class="text-muted">Language:</span> {{ profile.language.code|default:"—" }}</p>
+        <p><span class="text-muted">Theme:</span> {{ profile.theme }}</p>
+        {% if legal_acceptances %}
+            <div>
+                <p class="text-muted">Accepted documents:</p>
+                <ul class="text-sm">
+                    {% for acceptance in legal_acceptances %}
+                        <li>
+                            Terms {{ acceptance.terms_version }},
+                            Privacy {{ acceptance.privacy_version }}
+                            — {{ acceptance.accepted_at|date:"Y-m-d" }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        {% if profile.deletion_requested_at %}
+            <p class="text-yellow-400">Deletion requested. Cancellation is available during 7 days.</p>
+            <form method="post" action="{% url 'account:delete_cancel' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn px-4 py-2">Cancel deletion</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <div class="mt-6 flex flex-wrap gap-3 text-sm">
+        <a class="btn px-4 py-2" href="{% url 'account:edit' %}">Edit profile</a>
+        <a class="btn px-4 py-2" href="{% url 'account:password' %}">Change password</a>
+        <a class="btn px-4 py-2" href="{% url 'account:export' %}">Export data</a>
+        {% if user.is_staff %}
+            {% if user.totp_confirmed_at %}
+                <a class="btn px-4 py-2" href="{% url 'accounts:two_factor_regenerate' %}">Regenerate recovery codes</a>
+                <a class="btn px-4 py-2" href="{% url 'accounts:two_factor_disable' %}">Disable 2FA</a>
+            {% else %}
+                <a class="btn px-4 py-2" href="{% url 'accounts:two_factor_setup' %}">Set up 2FA</a>
+            {% endif %}
+        {% endif %}
+        <a class="btn px-4 py-2 text-red-400" href="{% url 'account:delete' %}">Delete account</a>
+    </div>
+</section>
+{% endblock %}

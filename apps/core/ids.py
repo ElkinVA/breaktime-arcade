@@ -1,4 +1,5 @@
 """UUIDv7 на чистом Python (§2.3). Монотонность в пределах процесса."""
+
 from __future__ import annotations
 
 import secrets

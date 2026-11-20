@@ -1,0 +1,26 @@
+{% load ba_i18n %}
+{% if cards %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for card in cards %}
+            <article class="rounded-card border border-text/10 bg-surface p-5">
+                <h2 class="text-xl font-semibold mb-2">
+                    <a class="hover:text-accent" href="{% url 'catalog:game_detail' card.game.slug %}">
+                        {{ card.translation.name|default:card.game.technical_id }}
+                    </a>
+                </h2>
+                {% if card.translation %}
+                    <p class="text-muted text-sm mb-3">{{ card.translation.short_description }}</p>
+                {% endif %}
+                <div class="flex flex-wrap gap-2 text-xs text-muted">
+                    <span class="rounded-full border border-text/10 px-2 py-1">{{ card.game.primary_genre.code }}</span>
+                    <span class="rounded-full border border-text/10 px-2 py-1">~{{ card.game.estimated_play_minutes }} min</span>
+                    {% if card.game.mobile_support %}
+                        <span class="rounded-full border border-text/10 px-2 py-1">mobile</span>
+                    {% endif %}
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="text-muted">{% ba_t "catalog.empty" %}</p>
+{% endif %}

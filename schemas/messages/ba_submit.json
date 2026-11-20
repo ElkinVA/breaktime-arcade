@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breaktime-arcade.local/schemas/messages/ba_submit.json",
+  "title": "ba:submit",
+  "description": "Отправка результата; eventLog — schemas/eventlog.json.",
+  "allOf": [
+    {
+      "$ref": "_envelope.json"
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "ba:submit"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "durationMs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "eventLog": {
+              "$ref": "../eventlog.json"
+            },
+            "seed": {
+              "type": "string"
+            },
+            "clientMeta": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "value",
+            "durationMs",
+            "eventLog",
+            "seed"
+          ]
+        },
+        "source": {
+          "const": "ba-sdk"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ]
+    }
+  ]
+}

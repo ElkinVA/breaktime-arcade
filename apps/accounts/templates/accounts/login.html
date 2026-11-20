@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Log in — Breaktime Arcade{% endblock %}
+{% block content %}
+<section class="max-w-md mx-auto px-4 py-10">
+    <h1 class="text-3xl font-display font-bold mb-6">Log in</h1>
+    <form method="post">
+        {% csrf_token %}
+        {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}">{% endif %}
+        {% include "accounts/_form.html" with form=form %}
+        <button type="submit" class="btn btn-primary px-6 py-2">Log in</button>
+    </form>
+    <p class="mt-4 text-sm">
+        <a class="text-accent" href="{% url 'accounts:password_reset' %}">Forgot password?</a>
+        · <a class="text-accent" href="{% url 'accounts:register' %}">Create account</a>
+    </p>
+</section>
+{% endblock %}

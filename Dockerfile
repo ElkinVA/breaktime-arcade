@@ -14,13 +14,20 @@ RUN npm run build
 
 FROM ${PYTHON_IMAGE} AS builder
 ARG UV_VERSION
+# Dev-зависимости (pytest/ruff/mypy) ставятся только в dev-lite образе.
+# Staging/production собираются с default=false и остаются без dev-пакетов.
+ARG INSTALL_DEV=false
 ENV UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     UV_PYTHON_DOWNLOADS=never
 RUN test -n "${UV_VERSION}" && pip install --no-cache-dir "uv==${UV_VERSION}"
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN if [ "${INSTALL_DEV}" = "true" ]; then \
+      uv sync --frozen --no-install-project; \
+    else \
+      uv sync --frozen --no-dev --no-install-project; \
+    fi
 
 FROM ${PYTHON_IMAGE} AS runtime
 ENV PYTHONUNBUFFERED=1 \

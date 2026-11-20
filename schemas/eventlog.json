@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breaktime-arcade.local/schemas/eventlog.json",
+  "title": "BA eventLog v1",
+  "description": "Контракт журнала событий по BA-PLAT-4.2 §2.12.7. Монотонность t и привязка k к manifest.verification.eventKinds проверяются сервером отдельно.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["v", "seed", "events"],
+  "properties": {
+    "v": {
+      "const": 1
+    },
+    "seed": {
+      "type": "string",
+      "minLength": 1
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["t", "k", "d"],
+        "properties": {
+          "t": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Целые миллисекунды от старта; монотонно не убывает."
+          },
+          "k": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Код из manifest.verification.eventKinds."
+          },
+          "d": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}

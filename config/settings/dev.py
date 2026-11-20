@@ -1,4 +1,5 @@
 """Development: portal.test:8443, HSTS выключен (§2.20)."""
+
 from __future__ import annotations
 
 from .base import *  # noqa: F403

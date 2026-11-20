@@ -7,6 +7,7 @@ ManifestStaticFilesStorage Django парсит CSS и пытается найт�
 
 Норматив: BA-PLAT-4.2 §2.7, §2.20.
 """
+
 from __future__ import annotations
 
 import logging
@@ -46,7 +47,9 @@ class BAStaticFilesStorage(ManifestStaticFilesStorage):
         hashed_files: dict[str, str] | None = None,
     ) -> str:
         try:
-            return super()._url(hashed_name_func, name, force, hashed_files)
+            return str(
+                super()._url(hashed_name_func, name, force, hashed_files)  # type: ignore[misc]
+            )
         except ValueError:
             # Fallback для ссылок из CSS, указывающих на внешние ресурсы.
             return name

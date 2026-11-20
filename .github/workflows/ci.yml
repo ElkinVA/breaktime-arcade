@@ -46,9 +46,13 @@ jobs:
           python-version: "3.14"
           enable-cache: true
       - run: uv sync --frozen
+      - run: uv lock --check
       - run: uv run ruff check apps config tests
       - run: uv run ruff format --check apps config tests
       - run: uv run mypy
+      - run: uv run python manage.py check
+      - run: uv run python manage.py makemigrations --check --dry-run
+      - run: uv run python -m pytest tests/unit/test_contract_schemas.py tests/unit/test_foundation_002_contracts.py
       - run: uv run pytest --cov=apps --cov-report=term-missing
 
   django-next:

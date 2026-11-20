@@ -1,4 +1,5 @@
 """Маршруты CRM. Каркас; наполняется блоками 2 (продолжение) и 3."""
+
 from __future__ import annotations
 
 from django.urls import path

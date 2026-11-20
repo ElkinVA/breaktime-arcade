@@ -30,8 +30,10 @@ class BackupRun(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid7, db_default=UUID7(), editable=False)
     type = models.CharField(max_length=16, choices=TYPE_CHOICES, db_index=True)
     status = models.CharField(
-        max_length=16, choices=STATUS_CHOICES,
-        default=STATUS_RUNNING, db_index=True,
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default=STATUS_RUNNING,
+        db_index=True,
     )
     started_at = models.DateTimeField(auto_now_add=True)
     finished_at = models.DateTimeField(null=True, blank=True)

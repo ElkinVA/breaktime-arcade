@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ genre_name }} — Breaktime Arcade{% endblock %}
+{% block content %}
+<section class="max-w-7xl mx-auto px-4 py-8">
+    <p class="text-sm text-muted mb-2">
+        <a class="text-accent" href="{% url 'catalog:game_list' %}">← Catalog</a>
+    </p>
+    <h1 class="text-3xl font-display font-bold mb-6">{{ genre_name }}</h1>
+    {% include "catalog/_game_cards.html" %}
+</section>
+{% endblock %}

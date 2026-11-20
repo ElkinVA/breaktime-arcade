@@ -1,3 +1,4 @@
+# VCS / tooling caches
 .git
 .github
 .venv
@@ -10,16 +11,70 @@ __pycache__
 .ruff_cache
 htmlcov
 .coverage
+
+# Runtime data / volumes
 media
 staticfiles
 pgdata
 redis-data
 backups
+var/
+**/var/
+
+# Secrets and local private state
+creds/
+**/creds/
+.backups/
+**/.backups/
 certs
+**/certs/
+**/*basic_auth*
+**/htpasswd
+**/*-key.pem
+**/*.key
+**/*.p12
+**/*.pfx
 .env
 .env.*
+**/.env
+**/.env.*
+windows/
+**/windows/
+.claude/
+**/.claude/
+technical_specification/
+**/technical_specification/
+reports/
+**/reports/
+dev-env-audit/
+dev-env-audit.sh
+
+# Local tooling, logs and diagnostics
+scripts/
+*.log
+**/*.log
+ba_*.sh
+fill_*.sh
+fix_*.sh
+diag*.sh
+diagnose_*.sh
+verify_*.sh
+bootstrap_*.sh
+collect_project.sh
+complete_*.sh
+rebuild_after_fix.sh
+setup-claude-code-deepseek-ubuntu.sh
+audit.txt
+diagnostics_*.txt
+
+# Not needed by the Django app image
+infra/nginx/
+
+# Documentation and tests are not shipped in the runtime image
 docs
 tests
+
+# Local snapshots
 games-src
 project_dump.txt
 project_dump.log

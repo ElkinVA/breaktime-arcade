@@ -1,17 +1,17 @@
 """Celery-задачи для бэкапов и мониторинга их свежести (§2.5)."""
+
 from __future__ import annotations
 
 import logging
 import os
 from pathlib import Path
 
-from celery import shared_task
-
 from apps.crm.services.backup import (
     latest_backup_age_hours,
     run_full_backup,
     run_restore_check,
 )
+from celery import shared_task
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def restore_check() -> str:
 
 
 @shared_task(name="crm.backup_status_alert")
-def backup_status_alert() -> dict:
+def backup_status_alert() -> dict[str, str | float]:
     age = latest_backup_age_hours()
     if age is None:
         logger.error("backup.status: НЕТ успешных бэкапов")

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Two-factor authentication — Breaktime Arcade{% endblock %}
+{% block content %}
+<section class="max-w-md mx-auto px-4 py-10">
+    <h1 class="text-3xl font-display font-bold mb-2">Two-factor authentication</h1>
+    <p class="text-muted mb-6">Enter the six-digit code from your authenticator app.</p>
+    <form method="post">
+        {% csrf_token %}
+        {% include "accounts/_form.html" with form=form %}
+        <button type="submit" class="btn btn-primary px-6 py-2">Verify</button>
+    </form>
+    <p class="mt-4 text-sm">
+        <a class="text-accent" href="{% url 'accounts:two_factor_recovery' %}">Use a recovery code</a>
+        · <a class="text-accent" href="{% url 'accounts:login' %}">Back to login</a>
+    </p>
+</section>
+{% endblock %}

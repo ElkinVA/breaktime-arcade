@@ -6,14 +6,58 @@
 #   ./infra/scripts/staging.sh reset    # остановить + удалить тома
 #   ./infra/scripts/staging.sh status   # статус контейнеров
 #   ./infra/scripts/staging.sh logs     # логи web+nginx
-#   ./infra/scripts/staging.sh url      # показать URL и логин/пароль
-#   ./infra/scripts/staging.sh creds    # показать логин/пароль basic auth
+#   ./infra/scripts/staging.sh url      # показать URL staging
+#   ./infra/scripts/staging.sh creds    # показать username и путь к файлу пароля
 set -euo pipefail
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 PROJECT="ba-staging"
 ENV_FILE=".env.staging"
 COMPOSE=(docker compose -p "$PROJECT" -f compose.yml -f compose.staging.yml --env-file "$ENV_FILE")
+
+LOCK_DIR="$PWD/creds/.locks"
+LOCK_FILE="$LOCK_DIR/staging.lock"
+TMP_NETRC=""
+
+cleanup_staging_tmp() {
+    if [ -n "${TMP_NETRC:-}" ] && [ -f "$TMP_NETRC" ]; then
+        rm -f "$TMP_NETRC"
+    fi
+}
+trap cleanup_staging_tmp EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
+
+acquire_staging_lock() {
+    command -v flock >/dev/null 2>&1 || {
+        echo "FAIL: flock не найден" >&2
+        return 1
+    }
+    mkdir -p "$LOCK_DIR" || return 1
+    chmod 700 "$LOCK_DIR" || return 1
+
+    # Re-entrant path: fd 9 must point to this exact lock file, and flock
+    # must succeed on the inherited open file description. Never trust an
+    # environment variable or an arbitrary fd as proof of lock ownership.
+    if [ -e "/proc/$$/fd/9" ] && [ "/proc/$$/fd/9" -ef "$LOCK_FILE" ]; then
+        if flock -n 9; then
+            return 0
+        fi
+        echo "ERROR: другая staging-операция уже выполняется" >&2
+        return 75
+    fi
+
+    if ! { exec 9>"$LOCK_FILE"; }; then
+        echo "FAIL: не удалось открыть $LOCK_FILE" >&2
+        return 1
+    fi
+    if ! flock -n 9; then
+        echo "ERROR: другая staging-операция уже выполняется" >&2
+        return 75
+    fi
+    return 0
+}
 
 # ---- Проверки и подготовка -------------------------------------------------
 require_env() {
@@ -28,7 +72,7 @@ require_env() {
 load_env() {
     require_env
     set -a
-    # shellcheck disable=SC1090
+    # shellcheck disable=SC1090,SC1091
     . "./$ENV_FILE"
     set +a
 }
@@ -76,6 +120,7 @@ check_hosts() {
 
 # ---- Субкоманды -----------------------------------------------------------
 cmd_up() {
+    acquire_staging_lock || exit 75
     load_env
     ensure_cert
     check_hosts
@@ -120,15 +165,28 @@ print(",".join(sorted(ready)))
     echo "==> Проверка"
     local port="${STAGING_PORT:-8444}"
     local domain="${STAGING_DOMAIN:-staging.test}"
-    local user pass
+    local user
     if [ -f creds/staging_basic_auth.txt ]; then
-        user="$(awk -F: '{print $1}' creds/staging_basic_auth.txt)"
-        pass="$(awk -F: '{print $2}' creds/staging_basic_auth.txt)"
-        echo "  Basic auth: $user / $pass"
-        curl -sk -u "$user:$pass" --max-time 5 "https://${domain}:${port}/healthz" \
+        if cut -d: -f2- creds/staging_basic_auth.txt | LC_ALL=C grep -q '[[:space:]]'; then
+            echo "FAIL: пароль содержит пробельные символы, несовместимые с netrc" >&2
+            exit 1
+        fi
+        user="$(cut -d: -f1 creds/staging_basic_auth.txt)"
+        TMP_NETRC="$(mktemp)"
+        chmod 600 "$TMP_NETRC"
+        {
+            printf 'machine %s login ' "$domain"
+            cut -d: -f1 creds/staging_basic_auth.txt | tr -d '\n'
+            printf ' password '
+            cut -d: -f2- creds/staging_basic_auth.txt | tr -d '\n'
+            printf '\n'
+        } > "$TMP_NETRC"
+
+        echo "  Basic auth username: $user (пароль не выводится)"
+        curl -sk --netrc-file "$TMP_NETRC" --max-time 5 "https://${domain}:${port}/healthz" \
             && echo "  <- healthz OK" || echo "  healthz: нет ответа"
         echo -n "  /en/: "
-        curl -sk -u "$user:$pass" --max-time 5 -o /dev/null -w '%{http_code}\n' \
+        curl -sk --netrc-file "$TMP_NETRC" --max-time 5 -o /dev/null -w '%{http_code}\n' \
             "https://${domain}:${port}/en/" || echo "000"
     else
         echo "  WARN: creds/staging_basic_auth.txt отсутствует"
@@ -146,12 +204,14 @@ print(",".join(sorted(ready)))
 }
 
 cmd_down() {
+    acquire_staging_lock || exit 75
     load_env
     "${COMPOSE[@]}" down
     echo "==> Staging остановлен (тома сохранены)"
 }
 
 cmd_reset() {
+    acquire_staging_lock || exit 75
     require_env
     echo "==> Удаляем ВСЁ: контейнеры, тома staging, БД"
     read -r -p "Подтвердить? [y/N] " ans
@@ -178,9 +238,11 @@ cmd_url() {
 }
 
 cmd_creds() {
+    acquire_staging_lock || exit 75
     if [ -f creds/staging_basic_auth.txt ]; then
-        echo "Basic auth:"
-        cat creds/staging_basic_auth.txt
+        printf 'Basic auth username: %s\n' \
+            "$(cut -d: -f1 creds/staging_basic_auth.txt)"
+        echo "Пароль хранится в creds/staging_basic_auth.txt (режим 600) и не выводится."
     else
         echo "creds/staging_basic_auth.txt отсутствует" >&2
         exit 1
@@ -207,7 +269,7 @@ case "${1:-}" in
   status   статус контейнеров
   logs     логи web / nginx / worker
   url      URL staging
-  creds    логин/пароль basic auth
+  creds    username и путь к файлу пароля (без вывода пароля)
 USAGE
         exit 2
         ;;

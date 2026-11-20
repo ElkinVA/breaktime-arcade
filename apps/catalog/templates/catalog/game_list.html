@@ -6,6 +6,64 @@
 {% block content %}
 <section class="max-w-7xl mx-auto px-4 py-8">
     <h1 class="text-3xl font-display font-bold mb-6">{% ba_t "catalog.title" %}</h1>
-    <p class="text-muted mb-8">{% ba_t "catalog.empty" %}</p>
+    <form method="get" action="{% url 'catalog:game_list' %}"
+          hx-get="{% url 'catalog:game_list' %}" hx-target="#game-results"
+          hx-push-url="true" hx-trigger="change, keyup changed delay:400ms, submit"
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
+        <label class="lg:col-span-2">
+            <span class="block text-xs text-muted mb-1">Search</span>
+            <input class="w-full rounded-lg border border-text/10 bg-surface px-3 py-2"
+                   type="search" name="q" value="{{ filters.q }}" minlength="2"
+                   placeholder="{% ba_t "catalog.title" %}">
+        </label>
+        <label>
+            <span class="block text-xs text-muted mb-1">Genre</span>
+            <select class="w-full rounded-lg border border-text/10 bg-surface px-3 py-2" name="genre">
+                <option value="">All</option>
+                {% for genre in genres %}
+                    <option value="{{ genre.code }}" {% if filters.genre == genre.code %}selected{% endif %}>{{ genre.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span class="block text-xs text-muted mb-1">Duration</span>
+            <select class="w-full rounded-lg border border-text/10 bg-surface px-3 py-2" name="duration">
+                <option value="">Any</option>
+                <option value="short" {% if filters.duration == "short" %}selected{% endif %}>≤5 min</option>
+                <option value="medium" {% if filters.duration == "medium" %}selected{% endif %}>5–15 min</option>
+                <option value="long" {% if filters.duration == "long" %}selected{% endif %}>15–30 min</option>
+                <option value="epic" {% if filters.duration == "epic" %}selected{% endif %}>30+ min</option>
+            </select>
+        </label>
+        <label>
+            <span class="block text-xs text-muted mb-1">Sort</span>
+            <select class="w-full rounded-lg border border-text/10 bg-surface px-3 py-2" name="sort">
+                <option value="new" {% if filters.sort == "new" %}selected{% endif %}>Newest</option>
+                <option value="old" {% if filters.sort == "old" %}selected{% endif %}>Oldest</option>
+            </select>
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="mobile" value="1" {% if filters.mobile %}checked{% endif %}>
+            Mobile support
+        </label>
+        {% if tags %}
+            <fieldset class="lg:col-span-4">
+                <legend class="block text-xs text-muted mb-1">Tags</legend>
+                <div class="flex flex-wrap gap-3">
+                    {% for tag in tags %}
+                        <label class="flex items-center gap-1 text-sm">
+                            <input type="checkbox" name="tag" value="{{ tag.code }}"
+                                   {% if tag.code in filters.tags %}checked{% endif %}>
+                            {{ tag.name }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+        {% endif %}
+        <button type="submit" class="btn btn-primary px-4 py-2">Apply</button>
+    </form>
+    <div id="game-results">
+        {% include "catalog/_game_cards.html" %}
+    </div>
 </section>
 {% endblock %}

@@ -39,3 +39,10 @@ dev = [
 # Точные версии прямых и транзитивных зависимостей фиксируются uv.lock (этап 0).
 [tool.uv]
 package = false
+
+[tool.coverage.run]
+omit = ["*/migrations/*", "*/tests/*", "*/__init__.py"]
+
+[tool.coverage.report]
+fail_under = 70
+show_missing = true

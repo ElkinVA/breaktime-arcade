@@ -1,4 +1,5 @@
 """JSON-логи с request-id (§2.24)."""
+
 from __future__ import annotations
 
 import json

@@ -1,4 +1,5 @@
 """Production (§2.20, Приложение B)."""
+
 from __future__ import annotations
 
 import sentry_sdk
@@ -20,6 +21,8 @@ STORAGES["staticfiles"]["BACKEND"] = (  # noqa: F405
 )
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# §2.10.2: проверка HIBP обязательна; при недоступности сервис fails closed.
+HIBP_ENABLED = env_bool("HIBP_ENABLED", True)
 EMAIL_HOST = env("EMAIL_HOST")
 EMAIL_PORT = int(env("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = env("EMAIL_USER")

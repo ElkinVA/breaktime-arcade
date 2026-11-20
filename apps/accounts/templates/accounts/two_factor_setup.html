@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Set up two-factor authentication — Breaktime Arcade{% endblock %}
+{% block content %}
+<section class="max-w-lg mx-auto px-4 py-10">
+    <h1 class="text-3xl font-display font-bold mb-2">Set up two-factor authentication</h1>
+    {% if recovery_codes %}
+        <p class="text-muted mb-4">
+            Two-factor authentication is enabled. Save these one-time recovery
+            codes now; they will not be shown again.
+        </p>
+        <ul class="font-mono text-sm rounded-xl border border-text/10 bg-surface p-4 grid grid-cols-2 gap-2">
+            {% for code in recovery_codes %}<li>{{ code }}</li>{% endfor %}
+        </ul>
+        {% if owner_recovery_code %}
+            <div class="mt-4 rounded-xl border border-yellow-500/40 bg-yellow-500/10 p-4 text-sm">
+                <p class="font-medium mb-1">Owner offline recovery code</p>
+                <p class="text-muted mb-2">Store it offline; using it requires setting up 2FA again.</p>
+                <code class="font-mono">{{ owner_recovery_code }}</code>
+            </div>
+        {% endif %}
+        <p class="mt-6">
+            <a class="btn btn-primary px-6 py-2" href="{% if next_url %}{{ next_url }}{% else %}{% url 'account:profile' %}{% endif %}">Continue</a>
+        </p>
+    {% else %}
+        <p class="text-muted mb-4">
+            Add this secret to an authenticator app, then enter the six-digit code.
+        </p>
+        <p class="mb-2"><span class="text-muted">Secret:</span> <code class="font-mono">{{ secret }}</code></p>
+        <p class="text-xs text-muted break-all mb-6">otpauth URI: {{ provisioning_uri }}</p>
+        <form method="post">
+            {% csrf_token %}
+            {% include "accounts/_form.html" with form=form %}
+            <button type="submit" class="btn btn-primary px-6 py-2">Enable 2FA</button>
+        </form>
+    {% endif %}
+</section>
+{% endblock %}

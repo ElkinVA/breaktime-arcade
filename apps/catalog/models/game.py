@@ -43,7 +43,21 @@ class Game(models.Model):
         on_delete=models.PROTECT,
         related_name="primary_games",
     )
-    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_DRAFT, db_index=True)
+    additional_genres = models.ManyToManyField(
+        "catalog.Genre",
+        through="catalog.GameGenre",
+        related_name="additional_games",
+        blank=True,
+    )
+    tags = models.ManyToManyField(
+        "catalog.Tag",
+        through="catalog.GameTag",
+        related_name="games",
+        blank=True,
+    )
+    status = models.CharField(
+        max_length=16, choices=STATUS_CHOICES, default=STATUS_DRAFT, db_index=True
+    )
     current_version = models.ForeignKey(
         "catalog.GameVersion",
         on_delete=models.PROTECT,

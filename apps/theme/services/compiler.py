@@ -1,8 +1,8 @@
 """Генерация CSS-файла темы из токенов (§2.7)."""
+
 from __future__ import annotations
 
 import hashlib
-import json
 
 from apps.theme.models import ThemeTokenSet
 

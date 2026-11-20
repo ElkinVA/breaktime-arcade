@@ -1,0 +1,296 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breaktime-arcade.local/schemas/manifest.json",
+  "title": "BA-GAME-2.2 manifest.json",
+  "description": "Контракт манифеста игрового пакета по BA-GAME-2.2 §5. Не заменяет отсутствующий BA-SDK-1.1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cartridge",
+    "id",
+    "version",
+    "sdkVersion",
+    "protocol",
+    "name",
+    "entry",
+    "genre",
+    "tags",
+    "supportedLanguages",
+    "defaultLanguage",
+    "mobileSupport",
+    "orientation",
+    "estimatedPlayMinutes",
+    "theme",
+    "score",
+    "limits",
+    "capabilities",
+    "leaderboard",
+    "assets",
+    "credits"
+  ],
+  "properties": {
+    "cartridge": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{1,38}[a-z0-9]$",
+      "description": "3–40 символов; начинается буквой, заканчивается буквой или цифрой. Неизменяем."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "sdkVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Semver-range совместимости, например ^1.0."
+    },
+    "protocol": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "entry": {
+      "const": "index.html"
+    },
+    "genre": {
+      "enum": [
+        "arcade",
+        "puzzle",
+        "action",
+        "racing",
+        "simulator",
+        "strategy",
+        "sports",
+        "casual",
+        "logic",
+        "platformer"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
+      }
+    },
+    "supportedLanguages": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+      },
+      "contains": {
+        "const": "en"
+      }
+    },
+    "defaultLanguage": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 8
+    },
+    "mobileSupport": {
+      "type": "boolean"
+    },
+    "orientation": {
+      "enum": ["any", "portrait", "landscape"]
+    },
+    "estimatedPlayMinutes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accent"],
+      "properties": {
+        "accent": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        }
+      }
+    },
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "unit", "direction", "minValue", "maxValue", "schemaVersion"],
+      "properties": {
+        "type": {
+          "enum": ["integer", "number"]
+        },
+        "unit": {
+          "enum": ["points", "ms", "items", "errors"]
+        },
+        "direction": {
+          "enum": ["higher_is_better", "lower_is_better"]
+        },
+        "minValue": {
+          "type": "number"
+        },
+        "maxValue": {
+          "type": "number"
+        },
+        "schemaVersion": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minPlaytimeSeconds", "maxSessionSeconds", "pauseOnBlur"],
+      "properties": {
+        "minPlaytimeSeconds": {
+          "type": "integer",
+          "minimum": 5
+        },
+        "maxSessionSeconds": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 7200
+        },
+        "pauseOnBlur": {
+          "type": "boolean"
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wasm", "pointerLock", "storage", "externalOrigins"],
+      "properties": {
+        "wasm": {
+          "type": "boolean"
+        },
+        "pointerLock": {
+          "type": "boolean"
+        },
+        "storage": {
+          "const": "sdk"
+        },
+        "externalOrigins": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    },
+    "leaderboard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "claimedVerification"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "claimedVerification": {
+          "enum": ["client_reported", "heuristic_validated", "replay_verified"]
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile", "eventKinds", "eventSchema"],
+      "properties": {
+        "profile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["maxPointsPerSecond", "maxIdleGapMs"],
+          "properties": {
+            "maxPointsPerSecond": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "maxIdleGapMs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "eventKinds": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "eventSchema": {
+          "type": "object"
+        }
+      }
+    },
+    "assets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cover", "screenshots", "critical", "criticalPathBytes"],
+      "properties": {
+        "cover": {
+          "type": "string",
+          "minLength": 1
+        },
+        "screenshots": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "critical": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "allOf": [
+            {"contains": {"const": "index.html"}},
+            {"contains": {"const": "css/style.css"}},
+            {"contains": {"const": "js/ba-sdk.js"}},
+            {"contains": {"const": "js/rng.js"}},
+            {"contains": {"const": "js/game.js"}},
+            {"contains": {"pattern": "^locales/[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*\\.json$"}}
+          ]
+        },
+        "criticalPathBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "credits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["author", "license", "aiGenerated"],
+        "properties": {
+          "author": {
+            "type": "string",
+            "minLength": 1
+          },
+          "license": {
+            "type": "string",
+            "minLength": 1
+          },
+          "aiGenerated": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

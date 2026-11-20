@@ -1,4 +1,5 @@
 """Пробы живучести и готовности (§2.23)."""
+
 from __future__ import annotations
 
 import redis
@@ -35,9 +36,17 @@ def readyz(request: HttpRequest) -> JsonResponse:
     except Exception:
         checks["broker"] = "fail"
 
+    try:
+        from apps.i18n.services.accept_language import is_fallback_language_active
+
+        checks["i18n"] = "ok" if is_fallback_language_active() else "fail"
+    except Exception:
+        checks["i18n"] = "fail"
+
     if getattr(settings, "BA_BACKUP_CHECK_ENABLED", False):
         try:
             from apps.crm.services.backup import latest_backup_age_hours
+
             age = latest_backup_age_hours()
             stale_hours = getattr(settings, "BA_BACKUP_STALE_HOURS", 48)
             if age is None:
@@ -50,5 +59,6 @@ def readyz(request: HttpRequest) -> JsonResponse:
             checks["backup"] = "fail"
 
     ready = all(v in ("ok", "missing") for v in checks.values())
-    return JsonResponse({"status": "ready" if ready else "degraded", "checks": checks},
-                        status=200 if ready else 503)
+    return JsonResponse(
+        {"status": "ready" if ready else "degraded", "checks": checks}, status=200 if ready else 503
+    )

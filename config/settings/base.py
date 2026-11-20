@@ -1,4 +1,5 @@
 """Базовые настройки. Норматив: BA-PLAT-4.2, Приложение B."""
+
 from __future__ import annotations
 
 import os
@@ -65,6 +66,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "apps.accounts.middleware.StaffTwoFactorMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.SecurityHeadersMiddleware",
     "apps.core.middleware.ContentSecurityPolicyMiddleware",
@@ -134,14 +136,36 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",
 ]
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-     "OPTIONS": {"min_length": 12}},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 12},
+    },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 PASSWORD_RESET_TIMEOUT = 1800
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
+LOGIN_URL = "accounts:login"
+LOGIN_REDIRECT_URL = "account:profile"
+LOGOUT_REDIRECT_URL = "catalog:home"
+
+# --- Аккаунты и юридические версии --------------------------------------
+# Текст документов и утверждённые версии ведутся отдельно (CRM/юрист).
+# В dev допускается draft; production должен задать реальные версии.
+TERMS_VERSION = env("TERMS_VERSION", "draft")
+PRIVACY_VERSION = env("PRIVACY_VERSION", "draft")
+LEGAL_TERMS_URL = env("LEGAL_TERMS_URL", "/legal/terms/")
+LEGAL_PRIVACY_URL = env("LEGAL_PRIVACY_URL", "/legal/privacy/")
+TOTP_ISSUER = env("TOTP_ISSUER", "Breaktime Arcade")
+NICKNAME_HMAC_KEY = env("NICKNAME_HMAC_KEY", SECRET_KEY or "")
+NICKNAME_CHANGE_INTERVAL_DAYS = 30
+ACCOUNT_DELETION_WINDOW_DAYS = 7
+LOGIN_EVENT_RETENTION_DAYS = env_int("LOGIN_EVENT_RETENTION_DAYS", 365)
+NICKNAME_RESERVATION_DAYS = env_int("NICKNAME_RESERVATION_DAYS", 730)
+HIBP_ENABLED = env_bool("HIBP_ENABLED", False)
+HIBP_TIMEOUT_SECONDS = env_int("HIBP_TIMEOUT_SECONDS", 3)
+EMAIL_VERIFICATION_TIMEOUT = 24 * 60 * 60
 
 # --- Безопасность -------------------------------------------------------
 SESSION_COOKIE_DOMAIN = None
@@ -156,7 +180,9 @@ SECURE_SSL_REDIRECT = False
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 X_FRAME_OPTIONS = "DENY"
-CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", env("PORTAL_ORIGIN", "https://portal.test:8443"))
+CSRF_TRUSTED_ORIGINS = env_list(
+    "CSRF_TRUSTED_ORIGINS", env("PORTAL_ORIGIN", "https://portal.test:8443")
+)
 
 PORTAL_ORIGIN = env("PORTAL_ORIGIN", "https://portal.test:8443")
 GAMES_DOMAIN = env("GAMES_DOMAIN", "games.test")
@@ -178,8 +204,12 @@ BA_PERMISSIONS_POLICY = "geolocation=(), microphone=(), camera=(), payment=()"
 # --- Интернационализация ------------------------------------------------
 LANGUAGE_CODE = "en"
 LANGUAGES = [
-    ("en", "English"), ("de", "Deutsch"), ("nl", "Nederlands"),
-    ("ru", "Русский"), ("fr", "Français"), ("es", "Español"),
+    ("en", "English"),
+    ("de", "Deutsch"),
+    ("nl", "Nederlands"),
+    ("ru", "Русский"),
+    ("fr", "Français"),
+    ("es", "Español"),
 ]
 LOCALE_PATHS = [BASE_DIR / "locale"]
 USE_I18N = True
@@ -225,12 +255,29 @@ CELERY_BEAT_SCHEDULE: dict[str, dict[str, object]] = {
         "schedule": 60 * 60 * 24 * 30,
         "options": {"expires": 60 * 60},
     },
+    "accounts-anonymize-due": {
+        "task": "accounts.anonymize_due_accounts",
+        "schedule": 60 * 60 * 24,
+        "options": {"expires": 60 * 60},
+    },
+    "accounts-cleanup-expired": {
+        "task": "accounts.cleanup_expired_account_records",
+        "schedule": 60 * 60 * 24,
+        "options": {"expires": 60 * 60},
+    },
+    "catalog-refresh-search-vectors": {
+        "task": "catalog.refresh_catalog_search_vectors",
+        "schedule": 60 * 60 * 24,
+        "options": {"expires": 60 * 60},
+    },
 }
 
 # --- DRF ----------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework.authentication.SessionAuthentication"],
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+    # Deny-by-default (§2.20, §2.23): публичные endpoint'ы должны явно
+    # объявлять AllowAny, а не получать его из глобальной настройки.
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
     "DEFAULT_THROTTLE_RATES": {

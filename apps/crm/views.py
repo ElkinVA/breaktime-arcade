@@ -1,4 +1,5 @@
 """Заглушки представлений CRM."""
+
 from __future__ import annotations
 
 from django.http import HttpRequest, HttpResponseRedirect
@@ -14,10 +15,14 @@ def logout_view(request: HttpRequest) -> HttpResponseRedirect:
     return HttpResponseRedirect(reverse("crm:login"))
 
 
-def dashboard(request: HttpRequest) -> TemplateResponse:
+def dashboard(request: HttpRequest) -> TemplateResponse | HttpResponseRedirect:
     if not request.user.is_authenticated or not request.user.is_staff:
         return HttpResponseRedirect(reverse("crm:login"))
-    return TemplateResponse(request, "crm/dashboard.html", {
-        "title": "CRM",
-        "stage": "блок 2/3 — каркас",
-    })
+    return TemplateResponse(
+        request,
+        "crm/dashboard.html",
+        {
+            "title": "CRM",
+            "stage": "блок 2/3 — каркас",
+        },
+    )

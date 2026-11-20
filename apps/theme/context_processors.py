@@ -1,4 +1,5 @@
 """Контекст для шаблонов: URL файла темы."""
+
 from __future__ import annotations
 
 from django.http import HttpRequest
