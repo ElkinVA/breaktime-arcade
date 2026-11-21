@@ -92,7 +92,13 @@ class BudgetFakeRunner:
     def qa(self, prompt: str) -> RunResult:
         del prompt
         self.calls.append("qa")
-        return _usage_result("qa", "deepseek-flash", tokens=self.tokens, cost=self.cost)
+        return _usage_result(
+            "qa",
+            "deepseek-flash",
+            tokens=self.tokens,
+            cost=self.cost,
+            result='{"status":"pass"}',
+        )
 
     def reviewer(self, prompt: str) -> RunResult:
         del prompt

@@ -103,6 +103,7 @@ class Task:
     usage: dict[str, Any] = field(default_factory=empty_usage)
     completed_at: str | None = None
     review_rejections: int = 0
+    qa_failures: int = 0
     blocked_reason: str | None = None
     last_error: str | None = None
     fingerprint: str = ""
@@ -138,6 +139,7 @@ class Task:
             "usage": self.usage,
             "completed_at": self.completed_at,
             "review_rejections": self.review_rejections,
+            "qa_failures": self.qa_failures,
             "blocked_reason": self.blocked_reason,
             "last_error": self.last_error,
             "fingerprint": self.fingerprint,
@@ -401,6 +403,12 @@ class StateStore:
             value = state["tasks"].get(task_id)
             if value is not None:
                 value["review_rejections"] = int(value.get("review_rejections", 0)) + 1
+
+    def record_qa_failure(self, task_id: str) -> None:
+        with self.locked() as state:
+            value = state["tasks"].get(task_id)
+            if value is not None:
+                value["qa_failures"] = int(value.get("qa_failures", 0)) + 1
 
     def retry(self, task_id: str, reason: str) -> Task | None:
         with self.locked() as state:

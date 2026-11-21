@@ -61,11 +61,20 @@ def _parse_json(value: str) -> dict[str, Any]:
     try:
         parsed = json.loads(value)
     except json.JSONDecodeError:
-        start = value.find("{")
-        end = value.rfind("}")
-        if start < 0 or end <= start:
+        # Agents sometimes prepend prose (and the prose can contain braces,
+        # e.g. Django template syntax). Prefer the last valid JSON object.
+        decoder = json.JSONDecoder()
+        parsed = None
+        for start in reversed([index for index, char in enumerate(value) if char == "{"]):
+            try:
+                candidate, _end = decoder.raw_decode(value[start:])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(candidate, dict):
+                parsed = candidate
+                break
+        if parsed is None:
             raise
-        parsed = json.loads(value[start : end + 1])
     if not isinstance(parsed, dict):
         raise ValueError("model result is not a JSON object")
     return parsed
@@ -170,6 +179,14 @@ def _safe_file(name: str, root: Path | None = None) -> Path:
     if normalized == ".env" or normalized.startswith(PROTECTED_PARTS):
         raise RuntimeError(f"developer reported a protected path: {name}")
     return path
+
+
+def _qa_passed(qa: RunResult) -> bool:
+    try:
+        parsed = _parse_json(qa.result)
+    except ValueError, json.JSONDecodeError:
+        return False
+    return parsed.get("status") == "pass"
 
 
 def _validate_self_check(developer: RunResult) -> None:
@@ -296,7 +313,8 @@ def _developer_prompt(task: Task) -> str:
         "/home/elkinva/projects/ba/.venv/bin/python -m ruff/mypy for lint. Do not "
         "change game features. Complete the mandatory self-check against the ТЗ, "
         "scope, tests and localization/regressions; include its fields in the JSON. "
-        "Return the strict JSON report from your instructions."
+        + (f"Previous failure to address:\n{task.last_error[:4000]}\n" if task.last_error else "")
+        + "Return the strict JSON report from your instructions."
     )
 
 
@@ -612,6 +630,17 @@ class Orchestrator:
             qa = self.runner.qa(_qa_prompt(task, developer), cwd=worktree)
             self._account(task.id, qa, tracker)
             self._guard(tracker)
+            if not _qa_passed(qa):
+                self.store.record_qa_failure(task.id)
+                _remove_worktree(worktree)
+                self.store.set_worktree(task.id, None, None)
+                worktree = None
+                retried = self.store.retry(task.id, f"QA: {qa.result[:4000]}")
+                return {
+                    "status": "retry" if retried and retried.status == READY else "blocked",
+                    "task": task.id,
+                    "qa": "fail",
+                }
             self.store.transition(
                 task.id, REVIEW, session_id=qa.session_id, model=qa.model, evidence=qa.evidence_path
             )
@@ -710,6 +739,14 @@ class Orchestrator:
             qa = self.runner.qa(_qa_prompt(task, developer))
             self._account(task.id, qa, tracker)
             self._guard(tracker)
+            if not _qa_passed(qa):
+                self.store.record_qa_failure(task.id)
+                retried = self.store.retry(task.id, f"QA: {qa.result[:4000]}")
+                return {
+                    "status": "retry" if retried and retried.status == READY else "blocked",
+                    "task": task.id,
+                    "qa": "fail",
+                }
             self.store.transition(
                 task.id, REVIEW, session_id=qa.session_id, model=qa.model, evidence=qa.evidence_path
             )

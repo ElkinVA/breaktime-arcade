@@ -38,6 +38,7 @@ def compute_metrics(store: StateStore) -> dict[str, Any]:
         "first_pass_rate": round(len(first_pass) / accepted, 4) if accepted else 0.0,
         "correction_cycles": corrections,
         "review_rejections": sum(int(value.get("review_rejections", 0)) for value in tasks),
+        "qa_failures": sum(int(value.get("qa_failures", 0)) for value in tasks),
         "average_task_seconds": round(sum(durations) / accepted, 3) if accepted else 0.0,
         "tokens_per_accepted_task": round(tokens / accepted, 3) if accepted else 0.0,
         "cost_usd_per_accepted_task": round(cost / accepted, 6) if accepted else 0.0,
