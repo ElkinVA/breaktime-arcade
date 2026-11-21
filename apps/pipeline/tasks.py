@@ -17,7 +17,10 @@ from celery import shared_task
 
 @shared_task(name="apps.pipeline.tasks.extract_zip_task")
 def extract_zip_task(job_id: str) -> dict[str, Any]:
-    """Extract one uploaded package; permanent errors are returned, not retried."""
+    """Extract one uploaded package; permanent errors are returned, not retried.
+
+    R-036: acks_late + reject_on_worker_lost; idempotent via job lock/ATTEMPTS/reuse.
+    """
     try:
         return asdict(run_extraction(job_id))
     except SoftTimeLimitExceeded:
@@ -28,7 +31,10 @@ def extract_zip_task(job_id: str) -> dict[str, Any]:
 
 @shared_task(name="apps.pipeline.tasks.cleanup_zip_staging")
 def cleanup_zip_staging() -> dict[str, int]:
-    """Hourly backstop for abandoned staging directories and expired results."""
+    """Hourly backstop for abandoned staging directories and expired results.
+
+    R-036: acks_late + reject_on_worker_lost; idempotent cleanup.
+    """
     return cleanup_expired_jobs()
 
 

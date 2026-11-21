@@ -834,9 +834,29 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   Рекомендация — гибрид F: Phase 1 observability/docstrings/tests без
   изменения поведения; Phase 2 idempotency guards + точечный reject только
   после решения владельца.
-- **Статус:** **ANALYSIS COMPLETED / AWAITING OWNER DECISION**; поведение
-  не изменялось.
+- **Статус:** **ANALYSIS COMPLETED; PHASE 1 IMPLEMENTED / TECHNICALLY
+  ACCEPTED (agent); AWAITING OWNER DECISION FOR PHASE 2**; поведение
+  доставки не изменялось.
 - **Отчёт:** `docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`.
+
+### R-036 Phase 1 — delivery observability/docstrings/contract tests
+
+- **ID:** R-036 Phase 1 (non-behavioral).
+- **Результат:** `apps/core/celery_observability.py` — события
+  `task_received`/`task_failure`/`task_retry`/`worker_process_shutdown`/
+  `worker_shutdown` только с безопасными полями; `JsonFormatter` расширен;
+  R-036 docstrings у CRM/accounts/catalog/pipeline задач; 5 контрактных
+  тестов (матрица acks, поля, fallback `task_name`, JSON, отсутствие args).
+  Живая проверка выявила и исправила `Consumer.name`-объект и потерю
+  handler после `dictConfig` (fd-2 JSON handler).
+- **Проверки:** full **402 passed, 3 skipped**; ruff/format/mypy clean;
+  live `crm.backup_status_alert` → `celery.task.received`.
+- **Review:** code-reviewer — **ACCEPT**; security-auditor — **ACCEPT**;
+  minor (lock attach, partial fd write, string hostname) исправлены,
+  отсутствие throttling fd-2 — принято как residual.
+- **Статус:** **TECHNICALLY ACCEPTED** (agent); Phase 2 — **AWAITING OWNER
+  DECISION**. Поведение доставки не изменялось.
+- **Отчёт:** `docs/foundation/R-036_PHASE1_REPORT.md`.
 
 ## 4. Источники и пробелы
 
@@ -870,6 +890,8 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`;
 - `docs/foundation/BA-QUALITY-002_REPORT.md`;
 - `docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`;
+- `docs/foundation/R-036_PHASE1_REPORT.md`;
+- `tests/unit/test_celery_delivery_contract.py`;
 - `tests/integration/test_catalog_public.py`;
 - `tests/integration/test_game_sessions.py`;
 - `reports/BA_AUDIT_20261118_162920.zip` (исторический generated-отчёт).

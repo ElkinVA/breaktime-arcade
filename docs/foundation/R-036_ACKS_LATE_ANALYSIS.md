@@ -1,9 +1,11 @@
 # R-036 — глобальный `CELERY_TASK_ACKS_LATE=True`: анализ
 
 **Дата:** 2026-11-21
-**Статус:** **ANALYSIS COMPLETED / AWAITING OWNER DECISION**; поведение
-не изменялось.
+**Статус:** **ANALYSIS COMPLETED; PHASE 1 IMPLEMENTED (non-behavioral,
+code/security review ACCEPT); AWAITING OWNER DECISION FOR PHASE 2**;
+поведение доставки не изменялось.
 **Автор:** `architect` (`deepseek-v4-pro`, text-only); факты сверены Flash.
+**Phase 1:** `docs/foundation/R-036_PHASE1_REPORT.md`.
 **Область:** `config/settings/base.py`; задачи `crm.*`, `accounts.*`,
 `catalog.*`, `pipeline.*`.
 
@@ -158,3 +160,30 @@
 
 До решения поведение не меняется; Фаза 1 (наблюдаемость/документация/тесты)
 может быть выполнена без изменения семантики.
+
+## 10. Phase 1 — выполнение (2026-11-21)
+
+Реализовано без изменения настроек/семантики Celery:
+
+- структурированные события `celery.task.received`, `celery.task.failure`,
+  `celery.task.retry`, `celery.worker.process_shutdown`,
+  `celery.worker.shutdown` (`apps/core/celery_observability.py`);
+- контрактные docstrings задач и матрица конфигурации в
+  `tests/unit/test_celery_delivery_contract.py`;
+- только безопасные поля (task id/name, queue, redelivered, retries,
+  exception type, worker/pid/exitcode); args/kwargs/результаты/текст
+  исключения не логируются.
+
+Живая проверка worker выявила и исправила два дефекта наблюдаемости:
+`Consumer.name` — объект задачи (ломает JSON-формат), а handler,
+добавленный на уровне модуля, очищается `dictConfig`; Celery также
+подменяет `sys.stderr`. Исправления — `_task_name` принимает только
+`str`, handler пишется в fd 2 и переустанавливается лениво.
+
+Проверки: **402 passed, 3 skipped**; ruff/ruff format/mypy — clean;
+live `crm.backup_status_alert` дал `celery.task.received` с корректными
+полями. Независимый code/security review — **ACCEPT**; minor-замечания
+(lock attach, частичная запись fd, строковый hostname
+`worker_process_shutdown`, отсутствие throttling fd-2) исправлены или
+приняты как residual. Phase 2 не начиналась; вопросы владельцу из §9
+остаются.

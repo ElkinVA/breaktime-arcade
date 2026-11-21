@@ -435,6 +435,18 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Решение владельца | Phase 2 (idempotency + reject для backup/restore/anonymize), задержка redelivery, отдельный worker — не принято |
 | Источник | `docs/foundation/R-036_ACKS_LATE_ANALYSIS.md` |
 
+## R-036 Phase 1 — delivery observability (non-behavioral)
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая наблюдаемость; не аудит этапа |
+| Результат | `celery.task.received`/`failure`/`retry`/worker shutdown только с безопасными полями; docstrings R-036; 5 контрактных тестов; live `received` в worker |
+| Проверки | 402 passed, 3 skipped; ruff/format/mypy clean |
+| Статус | **TECHNICALLY ACCEPTED** (agent); поведение доставки не изменялось |
+| Review | code-reviewer — **ACCEPT**; security-auditor — **ACCEPT**; minor fixes: lock, partial write, string hostname; residual — нет throttling fd-2 |
+| Phase 2 | **AWAITING OWNER DECISION** (idempotency guards, reject, visibility timeout, worker) |
+| Источник | `docs/foundation/R-036_PHASE1_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

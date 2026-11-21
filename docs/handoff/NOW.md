@@ -1,7 +1,8 @@
 # NOW — Breaktime Arcade
 
-**Дата:** 2026-11-20
-**Текущий пакет:** BA-QUALITY-002, BA-ZIP-HARDENING-001 (R-035),
+**Дата:** 2026-11-21
+**Текущий пакет:** R-036 Phase 1 (delivery observability, non-behavioral),
+BA-QUALITY-002, BA-ZIP-HARDENING-001 (R-035),
 BA-DEVCONTROL-001 (Telegram Dev Control) и BA-ZIP-WORKER-001
 (изолированный extraction worker);
 App F server slices: SESSION-002, RESULT-001, LEADERBOARD-001, STORAGE-001,
@@ -12,7 +13,9 @@ AWAITING OWNER ACCEPTANCE**. ZIP preflight/extract/worker — **TECHNICALLY
 ACCEPTED** агентом (OD-TECH-001, 2026-11-20); продуктовая приёмка остаётся
 за владельцем. BA-ZIP-WORKER-001: plan + implementation review
 (code-reviewer/security-auditor, deepseek-v4-pro, text-only) — **ACCEPT**;
-остатки R-033/R-035/R-036/R-037 (non-blocking).
+остатки R-033/R-035/R-036/R-037 (non-blocking). R-036 Phase 1 —
+**IMPLEMENTED / TECHNICALLY ACCEPTED** (agent; delivery behavior unchanged);
+Phase 2 — **AWAITING OWNER DECISION**.
 
 ## Активная задача
 
@@ -49,6 +52,14 @@ Code/security review — **ACCEPT**. Отчёт —
 `docs/foundation/BA-DEVCONTROL-001_REPORT.md`, README —
 `devcontrol/README.md`.
 
+**R-036 Phase 1** — **TECHNICALLY ACCEPTED** (agent, 2026-11-21):
+`apps/core/celery_observability.py` (received/failure/retry/worker
+shutdown; только безопасные поля), R-036 docstrings, 5 contract tests.
+Живая проверка worker: `celery.task.received` для
+`crm.backup_status_alert`; full 402/3; code/security review **ACCEPT**.
+Поведение доставки не изменялось. Phase 2 — **AWAITING OWNER DECISION**.
+Отчёт — `docs/foundation/R-036_PHASE1_REPORT.md`.
+
 ## Следующий шаг
 
 1. Владелец: `python3 devcontrol/setup_token.py --verify` (или без
@@ -68,15 +79,18 @@ Code/security review — **ACCEPT**. Отчёт —
    коды; code/security review accept; отчёт
    `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`.
 5. BA-QUALITY-002 — **TECHNICALLY ACCEPTED** (agent); code/security review
-   accept; full OR 10k ~150 мс — residual. R-036 — **ANALYSIS COMPLETED /
-   AWAITING OWNER DECISION** (`docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`):
-   Phase 1 (observability/docstrings/tests) без изменения поведения возможна;
-   Phase 2 (idempotency + точечный reject) — после решения владельца.
+   accept; full OR 10k ~150 мс — residual. R-036 Phase 1 — **TECHNICALLY
+   ACCEPTED** (agent; code/security review **ACCEPT**):
+   observability/docstrings/5 contract tests, live `celery.task.received`,
+   full 402/3; поведение доставки не изменялось. Phase 2 (idempotency +
+   точечный reject, visibility timeout, worker) — **AWAITING OWNER
+   DECISION** (`docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`,
+   `docs/foundation/R-036_PHASE1_REPORT.md`).
 6. R-037/R-038: retention `zip_uploads`; live Telegram/Dev Control.
-7. Следующий независимый срез — **R-036 Phase 1** (docstrings/контрактные
-   тесты/наблюдаемость без изменения поведения); Phase 2 — после решения
-   владельца. Другие READY: BA-APPF-002 (частично; DB-002/003/004/008
-   делегированы), BA-DOC-README-001 (защищённые файлы).
+7. Следующий независимый срез — BA-APPF-002 (частично; DB-002/003/004/008
+   делегированы) или другой READY без изменения утверждённых требований;
+   BA-DOC-README-001 требует разрешения на защищённые файлы. Phase 2 R-036
+   не начинать до решения владельца.
 8. manifest/catalog/locales — после BA-GAME-2.2; SDK/iframe/host protocol —
    после утверждения BA-SDK-1.1 v1.1.0 и BA-GAME-2.2; EventLog/verifier —
    после схем сообщений.
@@ -98,13 +112,15 @@ Code/security review — **ACCEPT**. Отчёт —
 - Retention-сроки (`docs/decisions/RETENTION_PROPOSAL.md`).
 - Challenge mechanism (PoW/CAPTCHA, ЕС) и узкий `TRUSTED_PROXY_IPS`.
 - Приёмка APPF-SESSION-002, APPF-RESULT-001, ZIP PREFLIGHT/EXTRACT/WORKER.
-- R-036: менять ли глобальный `acks_late` после аудита идемпотентности.
+- R-036 Phase 2: менять ли глобальный `acks_late`/`reject_on_worker_lost`
+  после аудита идемпотентности; приемлемая задержка redelivery и отдельный
+  backup/restore worker.
 
 ## Последние фактические проверки
 
 ```text
 pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
-pytest (full)              -> 397 passed, 3 skipped, 1 warning
+pytest (full)              -> 402 passed, 3 skipped, 1 warning
 coverage                   -> 90.88 %, no module < 70 %
 ZIP tests                  -> 54 passed; 2000 files fsync 7.7s
 benchmark 10k              -> GIN search_vector FTS 2.4 ms; full OR 150 ms;
@@ -112,8 +128,10 @@ benchmark 10k              -> GIN search_vector FTS 2.4 ms; full OR 150 ms;
 pytest tests/unit/test_devcontrol.py -> 31 passed (1 host-only skip in web)
 Telegram API from WSL/Windows: TCP 443 timeout; proxy/VPN required
 ruff check apps config tests -> All checks passed
-ruff format --check        -> 348 files already formatted
-mypy                       -> Success: no issues found in 321 source files
+ruff format --check        -> 371 files already formatted
+mypy                       -> Success: no issues found in 338 source files
+R-036 live                 -> celery.task.received task=crm.backup_status_alert,
+                              queue=celery, redelivered=false, retries=0
 docker compose config --quiet -> OK
 ./verify_stack.sh          -> СТЕК ЗДОРОВ (zip-worker healthy)
 E2E queue: web uploads -> enqueue_extraction -> zip-worker ->
@@ -152,8 +170,9 @@ host E2E (13 сценариев, после локальной настройк�
 - Retention JSONB/результатов не утверждён; R-030 residual.
 - R-033: нет жёсткой ФС-квоты; общий broker (вариант A).
 - R-035: fsync родительского каталога/audit, method allowlist — deferred.
-- R-036: анализ выполнен; глобальный `acks_late` — платформенный риск,
-  Phase 2 awaiting owner.
+- R-036: Phase 1 observability выполнена/принята; глобальный `acks_late` —
+  платформенный риск, Phase 2 awaiting owner; residual — нет throttling
+  fd-2-канала.
 - R-037: retention `zip_uploads` вне scope.
 - R-038: Dev Control live Telegram не проверен; auto-mode может потребовать
   одобрения permissions; mid-turn injection нет (inbox на границе задачи).
@@ -168,6 +187,7 @@ host E2E (13 сценариев, после локальной настройк�
 `docs/foundation/BA-DEVCONTROL-001_REPORT.md`, `devcontrol/README.md`,
 `docs/foundation/BA-QUALITY-002_REPORT.md`,
 `docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`,
+`docs/foundation/R-036_PHASE1_REPORT.md`,
 `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`,
 `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`,
 `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`,

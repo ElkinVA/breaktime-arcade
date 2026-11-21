@@ -17,7 +17,10 @@ from celery import shared_task
 
 @shared_task
 def cleanup_expired_account_records() -> dict[str, int]:
-    """Удаляет записи по срокам §2.22: гости, токены, журнал, резервы."""
+    """Удаляет записи по срокам §2.22: гости, токены, журнал, резервы.
+
+    R-036: at-least-once; idempotent by expired predicate.
+    """
     from apps.gameplay.models import GameStorage
 
     now = timezone.now()
@@ -43,7 +46,10 @@ def cleanup_expired_account_records() -> dict[str, int]:
 
 @shared_task
 def anonymize_due_accounts() -> int:
-    """Анонимизирует аккаунты после 7-дневного окна отмены."""
+    """Анонимизирует аккаунты после 7-дневного окна отмены.
+
+    R-036: at-least-once; effectively idempotent (profile removed on first run).
+    """
     cutoff = timezone.now() - timedelta(days=settings.ACCOUNT_DELETION_WINDOW_DAYS)
     due = list(
         UserProfile.objects.filter(

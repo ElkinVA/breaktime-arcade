@@ -137,6 +137,11 @@
   read_only/limits, очередь `zip`, cancel, audit); code/security review
   accept; остатки R-033/R-035/R-036/R-037. Отчёт —
   `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`.
+- R-036 Phase 1 — **TECHNICALLY ACCEPTED** (agent): delivery observability
+  (`task_received/failure/retry`, worker shutdown), R-036 docstrings,
+  5 contract tests; live `celery.task.received`; full 402/3; code/security
+  review accept; delivery behavior unchanged. Phase 2 — AWAITING OWNER
+  DECISION. Отчёт — `docs/foundation/R-036_PHASE1_REPORT.md`.
 - Прохождение тестов не является приёмкой; отчёт исполнителя не является
   результатом независимого аудита.
 - Staging не затрагивать без отдельного разрешения. В текущей зоне

@@ -46,6 +46,13 @@ class JsonFormatter(logging.Formatter):
             "attempts",
             "queue",
             "limits",
+            "task_name",
+            "redelivered",
+            "retries",
+            "exception_type",
+            "worker",
+            "worker_pid",
+            "exitcode",
         ):
             value = getattr(record, key, None)
             if value is not None:
