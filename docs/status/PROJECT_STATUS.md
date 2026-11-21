@@ -404,7 +404,7 @@ clean. Отчёт — `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 | BA-APPF-002 / DB-001 | **TECHNICALLY ACCEPTED** (agent) | Tombstone all user sessions on deletion; open aborted + ticket/binding cleared; finished/expired history kept; 403/3; review accept; migration 0011 |
 | BA-APPF-002 / DB-006 | **TECHNICALLY ACCEPTED** (agent) | GameVersion content immutable via model guard + DB trigger; audit FKs only →NULL; 419/3; code/security review accept; migrations 0006/0007 |
 | BA-APPF-002 / DB-005/007 | **TECHNICALLY ACCEPTED** (agent) | Public name 60; mode↔subject CHECK incl. deleted tombstone; 433/3; migrations 0008/0012 |
-| BA-APPF-002 / DB-004 + residuals | **TECHNICALLY ACCEPTED** (agent) | Game identity/delete guard; GamePlayCredit cleanup; mode immutable; 441/3; migrations 0009/0013 |
+| BA-APPF-002 / DB-004 + residuals | **TECHNICALLY ACCEPTED** (agent) | Game identity/delete guard; GamePlayCredit cleanup; mode immutable; 441/3; migrations 0009/0010/0013 |
 | BA-DEVCONTROL-001 | **TECHNICALLY ACCEPTED** (agent); live setup — token/opt-in | Мониторинг/отчёты/задачи/ask/hooks; sandbox test runner; 31 tests; full 360/3; code/security review accept; Telegram API blocked — нужен proxy/VPN + токен |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
