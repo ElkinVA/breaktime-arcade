@@ -997,3 +997,14 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Статус:** **IMPLEMENTED / TECHNICAL REVIEW**; no game/App F changes.
 - **Отчёт:** `docs/foundation/AI_AUTONOMY_AUDIT.md`,
   `docs/foundation/AI_AUTONOMY_EVIDENCE.md`.
+
+
+### BA-AUTONOMY-005 — bounded AI control-plane hardening package
+
+- **Результат:** пять крупных задач: worktree lifecycle/recovery, hard budgets,
+  env isolation, Telegram notifier, VPS transfer package. Все приняты
+  независимым Pro review; security task прошёл через reject→fix→accept.
+- **Проверки:** final `make check` **720 passed, 11 skipped**; retry limit and
+  five-task package cap enforced.
+- **Остатки:** OS-sandbox gap R-040; live Telegram/VPS systemd not exercised;
+  worktree full-check gap documented.

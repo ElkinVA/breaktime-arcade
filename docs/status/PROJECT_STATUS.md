@@ -639,3 +639,13 @@ Remote: отсутствует
 - BA-CATALOG-001…005: 8 integration tests; full suite — 185 passed,
   2 skipped; отчёты — `docs/foundation/BA-CATALOG-001_REPORT.md` …
   `BA-CATALOG-005_REPORT.md`.
+
+
+## 1.23. AI Control Plane — bounded hardening package
+
+Five large tasks accepted by independent Pro review: isolated worktree
+lifecycle/recovery, hard task/wall/token/API budgets, env/worktree isolation,
+Telegram notifier and VPS transfer package. Final gate **720 passed,
+11 skipped**; ruff/format/mypy clean. Technical debt: R-040 (no OS sandbox),
+live Telegram/VPS start not exercised, worktree QA uses sandbox/targeted checks.
+No game/App F features changed. Evidence — `docs/foundation/AI_AUTONOMY_EVIDENCE.md`.

@@ -525,3 +525,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **TECHNICALLY ACCEPTED** (independent Pro review); product acceptance owner |
 | Остаток | no isolated worktree; reviewer does not rerun full suite; no OS sandbox |
 | Источник | `docs/foundation/AI_AUTONOMY_EVIDENCE.md` |
+
+
+## BA-AUTONOMY-005 — bounded control-plane hardening package
+
+| Поле | Значение |
+|---|---|
+| Тип | Worktree reliability / limits / isolation / notifications / VPS prep |
+| Результат | 5 large tasks accepted by independent Pro review; no sixth task created |
+| Проверки | 720 passed, 11 skipped; ruff/format/mypy clean |
+| Статус | **TECHNICALLY ACCEPTED** (agent); product/infrastructure activation owner |
+| Остаток | R-040 OS sandbox; live Telegram/VPS not exercised; sandbox scripts/ copy gap |
+| Источник | `docs/foundation/AI_AUTONOMY_EVIDENCE.md` |

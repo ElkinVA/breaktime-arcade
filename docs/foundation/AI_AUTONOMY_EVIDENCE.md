@@ -39,7 +39,7 @@ session `79aef134-e1a8-42a0-9ec9-ac8d292ac2bc`) returned 4 concrete
 ### Task `AUTONOMY-CONFIG-CONTRACT-001`
 
 - Developer Flash added the two contract test modules and the devcontrol
-  deny/sandbox wiring; QA `make check` = 670 passed, 4 skipped.
+  deny/sandbox wiring; QA targeted checks passed; final repository gate is 720 passed, 11 skipped.
 - Pro Reviewer `42f4c0f6-...` accepted; commit `c184ffa`.
 - Auto-next was already observed after the preceding completed task.
 - First Pro Reviewer (`b56e4714-...`) correctly rejected the uncommitted
@@ -73,7 +73,7 @@ filter, JSON parsing/model checks.
 ## Verification
 
 ```text
-make check                    -> 670 passed, 4 skipped
+make check                    -> 720 passed, 11 skipped
 tests/unit/test_autonomy.py   -> 12 passed
 tests/unit/test_hooks_guard.py-> 193 passed
 ruff/format/mypy              -> clean
@@ -105,3 +105,29 @@ No game/App F feature changes were made in this block.
 - The autonomous developer still has normal user-level process permissions;
   the existing hooks are defense-in-depth, not an OS sandbox.
 - `.autonomy` state/evidence are local and not backed up/committed by design.
+
+
+## Bounded hardening package (2026-11-21)
+
+Five large tasks were executed with automatic handoff; no sixth task was created:
+
+| Task | Result |
+|---|---|
+| `AUTONOMY-WORKTREE-RELIABILITY-001` | accepted; isolated worktree create/merge/reject/recovery integration tests; `a4ebe9d` |
+| `AUTONOMY-LIMITS-001` | accepted; hard task/wall/token/cost budgets; `d61e2ee` |
+| `AUTONOMY-SECURITY-001` | first review reject, then accepted after fix; env allowlist/worktree validation; `625c641` |
+| `AUTONOMY-NOTIFY-001` | accepted; Telegram events via owner-configured token; fake-transport tests; `085c8d3` |
+| `AUTONOMY-VPS-001` | accepted; systemd user unit, env template, backup/runbook; `caeea50` |
+
+Final gate: **720 passed, 11 skipped**; ruff/format/mypy clean. Default run cap
+is five tasks, wall-clock 3600 s, token budget 5 000 000 and API budget
+5 USD (all configurable; no budget is unlimited).
+
+Technical debt kept explicitly:
+
+- worktree full `make check` is not available without `.env`; QA uses sandbox
+  runner plus host targeted checks;
+- worktree cleanup assumes exclusive `.autonomy/worktrees`;
+- security remains application-level isolation, not an OS sandbox (R-040);
+- live Telegram delivery and live VPS systemd start were not exercised;
+- full sandbox collection still has a pre-existing `scripts/` copy gap.

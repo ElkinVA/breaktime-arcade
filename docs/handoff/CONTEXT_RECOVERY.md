@@ -480,3 +480,6 @@ DRAFT-документы не являются нормативными и не 
   Architect/Reviewer and Flash Developer/QA evidence in
   `.autonomy/evidence`; 657/4; `AUTONOMY-GUARD-TESTS-001` COMPLETED,
   `AUTONOMY-CONFIG-CONTRACT-001` auto-claimed; no game features changed.
+
+- BA-AUTONOMY-005 hard package: worktree isolation, limits, security, notify,
+  VPS prep accepted; 720/11; R-040 and live Telegram/VPS residuals.
