@@ -206,7 +206,7 @@ def test_backup_commands(monkeypatch, tmp_path: Path) -> None:
         call_command("restore_check")
 
 
-def test_crm_views() -> None:
+def test_crm_views(monkeypatch) -> None:
     request = RequestFactory().get("/crm/login/")
     assert login_view(request).template_name == "crm/login.html"
     assert logout_view(request).status_code == 302
@@ -215,6 +215,19 @@ def test_crm_views() -> None:
     anonymous.user = SimpleNamespace(is_authenticated=False, is_staff=False)
     assert dashboard(anonymous).status_code == 302
 
+    monkeypatch.setattr(
+        "apps.crm.views.dashboard_stats",
+        lambda: SimpleNamespace(
+            published_games=0,
+            total_accounts=0,
+            active_accounts_30d=0,
+            sessions_today=0,
+            top_games=(),
+            average_rating=0.0,
+            new_votes_today=0,
+            latest_backup=None,
+        ),
+    )
     staff = RequestFactory().get("/crm/")
     staff.user = SimpleNamespace(is_authenticated=True, is_staff=True)
     response = dashboard(staff)

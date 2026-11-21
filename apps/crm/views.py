@@ -1,10 +1,12 @@
-"""Заглушки представлений CRM."""
+"""Представления CRM."""
 
 from __future__ import annotations
 
 from django.http import HttpRequest, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
+
+from apps.crm.services.dashboard import dashboard_stats
 
 
 def login_view(request: HttpRequest) -> TemplateResponse:
@@ -23,6 +25,6 @@ def dashboard(request: HttpRequest) -> TemplateResponse | HttpResponseRedirect:
         "crm/dashboard.html",
         {
             "title": "CRM",
-            "stage": "блок 2/3 — каркас",
+            "stats": dashboard_stats(),
         },
     )
