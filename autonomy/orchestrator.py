@@ -851,7 +851,7 @@ class Orchestrator:
                 self.notify_report(report)
                 budget_stopped = True
                 break
-            if STOP_FILE.exists():
+            if (self.store.root / "STOP").exists():
                 report = {"status": "stopped", "reason": "STOP file"}
                 reports.append(report)
                 self.notify_report(report)
