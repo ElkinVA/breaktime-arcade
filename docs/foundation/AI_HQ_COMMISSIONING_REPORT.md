@@ -88,10 +88,16 @@ badge and account profile records are now part of the running product.
 
 The product queue then self-selected and completed `ARCADE-SEO-SITEMAP-001`
 (`64f1fd9`): per-language sitemap index and robots.txt for the public portal,
-with Pro Reviewer accept. The Architect also queued CRM dashboard, catalog
-pagination, leaderboard attempts, SEO meta and empty-search tasks.
+with Pro Reviewer accept.
 
-Final repository gate: **758 passed, 11 skipped**; ruff/format/mypy clean.
+`ARCADE-CATALOG-PAGINATION-001` (`824eb28`) followed: 24-card pagination with
+filter/sort preservation, canonical, noindex beyond page 5, HTMX fragment
+navigation and constant query count; Pro Reviewer accept.
+
+The Architect also queued CRM dashboard, leaderboard attempts, SEO meta and
+empty-search tasks.
+
+Final repository gate: **765 passed, 11 skipped**; ruff/format/mypy clean.
 
 Current efficiency snapshot: 16 accepted tasks, 12 first-pass (75%), 4
 correction cycles, 1 QA failure, 1 review rejection, ~3.79 USD and ~3.78M

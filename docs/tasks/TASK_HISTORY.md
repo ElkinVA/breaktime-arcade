@@ -1015,7 +1015,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Результат:** публичная карточка игры показывает агрегат рейтинга и count;
   каталог показывает compact summary без N+1; zero state явный.
 - **Проверки:** полный цикл Flash Developer → Flash QA → Pro Reviewer →
-  commit/merge; full **758 passed, 11 skipped**.
+  commit/merge; full **765 passed, 11 skipped**.
 - **Коммиты:** `63b6137`, `3c58dcb`.
 - **Статус:** **TECHNICALLY ACCEPTED** (agent review); product acceptance owner.
 
@@ -1024,7 +1024,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 
 - 30-day popularity read with cache/DB fallback, cards/detail indicator and
   `sort=popular`; Flash Developer → Flash QA → Pro Reviewer → `f211161`.
-- Full **758 passed, 11 skipped**.
+- Full **765 passed, 11 skipped**.
 - Review: accepted; minor: secondary sort should be reconciled with §2.8
   (`WR ↓, id ↑`) and UI strings need i18n. Product follow-up, not infra.
 
@@ -1038,7 +1038,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `ARCADE-I18N-UI-001` — initially stopped by the old TOKEN_BUDGET limit;
   owner changed policy on 2026-11-21: token/cost are accounting only and no
   longer stop work. Task resumed under the new policy.
-- Full gate **758 passed, 11 skipped**.
+- Full gate **765 passed, 11 skipped**.
 
 
 ### Browser Arcade product wave — home, i18n, profile, locale badge
@@ -1048,7 +1048,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `ARCADE-HOME-BLOCKS-001` (`f7634b7`) — real Popular/High-rated home blocks.
 - `ARCADE-PROFILE-RECORDS-001` (`d330ee0`) — personal records/playtime in profile.
 - `ARCADE-LOCALE-BADGE-001` (`d3aa9f9`) — localization coverage badge.
-- QA/Pro Reviewer cycles completed; full gate **758 passed, 11 skipped**.
+- QA/Pro Reviewer cycles completed; full gate **765 passed, 11 skipped**.
 - Token/cost are now analytics only; wall-clock, task cap, retry/fingerprint and
   worktree gates remain.
 
@@ -1057,4 +1057,11 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 
 - Per-language sitemap index and robots.txt; published games/genres only,
   active-language DB enumeration, localized slugs, tests; Pro Reviewer accept.
-- Commit `64f1fd9`; full gate **758 passed, 11 skipped**.
+- Commit `64f1fd9`; full gate **765 passed, 11 skipped**.
+
+
+### ARCADE-CATALOG-PAGINATION-001 — public catalog pagination
+
+- 24-card pages, filter/sort-preserving links, canonical, noindex beyond page 5,
+  HTMX fragment and constant query count; `824eb28`; Pro Reviewer accept.
+- Full gate **765 passed, 11 skipped**.
