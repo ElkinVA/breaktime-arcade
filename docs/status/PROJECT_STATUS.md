@@ -367,8 +367,7 @@ clean. Отчёт — `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 точный runtime origin, full `runtime_hash`, CSRF relay, guest normalization.
 `play.html` использует iframe sandbox; `game_detail` получил Play link.
 Full **448 passed, 4 skipped**; JS `node --check` clean. Независимый review —
-**INCOMPLETE** (E2E/probe уже есть, но diff-evidence и parentOrigin residual —
-residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
+**INCOMPLETE** (E2E/probe passed; pin `BA_PORTAL_ORIGIN` добавлен, но diff-evidence/JSON-Schema и parentOrigin — residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
 
 ## 2. Статусы работ
 

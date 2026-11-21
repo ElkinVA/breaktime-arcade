@@ -102,9 +102,8 @@ Game identity immutable после публикации и DELETE forbidden; Gam
 **BA-APPF-002 / runtime A+B** — **IMPLEMENTED / TECHNICAL REVIEW**:
 `ba-sdk.js`, host protocol, player host, `game_play` server-side
 create+activate, exact runtime origin/full hash, no-store, CSRF relay,
-guest normalization; 7 added tests; full 448/4; JS syntax clean.
-Code/security review — **INCOMPLETE** (diff evidence, parentOrigin,
-parentOrigin residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
+guest normalization; 8 added tests; full 448/4; JS syntax clean; runtime E2E 1 passed.
+Code/security review — **INCOMPLETE** (diff evidence, JSON-Schema, parentOrigin residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
 
 ## Следующий шаг
 
@@ -133,9 +132,9 @@ parentOrigin residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_
    DECISION** (`docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`,
    `docs/foundation/R-036_PHASE1_REPORT.md`).
 6. R-037/R-038: retention `zip_uploads`; live Telegram/Dev Control.
-7. DB-001/004/005/006/007 + runtime A+B реализованы. Следующий шаг —
-   probe-игра и Playwright E2E cross-origin handshake, затем повторный
-   code/security review; BA-SDK-1.1/ENV/BA-GAME всё ещё не утверждены.
+7. DB-001/004/005/006/007 + runtime A+B реализованы; probe/E2E handshake
+   passed. Следующий шаг — повторный code/security review с diff-evidence;
+   BA-SDK-1.1/ENV/BA-GAME всё ещё не утверждены.
    BA-DOC-README-001 требует разрешения на защищённые файлы. Phase 2 R-036
    не начинать до решения владельца.
 8. manifest/catalog/locales — после BA-GAME-2.2; EventLog/verifier — после

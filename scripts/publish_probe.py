@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 from pathlib import Path
@@ -23,6 +24,11 @@ def main() -> None:
     shutil.copytree(SOURCE, TARGET, dirs_exist_ok=True)
     (TARGET / "js").mkdir(exist_ok=True)
     shutil.copy2(SDK, TARGET / "js" / "ba-sdk.js")
+    portal_origin = os.environ.get("PORTAL_ORIGIN", "https://portal.test:8443").rstrip("/")
+    (TARGET / "js" / "config.js").write_text(
+        f"window.BA_PORTAL_ORIGIN = {json.dumps(portal_origin)};\n",
+        encoding="utf-8",
+    )
     print(f"probe published: {TARGET}")
 
 

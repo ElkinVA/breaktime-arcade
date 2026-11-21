@@ -81,9 +81,9 @@ npm run check:js  -> clean (3 files)
   storage namespacing, camelCase mapping, sandbox origin, Idempotency-Key
   source требуют подтверждения кодом/E2E.
 - security-auditor — **INCOMPLETE**: parentOrigin из fragment
-  attacker-influenceable; нужен build-time pin (добавлена поддержка
-  `window.BA_PORTAL_ORIGIN` с проверкой fragment), E2E/probe, server-side
-  guest rejection и JSON-Schema validation evidence. Статус не accepted.
+  attacker-influenceable; добавлена pin-проверка `window.BA_PORTAL_ORIGIN`
+  (probe publish внедряет), E2E passed; остаются JSON-Schema validation
+  evidence, guest server-side evidence и diff-review. Статус не accepted.
 
 ## 6. Остатки
 
