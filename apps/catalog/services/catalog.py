@@ -172,9 +172,11 @@ def filter_games(filters: CatalogFilters, language_code: str = "en") -> QuerySet
             return queryset.order_by("-rating_wr_score", "-rating_vote_count", "id")
         return queryset.order_by("-rating_vote_count", "-rating_wr_score", "id")
     if filters.sort == SORT_POPULAR:
-        return queryset.annotate(popularity_30d=popularity_subquery()).order_by(
-            "-popularity_30d", "-published_at", "-id"
-        )
+        wr_score, _ = _rating_sort_annotations()
+        return queryset.annotate(
+            popularity_30d=popularity_subquery(),
+            rating_wr_score=wr_score,
+        ).order_by("-popularity_30d", "-rating_wr_score", "id")
     if filters.sort == SORT_OLD:
         return queryset.order_by("published_at", "id")
     return queryset.order_by("-published_at", "-id")

@@ -22,6 +22,7 @@ from apps.catalog.services.popularity import (
     window_bounds,
 )
 from apps.gameplay.models import GameDailyStats
+from apps.ratings.models import GameRatingAggregate
 
 LOCMEM_CACHES = {
     "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
@@ -62,6 +63,10 @@ def _stats(game: Game, day_offset: int, unique_sessions: int) -> GameDailyStats:
         date=timezone.now().date() - timedelta(days=day_offset),
         unique_sessions=unique_sessions,
     )
+
+
+def _aggregate(game: Game, *, wr_score: float) -> GameRatingAggregate:
+    return GameRatingAggregate.objects.create(game=game, wr_score=wr_score)
 
 
 @pytest.mark.django_db
@@ -119,11 +124,68 @@ def test_parse_filters_and_filter_games_support_popular_sort() -> None:
     assert filters.sort == SORT_POPULAR
 
     ordered = list(filter_games(filters).values_list("pk", flat=True))
-    assert ordered == [newer.pk, older.pk, low.pk, stale.pk]
+    # popularity desc; equal-popularity games fall back to WR desc then id asc.
+    assert ordered == [older.pk, newer.pk, low.pk, stale.pk]
 
     # Without the filter the default newest ordering still applies.
     default_order = list(filter_games(parse_filters({})).values_list("pk", flat=True))
     assert default_order == [stale.pk, low.pk, newer.pk, older.pk]
+
+
+def _tiebreak_games() -> list[Game]:
+    """Games whose creation order, popularity, WR and published_at all differ.
+
+    ``published_at`` deliberately opposes the expected order so that a stray
+    ``-published_at`` secondary key would fail the test.
+    """
+    now = timezone.now()
+    top = _game(technical_id="tie_top", published_at=now - timedelta(days=10))
+    equal_high_wr = _game(technical_id="tie_equal_high_wr", published_at=now - timedelta(days=5))
+    equal_low_wr = _game(technical_id="tie_equal_low_wr", published_at=now)
+    id_first = _game(technical_id="tie_id_first", published_at=now - timedelta(days=1))
+    id_second = _game(technical_id="tie_id_second", published_at=now - timedelta(days=2))
+    zero = _game(technical_id="tie_zero", published_at=now - timedelta(days=3))
+
+    for game, credits in (
+        (top, 10),
+        (equal_high_wr, 5),
+        (equal_low_wr, 5),
+        (id_first, 3),
+        (id_second, 3),
+    ):
+        _stats(game, day_offset=0, unique_sessions=credits)
+
+    _aggregate(top, wr_score=1.0)
+    _aggregate(equal_high_wr, wr_score=4.0)
+    _aggregate(equal_low_wr, wr_score=2.0)
+    _aggregate(id_first, wr_score=1.0)
+    _aggregate(id_second, wr_score=1.0)
+    # ``zero`` has no stats and no aggregate: popularity 0, WR 0.
+    return [top, equal_high_wr, equal_low_wr, id_first, id_second, zero]
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_popular_sort_orders_by_popularity_then_wr_then_id() -> None:
+    expected = _tiebreak_games()
+
+    ordered = list(filter_games(parse_filters({"sort": SORT_POPULAR})).values_list("pk", flat=True))
+
+    # popularity desc, then WR desc, then id asc (§2.8).
+    assert ordered == [game.pk for game in expected]
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_popular_sort_renders_tiebreak_order() -> None:
+    expected = _tiebreak_games()
+
+    response = Client().get("/en/games/?sort=popular")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    positions = [content.index(f"/en/games/{game.slug}/") for game in expected]
+    assert positions == sorted(positions)
 
 
 @pytest.mark.django_db
