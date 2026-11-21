@@ -9,7 +9,7 @@ from urllib.parse import quote, urlparse
 
 from django.conf import settings
 from django.db.models import Q
-from django.http import Http404, HttpRequest, JsonResponse
+from django.http import Http404, HttpRequest
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
@@ -34,6 +34,7 @@ from apps.gameplay.services.sessions import (
     activate_session,
     create_session,
 )
+from apps.leaderboards.services.queries import get_leaderboard
 
 
 def _language(request: HttpRequest) -> str:
@@ -193,8 +194,24 @@ def game_play(request: HttpRequest, slug: str) -> TemplateResponse:
     return response
 
 
-def game_leaderboard(request: HttpRequest, slug: str) -> JsonResponse:
-    return JsonResponse({"status": "stub", "slug": slug})
+def game_leaderboard(request: HttpRequest, slug: str) -> TemplateResponse:
+    game = published_games().filter(Q(slug=slug) | Q(translations__slug=slug)).distinct().first()
+    if game is None or not game.leaderboard_enabled:
+        raise Http404("leaderboard is not available")
+    translation = localized_translation(game, _language(request))
+    payload = get_leaderboard(game, limit=10, user=request.user)
+    return TemplateResponse(
+        request,
+        "catalog/game_leaderboard.html",
+        {
+            "title": translation.name if translation else game.technical_id,
+            "game": game,
+            "translation": translation,
+            "entries": payload["entries"],
+            "my_rank": payload["me"]["rank"] if payload["me"] else None,
+            "score_direction": payload["direction"],
+        },
+    )
 
 
 def genre_detail(request: HttpRequest, slug: str) -> TemplateResponse:

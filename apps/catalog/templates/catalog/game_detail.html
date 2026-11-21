@@ -23,6 +23,9 @@
     </dl>
     {% if game.current_version %}
         <a class="btn px-6 py-2" href="{% url 'catalog:game_play' slug=game.slug %}">Play</a>
+        {% if game.leaderboard_enabled %}
+            <a class="btn px-6 py-2" href="{% url 'catalog:game_leaderboard' slug=game.slug %}">Leaderboard</a>
+        {% endif %}
     {% else %}
         <span class="btn px-6 py-2 text-muted" title="Game has no published version">
             Play — unavailable

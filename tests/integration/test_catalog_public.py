@@ -253,3 +253,29 @@ def test_genre_page_and_htmx_partial() -> None:
     assert partial.status_code == 200
     assert "<html" not in partial.content.decode()
     assert "/en/games/race-game/" in partial.content.decode()
+
+
+@pytest.mark.django_db
+def test_game_leaderboard_page_renders() -> None:
+    genre = _genre("leaderboard_page", "Leaderboard", "leaderboard-page")
+    _game(technical_id="leaderboard_page", slug="leaderboard-page", genre=genre)
+
+    response = Client().get("/en/games/leaderboard-page/leaderboard/")
+
+    assert response.status_code == 200
+    assert "No records yet." in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_game_leaderboard_disabled_is_not_available() -> None:
+    genre = _genre("leaderboard_disabled", "Disabled", "leaderboard-disabled")
+    game = _game(
+        technical_id="leaderboard_disabled",
+        slug="leaderboard-disabled",
+        genre=genre,
+    )
+    Game.objects.filter(pk=game.pk).update(leaderboard_enabled=False)
+
+    response = Client().get("/en/games/leaderboard-disabled/leaderboard/")
+
+    assert response.status_code == 404

@@ -63,7 +63,7 @@ indexedDB/top.location/parent.document.
 - runtime URL: `https://<host_label>.<GAMES_DOMAIN>:<portal_port>/v/<runtime_hash>/index.html#p=...&s=...`;
 - `play.html`: iframe sandbox `allow-scripts allow-same-origin`, context в
   data-атрибуте, ticket отсутствует;
-- `game_detail` получил Play link.
+- `game_detail` получил Play/Leaderboard links; публичная leaderboard-страница рендерит TOP-10 через существующий query-слой.
 
 nginx dev `/v/<vhash>` расширен до 12–64 hex.
 
@@ -71,7 +71,7 @@ nginx dev `/v/<vhash>` расширен до 12–64 hex.
 
 ```text
 play/SDK targeted -> 7 passed
-pytest (full)     -> 452 passed, 4 skipped, 1 warning
+pytest (full)     -> 454 passed, 4 skipped, 1 warning
 runtime E2E       -> 2 passed (handshake/storage + bad-portal-origin)
 host negative      -> probe bad-message -> E_MESSAGE_INVALID
 ruff/format/mypy  -> clean

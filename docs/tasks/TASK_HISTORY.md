@@ -919,7 +919,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   player host, `game_play` с серверным create+activate, точный runtime
   origin/full `runtime_hash`, CSRF relay, guest normalization, no-store,
   Play link. 3 play tests + 4 static SDK checks.
-- **Проверки:** full **452 passed, 4 skipped**; ruff/format/mypy clean;
+- **Проверки:** full **454 passed, 4 skipped**; ruff/format/mypy clean;
   `npm run check:js` clean.
 - **Статус:** **IMPLEMENTED / TECHNICAL REVIEW** (code/security review
   incomplete: diff evidence/parentOrigin residual; probe/E2E 2 passed; BA-SDK-1.1 не утверждён).
