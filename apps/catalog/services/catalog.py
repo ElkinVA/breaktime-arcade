@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from django.conf import settings
 from django.contrib.postgres.search import (
     SearchQuery,
     SearchRank,
@@ -47,6 +48,8 @@ SORT_POPULAR = "popular"
 SORT_RATING = "rating"
 SORT_VOTES = "votes"
 SORT_CHOICES = {SORT_NEW, SORT_OLD, SORT_POPULAR, SORT_RATING, SORT_VOTES}
+
+HOME_BLOCK_LIMIT = 6
 
 
 @dataclass(frozen=True)
@@ -180,6 +183,39 @@ def filter_games(filters: CatalogFilters, language_code: str = "en") -> QuerySet
     if filters.sort == SORT_OLD:
         return queryset.order_by("published_at", "id")
     return queryset.order_by("-published_at", "-id")
+
+
+def popular_games(limit: int = HOME_BLOCK_LIMIT) -> QuerySet[Game]:
+    """Top published games by 30-day popularity for the home block (§2.8).
+
+    Reuses the ``popular`` catalog ordering (popularity ↓, WR ↓, id ↑) and
+    keeps only games that actually earned credit in the window.
+    """
+    wr_score, _ = _rating_sort_annotations()
+    return (
+        published_games()
+        .annotate(popularity_30d=popularity_subquery(), rating_wr_score=wr_score)
+        .filter(popularity_30d__gt=0)
+        .order_by("-popularity_30d", "-rating_wr_score", "id")[:limit]
+    )
+
+
+def top_rated_games(
+    limit: int = HOME_BLOCK_LIMIT, *, min_votes: int | None = None
+) -> QuerySet[Game]:
+    """Top published games by WR that meet the minimum vote threshold (§2.8/§2.9).
+
+    The threshold defaults to ``RATING_WR_M`` (``v >= m``), i.e. 20 votes with
+    the shipped settings.
+    """
+    threshold = int(settings.RATING_WR_M) if min_votes is None else min_votes
+    wr_score, vote_count = _rating_sort_annotations()
+    return (
+        published_games()
+        .annotate(rating_wr_score=wr_score, rating_vote_count=vote_count)
+        .filter(rating_vote_count__gte=threshold)
+        .order_by("-rating_wr_score", "-rating_vote_count", "id")[:limit]
+    )
 
 
 def localized_translation(game: Game, language_code: str) -> GameTranslation | None:

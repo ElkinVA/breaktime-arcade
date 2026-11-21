@@ -22,8 +22,10 @@ from apps.catalog.services.catalog import (
     genre_options,
     localized_translation,
     parse_filters,
+    popular_games,
     published_games,
     tag_options,
+    top_rated_games,
 )
 from apps.catalog.services.popularity import popularity
 from apps.gameplay.api.throttling import (
@@ -44,14 +46,17 @@ def _language(request: HttpRequest) -> str:
 
 
 def home(request: HttpRequest) -> TemplateResponse:
+    language_code = _language(request)
     return TemplateResponse(
         request,
         "catalog/home.html",
         {
             "title": "Breaktime Arcade",
+            "popular_cards": card_items(popular_games(), language_code),
+            "rated_cards": card_items(top_rated_games(), language_code),
             "latest_cards": card_items(
                 published_games().order_by("-published_at", "-id")[:6],
-                _language(request),
+                language_code,
             ),
         },
     )
