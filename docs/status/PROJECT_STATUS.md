@@ -350,12 +350,13 @@ DB-001/mode-immutability срезы; DB-005 precheck не усекает дан�
 ## 1.20. App F / DB-004 + DB-001/DB-007 residuals
 
 **DB-004** — `Game.technical_id`/`host_label` immutable после первой
-публикации; DELETE `Game` запрещён trigger. Model `save()` + migration
-`catalog.0009`; 4 tests. **DB-001 residual** — при удалении аккаунта
+публикации; DELETE `Game` запрещён trigger. Model `save()` + migrations
+`catalog.0009`/`0010` (case-sensitive identity guard); DB-008 storage trigger
+verified direct test. **DB-001 residual** — при удалении аккаунта
 удаляются `GamePlayCredit` пользователя; `GameDailyStats` остаётся
 историческим агрегатом. **DB-007 residual** — `GameSession.mode` immutable:
 model guard + migration `gameplay.0013`; DB-001 tombstone не меняет mode.
-Full **439 passed, 3 skipped**; ruff/format/mypy clean; migration checks
+Full **441 passed, 3 skipped**; ruff/format/mypy clean; migration checks
 clean. Отчёт — `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 
 ## 2. Статусы работ
@@ -403,7 +404,7 @@ clean. Отчёт — `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 | BA-APPF-002 / DB-001 | **TECHNICALLY ACCEPTED** (agent) | Tombstone all user sessions on deletion; open aborted + ticket/binding cleared; finished/expired history kept; 403/3; review accept; migration 0011 |
 | BA-APPF-002 / DB-006 | **TECHNICALLY ACCEPTED** (agent) | GameVersion content immutable via model guard + DB trigger; audit FKs only →NULL; 419/3; code/security review accept; migrations 0006/0007 |
 | BA-APPF-002 / DB-005/007 | **TECHNICALLY ACCEPTED** (agent) | Public name 60; mode↔subject CHECK incl. deleted tombstone; 433/3; migrations 0008/0012 |
-| BA-APPF-002 / DB-004 + residuals | **TECHNICALLY ACCEPTED** (agent) | Game identity/delete guard; GamePlayCredit cleanup; mode immutable; 439/3; migrations 0009/0013 |
+| BA-APPF-002 / DB-004 + residuals | **TECHNICALLY ACCEPTED** (agent) | Game identity/delete guard; GamePlayCredit cleanup; mode immutable; 441/3; migrations 0009/0013 |
 | BA-DEVCONTROL-001 | **TECHNICALLY ACCEPTED** (agent); live setup — token/opt-in | Мониторинг/отчёты/задачи/ask/hooks; sandbox test runner; 31 tests; full 360/3; code/security review accept; Telegram API blocked — нужен proxy/VPN + токен |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 

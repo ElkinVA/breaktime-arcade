@@ -161,7 +161,7 @@
 - BA-APPF-002 / DB-004 + residuals — **IMPLEMENTED / TECHNICAL REVIEW**:
   Game identity immutable после публикации + DELETE forbidden;
   GamePlayCredit удаляется при удалении аккаунта; GameSession.mode
-  immutable; migrations catalog.0009/gameplay.0013; 439/3. Отчёт —
+  immutable; migrations catalog.0009/gameplay.0013; 441/3. Отчёт —
   `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 - Прохождение тестов не является приёмкой; отчёт исполнителя не является
   результатом независимого аудита.

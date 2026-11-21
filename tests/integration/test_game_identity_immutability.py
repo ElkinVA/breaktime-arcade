@@ -59,6 +59,14 @@ def test_database_trigger_blocks_published_identity_update() -> None:
 
 
 @pytest.mark.django_db
+def test_case_only_identity_change_is_blocked_after_publication() -> None:
+    game = _game(published=True)
+
+    with pytest.raises(DatabaseError), transaction.atomic():
+        Game.objects.filter(pk=game.pk).update(technical_id=game.technical_id.upper())
+
+
+@pytest.mark.django_db
 def test_game_delete_is_forbidden() -> None:
     game = _game()
 

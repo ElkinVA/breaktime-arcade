@@ -39,13 +39,13 @@ retention/aggregate срез). Test DB-001 создаёт credit и провер
 ## 4. Проверки
 
 ```text
-targeted DB-004/residuals -> 5 DB-004 + mode + DB-001 checks passed
-pytest (full)             -> 439 passed, 3 skipped, 1 warning
+targeted DB-004/residuals -> 6 DB-004 + mode + DB-001 + DB-008 checks passed
+pytest (full)             -> 441 passed, 3 skipped, 1 warning
 ruff/format               -> clean
 mypy                      -> Success: no issues found in 338 source files
 makemigrations --check    -> No changes detected
 migrate --plan            -> No planned migration operations
-catalog 0009 / gameplay 0013 -> applied
+catalog 0009/0010, gameplay 0013 -> applied
 ```
 
 ## 5. Review
@@ -55,8 +55,9 @@ catalog 0009 / gameplay 0013 -> applied
   `update_fields`, atomic/idempotent GamePlayCredit cleanup, mode tombstone.
 - **security-auditor** (text-only): **ACCEPT**. Обходов QuerySet/raw/bulk/
   cascade нет; delete trigger не конфликтует с PROTECT; daily stats остаётся
-  анонимным агрегатом. Остаток minor — citext case-only identity comparison
-  и отсутствие отдельного bulk_update identity/GameDailyStats теста.
+  анонимным агрегатом. Case-only identity comparison ужесточён
+  `catalog.0010` (`::text IS DISTINCT FROM`); добавлен direct DB-008
+  storage-bytes trigger test.
 
 ## 6. Остатки
 
@@ -68,9 +69,9 @@ catalog 0009 / gameplay 0013 -> applied
   published_at/статуса — только DB trigger.
 - GameVersion.game CASCADE остаётся, но DELETE Game блокируется
   DB-004-триггером.
-- Citext identity: trigger `IS DISTINCT FROM` сравнивает case-insensitive,
-  а model guard — case-sensitive; case-only change через raw SQL проходит
-  trigger. Семантически citext/DNS identity case-insensitive; оставлено как
-  minor, нормализация/ужесточение — будущий guard.
+- Case-only identity change теперь ловится trigger’ом (`::text IS DISTINCT
+  FROM`) и model guard; расхождения слоёв нет.
 - `TRUNCATE`/`flush` не вызывает row-level DELETE trigger; это
   operator-level bypass, вне scope DB-004.
+- DB-008: добавлен direct test, что trigger пересчитывает подделанный
+  `bytes` при INSERT/UPDATE; сервисная квота остаётся primary.

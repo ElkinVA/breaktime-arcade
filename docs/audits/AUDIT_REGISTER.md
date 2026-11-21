@@ -489,7 +489,7 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 |---|---|
 | Тип | Integrity/privacy residual доработка |
 | Результат | Game identity immutable после публикации + DELETE forbidden; GamePlayCredit cleanup; GameSession.mode immutable |
-| Проверки | 439 passed, 3 skipped; 5 targeted; ruff/format/mypy clean; catalog.0009/gameplay.0013 applied; migration check/plan clean |
+| Проверки | 441 passed, 3 skipped; 5 targeted; ruff/format/mypy clean; catalog.0009/gameplay.0013 applied; migration check/plan clean |
 | Статус | **TECHNICALLY ACCEPTED** (agent) |
 | Review | code-reviewer — **ACCEPT**; security-auditor — **ACCEPT** |
 | Остаток | GameDailyStats не пересчитывается; DELETE всех Game запрещён (архив — статус); mode immutable |

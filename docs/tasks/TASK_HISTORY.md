@@ -905,9 +905,9 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **ID:** BA-APPF-002 / DB-004 + residual fixes.
 - **Результат:** `Game` identity immutable после публикации + DELETE trigger;
   `GamePlayCredit` удаляется при удалении аккаунта; `GameSession.mode`
-  immutable через model guard и trigger. Migrations `catalog.0009`,
-  `gameplay.0013`; 5 tests.
-- **Проверки:** full **439 passed, 3 skipped**; ruff/format/mypy clean;
+  immutable через model guard и trigger. Migrations `catalog.0009`/`0010`,
+  `gameplay.0013`; 7 tests.
+- **Проверки:** full **441 passed, 3 skipped**; ruff/format/mypy clean;
   migration checks clean.
 - **Статус:** **TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT).
 - **Отчёт:** `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.

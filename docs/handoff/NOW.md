@@ -94,7 +94,7 @@ Migrations `catalog.0008`, `gameplay.0012`; 14 tests; full 433/3.
 **BA-APPF-002 / DB-004 + residuals** — **TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT):
 Game identity immutable после публикации и DELETE forbidden; GamePlayCredit
 удаляется при удалении аккаунта; GameSession.mode immutable. Migrations
-`catalog.0009`, `gameplay.0013`; 5 tests; full 439/3. Отчёт —
+`catalog.0009`/`0010`, `gameplay.0013`; 7 tests; full 441/3. Отчёт —
 `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 
 ## Следующий шаг
@@ -157,7 +157,7 @@ Game identity immutable после публикации и DELETE forbidden; Gam
 
 ```text
 pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
-pytest (full)              -> 439 passed, 3 skipped, 1 warning
+pytest (full)              -> 441 passed, 3 skipped, 1 warning
 coverage                   -> 90.88 %, no module < 70 %
 ZIP tests                  -> 54 passed; 2000 files fsync 7.7s
 benchmark 10k              -> GIN search_vector FTS 2.4 ms; full OR 150 ms;
@@ -177,7 +177,7 @@ DB-006                     -> GameVersion trigger+save guard; audit FKs only
 DB-005/007                 -> name max 60; mode/subject CHECK incl. deleted
                               tombstone; migrations 0008/0012
 DB-004/residuals           -> Game identity/delete guard; GamePlayCredit
-                              cleanup; mode immutable; migrations 0009/0013
+                              cleanup; mode immutable; migrations 0009/0010/0013
 docker compose config --quiet -> OK
 ./verify_stack.sh          -> СТЕК ЗДОРОВ (zip-worker healthy)
 E2E queue: web uploads -> enqueue_extraction -> zip-worker ->

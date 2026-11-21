@@ -114,6 +114,25 @@ def _guest_with_identity(game: Game) -> tuple[Client, str]:
 
 
 @pytest.mark.django_db
+def test_storage_bytes_trigger_recomputes_forged_value() -> None:
+    game = _game(technical_id="bytes_trigger_game")
+    user = User.objects.create_user(login="bytes-user", password="correct horse battery staple")
+    row = GameStorage.objects.create(
+        game=game,
+        subject_type=GameStorage.SUBJECT_USER,
+        user=user,
+        data={"save": {"level": 1}},
+        bytes=0,
+    )
+    row.refresh_from_db()
+    assert row.bytes > 0
+
+    GameStorage.objects.filter(pk=row.pk).update(bytes=0)
+    row.refresh_from_db()
+    assert row.bytes > 0
+
+
+@pytest.mark.django_db
 @override_settings(CACHES=LOCMEM_CACHES)
 def test_user_document_revision_and_etag() -> None:
     game = _game()
