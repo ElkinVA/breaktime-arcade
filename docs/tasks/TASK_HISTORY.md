@@ -918,9 +918,11 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Результат:** официальный `sdk/1.1.0/ba-sdk.js`, host-протокол,
   player host, `game_play` с серверным create+activate, точный runtime
   origin/full `runtime_hash`, CSRF relay, guest normalization, no-store,
-  Play link. 3 play tests + 4 static SDK checks.
-- **Проверки:** full **454 passed, 4 skipped**; ruff/format/mypy clean;
-  `npm run check:js` clean.
+  Play/Leaderboard links, eventLog validation, heuristic verifier.
+  3 play + 2 leaderboard tests, 4 static SDK checks, 4 JS host tests,
+  2 runtime E2E.
+- **Проверки:** full **456 passed, 4 skipped**; ruff/format/mypy clean;
+  `npm run check:js`/`test:js` clean.
 - **Статус:** **IMPLEMENTED / TECHNICAL REVIEW** (code/security review
   incomplete: diff evidence/parentOrigin residual; probe/E2E 2 passed; BA-SDK-1.1 не утверждён).
 - **Отчёт:** `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.

@@ -365,8 +365,8 @@ clean. Отчёт — `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 не approved). Реализованы `sdk/1.1.0/ba-sdk.js`, host-протокол, player host,
 `game_play` с серверным create+activate (ticket не рендерится), no-store,
 точный runtime origin, full `runtime_hash`, CSRF relay, guest normalization.
-`play.html` использует iframe sandbox; `game_detail` получил Play link.
-Full **454 passed, 4 skipped**; JS `node --check` clean. Независимый review —
+`play.html` использует iframe sandbox; `game_detail` получил Play/Leaderboard links; добавлен heuristic verifier baseline (points/sec, idle gap, event schema, quarantine, heuristic trust).
+Full **456 passed, 4 skipped**; JS `node --check` clean. Независимый review —
 **INCOMPLETE** (E2E/probe passed; pin `BA_PORTAL_ORIGIN` добавлен, но diff-evidence/JSON-Schema и parentOrigin — residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
 
 ## 2. Статусы работ
@@ -415,7 +415,7 @@ Full **454 passed, 4 skipped**; JS `node --check` clean. Независимый 
 | BA-APPF-002 / DB-006 | **TECHNICALLY ACCEPTED** (agent) | GameVersion content immutable via model guard + DB trigger; audit FKs only →NULL; 419/3; code/security review accept; migrations 0006/0007 |
 | BA-APPF-002 / DB-005/007 | **TECHNICALLY ACCEPTED** (agent) | Public name 60; mode↔subject CHECK incl. deleted tombstone; 433/3; migrations 0008/0012 |
 | BA-APPF-002 / DB-004 + residuals | **TECHNICALLY ACCEPTED** (agent) | Game identity/delete guard; GamePlayCredit cleanup; mode immutable; 441/3; migrations 0009/0010/0013 |
-| BA-APPF-002 / runtime A+B | **IMPLEMENTED / TECHNICAL REVIEW** | SDK, host protocol, player host, play view; 454/4; runtime E2E 2 passed; JS host tests 4 passed; review incomplete |
+| BA-APPF-002 / runtime A+B | **IMPLEMENTED / TECHNICAL REVIEW** | SDK, host protocol, player host, play view, leaderboard page, heuristic verifier; 456/4; runtime E2E 2 passed; JS host tests 4 passed; review incomplete |
 | BA-DEVCONTROL-001 | **TECHNICALLY ACCEPTED** (agent); live setup — token/opt-in | Мониторинг/отчёты/задачи/ask/hooks; sandbox test runner; 31 tests; full 360/3; code/security review accept; Telegram API blocked — нужен proxy/VPN + токен |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 

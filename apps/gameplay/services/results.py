@@ -18,6 +18,7 @@ from apps.accounts.models import AnonymousIdentity, User
 from apps.core.contracts import validate_eventlog_semantics
 from apps.gameplay.models import GameResult, GameSession, LeaderboardEntry
 from apps.gameplay.services.sessions import SessionError, _now
+from apps.gameplay.services.verifier import verify
 
 MAX_IDEMPOTENCY_KEY_LENGTH = 128
 DURATION_TOLERANCE_MS = 5000
@@ -172,13 +173,21 @@ def submit_result(
         if abs(duration_ms - session.credited_ms) > DURATION_TOLERANCE_MS:
             raise SessionError("E_DURATION_INVALID", "Duration is invalid", 400)
 
+        verdict = verify(
+            game=game,
+            version=session.game_version,
+            event_log=event_log,
+            value=value,
+            duration_ms=duration_ms,
+            is_test=is_test,
+        )
         epoch = game.leaderboard_epoch
         response: dict[str, object] = {
-            "status": "saved",
+            "status": "quarantined" if verdict.quarantined else "saved",
             "rank": None,
             "is_personal_best": False,
             "is_record": False,
-            "trust_level": GameResult.TRUST_CLIENT_REPORTED,
+            "trust_level": verdict.level,
         }
 
         result = GameResult.objects.create(
@@ -191,8 +200,10 @@ def submit_result(
             value=value,
             unit=game.score_unit,
             duration_ms=duration_ms,
-            trust_level=GameResult.TRUST_CLIENT_REPORTED,
+            trust_level=verdict.level,
             is_test=is_test,
+            is_quarantined=verdict.quarantined,
+            verifier_flags={"verifier": "heuristic_v1", "flags": list(verdict.flags)},
             idempotency_key=idempotency_key,
             response=response,
         )
@@ -200,7 +211,18 @@ def submit_result(
         achieved_at = result.created_at
 
         leaderboard_allowed = (
-            game.leaderboard_enabled and not game.leaderboard_only_verified and not is_test
+            game.leaderboard_enabled
+            and not is_test
+            and not verdict.quarantined
+            and (
+                not game.leaderboard_only_verified
+                or verdict.level
+                in {
+                    GameResult.TRUST_HEURISTIC_VALIDATED,
+                    GameResult.TRUST_REPLAY_VERIFIED,
+                    GameResult.TRUST_SERVER_AUTHORITATIVE,
+                }
+            )
         )
         is_personal_best = False
         if leaderboard_allowed:
@@ -223,7 +245,7 @@ def submit_result(
                         "value": value,
                         "achieved_at": achieved_at,
                         "is_public": True,
-                        "trust_level": GameResult.TRUST_CLIENT_REPORTED,
+                        "trust_level": verdict.level,
                     },
                 )
             response["is_personal_best"] = is_personal_best

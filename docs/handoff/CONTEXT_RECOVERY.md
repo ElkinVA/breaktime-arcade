@@ -164,9 +164,9 @@
   immutable; migrations catalog.0009/0010/gameplay.0013; 441/3. Отчёт —
   `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 - BA-APPF-002 runtime A+B — **IMPLEMENTED / TECHNICAL REVIEW**:
-  SDK/host/player/play view, server-side create+activate, exact runtime
-  origin, CSRF relay; full 454/4; E2E/probe и review evidence отсутствуют.
-  Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
+  SDK/host/player/play view, leaderboard page, eventLog validation,
+  heuristic verifier; full 456/4; probe/E2E 2 passed; review evidence
+  отсутствует. Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
 - Прохождение тестов не является приёмкой; отчёт исполнителя не является
   результатом независимого аудита.
 - Staging не затрагивать без отдельного разрешения. В текущей зоне

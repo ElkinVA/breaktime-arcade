@@ -17,8 +17,8 @@ v1.1.0 submitted, но не утверждены владельцем; прод�
 - тесты view/SDK-контракта и JS syntax checks.
 
 Входит также test-only probe (`games-src/probe`) и Playwright E2E handshake.
-Не входит: staging/prod runtime origin, EventLog/verifier/replay, CRM
-preview/autotest flow.
+Не входит: staging/prod runtime origin, replay engine, CRM preview/autotest
+flow.
 
 ## 2. SDK
 
@@ -71,7 +71,7 @@ nginx dev `/v/<vhash>` расширен до 12–64 hex.
 
 ```text
 play/SDK targeted -> 7 passed
-pytest (full)     -> 454 passed, 4 skipped, 1 warning
+pytest (full)     -> 456 passed, 4 skipped, 1 warning
 runtime E2E       -> 2 passed (handshake/storage + bad-portal-origin)
 host negative      -> probe bad-message -> E_MESSAGE_INVALID
 ruff/format/mypy  -> clean
@@ -88,6 +88,18 @@ npm run test:js   -> 4 passed (host bridge negative/rate/replay); CI frontend jo
   attacker-influenceable; добавлена pin-проверка `window.BA_PORTAL_ORIGIN`
   (probe publish внедряет), E2E passed; остаются JSON-Schema validation
   evidence, guest server-side evidence и diff-review. Статус не accepted.
+
+## 5.1. Heuristic verifier baseline
+
+`apps/gameplay/services/verifier.py` применяет `verification.profile`
+(или `Game.verification_profile`): `maxPointsPerSecond`, `maxIdleGapMs`,
+`verification.eventSchema`. Подозрительные результаты получают
+`is_quarantined=True`, `verifier_flags`, `trust_level=client_reported` и не
+попадают в leaderboard; валидные — `heuristic_validated` (с учётом
+`Game.trust_level_max`). `leaderboard_only_verified` теперь пропускает
+heuristic/replay/server-authoritative, а не только client.
+
+Replay-движок не реализован: `replay_verified` не присваивается автоматически.
 
 ## 6. Остатки
 

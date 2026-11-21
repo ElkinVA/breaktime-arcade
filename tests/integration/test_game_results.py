@@ -47,7 +47,12 @@ def _client(user: User | None = None) -> tuple[Client, str]:
     return client, match.group(1)
 
 
-def _game(*, technical_id: str = "result_game", direction: str = "higher_is_better") -> Game:
+def _game(
+    *,
+    technical_id: str = "result_game",
+    direction: str = "higher_is_better",
+    verification: dict[str, object] | None = None,
+) -> Game:
     genre = Genre.objects.create(code=f"genre_{technical_id}")
     game = Game.objects.create(
         technical_id=technical_id,
@@ -66,7 +71,7 @@ def _game(*, technical_id: str = "result_game", direction: str = "higher_is_bett
         runtime_hash="b" * 64,
         sdk_version="1.1.0",
         size_bytes=1000,
-        manifest={},
+        manifest={"verification": verification} if verification else {},
         supported_languages=["en"],
     )
     game.current_version = version
@@ -492,6 +497,83 @@ def test_event_log_limits_are_enforced_by_serializer() -> None:
     assert not too_many.is_valid()
     not_object = SessionResultSerializer(data={"value": 1, "durationMs": 1000, "eventLog": []})
     assert not not_object.is_valid()
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_verifier_marks_suspicious_result_quarantined() -> None:
+    verification = {
+        "profile": {"maxPointsPerSecond": 2, "maxIdleGapMs": 1000},
+        "eventKinds": ["start", "eat"],
+        "eventSchema": {"type": "object"},
+    }
+    game = _game(technical_id="verifier_game", verification=verification)
+    user = User.objects.create_user(login="vera", password="correct horse battery staple")
+    client, csrf = _client(user)
+    session_id = _ready_session(client, csrf, game)
+    session = GameSession.objects.get(pk=session_id)
+
+    suspicious = _result(
+        client,
+        csrf,
+        session_id,
+        key="verifier-suspicious",
+        value=100,
+        duration_ms=30_000,
+        event_log={
+            "v": 1,
+            "seed": session.seed,
+            "events": [
+                {"t": 0, "k": "start", "d": {}},
+                {"t": 5000, "k": "eat", "d": {}},
+            ],
+        },
+    )
+
+    assert suspicious.status_code == 200
+    assert suspicious.json()["status"] == "quarantined"
+    result = GameResult.objects.get(session_id=session_id)
+    assert result.is_quarantined is True
+    assert result.trust_level == GameResult.TRUST_CLIENT_REPORTED
+    assert "points_per_second" in result.verifier_flags["flags"]
+    assert "idle_gap" in result.verifier_flags["flags"]
+    assert not LeaderboardEntry.objects.filter(game=game, user=user).exists()
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_verifier_accepts_valid_heuristic_result() -> None:
+    verification = {
+        "profile": {"maxPointsPerSecond": 10, "maxIdleGapMs": 1000},
+        "eventKinds": ["start"],
+        "eventSchema": {"type": "object"},
+    }
+    game = _game(technical_id="verifier_valid_game", verification=verification)
+    user = User.objects.create_user(login="victor", password="correct horse battery staple")
+    client, csrf = _client(user)
+    session_id = _ready_session(client, csrf, game)
+    session = GameSession.objects.get(pk=session_id)
+
+    response = _result(
+        client,
+        csrf,
+        session_id,
+        key="verifier-valid",
+        value=10,
+        duration_ms=30_000,
+        event_log={
+            "v": 1,
+            "seed": session.seed,
+            "events": [{"t": 0, "k": "start", "d": {}}],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "saved"
+    result = GameResult.objects.get(session_id=session_id)
+    assert result.is_quarantined is False
+    assert result.trust_level == GameResult.TRUST_HEURISTIC_VALIDATED
+    assert LeaderboardEntry.objects.filter(game=game, user=user).exists()
 
 
 @pytest.mark.django_db
