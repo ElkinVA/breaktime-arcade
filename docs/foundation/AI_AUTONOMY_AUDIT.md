@@ -148,13 +148,25 @@ Reviewer цикла нет.
 - **QA (Flash):** session `e650e7a6-75ca-43d2-b2de-a0a4ce949b04`,
   `modelUsage.deepseek-flash`; real `make test` = 652 passed, 4 skipped;
   `make check` = 0.
-- **Reviewer (Pro):** session `b56e4714-203d-447b-9ea1-01d1826912a9`,
-  `modelUsage.deepseek-v4-pro`; independently read the hooks/test file,
-  found the deliverable untracked/uncommitted, verdict **reject**; task moved
-  to retry (not accepted). This is the desired independent-review behavior.
+- **Reviewer (Pro), first attempt:** session
+  `b56e4714-203d-447b-9ea1-01d1826912a9`, `modelUsage.deepseek-v4-pro`;
+  independently read the hooks/test file, found the deliverable
+  untracked/uncommitted, verdict **reject**; task moved to retry.
+- **Second attempt:** Developer Flash session
+  `12cb4074-d3d1-4bc2-8fb2-0c93003d34a7` reported the deliverable file;
+  QA Flash session `5e34badd-...` ran `make check` = 657 passed, 4 skipped;
+  the orchestrator committed `24cd6fd`; Reviewer Pro session
+  `36f8fac4-b3a8-442e-a875-a56c50c28410` independently read the committed
+  diff and **accepted** (minor residuals only).
+- **Auto-next:** after `AUTONOMY-GUARD-TESTS-001` became COMPLETED, the
+  orchestrator claimed `AUTONOMY-CONFIG-CONTRACT-001` (RUNNING) without a
+  new owner command. The protected-hook task `AUTONOMY-GUARD-HARDEN-001` is
+  BLOCKED with `OWNER_APPROVAL_REQUIRED`.
 
 The control plane records every command, session, modelUsage and verdict in
 the evidence JSON; a role whose actual model does not match is failed closed.
+Queue state survives in `.autonomy/state.json`; completed IDs/fingerprints
+are never re-enqueued.
 
 ## 9. Stop conditions
 
