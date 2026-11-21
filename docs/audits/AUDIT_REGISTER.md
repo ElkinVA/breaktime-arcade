@@ -514,3 +514,14 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 - Статус «Fixed» в аудите означает исправление конкретного замечания, а не закрытие этапа.
 - Открытые риски перечислены в `docs/risks/RISK_REGISTER.md`; не считать их исправленными.
 - Нормативные ТЗ и отсутствующие BA-SDK-1.1/BA-ENV-1.1 не заменяются выводами аудита.
+
+## BA-AUTONOMY-004 — AI task control plane
+
+| Поле | Значение |
+|---|---|
+| Тип | AI infrastructure / routing / queue |
+| Результат | durable queue, Pro Architect/Reviewer + Flash Developer/QA, modelUsage evidence, auto-next, recovery, completed dedup |
+| Проверки | 657 passed, 4 skipped; 8 autonomy tests; 193 guard tests; ruff/format/mypy clean |
+| Статус | **IMPLEMENTED / TECHNICAL REVIEW**; owner acceptance pending |
+| Остаток | rejected candidate commit remains; reviewer does not rerun full suite; no OS sandbox |
+| Источник | `docs/foundation/AI_AUTONOMY_EVIDENCE.md` |

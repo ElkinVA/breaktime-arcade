@@ -982,3 +982,18 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 
 Исторические отчёты не считать автоматически актуальными; «реализовано»,
 «COMPLETED» и «ACCEPTED» — разные статусы.
+
+### BA-AUTONOMY-004 — durable AI task control plane
+
+- **Результат:** `autonomy/state.py`, `runner.py`, `orchestrator.py`;
+  провайдерные Pro/Flash-вызовы с проверкой `modelUsage`; очередь, attempts,
+  dependencies, recovery, COMPLETED-dedup, single-run lock, commit после QA.
+- **Live evidence:** Pro Architect session `79aef134...` modelUsage Pro;
+  Flash Developer/QA sessions; Pro Reviewer `36f8fac4...` accepted after
+  initial reject; task `AUTONOMY-GUARD-TESTS-001` COMPLETED; next task
+  `AUTONOMY-CONFIG-CONTRACT-001` claimed automatically.
+- **Проверки:** `make check` 657 passed, 4 skipped; autonomy unit tests 8;
+  guard tests 193; ruff/format/mypy clean.
+- **Статус:** **IMPLEMENTED / TECHNICAL REVIEW**; no game/App F changes.
+- **Отчёт:** `docs/foundation/AI_AUTONOMY_AUDIT.md`,
+  `docs/foundation/AI_AUTONOMY_EVIDENCE.md`.

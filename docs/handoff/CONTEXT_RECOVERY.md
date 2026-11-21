@@ -475,3 +475,8 @@ DRAFT-документы не являются нормативными и не 
   code-reviewer/security-auditor accept/без блокеров.
 - Следующие: Storage → публичный Leaderboard API → SDK/iframe → EventLog;
   retention и challenge — решения владельца.
+
+- BA-AUTONOMY-004 control plane: `autonomy/` queue/runners; real Pro
+  Architect/Reviewer and Flash Developer/QA evidence in
+  `.autonomy/evidence`; 657/4; `AUTONOMY-GUARD-TESTS-001` COMPLETED,
+  `AUTONOMY-CONFIG-CONTRACT-001` auto-claimed; no game features changed.
