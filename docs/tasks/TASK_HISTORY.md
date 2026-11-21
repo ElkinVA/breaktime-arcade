@@ -1015,6 +1015,15 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Результат:** публичная карточка игры показывает агрегат рейтинга и count;
   каталог показывает compact summary без N+1; zero state явный.
 - **Проверки:** полный цикл Flash Developer → Flash QA → Pro Reviewer →
-  commit/merge; full **724 passed, 11 skipped**.
+  commit/merge; full **729 passed, 11 skipped**.
 - **Коммиты:** `63b6137`, `3c58dcb`.
 - **Статус:** **TECHNICALLY ACCEPTED** (agent review); product acceptance owner.
+
+
+### ARCADE-POPULARITY-001 — catalog popularity
+
+- 30-day popularity read with cache/DB fallback, cards/detail indicator and
+  `sort=popular`; Flash Developer → Flash QA → Pro Reviewer → `f211161`.
+- Full **729 passed, 11 skipped**.
+- Review: accepted; minor: secondary sort should be reconciled with §2.8
+  (`WR ↓, id ↑`) and UI strings need i18n. Product follow-up, not infra.

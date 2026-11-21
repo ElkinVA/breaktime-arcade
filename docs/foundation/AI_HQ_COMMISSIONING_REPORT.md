@@ -59,7 +59,14 @@ Full cycle for each: Flash Developer → Flash QA → Pro Reviewer → commit �
 merge. The first became `COMPLETED`; the second was claimed and completed
 automatically without an owner command.
 
-Final repository gate: **724 passed, 11 skipped**; ruff/format/mypy clean.
+A third real product task, `ARCADE-POPULARITY-001` (`f211161`), was proposed by
+the Pro Architect and completed automatically: 30-day popularity indicator,
+cached read and `sort=popular`. It passed the cycle, but the independent
+reviewer flagged a product-behavior divergence: secondary ordering is
+`-published_at/-id`, while §2.8 specifies `WR ↓, id ↑`. That needs a product
+decision/follow-up; it was not silently changed.
+
+Final repository gate: **729 passed, 11 skipped**; ruff/format/mypy clean.
 
 ## 5. AI HQ state
 

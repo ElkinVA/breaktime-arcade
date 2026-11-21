@@ -656,6 +656,12 @@ No game/App F features changed. Evidence — `docs/foundation/AI_AUTONOMY_EVIDEN
 Two real catalog/rating UI tasks were completed through the autonomous cycle:
 `ARCADE-RATING-DETAIL-001` (`63b6137`) and `ARCADE-RATING-LIST-001`
 (`3c58dcb`). Auto-next worked: the second was claimed and completed after the
-first without an owner command. Full gate **724 passed, 11 skipped**.
+first without an owner command. Full gate **729 passed, 11 skipped**.
 AI HQ VPS installation and live Telegram delivery remain owner/network
 blockers; see `docs/foundation/AI_HQ_COMMISSIONING_REPORT.md`.
+
+
+`ARCADE-POPULARITY-001` (`f211161`) completed the next product cycle:
+30-day popularity indicator/cache and `sort=popular`. Review accepted with a
+minor product-behavior divergence from §2.8 (secondary sort key) recorded for
+product follow-up. Full gate **729 passed, 11 skipped**.
