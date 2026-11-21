@@ -140,7 +140,9 @@ class FakeRunner:
     def developer(self, prompt: str) -> RunResult:
         return self._result(
             "developer",
-            '{"status":"done","files":["tests/unit/test_autonomy.py"]}',
+            '{"status":"done","files":["tests/unit/test_autonomy.py"],'
+            '"self_check":{"spec_reviewed":true,"scope_reviewed":true,'
+            '"tests_run":["targeted"],"localization_reviewed":true,"known_limits":[]}}',
             "deepseek-flash[1m]",
         )
 

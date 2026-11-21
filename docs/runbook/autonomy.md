@@ -48,27 +48,17 @@ symlink-escape, `.env`/`certs`/`creds`/`secrets`/`.ssh`/`.aws` и socket-фай�
 автономного доверия требуется внешний sandbox (namespace/seccomp/AppArmor,
 отдельный пользователь, скрытый `docker.sock`).
 
-### Жёсткие бюджеты запуска
+### Execution guards and efficiency accounting
 
-`orchestrator run` ограничен жёсткими лимитами (значения по умолчанию
-указаны в `autonomy/budget.py`); лимиты задаются окружением:
+Only the per-run task cap and wall-clock guard can stop a run:
+`BA_MAX_TASKS_PER_RUN` (default 5) and `BA_MAX_RUN_SECONDS` (default 3600).
+`--max-tasks` is clamped to the task cap.
 
-| Переменная | По умолчанию | Что ограничивает |
-| --- | --- | --- |
-| `BA_MAX_TASKS_PER_RUN` | `1` | задач на один запуск |
-| `BA_MAX_RUN_SECONDS` | `3600` | wall-clock запуска, секунды |
-| `BA_MAX_TOKENS` | `5000000` | суммарные токены (input/output/cache) |
-| `BA_MAX_COST_USD` | `5.0` | расчётная стоимость API, USD |
-
-`--max-tasks` не может превысить `BA_MAX_TASKS_PER_RUN`: CLI-запрос
-усекается. Остановка происходит на ближайшей безопасной границе (между
-вызовами модели); в JSON-отчёте появляется
-`{"status": "stopped", "reason": "BUDGET", "budget_reason": ...}`.
-Устойчивые машинные коды: `MAX_TASKS`, `WALL_CLOCK`, `TOKEN_BUDGET`,
-`COST_BUDGET`. Фактические токены и стоимость берутся из `modelUsage`
-(`inputTokens`, `outputTokens`, `cacheReadInputTokens`,
-`cacheCreationInputTokens`, `costUSD`) и сохраняются в evidence, задаче,
-run-записи и общем `state.json`.
+`BA_MAX_TOKENS` and `BA_MAX_COST_USD` are **not stop conditions**. Actual
+tokens/cost from `modelUsage` are still stored in evidence, task/run records
+and `state.json` and feed `python3 -m autonomy.orchestrator metrics`.
+Retry limits, the run lock, completed fingerprints and worktree gates remain
+active.
 
 ### Уведомления о событиях
 

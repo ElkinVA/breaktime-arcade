@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from autonomy.budget import TOKEN_BUDGET, Budget
+from autonomy.budget import WALL_CLOCK, Budget
 from autonomy.notifier import (
     FATAL_ERROR,
     RUN_BUDGET_STOP,
@@ -233,7 +233,9 @@ class StubRunner:
         return self._result(
             "developer",
             "deepseek-flash[1m]",
-            '{"status":"done","files":["tests/unit/test_autonomy_notify.py"]}',
+            '{"status":"done","files":["tests/unit/test_autonomy_notify.py"],'
+            '"self_check":{"spec_reviewed":true,"scope_reviewed":true,'
+            '"tests_run":["targeted"],"localization_reviewed":true,"known_limits":[]}}',
         )
 
     def qa(self, prompt: str) -> RunResult:
@@ -301,7 +303,7 @@ def test_orchestrator_notifies_rejection_then_blocked(tmp_path: Path) -> None:
 
 def test_orchestrator_notifies_budget_stop(tmp_path: Path) -> None:
     notifier = RecordingNotifier()
-    budget = Budget(max_tasks=2, max_run_seconds=10_000, max_tokens=1, max_cost_usd=100.0)
+    budget = Budget(max_tasks=2, max_run_seconds=0.0)
     orchestrator, _store = _orchestrator(
         tmp_path,
         StubRunner(tokens=5),
@@ -312,9 +314,9 @@ def test_orchestrator_notifies_budget_stop(tmp_path: Path) -> None:
     report = orchestrator.run_once(propose=False)
 
     assert report["status"] == "stopped"
-    assert report["budget_reason"] == TOKEN_BUDGET
+    assert report["budget_reason"] == WALL_CLOCK
     assert [event.kind for event in notifier.events] == [RUN_BUDGET_STOP]
-    assert notifier.events[0].reason == TOKEN_BUDGET
+    assert notifier.events[0].reason == WALL_CLOCK
     assert notifier.events[0].usage is not None
 
 

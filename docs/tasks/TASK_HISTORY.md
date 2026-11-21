@@ -1035,6 +1035,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   accepted with minor edge-case debt.
 - `ARCADE-POPULARITY-ORDER-001` (`670923f`) — exact §2.8 secondary sort
   (`WR ↓, id ↑`); accepted.
-- `ARCADE-I18N-UI-001` — claimed, then hard **TOKEN_BUDGET** stopped before
-  commit; task returned to READY; no change merged. Owner cost decision needed.
+- `ARCADE-I18N-UI-001` — initially stopped by the old TOKEN_BUDGET limit;
+  owner changed policy on 2026-11-21: token/cost are accounting only and no
+  longer stop work. Task resumed under the new policy.
 - Full gate **737 passed, 11 skipped**.

@@ -669,6 +669,6 @@ product follow-up. Full gate **737 passed, 11 skipped**.
 
 Catalog follow-ups: `ARCADE-CATALOG-SORTS-001` (`3f5b16a`) and
 `ARCADE-POPULARITY-ORDER-001` (`670923f`) completed and accepted.
-`ARCADE-I18N-UI-001` was stopped by the hard token budget before commit and is
-READY for an owner-approved budget/scope decision. Full gate **737 passed,
-11 skipped**.
+`ARCADE-I18N-UI-001` hit the old token budget once and is being resumed under
+the new policy: token/cost are accounting metrics, not stop conditions.
+Full gate **737 passed, 11 skipped**.

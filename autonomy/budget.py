@@ -1,9 +1,9 @@
-"""Hard resource budgets for an autonomous run.
+"""Execution guard and usage accounting for an autonomous run.
 
-The control plane must never consume an unbounded amount of work or money in a
-single invocation.  A :class:`Budget` is loaded from the environment with hard
-defaults; :class:`BudgetTracker` records actual usage reported by the model
-(``modelUsage``) and reports the first exhausted limit.
+Token and API-cost values are recorded for efficiency reports, but they are
+**not** stop conditions.  Only the hard per-run task cap and wall-clock guard
+can stop a run; retry limits, the run lock, task fingerprints and worktree
+gates remain independent safety mechanisms.
 
 Reason codes are stable and machine-readable:
 
@@ -11,10 +11,6 @@ Reason codes are stable and machine-readable:
     The CLI requested more tasks than the hard per-run cap.
 ``WALL_CLOCK``
     The run exceeded its maximum wall-clock duration.
-``TOKEN_BUDGET``
-    The run consumed its token budget (input, output and cache tokens).
-``COST_BUDGET``
-    The run consumed its API-cost budget (``costUSD`` from ``modelUsage``).
 """
 
 from __future__ import annotations
@@ -28,10 +24,10 @@ from typing import Any
 
 MAX_TASKS = "MAX_TASKS"
 WALL_CLOCK = "WALL_CLOCK"
-TOKEN_BUDGET = "TOKEN_BUDGET"  # noqa: S105 - machine-readable reason code
-COST_BUDGET = "COST_BUDGET"
-BUDGET_REASONS = {MAX_TASKS, WALL_CLOCK, TOKEN_BUDGET, COST_BUDGET}
+BUDGET_REASONS = {MAX_TASKS, WALL_CLOCK}
 
+# Retained as labels for usage reports/backwards-compatible state, never as
+# stop conditions. Do not reintroduce them into BudgetTracker.stop().
 DEFAULT_MAX_TASKS = 5
 DEFAULT_MAX_RUN_SECONDS = 3600.0
 DEFAULT_MAX_TOKENS = 5_000_000
@@ -272,20 +268,8 @@ class BudgetTracker:
         return self.usage
 
     def stop(self) -> BudgetStop | None:
-        if self.usage.total_tokens >= self.budget.max_tokens:
-            return BudgetStop(
-                TOKEN_BUDGET,
-                float(self.budget.max_tokens),
-                float(self.usage.total_tokens),
-                self.usage,
-            )
-        if self.usage.cost_usd >= self.budget.max_cost_usd:
-            return BudgetStop(
-                COST_BUDGET,
-                self.budget.max_cost_usd,
-                round(self.usage.cost_usd, 6),
-                self.usage,
-            )
+        # Tokens and cost are accounting/efficiency data only. Product work
+        # must not be stopped by them; wall-clock and task caps remain guards.
         elapsed = self.elapsed()
         if elapsed >= self.budget.max_run_seconds:
             return BudgetStop(

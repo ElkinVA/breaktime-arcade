@@ -101,6 +101,8 @@ class Task:
     candidate_commit: str | None = None
     evidence: list[str] = field(default_factory=list)
     usage: dict[str, Any] = field(default_factory=empty_usage)
+    completed_at: str | None = None
+    review_rejections: int = 0
     blocked_reason: str | None = None
     last_error: str | None = None
     fingerprint: str = ""
@@ -134,6 +136,8 @@ class Task:
             "candidate_commit": self.candidate_commit,
             "evidence": self.evidence,
             "usage": self.usage,
+            "completed_at": self.completed_at,
+            "review_rejections": self.review_rejections,
             "blocked_reason": self.blocked_reason,
             "last_error": self.last_error,
             "fingerprint": self.fingerprint,
@@ -154,6 +158,7 @@ class StateStore:
             "tasks": {},
             "runs": [],
             "usage": empty_usage(),
+            "metrics": {"duplicate_enqueues": 0},
         }
 
     @contextmanager
@@ -199,8 +204,10 @@ class StateStore:
                 for item in state["tasks"].values()
                 if item.get("status") == COMPLETED
             }
+            metrics = state.setdefault("metrics", {"duplicate_enqueues": 0})
             for task in tasks:
                 if task.id in existing_ids or task.fingerprint in completed_fingerprints:
+                    metrics["duplicate_enqueues"] = int(metrics.get("duplicate_enqueues", 0)) + 1
                     continue
                 state["tasks"][task.id] = task.to_dict()
                 existing_ids.add(task.id)
@@ -274,6 +281,8 @@ class StateStore:
             task = Task.from_dict(value)
             task.status = status
             task.updated_at = _now()
+            if status == COMPLETED:
+                task.completed_at = task.updated_at
             if session_id:
                 task.session_id = session_id
             if model:
@@ -386,6 +395,12 @@ class StateStore:
             state["tasks"][task_id] = task.to_dict()
             state["current"] = None
             return task
+
+    def record_review_rejection(self, task_id: str) -> None:
+        with self.locked() as state:
+            value = state["tasks"].get(task_id)
+            if value is not None:
+                value["review_rejections"] = int(value.get("review_rejections", 0)) + 1
 
     def retry(self, task_id: str, reason: str) -> Task | None:
         with self.locked() as state:

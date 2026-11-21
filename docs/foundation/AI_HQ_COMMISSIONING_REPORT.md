@@ -68,11 +68,17 @@ aligned it exactly to §2.8 (`WR ↓, id ↑`) and passed the full cycle.
 `sort=rating`/`votes`. Its reviewer accepted with minor edge-case debt
 (no-aggregate zero-vote ordering, `RATING_WR_M=0`, search+sort test gap).
 
-The localization follow-up `ARCADE-I18N-UI-001` was claimed but the run hit the
-hard **TOKEN_BUDGET** before commit: 8,726,671 tokens / 7.58 USD against the
-5,000,000-token / 5 USD limit. The task was released as READY; no i18n change
-was merged. This is a real budget constraint, not code failure; raising it is an
-owner cost decision. No limit was bypassed.
+### Budget policy change (2026-11-21, owner decision)
+
+Token and API-cost limits are **no longer stop conditions**. `BA_MAX_TOKENS`
+and `BA_MAX_COST_USD` remain accounting labels only; a task is not returned to
+READY because of them. `BA_MAX_TASKS_PER_RUN` and `BA_MAX_RUN_SECONDS` remain
+hard execution guards, as do retry limits, fingerprints, run lock and worktree
+merge gates. Actual usage is retained in task/run/state records and reported by
+`python3 -m autonomy.orchestrator metrics`.
+
+The historical i18n attempt is retained in the audit trail as a budget stop;
+the task is resumed under the new policy.
 
 Final repository gate: **737 passed, 11 skipped**; ruff/format/mypy clean.
 

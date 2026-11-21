@@ -8,13 +8,11 @@ from pathlib import Path
 import autonomy.runner as runner_module
 import pytest
 from autonomy.budget import (
-    COST_BUDGET,
     DEFAULT_MAX_COST_USD,
     DEFAULT_MAX_RUN_SECONDS,
     DEFAULT_MAX_TASKS,
     DEFAULT_MAX_TOKENS,
     MAX_TASKS,
-    TOKEN_BUDGET,
     WALL_CLOCK,
     Budget,
     BudgetError,
@@ -83,7 +81,12 @@ class BudgetFakeRunner:
             "deepseek-flash[1m]",
             tokens=self.tokens,
             cost=self.cost,
-            result='{"status":"done","files":["tests/unit/test_autonomy_budget.py"]}',
+            result=(
+                '{"status":"done","files":["tests/unit/test_autonomy_budget.py"],'
+                '"self_check":{"spec_reviewed":true,"scope_reviewed":true,'
+                '"tests_run":["targeted"],"localization_reviewed":true,'
+                '"known_limits":[]}}'
+            ),
         )
 
     def qa(self, prompt: str) -> RunResult:
@@ -291,45 +294,21 @@ def test_wall_clock_budget_stops_before_the_next_task(tmp_path: Path) -> None:
     assert store.list_tasks(READY)[0].attempts == 0
 
 
-def test_token_budget_stops_at_the_next_safe_boundary(tmp_path: Path) -> None:
-    budget = Budget(max_tokens=100, max_cost_usd=100.0)
-    runner = BudgetFakeRunner(tokens=150)
+def test_token_and_cost_are_accounted_but_do_not_stop(tmp_path: Path) -> None:
+    budget = Budget(max_tokens=100, max_cost_usd=0.5)
+    runner = BudgetFakeRunner(tokens=150, cost=1.25)
     orchestrator, store = _orchestrator(tmp_path, runner, budget)
     _enqueue(store)
 
     reports = orchestrator.run(propose=False)
 
-    assert runner.calls == ["developer"]
-    assert len(reports) == 1
-    report = reports[0]
-    assert report["status"] == "stopped"
-    assert report["reason"] == "BUDGET"
-    assert report["budget_reason"] == TOKEN_BUDGET
-    assert report["used"] == 150
+    assert runner.calls == ["developer", "qa", "reviewer"]
+    assert reports[0]["status"] == "completed"
     task = store.get("AUTONOMY-BUDGET-0")
     assert task is not None
-    assert task.status == READY
-    assert task.attempts == 0
-    assert task.usage["total_tokens"] == 150
-
-
-def test_cost_budget_stops_at_the_next_safe_boundary(tmp_path: Path) -> None:
-    budget = Budget(max_cost_usd=0.5, max_tokens=10_000_000)
-    runner = BudgetFakeRunner(cost=1.25)
-    orchestrator, store = _orchestrator(tmp_path, runner, budget)
-    _enqueue(store)
-
-    reports = orchestrator.run(propose=False)
-
-    assert runner.calls == ["developer"]
-    assert reports[0]["status"] == "stopped"
-    assert reports[0]["reason"] == "BUDGET"
-    assert reports[0]["budget_reason"] == COST_BUDGET
-    assert reports[0]["used"] == pytest.approx(1.25)
-    task = store.get("AUTONOMY-BUDGET-0")
-    assert task is not None
-    assert task.status == READY
-    assert task.usage["cost_usd"] == pytest.approx(1.25)
+    assert task.status == "COMPLETED"
+    assert task.usage["total_tokens"] > 100
+    assert task.usage["cost_usd"] > 0.5
 
 
 def test_usage_is_persisted_on_task_and_run_records(tmp_path: Path) -> None:
@@ -353,7 +332,7 @@ def test_usage_is_persisted_on_task_and_run_records(tmp_path: Path) -> None:
     assert runs[-1]["usage"]["cost_usd"] == pytest.approx(0.03)
 
 
-def test_architect_usage_is_persisted_and_budgeted(tmp_path: Path) -> None:
+def test_architect_usage_is_persisted_without_token_stop(tmp_path: Path) -> None:
     budget = Budget(max_tokens=100)
     runner = BudgetFakeRunner(tokens=150)
     orchestrator, store = _orchestrator(tmp_path, runner, budget)
@@ -361,7 +340,5 @@ def test_architect_usage_is_persisted_and_budgeted(tmp_path: Path) -> None:
     report = orchestrator.run_once(propose=True)
 
     assert runner.calls == ["architect"]
-    assert report["status"] == "stopped"
-    assert report["budget_reason"] == TOKEN_BUDGET
-    assert report["phase"] == "architect"
+    assert report["status"] == "idle"
     assert store.snapshot()["usage"]["total_tokens"] == 150

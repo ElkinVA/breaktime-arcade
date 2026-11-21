@@ -22,6 +22,7 @@ from autonomy.budget import (
     BudgetStop,
     BudgetTracker,
 )
+from autonomy.metrics import compute_metrics
 from autonomy.notifier import (
     FATAL_ERROR,
     RUN_BUDGET_STOP,
@@ -171,6 +172,29 @@ def _safe_file(name: str, root: Path | None = None) -> Path:
     return path
 
 
+def _validate_self_check(developer: RunResult) -> None:
+    parsed = _parse_json(developer.result)
+    check = parsed.get("self_check")
+    if not isinstance(check, dict):
+        raise RuntimeError("developer self_check is mandatory before QA")
+    required = (
+        "spec_reviewed",
+        "scope_reviewed",
+        "tests_run",
+        "localization_reviewed",
+        "known_limits",
+    )
+    missing = [key for key in required if key not in check]
+    if missing:
+        raise RuntimeError(f"developer self_check missing: {missing}")
+    if check["spec_reviewed"] is not True or check["scope_reviewed"] is not True:
+        raise RuntimeError("developer self_check must confirm spec and scope review")
+    if not isinstance(check["tests_run"], list) or not isinstance(check["known_limits"], list):
+        raise RuntimeError("developer self_check tests_run/known_limits must be lists")
+    if not isinstance(check["localization_reviewed"], bool):
+        raise RuntimeError("developer self_check localization_reviewed must be boolean")
+
+
 def _developer_files(developer: RunResult, root: Path | None = None) -> list[str]:
     root = root or ROOT
     try:
@@ -270,7 +294,9 @@ def _developer_prompt(task: Task) -> str:
         ".env: do not run make test/check there. Use "
         "`python3 devcontrol/sandbox/run_tests.py ...` for tests and "
         "/home/elkinva/projects/ba/.venv/bin/python -m ruff/mypy for lint. Do not "
-        "change game features. Return the strict JSON report from your instructions."
+        "change game features. Complete the mandatory self-check against the ТЗ, "
+        "scope, tests and localization/regressions; include its fields in the JSON. "
+        "Return the strict JSON report from your instructions."
     )
 
 
@@ -553,7 +579,12 @@ class Orchestrator:
             else self._run_inplace(task, tracker)
         )
         self._write_event(report)
+        metrics = compute_metrics(self.store)
+        self._write_event({"event": "metrics", **metrics})
         return report
+
+    def metrics(self) -> dict[str, Any]:
+        return compute_metrics(self.store)
 
     def _cleanup_orphan_worktrees(self) -> None:
         if not self.worktrees:
@@ -568,6 +599,7 @@ class Orchestrator:
             worktree, base = _create_worktree(task)
             self.store.set_worktree(task.id, str(worktree), base)
             developer = self.runner.developer(_developer_prompt(task), cwd=worktree)
+            _validate_self_check(developer)
             self._account(task.id, developer, tracker)
             self._guard(tracker)
             self.store.transition(
@@ -601,6 +633,7 @@ class Orchestrator:
                 _remove_worktree(worktree)
                 self.store.set_worktree(task.id, None, None)
                 worktree = None
+                self.store.record_review_rejection(task.id)
                 retried = self.store.retry(task.id, json.dumps(verdict, ensure_ascii=False)[:4000])
                 return {
                     "status": "retry" if retried and retried.status == READY else "blocked",
@@ -664,6 +697,7 @@ class Orchestrator:
         staged = False
         try:
             developer = self.runner.developer(_developer_prompt(task))
+            _validate_self_check(developer)
             self._account(task.id, developer, tracker)
             self._guard(tracker)
             self.store.transition(
@@ -701,6 +735,7 @@ class Orchestrator:
             if verdict.get("verdict") != "accept":
                 if staged:
                     _unstage(files)
+                self.store.record_review_rejection(task.id)
                 retried = self.store.retry(task.id, json.dumps(verdict, ensure_ascii=False)[:4000])
                 return {
                     "status": "retry" if retried and retried.status == READY else "blocked",
@@ -803,6 +838,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     run.add_argument("--no-propose", action="store_true")
     sub.add_parser("status")
+    sub.add_parser("metrics")
     sub.add_parser("propose")
     enqueue = sub.add_parser("enqueue")
     enqueue.add_argument("--id", required=True)
@@ -817,6 +853,9 @@ def main(argv: list[str] | None = None) -> int:
     store = StateStore(STATE_ROOT)
     if args.command == "status":
         print(json.dumps(store.snapshot(), ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+    if args.command == "metrics":
+        print(json.dumps(compute_metrics(store), ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     if args.command == "recover":
         with RUN_LOCK.open("a+") as lock:
