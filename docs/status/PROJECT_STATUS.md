@@ -411,6 +411,11 @@ clean; migration applied/check clean. Остаток — retention APPF-OD-030.
 
 ## 4. Что не готово
 
+- Skeleton, не функциональность: пустые `apps/analytics`, `apps/content`,
+  `apps/moderation` и часть пустых service/template/API-файлов в других
+  приложениях — заготовки структуры, а не реализованные модули. Не считать
+  их наличие признаком готовности; удалять/заполнять — только по решению
+  задачи, не выдавать пустые файлы за stub-реализацию.
 - App F runtime: серверные срезы session/ticket, result, leaderboard,
   storage, playtime, ratings и popularity реализованы (частично принят
   только SESSION-001); `sdk/1.1.0/ba-sdk.js`,
