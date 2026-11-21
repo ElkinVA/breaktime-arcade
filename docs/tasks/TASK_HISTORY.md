@@ -900,6 +900,18 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   срезы.
 - **Отчёт:** `docs/foundation/BA-APPF-002_DB005_DB007_REPORT.md`.
 
+### BA-APPF-002 / DB-004 + DB-001/DB-007 residuals
+
+- **ID:** BA-APPF-002 / DB-004 + residual fixes.
+- **Результат:** `Game` identity immutable после публикации + DELETE trigger;
+  `GamePlayCredit` удаляется при удалении аккаунта; `GameSession.mode`
+  immutable через model guard и trigger. Migrations `catalog.0009`,
+  `gameplay.0013`; 5 tests.
+- **Проверки:** full **439 passed, 3 skipped**; ruff/format/mypy clean;
+  migration checks clean.
+- **Статус:** **TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT).
+- **Отчёт:** `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,
@@ -936,6 +948,8 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`;
 - `docs/foundation/BA-APPF-002_DB006_REPORT.md`;
 - `docs/foundation/BA-APPF-002_DB005_DB007_REPORT.md`;
+- `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`;
+- `tests/integration/test_game_identity_immutability.py`;
 - `tests/integration/test_game_version_immutability.py`;
 - `tests/integration/test_game_session_mode_subject.py`;
 - `tests/integration/test_catalog_translation_name.py`;

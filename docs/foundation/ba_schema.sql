@@ -663,19 +663,31 @@ CREATE TABLE theme_site_settings (
 );
 
 -- Immutability triggers (§2.4.1, §2.14.1).
-CREATE OR REPLACE FUNCTION reject_game_identity_change()
+CREATE OR REPLACE FUNCTION ba_game_identity_immutable()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-    IF NEW.technical_id IS DISTINCT FROM OLD.technical_id
-       OR NEW.host_label IS DISTINCT FROM OLD.host_label THEN
-        RAISE EXCEPTION 'Game.technical_id and host_label are immutable';
+    IF (OLD.published_at IS NOT NULL OR OLD.status IN ('published','hidden','archived'))
+       AND (NEW.technical_id IS DISTINCT FROM OLD.technical_id
+            OR NEW.host_label IS DISTINCT FROM OLD.host_label)
+    THEN
+        RAISE EXCEPTION 'Game identity is immutable after publication';
     END IF;
     RETURN NEW;
 END;
 $$;
 CREATE TRIGGER trg_game_identity_immutable
 BEFORE UPDATE ON catalog_game
-FOR EACH ROW EXECUTE FUNCTION reject_game_identity_change();
+FOR EACH ROW EXECUTE FUNCTION ba_game_identity_immutable();
+
+CREATE OR REPLACE FUNCTION ba_game_delete_forbidden()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION 'Game rows are never physically deleted';
+END;
+$$;
+CREATE TRIGGER trg_game_delete_forbidden
+BEFORE DELETE ON catalog_game
+FOR EACH ROW EXECUTE FUNCTION ba_game_delete_forbidden();
 
 CREATE OR REPLACE FUNCTION ba_game_version_immutable()
 RETURNS trigger LANGUAGE plpgsql AS $$

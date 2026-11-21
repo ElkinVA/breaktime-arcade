@@ -23,7 +23,7 @@ from apps.accounts.services.anonymous import COOKIE_NAME
 from apps.accounts.services.profile import anonymize_user
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.gameplay.api import throttling
-from apps.gameplay.models import GameSession, UserGamePlaytime
+from apps.gameplay.models import GamePlayCredit, GameSession, UserGamePlaytime
 from apps.gameplay.services.results import submit_result
 from apps.gameplay.services.sessions import SessionError, activate_session, heartbeat
 
@@ -819,6 +819,12 @@ def test_user_deletion_tombstones_sessions_and_keeps_finished_history() -> None:
         state=GameSession.STATE_ACTIVE,
         seed="seed-anon",
     )
+    GamePlayCredit.objects.create(
+        game=game,
+        subject_type="user",
+        subject_id=user.id,
+        last_credited_at=timezone.now(),
+    )
 
     anonymize_user(user)
 
@@ -847,6 +853,7 @@ def test_user_deletion_tombstones_sessions_and_keeps_finished_history() -> None:
             duration_ms=1,
         )
     assert exc.value.code == "E_OWNERSHIP"
+    assert not GamePlayCredit.objects.filter(subject_type="user", subject_id=user.id).exists()
     anon.refresh_from_db()
     assert anon.subject_type == GameSession.SUBJECT_ANON
     assert anon.subject_id == anon_subject

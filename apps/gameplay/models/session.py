@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from typing import Any
+
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.core.fields import UUID7
@@ -125,3 +128,18 @@ class GameSession(models.Model):
 
     def __str__(self) -> str:
         return f"{self.game_id} {self.mode} {self.state} {self.id}"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Mode is assigned at creation and never changes (DB-007)."""
+        if not self._state.adding and self.pk is not None:
+            update_fields = kwargs.get("update_fields")
+            if update_fields is None or "mode" in update_fields:
+                previous = (
+                    type(self).objects.filter(pk=self.pk).values_list("mode", flat=True).first()
+                )
+                if previous is not None and self.mode != previous:
+                    raise ValidationError(
+                        "GameSession.mode is immutable",
+                        code="game_session_mode_immutable",
+                    )
+        super().save(*args, **kwargs)

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from typing import Any
+
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.core.fields import UUID7, CitextField
@@ -112,3 +115,32 @@ class Game(models.Model):
 
     def __str__(self) -> str:
         return self.technical_id
+
+    IDENTITY_FIELDS = ("technical_id", "host_label")
+    PUBLISHED_STATUSES = {STATUS_PUBLISHED, STATUS_HIDDEN, STATUS_ARCHIVED}
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Keep identity immutable after first publication; never reuse it."""
+        if not self._state.adding and self.pk is not None:
+            update_fields = kwargs.get("update_fields")
+            names = set(update_fields) if update_fields is not None else set(self.IDENTITY_FIELDS)
+            fields_to_check = {field for field in self.IDENTITY_FIELDS if field in names}
+            if fields_to_check:
+                previous = (
+                    type(self)
+                    .objects.filter(pk=self.pk)
+                    .values("published_at", "status", *fields_to_check)
+                    .first()
+                )
+                published = previous is not None and (
+                    previous["published_at"] is not None
+                    or previous["status"] in self.PUBLISHED_STATUSES
+                )
+                if published:
+                    for field in fields_to_check:
+                        if getattr(self, field) != previous[field]:
+                            raise ValidationError(
+                                f"Game.{field} is immutable after publication",
+                                code="game_identity_immutable",
+                            )
+        super().save(*args, **kwargs)

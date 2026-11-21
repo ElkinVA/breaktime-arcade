@@ -483,6 +483,18 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Остаток | DB-005 precheck блокирует длинные имена без truncation; tombstone aggregates/mode immutability — отдельные срезы; preview/autotest creation flow отсутствует |
 | Источник | `docs/foundation/BA-APPF-002_DB005_DB007_REPORT.md` |
 
+## BA-APPF-002 / DB-004 + DB-001/DB-007 residuals
+
+| Поле | Значение |
+|---|---|
+| Тип | Integrity/privacy residual доработка |
+| Результат | Game identity immutable после публикации + DELETE forbidden; GamePlayCredit cleanup; GameSession.mode immutable |
+| Проверки | 439 passed, 3 skipped; 5 targeted; ruff/format/mypy clean; catalog.0009/gameplay.0013 applied; migration check/plan clean |
+| Статус | **TECHNICALLY ACCEPTED** (agent) |
+| Review | code-reviewer — **ACCEPT**; security-auditor — **ACCEPT** |
+| Остаток | GameDailyStats не пересчитывается; DELETE всех Game запрещён (архив — статус); mode immutable |
+| Источник | `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

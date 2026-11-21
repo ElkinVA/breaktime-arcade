@@ -68,7 +68,9 @@
 - `technical_id` `UNIQUE`, regex `^[a-z][a-z0-9_]{1,38}[a-z0-9]$`.
 - `host_label` `UNIQUE`, DNS-label regex, не начинается с `xn--`; список
   зарезервированных меток хранится в `theme_site_settings.reserved_host_labels`.
-- `technical_id` и `host_label` защищены trigger `reject_game_identity_change`.
+- `technical_id` и `host_label` immutable после первой публикации
+  (`ba_game_identity_immutable`); DELETE `Game` запрещён trigger
+  `ba_game_delete_forbidden` — архивирование через status.
 - `current_version_id` связан составным FK `(current_version_id,id) →
   catalog_game_version(id,game_id)`, то есть версия обязана принадлежать
   этой игре.
@@ -95,8 +97,8 @@
 - `GameSession`: `subject_type ∈ {user,anon,deleted}` + `subject_id`
   (DB-001; `deleted` — tombstone при удалении, `subject_id` случайный,
   связи с users нет); mode/state CHECK; DB-007 mode↔subject: user→user,
-  guest→anon, preview→user/anon, autotest→user; `ticket_hash`;
-  `credited_ms >= 0`; max 7 200 000 мс.
+  guest→anon, preview→user/anon, autotest→user; `mode` immutable после
+  создания; `ticket_hash`; `credited_ms >= 0`; max 7 200 000 мс.
 - `GameResult`: `session_id UNIQUE`; `game_id` добавлен для индексов §2.11.3;
   `UNIQUE(session_id,idempotency_key)`; `is_test`, quarantine, trust level.
 - `LeaderboardEntry`: `UNIQUE(game_id,epoch,user_id)`, indexes по value

@@ -156,8 +156,13 @@
 - BA-APPF-002 / DB-005 + DB-007 — **TECHNICALLY ACCEPTED** (agent):
   GameTranslation.name 60; GameSession mode↔subject CHECK
   user/guest/preview/autotest + deleted tombstone; migrations
-  catalog.0008, gameplay.0012/0013; 9 tests; full 428/3. Отчёт —
+  catalog.0008, gameplay.0012; 14 tests; full 433/3. Отчёт —
   `docs/foundation/BA-APPF-002_DB005_DB007_REPORT.md`.
+- BA-APPF-002 / DB-004 + residuals — **IMPLEMENTED / TECHNICAL REVIEW**:
+  Game identity immutable после публикации + DELETE forbidden;
+  GamePlayCredit удаляется при удалении аккаунта; GameSession.mode
+  immutable; migrations catalog.0009/gameplay.0013; 439/3. Отчёт —
+  `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 - Прохождение тестов не является приёмкой; отчёт исполнителя не является
   результатом независимого аудита.
 - Staging не затрагивать без отдельного разрешения. В текущей зоне

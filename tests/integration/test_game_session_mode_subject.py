@@ -3,7 +3,8 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
-from django.db import IntegrityError, transaction
+from django.core.exceptions import ValidationError
+from django.db import DatabaseError, IntegrityError, transaction
 
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.gameplay.models import GamePlayCredit, GameSession
@@ -91,6 +92,28 @@ def test_tombstoned_subject_is_allowed_for_any_mode(mode: str) -> None:
     game = _game()
     session = _session(game, mode=mode, subject_type=GameSession.SUBJECT_DELETED)
     assert session.subject_type == GameSession.SUBJECT_DELETED
+
+
+@pytest.mark.django_db
+def test_mode_is_immutable_via_model_and_database() -> None:
+    game = _game()
+    session = _session(
+        game,
+        mode=GameSession.MODE_PREVIEW,
+        subject_type=GameSession.SUBJECT_USER,
+    )
+
+    session.mode = GameSession.MODE_USER
+    with pytest.raises(ValidationError):
+        session.save()
+
+    with pytest.raises(DatabaseError), transaction.atomic():
+        GameSession.objects.filter(pk=session.pk).update(mode=GameSession.MODE_USER)
+
+    session.refresh_from_db()
+    session.mode = GameSession.MODE_USER
+    with pytest.raises(DatabaseError), transaction.atomic():
+        GameSession.objects.bulk_update([session], ["mode"])
 
 
 @pytest.mark.django_db

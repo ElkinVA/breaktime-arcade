@@ -116,7 +116,7 @@ def anonymize_user(user: User) -> None:
     # DB-001: tombstone session identity and close open sessions under row
     # locks before anonymising results, so a concurrent submit_result cannot
     # create a fresh result after the result pass has run.
-    from apps.gameplay.models import GameSession, UserGamePlaytime
+    from apps.gameplay.models import GamePlayCredit, GameSession, UserGamePlaytime
     from apps.gameplay.services.results import anonymize_user_results
     from apps.gameplay.services.storage import delete_user_storage
     from apps.ratings.services.voting import remove_user_ratings
@@ -146,6 +146,10 @@ def anonymize_user(user: User) -> None:
     anonymize_user_results(user)
     delete_user_storage(user)
     UserGamePlaytime.objects.filter(user=user).delete()
+    GamePlayCredit.objects.filter(
+        subject_type="user",
+        subject_id=user.id,
+    ).delete()
     remove_user_ratings(user)
 
     user.is_active = False
