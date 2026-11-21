@@ -41,20 +41,26 @@ CLAUDE_CODE_SUBAGENT_MODEL=deepseek-flash
 - Per-agent frontmatter: `architect`, `code-reviewer`, `security-auditor` —
   v4-pro; `developer`, `qa-engineer` — Flash.
 
-### Pro text-only protocol (mandatory)
+### Pro tool use: subagent vs CLI
 
-Real calls show `message.model=deepseek-v4-pro` in subagent logs, but Pro
-tool use is unreliable (`leading-only`): a real architect emitted 11
-assistant messages with 0 tool calls and 0 text. Therefore:
+Real subagent calls show `message.model=deepseek-v4-pro`, but tool use through
+the Agent tool is unreliable (`leading-only`): a real architect emitted 11
+assistant messages with 0 tool calls and 0 text. The CLI path is different:
+`claude -p --model deepseek-v4-pro --agent autonomy-architect --permission-mode
+plan --allowedTools Read,Grep,Glob` made real Read calls and returned file
+evidence (`modelUsage.deepseek-v4-pro`).
 
-1. Flash gathers facts, diff, test results and excerpts.
-2. Flash invokes the Pro agent with a compact brief and **"do not use tools;
-   answer text-only"**.
+Rules:
+
+1. For Agent-tool Pro reviews/plans, Flash gathers facts and sends a compact
+   brief with **"do not use tools; answer text-only"**.
+2. For `autonomy/` control-plane calls, use the explicit CLI agents and verify
+   `modelUsage`; never infer the model from `meta.model` or
+   `pickedEffortModel`.
 3. Pro returns a plan or `VERDICT: accept|reject|incomplete` with findings.
 4. Flash implements/fixes and records the actual model used.
 
-Do not hand a Pro agent a tool-heavy task and expect it to read files. Do not
-present a Flash plan or self-review as a Pro plan/review.
+Do not present a Flash plan or self-review as a Pro plan/review.
 
 ## Model policy
 
@@ -102,6 +108,26 @@ global endpoint, token or model configuration without owner approval.
   user config, and allows output only under `~/ai-handoff` and `/tmp`.
 
 ## Long-run autonomy
+
+### Durable control plane (`autonomy/`)
+
+The queue is the source of truth for autonomous work; NOW/BACKLOG remain
+human-readable context. State lives in `.autonomy/state.json` (local, ignored)
+with statuses, attempts, dependencies, fingerprints and recovery. Commands:
+
+```bash
+python3 -m autonomy.orchestrator status
+python3 -m autonomy.orchestrator propose
+python3 -m autonomy.orchestrator enqueue --id AUTONOMY-X --title "..." \
+  --priority Major --acceptance "criterion"
+python3 -m autonomy.orchestrator run --max-tasks 1
+python3 -m autonomy.orchestrator recover
+```
+
+The run is Pro Architect → Flash Developer → Flash QA → Pro Reviewer; the
+runner checks actual `modelUsage` and records evidence under
+`.autonomy/evidence/`. A rejected review retries at most twice, then BLOCKED.
+Create `.autonomy/STOP` to stop at the task boundary.
 
 - Technical READY packages continue without per-package confirmation when the
   current owner instruction/`OD-AUTONOMY-004` authorizes autonomous work.

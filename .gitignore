@@ -78,3 +78,6 @@ ba_fix_stage2.sh
 # --- аудиторские артефакты: остаются на диске/в backup, не в Git ---
 /reports/
 BA-FOUNDATION-001_AUDIT_PACKAGE.txt
+
+# AI autonomy runtime state (local)
+.autonomy/

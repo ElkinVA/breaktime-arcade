@@ -1,5 +1,35 @@
 # Автономный запуск разработки
 
+## Control plane: очередь задач (основной путь)
+
+`autonomy/` — durable task queue, которую не заменяют NOW/BACKLOG.
+Состояние лежит в `.autonomy/state.json` (локально, вне Git), задачи имеют
+статусы `READY/RUNNING/QA/REVIEW/COMPLETED/BLOCKED`, attempts, dependencies
+и fingerprint. Каждый запуск:
+
+1. Pro Architect (`deepseek-v4-pro`, tools Read/Grep/Glob) читает репозиторий
+   и создаёт конкретные `AUTONOMY-*` задачи с acceptance criteria.
+2. Flash Developer (`deepseek-flash`) реализует ровно одну задачу.
+3. Flash QA запускает реальные проверки.
+4. Pro Reviewer (`deepseek-v4-pro`) независимо читает commit/diff и выносит
+   `accept/reject`.
+5. При accept задача становится `COMPLETED`, при reject — retry/BLOCKED;
+   затем автоматически выбирается следующая READY.
+
+```bash
+python3 -m autonomy.orchestrator status
+python3 -m autonomy.orchestrator propose
+python3 -m autonomy.orchestrator enqueue --id AUTONOMY-X --title "..." \
+  --priority Major --acceptance "criterion"
+python3 -m autonomy.orchestrator run --max-tasks 1
+python3 -m autonomy.orchestrator recover
+```
+
+Evidence с фактическими `modelUsage`, `session_id` и diff — в
+`.autonomy/evidence/`. Раннер проверяет, что Architect/Reviewer реально
+использовали Pro, а Developer/QA — Flash. `--dangerously-skip-permissions`
+не используется. Для остановки создайте `.autonomy/STOP`.
+
 ## Почему агент останавливается
 
 Claude Code работает **turn-based**: один ответ — один turn. Внутри turn
