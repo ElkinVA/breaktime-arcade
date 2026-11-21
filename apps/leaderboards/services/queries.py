@@ -4,7 +4,50 @@ from __future__ import annotations
 
 from typing import Any
 
+from django.db.models import (
+    Count,
+    Expression,
+    IntegerField,
+    OuterRef,
+    Q,
+    QuerySet,
+    Subquery,
+    Value,
+)
+from django.db.models.functions import Coalesce
+
 from apps.gameplay.models import LeaderboardEntry
+
+
+def rank_annotation() -> Expression:
+    """Correlated count of strictly better entries for one ``LeaderboardEntry``.
+
+    Mirrors :func:`_rank` (§2.11 tie-break: direction, then ``achieved_at ASC``,
+    then ``user_id ASC``) but can annotate a whole user's game list in a single
+    query, so the profile does not issue one rank query per game.
+    """
+    same_board = LeaderboardEntry.objects.filter(
+        game_id=OuterRef("game_id"),
+        epoch=OuterRef("epoch"),
+        is_public=True,
+    )
+    better = same_board.filter(
+        Q(game__score_direction="lower_is_better", value__lt=OuterRef("value"))
+        | Q(game__score_direction="higher_is_better", value__gt=OuterRef("value"))
+        | Q(value=OuterRef("value"), achieved_at__lt=OuterRef("achieved_at"))
+        | Q(
+            value=OuterRef("value"),
+            achieved_at=OuterRef("achieved_at"),
+            user_id__lt=OuterRef("user_id"),
+        )
+    )
+    count = better.order_by().values("game_id").annotate(total=Count("pk")).values("total")
+    return Coalesce(Subquery(count, output_field=IntegerField()), Value(0)) + 1
+
+
+def annotate_rank(queryset: QuerySet[LeaderboardEntry]) -> QuerySet[LeaderboardEntry]:
+    """Annotate entries with their public-board rank without per-row queries."""
+    return queryset.annotate(rank=rank_annotation())
 
 
 def _ordering(game) -> list[str]:

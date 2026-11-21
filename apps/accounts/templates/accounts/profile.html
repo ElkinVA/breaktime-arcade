@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load ba_i18n %}
 {% block title %}Account — Breaktime Arcade{% endblock %}
 {% block content %}
 <section class="max-w-2xl mx-auto px-4 py-10">
@@ -54,6 +55,40 @@
             </form>
         {% endif %}
     </div>
+
+    <section class="mt-6" aria-labelledby="my-games-heading" data-testid="my-games">
+        <h2 id="my-games-heading" class="text-2xl font-display font-bold mb-3">{% ba_t "account.my_games_title" %}</h2>
+        {% if my_games %}
+            <div class="overflow-x-auto rounded-xl border border-text/10 bg-surface">
+                <table class="w-full text-sm border-collapse">
+                    <thead>
+                        <tr class="border-b border-white/10 text-left text-muted">
+                            <th scope="col" class="py-2 px-3">{% ba_t "account.game_label" %}</th>
+                            <th scope="col" class="py-2 px-3">{% ba_t "account.best_result_label" %}</th>
+                            <th scope="col" class="py-2 px-3">{% ba_t "account.rank_label" %}</th>
+                            <th scope="col" class="py-2 px-3">{% ba_t "account.achieved_label" %}</th>
+                            <th scope="col" class="py-2 px-3">{% ba_t "account.playtime_label" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in my_games %}
+                            <tr class="border-b border-white/5" data-testid="my-game-row">
+                                <td class="py-2 px-3">
+                                    <a class="text-accent" href="{% if record.game.leaderboard_enabled %}{% url 'catalog:game_leaderboard' slug=record.game.slug %}{% else %}{% url 'catalog:game_detail' slug=record.game.slug %}{% endif %}">{{ record.name }}</a>
+                                </td>
+                                <td class="py-2 px-3" data-testid="my-game-best">{% if record.best_value is not None %}{{ record.best_value }}{% else %}—{% endif %}</td>
+                                <td class="py-2 px-3" data-testid="my-game-rank">{% if record.rank is not None %}#{{ record.rank }}{% else %}—{% endif %}</td>
+                                <td class="py-2 px-3" data-testid="my-game-achieved">{% if record.achieved_at %}{{ record.achieved_at|date:"Y-m-d" }}{% else %}—{% endif %}</td>
+                                <td class="py-2 px-3" data-testid="my-game-playtime">{% if record.playtime_display is not None %}{{ record.playtime_display }}{% else %}—{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted" data-testid="my-games-empty">{% ba_t "account.my_games_empty" %}</p>
+        {% endif %}
+    </section>
 
     <div class="mt-6 flex flex-wrap gap-3 text-sm">
         <a class="btn px-4 py-2" href="{% url 'account:edit' %}">Edit profile</a>

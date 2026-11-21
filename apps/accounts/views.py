@@ -49,6 +49,7 @@ from apps.accounts.services.email import (
     send_verification_email,
     verify_email_token,
 )
+from apps.accounts.services.game_records import personal_game_records
 from apps.accounts.services.profile import (
     cancel_deletion,
     ensure_profile,
@@ -494,7 +495,15 @@ def profile(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "accounts/profile.html",
-        {"profile": profile_obj, "email_address": email, "legal_acceptances": legal},
+        {
+            "profile": profile_obj,
+            "email_address": email,
+            "legal_acceptances": legal,
+            "my_games": personal_game_records(
+                user,
+                str(getattr(request, "LANGUAGE_CODE", "en")),
+            ),
+        },
     )
 
 
