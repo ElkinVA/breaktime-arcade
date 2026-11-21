@@ -22,6 +22,16 @@ from autonomy.budget import (
     BudgetStop,
     BudgetTracker,
 )
+from autonomy.notifier import (
+    FATAL_ERROR,
+    RUN_BUDGET_STOP,
+    RUN_STOPPED,
+    TASK_BLOCKED,
+    TASK_COMPLETED,
+    TASK_REJECTED,
+    NotificationEvent,
+    Notifier,
+)
 from autonomy.runner import ClaudeRunner, RunResult
 from autonomy.state import (
     BLOCKED,
@@ -302,12 +312,17 @@ class Orchestrator:
         commit: bool = True,
         worktrees: bool = True,
         budget: Budget | None = None,
+        notifier: Notifier | None = None,
     ) -> None:
         self.runner = runner
         self.store = store or StateStore(STATE_ROOT)
         self.commit = commit
         self.worktrees = worktrees
         self.budget = budget or Budget.from_env()
+        # Explicit injection keeps tests and library callers send-free; the
+        # CLI enables the owner-configured notifier via ``Notifier.from_env``.
+        self.notifier = notifier if notifier is not None else Notifier.disabled()
+        self._fatal_notified: BaseException | None = None
 
     def _account(
         self,
@@ -390,6 +405,119 @@ class Orchestrator:
         return added
 
     def run_once(
+        self, *, propose: bool = True, tracker: BudgetTracker | None = None
+    ) -> dict[str, Any]:
+        """Run one task boundary and emit a best-effort owner notification."""
+        try:
+            report = self._run_once(propose=propose, tracker=tracker)
+        except Exception as exc:
+            self.notify_fatal(exc)
+            raise
+        self.notify_report(report)
+        return report
+
+    @staticmethod
+    def _text(value: Any) -> str | None:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+    @classmethod
+    def _review_reason(cls, review: Any) -> str | None:
+        if not isinstance(review, dict):
+            return None
+        findings = review.get("findings")
+        if isinstance(findings, list) and findings:
+            return "; ".join(str(item) for item in findings[:5])
+        verdict = cls._text(review.get("verdict"))
+        return f"verdict: {verdict}" if verdict else None
+
+    def _event_for_report(self, report: dict[str, Any]) -> NotificationEvent | None:
+        """Map an orchestrator report to one owner-facing event."""
+        status = self._text(report.get("status")) or ""
+        task = self._text(report.get("task"))
+        title = self._text(report.get("title"))
+        raw_usage = report.get("usage")
+        usage = raw_usage if isinstance(raw_usage, dict) else None
+        review_reason = self._review_reason(report.get("review"))
+        if status == "completed":
+            return NotificationEvent(
+                TASK_COMPLETED,
+                task=task,
+                title=title,
+                status=status,
+                detail=self._text(report.get("commit")),
+                usage=usage,
+            )
+        if status == "retry":
+            return NotificationEvent(
+                TASK_REJECTED,
+                task=task,
+                title=title,
+                status=status,
+                reason=review_reason or self._text(report.get("error")),
+                detail=self._text(report.get("error")),
+                usage=usage,
+            )
+        if status == "blocked":
+            reason = (
+                self._text(report.get("reason")) or self._text(report.get("error")) or review_reason
+            )
+            error = self._text(report.get("error"))
+            return NotificationEvent(
+                TASK_BLOCKED,
+                task=task,
+                title=title,
+                status=status,
+                reason=reason,
+                detail=error if error != reason else None,
+                usage=usage,
+            )
+        if status == "stopped":
+            is_budget = report.get("reason") == "BUDGET"
+            reason = (
+                self._text(report.get("budget_reason"))
+                if is_budget
+                else self._text(report.get("reason"))
+            )
+            detail = None
+            if is_budget and report.get("limit") is not None:
+                detail = f"limit={report.get('limit')} used={report.get('used')}"
+            return NotificationEvent(
+                RUN_BUDGET_STOP if is_budget else RUN_STOPPED,
+                task=task,
+                title=title,
+                status=status,
+                reason=reason,
+                detail=detail,
+                usage=usage,
+            )
+        return None
+
+    def notify_report(self, report: dict[str, Any]) -> None:
+        """Emit a notification for a report; never affects the run outcome."""
+        with contextlib.suppress(Exception):
+            event = self._event_for_report(report)
+            if event is not None:
+                self.notifier.notify(event)
+
+    def notify_fatal(self, error: BaseException) -> None:
+        """Emit at most one fatal-error notification for the same exception."""
+        if self._fatal_notified is error:
+            return
+        self._fatal_notified = error
+        with contextlib.suppress(Exception):
+            self.notifier.notify(
+                NotificationEvent(
+                    FATAL_ERROR,
+                    status="error",
+                    reason=type(error).__name__,
+                    detail=str(error),
+                )
+            )
+
+    def _run_once(
         self, *, propose: bool = True, tracker: BudgetTracker | None = None
     ) -> dict[str, Any]:
         tracker = tracker or BudgetTracker(self.budget)
@@ -625,11 +753,15 @@ class Orchestrator:
         for _ in range(cap):
             stop = tracker.stop()
             if stop is not None:
-                reports.append(stop.to_report())
+                report = stop.to_report()
+                reports.append(report)
+                self.notify_report(report)
                 budget_stopped = True
                 break
             if STOP_FILE.exists():
-                reports.append({"status": "stopped", "reason": "STOP file"})
+                report = {"status": "stopped", "reason": "STOP file"}
+                reports.append(report)
+                self.notify_report(report)
                 break
             report = self.run_once(propose=propose, tracker=tracker)
             reports.append(report)
@@ -641,14 +773,14 @@ class Orchestrator:
             # The CLI asked for more tasks than the hard cap. Surface the
             # truncation as a normal budget stop instead of silently running
             # fewer tasks.
-            reports.append(
-                BudgetStop(
-                    MAX_TASKS,
-                    float(cap),
-                    float(cap),
-                    tracker.usage,
-                ).to_report(requested=requested)
-            )
+            report = BudgetStop(
+                MAX_TASKS,
+                float(cap),
+                float(cap),
+                tracker.usage,
+            ).to_report(requested=requested)
+            reports.append(report)
+            self.notify_report(report)
         return reports
 
     def _write_event(self, value: dict[str, Any]) -> None:
@@ -696,7 +828,11 @@ def main(argv: list[str] | None = None) -> int:
             _cleanup_worktrees()
         print(json.dumps([task.to_dict() for task in recovered], ensure_ascii=False, indent=2))
         return 0
-    orchestrator = Orchestrator(ClaudeRunner(), store)
+    orchestrator = Orchestrator(
+        ClaudeRunner(),
+        store,
+        notifier=Notifier.from_env(),
+    )
     if args.command == "enqueue":
         if not args.acceptance:
             parser.error("--acceptance is required")
@@ -714,8 +850,13 @@ def main(argv: list[str] | None = None) -> int:
         try:
             proposed = orchestrator.propose()
         except BudgetReached as exc:
-            print(json.dumps(exc.stop.to_report(phase="architect"), ensure_ascii=False, indent=2))
+            report = exc.stop.to_report(phase="architect")
+            orchestrator.notify_report(report)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
             return 2
+        except Exception as exc:
+            orchestrator.notify_fatal(exc)
+            raise
         print(json.dumps([task.to_dict() for task in proposed], ensure_ascii=False, indent=2))
         return 0
     with RUN_LOCK.open("a+") as lock:
@@ -724,7 +865,11 @@ def main(argv: list[str] | None = None) -> int:
         except BlockingIOError:
             print(json.dumps({"status": "locked", "reason": "another orchestrator is running"}))
             return 3
-        reports = orchestrator.run(args.max_tasks, propose=not args.no_propose)
+        try:
+            reports = orchestrator.run(args.max_tasks, propose=not args.no_propose)
+        except Exception as exc:
+            orchestrator.notify_fatal(exc)
+            raise
     print(json.dumps(reports, ensure_ascii=False, indent=2, sort_keys=True))
     return 0 if all(item["status"] != "blocked" for item in reports) else 2
 

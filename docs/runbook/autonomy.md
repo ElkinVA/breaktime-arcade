@@ -70,6 +70,20 @@ symlink-escape, `.env`/`certs`/`creds`/`secrets`/`.ssh`/`.aws` и socket-фай�
 `cacheCreationInputTokens`, `costUSD`) и сохраняются в evidence, задаче,
 run-записи и общем `state.json`.
 
+### Уведомления о событиях
+
+`orchestrator run` отправляет владельцу структурированные Telegram-события
+(`task_completed`, `task_rejected`, `task_blocked`, `run_budget_stop`,
+`run_stopped`, `fatal_error`). Это вспомогательный канал наблюдения: сбой
+уведомлений не меняет результат задачи.
+
+Конфигурация берётся из окружения `TELEGRAM_BOT_TOKEN` и
+`TELEGRAM_CHAT_ID` (для совместимости также `TELEGRAM_OWNER_ID`) либо из
+`creds/telegram.env` (0600, вне Git). Если токен/чат не заданы, событие
+пишется в лог как `notification skipped`; сетевые ошибки повторяются
+(с учётом `retry_after`) и затем также помечаются `skipped`. Токен и тела
+ошибок очищаются от секретов и никогда не попадают в лог или сообщение.
+
 ## Почему агент останавливается
 
 Claude Code работает **turn-based**: один ответ — один turn. Внутри turn
