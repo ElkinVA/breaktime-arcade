@@ -1,0 +1,27 @@
+[Unit]
+Description=BA autonomy orchestrator (existing autonomy module; manual control)
+Documentation=file:%h/ba/autonomy/vps/README.md
+After=network-online.target
+Wants=network-online.target
+# Fail closed if the existing orchestrator checkout is not present.
+ConditionPathExists=%h/ba/autonomy/orchestrator.py
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/ba
+ExecStart=/usr/bin/python3 -m autonomy.orchestrator run --max-tasks 1
+# Non-secret tuning only: budgets, model selectors, timeouts.
+EnvironmentFile=-%h/.config/ba/orchestrator.env
+# Model credentials (ANTHROPIC_*), mode 0600, outside the repository.
+EnvironmentFile=-%h/.config/ba/deepseek.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Keep new state/evidence files owner-only.
+UMask=0077
+NoNewPrivileges=true
+# A full run is bounded by BA_MAX_RUN_SECONDS (default 3600 s); give it headroom.
+TimeoutStartSec=3900
+SyslogIdentifier=ba-autonomy-orchestrator
+
+[Install]
+WantedBy=default.target
