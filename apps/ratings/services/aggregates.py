@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable
 from decimal import Decimal
 from uuid import UUID
 
@@ -38,6 +39,19 @@ def recalculate(game) -> GameRatingAggregate:
         },
     )
     return aggregate
+
+
+def summaries(game_ids: Iterable[UUID]) -> dict[UUID, dict[str, object]]:
+    """Return average/count summaries for many games in a single query."""
+    ids = list(dict.fromkeys(game_ids))
+    aggregates = {row.game_id: row for row in GameRatingAggregate.objects.filter(game_id__in=ids)}
+    return {
+        game_id: {
+            "average": float(aggregates[game_id].average) if game_id in aggregates else 0.0,
+            "count": aggregates[game_id].count if game_id in aggregates else 0,
+        }
+        for game_id in ids
+    }
 
 
 def summary(game, user=None) -> dict[str, object]:

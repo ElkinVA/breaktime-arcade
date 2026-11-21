@@ -21,6 +21,7 @@ from apps.catalog.models import (
 )
 from apps.catalog.services.search import Unaccent
 from apps.i18n.models import Language
+from apps.ratings.services.aggregates import summaries as rating_summaries
 
 DURATION_BUCKETS = {
     "short": (0, 5),
@@ -153,9 +154,20 @@ def localized_translation(game: Game, language_code: str) -> GameTranslation | N
 
 
 def card_items(games: QuerySet[Game], language_code: str) -> list[dict[str, Any]]:
-    return [
-        {"game": game, "translation": localized_translation(game, language_code)} for game in games
-    ]
+    game_list = list(games)
+    ratings = rating_summaries(game.pk for game in game_list)
+    items: list[dict[str, Any]] = []
+    for game in game_list:
+        rating = ratings[game.pk]
+        items.append(
+            {
+                "game": game,
+                "translation": localized_translation(game, language_code),
+                "rating_average": rating["average"],
+                "rating_count": rating["count"],
+            }
+        )
+    return items
 
 
 def tag_options(language_code: str) -> list[dict[str, str]]:

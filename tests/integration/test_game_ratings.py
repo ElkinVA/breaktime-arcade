@@ -7,8 +7,9 @@ from datetime import timedelta
 
 import pytest
 from django.core.cache import caches
-from django.db import connections
+from django.db import connection, connections
 from django.test import Client, RequestFactory, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -347,6 +348,49 @@ def test_public_detail_shows_explicit_no_ratings_state() -> None:
     assert "No ratings yet." in content
     assert 'data-testid="rating-average"' not in content
     assert 'data-testid="rating-count"' not in content
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_catalog_cards_show_rating_summary_and_empty_state() -> None:
+    rated = _game(technical_id="catalog_rated_game")
+    unrated = _game(technical_id="catalog_unrated_game")
+    first = _user("catalog_rater_one")
+    second = _user("catalog_rater_two")
+    GameRatingVote.objects.create(game=rated, user=first, value=5, changed_at=timezone.now())
+    GameRatingVote.objects.create(game=rated, user=second, value=4, changed_at=timezone.now())
+    recalculate(rated)
+
+    response = Client().get("/en/games/")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert f"/en/games/{rated.slug}/" in content
+    assert f"/en/games/{unrated.slug}/" in content
+    assert content.count('data-testid="card-rating-average">4.50<') == 1
+    assert content.count('data-testid="card-rating-count">2 votes<') == 1
+    assert content.count('data-testid="card-rating-empty"') == 1
+    assert "No ratings yet." in content
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_catalog_cards_fetch_rating_summaries_in_one_query() -> None:
+    games = [_game(technical_id=f"catalog_n1_game_{index}") for index in range(3)]
+    for index, game in enumerate(games):
+        voter = _user(f"catalog_n1_voter_{index}")
+        GameRatingVote.objects.create(game=game, user=voter, value=5, changed_at=timezone.now())
+        recalculate(game)
+
+    with CaptureQueriesContext(connection) as captured:
+        response = Client().get("/en/games/")
+
+    assert response.status_code == 200
+    aggregate_queries = [
+        query for query in captured.captured_queries if "ratings_aggregate" in query["sql"]
+    ]
+    assert len(aggregate_queries) == 1
+    assert response.content.decode().count('data-testid="card-rating-average">5.00<') == 3
 
 
 @pytest.mark.django_db(transaction=True)
