@@ -71,7 +71,7 @@ nginx dev `/v/<vhash>` расширен до 12–64 hex.
 
 ```text
 play/SDK targeted -> 7 passed
-pytest (full)     -> 449 passed, 4 skipped, 1 warning
+pytest (full)     -> 452 passed, 4 skipped, 1 warning
 runtime E2E       -> 2 passed (handshake/storage + bad-portal-origin)
 ruff/format/mypy  -> clean
 npm run check:js  -> clean (3 files)
@@ -89,7 +89,9 @@ npm run check:js  -> clean (3 files)
 
 ## 6. Остатки
 
-- Probe/E2E есть; staging/prod runtime volume/origin ещё не настроены.
+- Generic `scripts/publish_runtime.py` внедряет официальный SDK и
+  `meta[name=ba-portal-origin]`; probe использует его. Staging/prod runtime
+  volume/origin ещё не настроены.
 - JS payload validation — lightweight, не полный JSON Schema 2020-12.
 - API `POST /sessions` по-прежнему отдаёт snake_case `session_id`, SDK/host
   context — camelCase `sessionId`; нужен adapter/contract decision.
