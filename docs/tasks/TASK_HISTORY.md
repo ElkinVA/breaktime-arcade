@@ -824,6 +824,20 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   запроса).
 - **Отчёт:** `docs/foundation/BA-QUALITY-002_REPORT.md`.
 
+### R-036 — анализ глобального `CELERY_TASK_ACKS_LATE`
+
+- **ID:** R-036.
+- **Результат:** analysis `docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`:
+  проверены Celery 5.7.0 defaults (`acks_late=True`,
+  `acks_on_failure_or_timeout=True`, `reject_on_worker_lost=None`),
+  `visibility_timeout` 3600, prefork/solo, идемпотентность задач.
+  Рекомендация — гибрид F: Phase 1 observability/docstrings/tests без
+  изменения поведения; Phase 2 idempotency guards + точечный reject только
+  после решения владельца.
+- **Статус:** **ANALYSIS COMPLETED / AWAITING OWNER DECISION**; поведение
+  не изменялось.
+- **Отчёт:** `docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,
@@ -855,6 +869,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/BA-DEVCONTROL-001_REPORT.md`;
 - `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`;
 - `docs/foundation/BA-QUALITY-002_REPORT.md`;
+- `docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`;
 - `tests/integration/test_catalog_public.py`;
 - `tests/integration/test_game_sessions.py`;
 - `reports/BA_AUDIT_20261118_162920.zip` (исторический generated-отчёт).

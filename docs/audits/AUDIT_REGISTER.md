@@ -425,6 +425,16 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Остаток | Full OR 10k ~150 мс — Seq Scan; изменение формы запроса — продуктовое решение |
 | Источник | `docs/foundation/BA-QUALITY-002_REPORT.md` |
 
+## R-036 — анализ глобального `CELERY_TASK_ACKS_LATE`
+
+| Поле | Значение |
+|---|---|
+| Тип | Текстовый архитектурный анализ; не аудит этапа |
+| Результат | Семантика ack/redelivery Celery 5.7+Redis, матрица задач, варианты A–F, рекомендация F; проверены defaults, visibility_timeout 3600, prefork/solo, идемпотентность |
+| Статус | **ANALYSIS COMPLETED / AWAITING OWNER DECISION**; поведение не изменялось |
+| Решение владельца | Phase 2 (idempotency + reject для backup/restore/anonymize), задержка redelivery, отдельный worker — не принято |
+| Источник | `docs/foundation/R-036_ACKS_LATE_ANALYSIS.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

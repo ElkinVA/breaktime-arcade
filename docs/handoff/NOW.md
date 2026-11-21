@@ -68,12 +68,15 @@ Code/security review — **ACCEPT**. Отчёт —
    коды; code/security review accept; отчёт
    `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`.
 5. BA-QUALITY-002 — **TECHNICALLY ACCEPTED** (agent); code/security review
-   accept; full OR 10k ~150 мс — residual. R-036: полный Pro-анализ
-   глобального `CELERY_TASK_ACKS_LATE=True` — отдельный срез, без изменения
-   поведения; решение — владелец.
+   accept; full OR 10k ~150 мс — residual. R-036 — **ANALYSIS COMPLETED /
+   AWAITING OWNER DECISION** (`docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`):
+   Phase 1 (observability/docstrings/tests) без изменения поведения возможна;
+   Phase 2 (idempotency + точечный reject) — после решения владельца.
 6. R-037/R-038: retention `zip_uploads`; live Telegram/Dev Control.
-7. Независимый READY-пакет — **BA-QUALITY-002** (dev-only), если владелец
-   не выберет ZIP-продолжение.
+7. Следующий независимый срез — **R-036 Phase 1** (docstrings/контрактные
+   тесты/наблюдаемость без изменения поведения); Phase 2 — после решения
+   владельца. Другие READY: BA-APPF-002 (частично; DB-002/003/004/008
+   делегированы), BA-DOC-README-001 (защищённые файлы).
 8. manifest/catalog/locales — после BA-GAME-2.2; SDK/iframe/host protocol —
    после утверждения BA-SDK-1.1 v1.1.0 и BA-GAME-2.2; EventLog/verifier —
    после схем сообщений.
@@ -149,7 +152,8 @@ host E2E (13 сценариев, после локальной настройк�
 - Retention JSONB/результатов не утверждён; R-030 residual.
 - R-033: нет жёсткой ФС-квоты; общий broker (вариант A).
 - R-035: fsync родительского каталога/audit, method allowlist — deferred.
-- R-036: pre-existing глобальный `acks_late` — платформенный риск.
+- R-036: анализ выполнен; глобальный `acks_late` — платформенный риск,
+  Phase 2 awaiting owner.
 - R-037: retention `zip_uploads` вне scope.
 - R-038: Dev Control live Telegram не проверен; auto-mode может потребовать
   одобрения permissions; mid-turn injection нет (inbox на границе задачи).
@@ -162,6 +166,8 @@ host E2E (13 сценариев, после локальной настройк�
 `docs/tasks/BA-ZIP-WORKER-001_PLAN.md`,
 `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`,
 `docs/foundation/BA-DEVCONTROL-001_REPORT.md`, `devcontrol/README.md`,
+`docs/foundation/BA-QUALITY-002_REPORT.md`,
+`docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`,
 `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`,
 `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`,
 `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`,
