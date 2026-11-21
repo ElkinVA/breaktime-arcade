@@ -31,6 +31,7 @@ ALLOWED_ROOTS = (
     ".claude/hooks",
     ".claude/settings.json",
     "apps",
+    "autonomy",
     "config",
     "devcontrol",
     "infra/scripts",
