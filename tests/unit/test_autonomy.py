@@ -159,7 +159,7 @@ def test_orchestrator_completes_and_does_not_requeue(tmp_path: Path) -> None:
     store = StateStore(tmp_path)
     store.enqueue([Task(id="AUTONOMY-OK", title="OK", priority="Major", acceptance=["a"])])
     runner = FakeRunner()
-    orchestrator = Orchestrator(runner, store, commit=False)
+    orchestrator = Orchestrator(runner, store, commit=False, worktrees=False)
     report = orchestrator.run_once(propose=False)
 
     assert report["status"] == "completed", report
@@ -175,7 +175,7 @@ def test_orchestrator_retries_then_blocks_after_review_reject(tmp_path: Path) ->
     store = StateStore(tmp_path)
     store.enqueue([Task(id="AUTONOMY-BAD", title="Bad", priority="Major", acceptance=["a"])])
     runner = FakeRunner(verdict="reject")
-    orchestrator = Orchestrator(runner, store, commit=False)
+    orchestrator = Orchestrator(runner, store, commit=False, worktrees=False)
 
     first = orchestrator.run_once(propose=False)
     assert first["status"] == "retry"
@@ -206,7 +206,7 @@ def test_architect_only_enqueues_autonomy_tasks(tmp_path: Path) -> None:
             }
         )
     )
-    orchestrator = Orchestrator(runner, store, commit=False)
+    orchestrator = Orchestrator(runner, store, commit=False, worktrees=False)
     added = orchestrator.propose()
 
     assert [task.id for task in added] == ["AUTONOMY-X"]

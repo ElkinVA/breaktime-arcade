@@ -53,6 +53,7 @@ class ClaudeRunner:
         allowed_tools: list[str],
         permission_mode: str,
         timeout: int | None = None,
+        cwd: Path | None = None,
     ) -> RunResult:
         command = [
             "claude",
@@ -73,7 +74,7 @@ class ClaudeRunner:
         try:
             completed = subprocess.run(  # noqa: S603 - fixed argv, no shell
                 command,
-                cwd=self.root,
+                cwd=cwd or self.root,
                 text=True,
                 capture_output=True,
                 timeout=timeout or self.timeout,
@@ -176,7 +177,7 @@ class ClaudeRunner:
         temp.replace(path)
         return str(path)
 
-    def architect(self, prompt: str) -> RunResult:
+    def architect(self, prompt: str, cwd: Path | None = None) -> RunResult:
         return self.run(
             role="architect",
             model=ARCHITECT_MODEL,
@@ -184,9 +185,10 @@ class ClaudeRunner:
             prompt=prompt,
             allowed_tools=["Read", "Grep", "Glob"],
             permission_mode="plan",
+            cwd=cwd,
         )
 
-    def developer(self, prompt: str) -> RunResult:
+    def developer(self, prompt: str, cwd: Path | None = None) -> RunResult:
         return self.run(
             role="developer",
             model=DEVELOPER_MODEL,
@@ -206,9 +208,10 @@ class ClaudeRunner:
                 "Bash(git diff:*)",
             ],
             permission_mode="acceptEdits",
+            cwd=cwd,
         )
 
-    def qa(self, prompt: str) -> RunResult:
+    def qa(self, prompt: str, cwd: Path | None = None) -> RunResult:
         return self.run(
             role="qa",
             model=QA_MODEL,
@@ -216,9 +219,10 @@ class ClaudeRunner:
             prompt=prompt,
             allowed_tools=["Read", "Grep", "Glob", "Bash(make test:*)", "Bash(make check:*)"],
             permission_mode="acceptEdits",
+            cwd=cwd,
         )
 
-    def reviewer(self, prompt: str) -> RunResult:
+    def reviewer(self, prompt: str, cwd: Path | None = None) -> RunResult:
         return self.run(
             role="reviewer",
             model=REVIEWER_MODEL,
@@ -226,4 +230,5 @@ class ClaudeRunner:
             prompt=prompt,
             allowed_tools=["Read", "Grep", "Glob", "Bash(git diff:*)"],
             permission_mode="plan",
+            cwd=cwd,
         )

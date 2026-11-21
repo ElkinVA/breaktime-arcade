@@ -59,6 +59,9 @@ class Task:
     run_id: str | None = None
     session_id: str | None = None
     model: str | None = None
+    worktree: str | None = None
+    base_commit: str | None = None
+    candidate_commit: str | None = None
     evidence: list[str] = field(default_factory=list)
     blocked_reason: str | None = None
     last_error: str | None = None
@@ -88,6 +91,9 @@ class Task:
             "run_id": self.run_id,
             "session_id": self.session_id,
             "model": self.model,
+            "worktree": self.worktree,
+            "base_commit": self.base_commit,
+            "candidate_commit": self.candidate_commit,
             "evidence": self.evidence,
             "blocked_reason": self.blocked_reason,
             "last_error": self.last_error,
@@ -240,6 +246,32 @@ class StateStore:
                     run["status"] = status.lower()
                     run["finished_at"] = _now()
                     break
+            return task
+
+    def set_worktree(
+        self, task_id: str, worktree: str | None, base_commit: str | None
+    ) -> Task | None:
+        with self.locked() as state:
+            value = state["tasks"].get(task_id)
+            if value is None:
+                return None
+            task = Task.from_dict(value)
+            task.worktree = worktree
+            task.base_commit = base_commit
+            task.candidate_commit = None
+            task.updated_at = _now()
+            state["tasks"][task_id] = task.to_dict()
+            return task
+
+    def set_candidate(self, task_id: str, candidate_commit: str | None) -> Task | None:
+        with self.locked() as state:
+            value = state["tasks"].get(task_id)
+            if value is None:
+                return None
+            task = Task.from_dict(value)
+            task.candidate_commit = candidate_commit
+            task.updated_at = _now()
+            state["tasks"][task_id] = task.to_dict()
             return task
 
     def retry(self, task_id: str, reason: str) -> Task | None:
