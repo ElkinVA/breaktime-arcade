@@ -20,6 +20,10 @@
         <div><dt class="text-muted">Mobile</dt><dd>{% if game.mobile_support %}yes{% else %}no{% endif %}</dd></div>
         <div><dt class="text-muted">Default language</dt><dd>{{ game.default_language }}</dd></div>
         <div><dt class="text-muted">Published</dt><dd>{{ game.published_at|date:"Y-m-d"|default:"—" }}</dd></div>
+        <div>
+            <dt class="text-muted">Popularity (30 days)</dt>
+            <dd><span data-testid="game-popularity">{{ popularity }}</span> credit{{ popularity|pluralize }}</dd>
+        </div>
     </dl>
     <section class="mb-8" aria-labelledby="rating-summary-heading">
         <h2 id="rating-summary-heading" class="text-xl font-semibold mb-2">Ratings</h2>

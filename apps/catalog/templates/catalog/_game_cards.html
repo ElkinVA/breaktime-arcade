@@ -27,6 +27,10 @@
                         <span class="text-muted" data-testid="card-rating-empty">No ratings yet.</span>
                     {% endif %}
                 </div>
+                <div class="mt-1 text-sm text-muted" data-testid="card-popularity">
+                    <span class="font-semibold" data-testid="card-popularity-count">{{ card.popularity }}</span>
+                    credit{{ card.popularity|pluralize }} in 30 days
+                </div>
             </article>
         {% endfor %}
     </div>

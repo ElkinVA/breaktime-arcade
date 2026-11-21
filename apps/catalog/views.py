@@ -25,6 +25,7 @@ from apps.catalog.services.catalog import (
     published_games,
     tag_options,
 )
+from apps.catalog.services.popularity import popularity
 from apps.gameplay.api.throttling import (
     GuestIpRateThrottle,
     SubjectScopedRateThrottle,
@@ -88,6 +89,7 @@ def game_detail(request: HttpRequest, slug: str) -> TemplateResponse:
             "translation": translation,
             "rating_average": ratings["average"],
             "rating_count": ratings["count"],
+            "popularity": popularity(game.pk),
         },
     )
 

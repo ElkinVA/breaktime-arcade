@@ -19,6 +19,7 @@ from apps.catalog.models import (
     GenreTranslation,
     TagTranslation,
 )
+from apps.catalog.services.popularity import popularity_counts, popularity_subquery
 from apps.catalog.services.search import Unaccent
 from apps.i18n.models import Language
 from apps.ratings.services.aggregates import summaries as rating_summaries
@@ -31,7 +32,8 @@ DURATION_BUCKETS = {
 }
 SORT_NEW = "new"
 SORT_OLD = "old"
-SORT_CHOICES = {SORT_NEW, SORT_OLD}
+SORT_POPULAR = "popular"
+SORT_CHOICES = {SORT_NEW, SORT_OLD, SORT_POPULAR}
 
 
 @dataclass(frozen=True)
@@ -135,8 +137,12 @@ def filter_games(filters: CatalogFilters, language_code: str = "en") -> QuerySet
         queryset = queryset.annotate(
             rank=SearchRank(F("translations__search_vector"), stored_query)
         )
-        if filters.sort != SORT_OLD:
+        if filters.sort not in {SORT_OLD, SORT_POPULAR}:
             return queryset.order_by("-rank", "-published_at", "-id")
+    if filters.sort == SORT_POPULAR:
+        return queryset.annotate(popularity_30d=popularity_subquery()).order_by(
+            "-popularity_30d", "-published_at", "-id"
+        )
     if filters.sort == SORT_OLD:
         return queryset.order_by("published_at", "id")
     return queryset.order_by("-published_at", "-id")
@@ -156,6 +162,7 @@ def localized_translation(game: Game, language_code: str) -> GameTranslation | N
 def card_items(games: QuerySet[Game], language_code: str) -> list[dict[str, Any]]:
     game_list = list(games)
     ratings = rating_summaries(game.pk for game in game_list)
+    popularity = popularity_counts(game.pk for game in game_list)
     items: list[dict[str, Any]] = []
     for game in game_list:
         rating = ratings[game.pk]
@@ -165,6 +172,7 @@ def card_items(games: QuerySet[Game], language_code: str) -> list[dict[str, Any]
                 "translation": localized_translation(game, language_code),
                 "rating_average": rating["average"],
                 "rating_count": rating["count"],
+                "popularity": popularity.get(game.pk, 0),
             }
         )
     return items
