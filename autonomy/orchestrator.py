@@ -154,10 +154,12 @@ def _unstage(files: list[str]) -> None:
 
 
 def _commit_staged(task: Task, files: list[str]) -> str:
+    # _stage_task has already verified that only these files are staged, so a
+    # normal commit records exactly the reviewed index snapshot.
     subject = f"autonomy({task.id}): {task.title}"
     body = "Co-Authored-By: Claude Code <noreply@anthropic.com>"
     commit = subprocess.run(
-        ["git", "commit", "--only", "-m", subject, "-m", body, "--", *files],
+        ["git", "commit", "-m", subject, "-m", body],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -305,7 +307,11 @@ class Orchestrator:
             )
             files = _developer_files(developer)
             if self.commit:
-                _stage_task(files)
+                try:
+                    _stage_task(files)
+                except Exception:
+                    _unstage(files)
+                    raise
                 staged = True
             review = self.runner.reviewer(
                 _reviewer_prompt(task, developer, qa, _git_diff(files, staged=staged))

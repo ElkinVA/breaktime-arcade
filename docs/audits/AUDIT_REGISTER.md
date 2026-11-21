@@ -521,7 +521,7 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 |---|---|
 | Тип | AI infrastructure / routing / queue |
 | Результат | durable queue, Pro Architect/Reviewer + Flash Developer/QA, modelUsage evidence, auto-next, recovery, completed dedup |
-| Проверки | 657 passed, 4 skipped; 8 autonomy tests; 193 guard tests; ruff/format/mypy clean |
-| Статус | **IMPLEMENTED / TECHNICAL REVIEW**; owner acceptance pending |
-| Остаток | rejected candidate commit remains; reviewer does not rerun full suite; no OS sandbox |
+| Проверки | 670 passed, 4 skipped; 13 autonomy tests; 193 guard tests; ruff/format/mypy clean |
+| Статус | **TECHNICALLY ACCEPTED** (independent Pro review); product acceptance owner |
+| Остаток | no isolated worktree; reviewer does not rerun full suite; no OS sandbox |
 | Источник | `docs/foundation/AI_AUTONOMY_EVIDENCE.md` |

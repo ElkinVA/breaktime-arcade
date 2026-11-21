@@ -146,13 +146,10 @@ class ClaudeRunner:
         if not isinstance(model_usage, dict) or not model_usage:
             return False
         expected = "v4-pro" if role in {"architect", "reviewer"} else "flash"
-        candidates = [
-            name
-            for name in model_usage
-            if (requested_model and name == requested_model)
-            or (not requested_model and expected in name)
-            or (requested_model and expected in name)
-        ]
+        if requested_model:
+            candidates = [requested_model] if requested_model in model_usage else []
+        else:
+            candidates = [name for name in model_usage if expected in name]
         for name in candidates:
             usage = model_usage.get(name)
             if not isinstance(usage, dict):

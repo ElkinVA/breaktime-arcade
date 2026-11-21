@@ -154,7 +154,8 @@ Reviewer цикла нет.
   untracked/uncommitted, verdict **reject**; task moved to retry.
 - **Second attempt:** Developer Flash session
   `12cb4074-d3d1-4bc2-8fb2-0c93003d34a7` reported the deliverable file;
-  QA Flash session `5e34badd-...` ran `make check` = 657 passed, 4 skipped;
+  QA Flash session `5e34badd-...` ran `make check` = 657 passed, 4 skipped
+  at that commit;
   the orchestrator committed `24cd6fd`; Reviewer Pro session
   `36f8fac4-b3a8-442e-a875-a56c50c28410` independently read the committed
   diff and **accepted** (minor residuals only).

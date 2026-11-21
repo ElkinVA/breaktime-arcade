@@ -4,7 +4,14 @@ import json
 from pathlib import Path
 
 import pytest
-from autonomy.orchestrator import Orchestrator, _developer_files, _safe_file, _stage_task
+from autonomy.orchestrator import (
+    Orchestrator,
+    _commit_staged,
+    _developer_files,
+    _safe_file,
+    _stage_task,
+    _unstage,
+)
 from autonomy.runner import ClaudeRunner, RunResult
 from autonomy.state import (
     BLOCKED,
@@ -226,6 +233,14 @@ def test_runner_parses_json_and_role_model() -> None:
         )
         is False
     )
+    assert (
+        ClaudeRunner._actual_model_matches(
+            "developer",
+            {"deepseek-flash": {"inputTokens": 10, "outputTokens": 10}},
+            "deepseek-flash[1m]",
+        )
+        is False
+    )
 
 
 def test_safe_file_rejects_protected_and_escaping_paths(tmp_path: Path, monkeypatch) -> None:
@@ -259,6 +274,28 @@ def test_stage_task_rejects_pre_staged_unrelated_changes(monkeypatch) -> None:
     with pytest.raises(RuntimeError, match="unexpected staged"):
         _stage_task(["tests/unit/test_autonomy.py"])
     assert calls[0][:3] == ["git", "add", "--"]
+
+
+def test_commit_and_unstage_use_git_index(monkeypatch) -> None:
+    import autonomy.orchestrator as orchestrator
+
+    calls: list[list[str]] = []
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+        stdout = "[main abc] message\n"
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        return Completed()
+
+    monkeypatch.setattr(orchestrator.subprocess, "run", fake_run)
+    task = Task(id="AUTONOMY-G", title="Gate", priority="Minor", acceptance=["x"])
+    assert _commit_staged(task, ["tests/unit/test_autonomy.py"]) == "[main abc] message"
+    assert calls[0][:3] == ["git", "commit", "-m"]
+    _unstage(["tests/unit/test_autonomy.py"])
+    assert calls[1][:4] == ["git", "restore", "--staged", "--"]
 
 
 def test_developer_files_rejects_unsafe_or_empty_reports() -> None:

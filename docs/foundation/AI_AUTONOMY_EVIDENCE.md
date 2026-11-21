@@ -32,8 +32,16 @@ session `79aef134-e1a8-42a0-9ec9-ac8d292ac2bc`) returned 4 concrete
 - Flash Developer session `d149cd69-...` / `12cb4074-...`:
   `modelUsage.deepseek-flash[1m]`; added `tests/unit/test_hooks_guard.py`.
 - Flash QA session `5e34badd-...`: `modelUsage.deepseek-flash`;
-  `make test`/`make check` = **657 passed, 4 skipped** (193 guard tests).
+  `make test`/`make check` = **657 passed, 4 skipped** at that commit
+  (193 guard tests).
 - Commit: `24cd6fd autonomy(AUTONOMY-GUARD-TESTS-001): ...`.
+
+### Task `AUTONOMY-CONFIG-CONTRACT-001`
+
+- Developer Flash added the two contract test modules and the devcontrol
+  deny/sandbox wiring; QA `make check` = 670 passed, 4 skipped.
+- Pro Reviewer `42f4c0f6-...` accepted; commit `c184ffa`.
+- Auto-next was already observed after the preceding completed task.
 - First Pro Reviewer (`b56e4714-...`) correctly rejected the uncommitted
   deliverable. Second Pro Reviewer (`36f8fac4-...`,
   `modelUsage.deepseek-v4-pro`, output 18 605) reviewed the committed diff
@@ -58,28 +66,42 @@ owner command. The protected-hook hardening task is `BLOCKED` with reason
 - recovery of RUNNING/QA/REVIEW after a killed orchestrator;
 - stop file `.autonomy/STOP`.
 
-Unit coverage: `tests/unit/test_autonomy.py` (8 tests) covers dedup,
+Unit coverage: `tests/unit/test_autonomy.py` (12 tests) covers dedup,
 dependencies, recovery, retry→BLOCKED, COMPLETED non-requeue, architect
 filter, JSON parsing/model checks.
 
 ## Verification
 
 ```text
-make check                    -> 657 passed, 4 skipped
-tests/unit/test_autonomy.py   -> 8 passed
+make check                    -> 670 passed, 4 skipped
+tests/unit/test_autonomy.py   -> 12 passed
 tests/unit/test_hooks_guard.py-> 193 passed
 ruff/format/mypy              -> clean
 ```
 
-Commits: `24cd6fd` (task output), `32bc351` (control plane). `main` pushed.
+Commits: `24cd6fd` (task output), `32bc351` (control plane), `e190436` (review-gate/state fixes). `main` pushed.
 No game/App F feature changes were made in this block.
+
+### Independent control-plane review
+
+- First Pro review (`4f7af416...`) **rejected** the original
+  commit-before-review gate and weak model/staging checks.
+- Fix `e190436` changed the flow to safe-path staging → Pro review of the
+  staged candidate → commit only on accept / unstage on reject; corrupt state
+  fail-closed; strict requested-model token check; recovery locked.
+- Second Pro review (`172ca08a-e7cb-4a5f-97ea-4582f92ea7eb`,
+  `modelUsage.deepseek-v4-pro`, output 33 689) **accepted** with minor
+  residuals. Commit-path tests were then added (13 autonomy tests).
 
 ## Remaining risks
 
-- Reviewer sees a commit because the orchestrator commits before review;
-  a rejected candidate remains in history (no task branch/worktree yet).
+- Review gate is now: stage only reported safe paths → Pro review → commit
+  on accept / unstage on reject. No isolated worktree/branch; a failed
+  staging operation leaves worktree changes.
 - Pro reviewer does not independently re-run the full suite; QA evidence is
   supplied.
+- `AUTONOMY-CONFIG-CONTRACT-001` was interrupted during the control-plane
+  review fix and rerun; its final verdict is separate.
 - The autonomous developer still has normal user-level process permissions;
   the existing hooks are defense-in-depth, not an OS sandbox.
 - `.autonomy` state/evidence are local and not backed up/committed by design.
