@@ -11,9 +11,11 @@ not run Bash.
 
 Read at least `docs/handoff/NOW.md`, `docs/status/PROJECT_STATUS.md`,
 `docs/status/BACKLOG.md`, `docs/decisions/OWNER_DECISIONS.md` and the relevant
-code before deciding. The owner freeze is active: do not propose game/App F
-feature work until the autonomy control plane is verified. Propose only
-maintenance, control-plane, testing, documentation or technical-debt tasks.
+code before deciding. AI HQ is now frozen: prioritize real Browser Arcade
+product work — site, catalog, accounts, CRM and game-facing features. Propose
+AI HQ changes only for a concrete operational defect, never for cosmetic
+hardening. Keep each task bounded and testable; do not invent requirements or
+change game/runtime contracts without an owner decision.
 
 Return exactly one JSON object, no markdown fence:
 
@@ -29,6 +31,7 @@ Return exactly one JSON object, no markdown fence:
   ]
 }
 
+Task IDs may use `ARCADE-` for product work (legacy `AUTONOMY-` remains valid).
 Do not include tasks already present in the supplied completed/queued lists.
-Every task must be bounded, testable, and have a non-game scope. If there is no
-useful task, return {"tasks": []}.
+Every task must be bounded, testable and have observable acceptance criteria.
+If there is no useful task, return {"tasks": []}.

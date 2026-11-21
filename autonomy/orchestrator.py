@@ -253,9 +253,10 @@ def _architect_prompt(store: StateStore) -> str:
         for task_id, value in state["tasks"].items()
     ]
     return (
-        "Inspect the repository and determine the next bounded tasks for the "
-        "autonomy control plane. Do not propose game/App F features; the owner "
-        "freeze is active. Do not repeat any item below. Return the strict JSON "
+        "Inspect the repository and determine the next bounded Browser Arcade "
+        "product tasks (site, catalog, accounts, CRM, game-facing features). "
+        "AI HQ is frozen; propose control-plane work only for a concrete "
+        "operational defect. Do not repeat any item below. Return the strict JSON "
         "schema from your agent instructions. Current queue: "
         + json.dumps(active, ensure_ascii=False)
     )
@@ -378,7 +379,7 @@ class Orchestrator:
             if not isinstance(item, dict):
                 continue
             task_id = str(item.get("id", "")).strip()
-            if not task_id.startswith("AUTONOMY-"):
+            if not task_id.startswith(("AUTONOMY-", "ARCADE-")):
                 continue
             acceptance = [str(value) for value in item.get("acceptance", []) if str(value).strip()]
             if not acceptance:
