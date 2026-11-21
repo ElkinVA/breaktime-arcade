@@ -24,6 +24,7 @@ from apps.catalog.services.catalog import (
     parse_filters,
     popular_games,
     published_games,
+    search_fallback_required,
     tag_options,
     top_rated_games,
 )
@@ -88,10 +89,22 @@ def game_list(request: HttpRequest) -> TemplateResponse:
         canonical_url=page_canonical_url,
         noindex=robots_noindex,
     )
+    search_fallback = search_fallback_required(filters, page_obj.paginator.count)
+    search_fallback_cards = (
+        card_items(popular_games(filters=filters), language_code, active_language_codes)
+        if search_fallback
+        else []
+    )
+    if search_fallback and not search_fallback_cards:
+        # Keep the suggestive block useful even when no popular game matches
+        # the other active filters.
+        search_fallback_cards = card_items(popular_games(), language_code, active_language_codes)
     context = {
         "title": seo.title,
         "games": page_obj.object_list,
         "cards": card_items(page_obj.object_list, language_code, active_language_codes),
+        "search_fallback": search_fallback,
+        "search_fallback_cards": search_fallback_cards,
         "filters": filters,
         "genres": genre_options(language_code),
         "tags": tag_options(language_code),

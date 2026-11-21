@@ -38,6 +38,8 @@ from apps.i18n.models import Language
 from apps.ratings.models import GameRatingAggregate
 from apps.ratings.services.aggregates import summaries as rating_summaries
 
+SEARCH_MIN_QUERY_LENGTH = 2
+
 DURATION_BUCKETS = {
     "short": (0, 5),
     "medium": (6, 15),
@@ -115,8 +117,8 @@ def _fts_config(language_code: str) -> str:
     return configured or "simple"
 
 
-def filter_games(filters: CatalogFilters, language_code: str = "en") -> QuerySet[Game]:
-    queryset = published_games()
+def _apply_context_filters(queryset: QuerySet[Game], filters: CatalogFilters) -> QuerySet[Game]:
+    """Apply the non-search filters shared by the grid and the fallback."""
     if filters.genre:
         queryset = queryset.filter(
             Q(primary_genre__code=filters.genre) | Q(additional_genres__code=filters.genre)
@@ -131,9 +133,14 @@ def filter_games(filters: CatalogFilters, language_code: str = "en") -> QuerySet
             estimated_play_minutes__gte=minimum,
             estimated_play_minutes__lte=maximum,
         )
+    return queryset
+
+
+def filter_games(filters: CatalogFilters, language_code: str = "en") -> QuerySet[Game]:
+    queryset = _apply_context_filters(published_games(), filters)
     if filters.q:
         query = filters.q
-        if len(query) >= 2:
+        if len(query) >= SEARCH_MIN_QUERY_LENGTH:
             config = _fts_config(language_code)
             vector = (
                 SearchVector(Unaccent("translations__name"), weight="A", config=config)
@@ -161,7 +168,7 @@ def filter_games(filters: CatalogFilters, language_code: str = "en") -> QuerySet
             )
         else:
             queryset = queryset.none()
-    if filters.q and len(filters.q) >= 2:
+    if filters.q and len(filters.q) >= SEARCH_MIN_QUERY_LENGTH:
         queryset = queryset.annotate(
             rank=SearchRank(F("translations__search_vector"), stored_query)
         )
@@ -187,16 +194,32 @@ def filter_games(filters: CatalogFilters, language_code: str = "en") -> QuerySet
     return queryset.order_by("-published_at", "-id")
 
 
-def popular_games(limit: int = HOME_BLOCK_LIMIT) -> QuerySet[Game]:
+def search_fallback_required(filters: CatalogFilters, total_results: int) -> bool:
+    """Popular suggestions are shown only for a >=2-char search with no matches.
+
+    ``total_results`` is the count *after* every active filter (genre, tags,
+    duration, mobile and sort) has been applied, so the fallback never masks a
+    filtered result set that is actually non-empty.
+    """
+    return total_results == 0 and len(filters.q) >= SEARCH_MIN_QUERY_LENGTH
+
+
+def popular_games(
+    limit: int = HOME_BLOCK_LIMIT, *, filters: CatalogFilters | None = None
+) -> QuerySet[Game]:
     """Top published games by 30-day popularity for the home block (§2.8).
 
     Reuses the ``popular`` catalog ordering (popularity ↓, WR ↓, id ↑) and
-    keeps only games that actually earned credit in the window.
+    keeps only games that actually earned credit in the window. When
+    ``filters`` is given, its non-search filters (genre, tags, mobile,
+    duration) also constrain the suggestions.
     """
+    queryset = published_games()
+    if filters is not None:
+        queryset = _apply_context_filters(queryset, filters)
     wr_score, _ = _rating_sort_annotations()
     return (
-        published_games()
-        .annotate(popularity_30d=popularity_subquery(), rating_wr_score=wr_score)
+        queryset.annotate(popularity_30d=popularity_subquery(), rating_wr_score=wr_score)
         .filter(popularity_30d__gt=0)
         .order_by("-popularity_30d", "-rating_wr_score", "id")[:limit]
     )
