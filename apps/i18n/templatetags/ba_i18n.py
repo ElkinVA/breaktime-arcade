@@ -26,7 +26,12 @@ def ba_t(context: dict[str, Any], full_key: str, **params: Any) -> str:
     namespace, key = parts
 
     current_code = getattr(request, "LANGUAGE_CODE", "en")
-    languages = get_active_languages()
+    # Memoise per request: the tag runs once per card and must not issue a
+    # language query for every rendered card.
+    languages = getattr(request, "_ba_active_languages", None)
+    if languages is None:
+        languages = get_active_languages()
+        request._ba_active_languages = languages  # type: ignore[attr-defined]
     current = next((lang for lang in languages if lang.code == current_code), None)
     fallback = next((lang for lang in languages if lang.code == "en"), None)
 

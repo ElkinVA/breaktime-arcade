@@ -232,7 +232,7 @@ def localized_translation(game: Game, language_code: str) -> GameTranslation | N
 
 
 def card_items(
-    games: QuerySet[Game],
+    games: Iterable[Game],
     language_code: str,
     active_language_codes: Iterable[str] | None = None,
 ) -> list[dict[str, Any]]:

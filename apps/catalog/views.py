@@ -28,6 +28,12 @@ from apps.catalog.services.catalog import (
     top_rated_games,
 )
 from apps.catalog.services.localization import localization_coverage
+from apps.catalog.services.pagination import (
+    canonical_url,
+    paginate_games,
+    pagination_query,
+    should_noindex,
+)
 from apps.catalog.services.popularity import popularity
 from apps.gameplay.api.throttling import (
     GuestIpRateThrottle,
@@ -67,16 +73,26 @@ def home(request: HttpRequest) -> TemplateResponse:
 
 
 def game_list(request: HttpRequest) -> TemplateResponse:
-    filters = parse_filters(request.GET)
-    games = filter_games(filters, _language(request))
+    language_code = _language(request)
+    params = request.GET
+    filters = parse_filters(params)
+    games = filter_games(filters, language_code)
+    page_obj = paginate_games(games, params)
     context = {
         "title": "Каталог",
-        "games": games,
-        "cards": card_items(games, _language(request), get_active_language_codes_safely()),
+        "games": page_obj.object_list,
+        "cards": card_items(
+            page_obj.object_list, language_code, get_active_language_codes_safely()
+        ),
         "filters": filters,
-        "genres": genre_options(_language(request)),
-        "tags": tag_options(_language(request)),
-        "language_code": _language(request),
+        "genres": genre_options(language_code),
+        "tags": tag_options(language_code),
+        "language_code": language_code,
+        "page_obj": page_obj,
+        "pagination_query": pagination_query(params),
+        "pagination_hx_target": "#game-results",
+        "canonical_url": canonical_url(request, params, page_obj.number),
+        "robots_noindex": should_noindex(page_obj.number),
     }
     if request.headers.get("HX-Request") == "true":
         return TemplateResponse(request, "catalog/_game_cards.html", context)

@@ -3,6 +3,11 @@
 
 {% block title %}{% ba_t "catalog.title" %} — Breaktime Arcade{% endblock %}
 
+{% block extra_head %}
+    <link rel="canonical" href="{{ canonical_url }}">
+    {% if robots_noindex %}<meta name="robots" content="noindex,follow">{% endif %}
+{% endblock %}
+
 {% block content %}
 <section class="max-w-7xl mx-auto px-4 py-8">
     <h1 class="text-3xl font-display font-bold mb-6">{% ba_t "catalog.title" %}</h1>
