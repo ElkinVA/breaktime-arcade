@@ -101,6 +101,19 @@ global endpoint, token or model configuration without owner approval.
 - `ai-dev` has its own `.claude` guard; it blocks writes to `ba`, secrets and
   user config, and allows output only under `~/ai-handoff` and `/tmp`.
 
+## Long-run autonomy
+
+- Technical READY packages continue without per-package confirmation when the
+  current owner instruction/`OD-AUTONOMY-004` authorizes autonomous work.
+- Batch the owner-facing report at a large milestone (roughly three or more
+  packages) or when a product/legal/financial/privacy/irreversible decision,
+  production action, secret, or genuine blocker appears.
+- Keep `NOW.md` and the registers current while working; an intermediate
+  status is not product acceptance.
+- An interactive Claude Code turn cannot wake itself after it ends. For true
+  unattended continuation use an explicitly authorized background session or
+  Dev Control; do not silently turn on auto-approve or bypass hooks.
+
 ## Context recovery
 
 - First read `docs/handoff/NOW.md`, then `PROJECT_STATUS.md` and
