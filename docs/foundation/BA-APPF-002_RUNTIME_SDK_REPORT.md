@@ -76,7 +76,7 @@ runtime E2E       -> 2 passed (handshake/storage + bad-portal-origin)
 host negative      -> probe bad-message -> E_MESSAGE_INVALID
 ruff/format/mypy  -> clean
 npm run check:js  -> clean (3 files)
-npm run test:js   -> 4 passed (host bridge negative/rate/replay)
+npm run test:js   -> 4 passed (host bridge negative/rate/replay); CI frontend job runs both
 ```
 
 ## 5. Независимый review

@@ -67,6 +67,18 @@ jobs:
       - run: uv pip install --pre "django>=6.0"
       - run: uv run python manage.py check
 
+  frontend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run check:js
+      - run: npm run test:js
+
   image:
     runs-on: ubuntu-24.04
     steps:
