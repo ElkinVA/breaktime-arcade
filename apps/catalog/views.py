@@ -35,6 +35,7 @@ from apps.catalog.services.pagination import (
     should_noindex,
 )
 from apps.catalog.services.popularity import popularity
+from apps.catalog.services.seo import catalog_seo, game_seo
 from apps.gameplay.api.throttling import (
     GuestIpRateThrottle,
     SubjectScopedRateThrottle,
@@ -78,12 +79,19 @@ def game_list(request: HttpRequest) -> TemplateResponse:
     filters = parse_filters(params)
     games = filter_games(filters, language_code)
     page_obj = paginate_games(games, params)
+    active_language_codes = get_active_language_codes_safely()
+    page_canonical_url = canonical_url(request, params, page_obj.number)
+    robots_noindex = should_noindex(page_obj.number)
+    seo = catalog_seo(
+        language_code,
+        active_language_codes,
+        canonical_url=page_canonical_url,
+        noindex=robots_noindex,
+    )
     context = {
-        "title": "Каталог",
+        "title": seo.title,
         "games": page_obj.object_list,
-        "cards": card_items(
-            page_obj.object_list, language_code, get_active_language_codes_safely()
-        ),
+        "cards": card_items(page_obj.object_list, language_code, active_language_codes),
         "filters": filters,
         "genres": genre_options(language_code),
         "tags": tag_options(language_code),
@@ -91,8 +99,9 @@ def game_list(request: HttpRequest) -> TemplateResponse:
         "page_obj": page_obj,
         "pagination_query": pagination_query(params),
         "pagination_hx_target": "#game-results",
-        "canonical_url": canonical_url(request, params, page_obj.number),
-        "robots_noindex": should_noindex(page_obj.number),
+        "canonical_url": page_canonical_url,
+        "robots_noindex": robots_noindex,
+        "seo": seo,
     }
     if request.headers.get("HX-Request") == "true":
         return TemplateResponse(request, "catalog/_game_cards.html", context)
@@ -104,18 +113,21 @@ def game_detail(request: HttpRequest, slug: str) -> TemplateResponse:
     if game is None:
         raise Http404("game not found")
     translation = localized_translation(game, _language(request))
+    active_language_codes = get_active_language_codes_safely()
     ratings = rating_summary(game)
+    seo = game_seo(game, translation, _language(request), active_language_codes)
     return TemplateResponse(
         request,
         "catalog/game_detail.html",
         {
-            "title": translation.name if translation else game.technical_id,
+            "title": seo.title,
             "game": game,
             "translation": translation,
             "rating_average": ratings["average"],
             "rating_count": ratings["count"],
             "popularity": popularity(game.pk),
-            "localization": localization_coverage(game, get_active_language_codes_safely()),
+            "localization": localization_coverage(game, active_language_codes),
+            "seo": seo,
         },
     )
 

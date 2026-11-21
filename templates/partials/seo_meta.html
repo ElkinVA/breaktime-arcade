@@ -1,0 +1,16 @@
+{% if seo %}
+    {% if seo.description %}<meta name="description" content="{{ seo.description }}">{% endif %}
+    <link rel="canonical" href="{{ seo.canonical_url }}">
+    {% if seo.noindex %}<meta name="robots" content="noindex,follow">{% endif %}
+    {% for alternate in seo.alternates %}<link rel="alternate" hreflang="{{ alternate.hreflang }}" href="{{ alternate.url }}">
+    {% endfor %}
+    <meta property="og:type" content="{{ seo.og_type }}">
+    <meta property="og:site_name" content="Breaktime Arcade">
+    <meta property="og:title" content="{{ seo.title }}">
+    {% if seo.description %}<meta property="og:description" content="{{ seo.description }}">{% endif %}
+    <meta property="og:url" content="{{ seo.canonical_url }}">
+    <meta property="og:locale" content="{{ seo.og_locale }}">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{{ seo.title }}">
+    {% if seo.description %}<meta name="twitter:description" content="{{ seo.description }}">{% endif %}
+{% endif %}
