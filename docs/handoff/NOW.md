@@ -22,7 +22,7 @@ Phase 2 — **AWAITING OWNER DECISION**. BA-APPF-002 / DB-001 session
 tombstone — **TECHNICALLY ACCEPTED** (agent; owner chose tombstone);
 review accept; migration 0011. DB-006 GameVersion immutability —
 **TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT).
-DB-005/007 — **TECHNICALLY ACCEPTED** (agent; review pending in registry).
+DB-005/007 — **TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT).
 
 ## Активная задача
 
