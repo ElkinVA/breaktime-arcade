@@ -43,6 +43,9 @@
 `catalog_game_additional_genre`, `catalog_game_tag`, `catalog_game_asset`,
 `i18n_game_locale_override`.
 
+- `catalog_game_translation.name` — публичное название ≤60 символов
+  (DB-005); длинное manifest name хранится отдельно, не в публичном поле.
+
 ### Рейтинги, сессии, результаты и хранилище
 
 `ratings_vote`, `ratings_aggregate`, `play_user_game_playtime`,
@@ -91,8 +94,9 @@
 
 - `GameSession`: `subject_type ∈ {user,anon,deleted}` + `subject_id`
   (DB-001; `deleted` — tombstone при удалении, `subject_id` случайный,
-  связи с users нет); mode/state CHECK; `ticket_hash`; `credited_ms >= 0`;
-  max 7 200 000 мс.
+  связи с users нет); mode/state CHECK; DB-007 mode↔subject: user→user,
+  guest→anon, preview→user/anon, autotest→user; `ticket_hash`;
+  `credited_ms >= 0`; max 7 200 000 мс.
 - `GameResult`: `session_id UNIQUE`; `game_id` добавлен для индексов §2.11.3;
   `UNIQUE(session_id,idempotency_key)`; `is_test`, quarantine, trust level.
 - `LeaderboardEntry`: `UNIQUE(game_id,epoch,user_id)`, indexes по value

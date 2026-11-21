@@ -247,7 +247,7 @@ CREATE TABLE catalog_game_translation (
     id uuid PRIMARY KEY DEFAULT uuidv7(),
     game_id uuid NOT NULL REFERENCES catalog_game(id) ON DELETE CASCADE,
     language_id uuid NOT NULL REFERENCES i18n_language(id) ON DELETE CASCADE,
-    name varchar(128) NOT NULL,
+    name varchar(60) NOT NULL,
     slug citext NOT NULL,
     short_description varchar(160) NOT NULL DEFAULT '',
     description text NOT NULL DEFAULT '',

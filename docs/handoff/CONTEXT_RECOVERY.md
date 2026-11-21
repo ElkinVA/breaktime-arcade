@@ -153,6 +153,11 @@
   only unchanged/→NULL; user-deletion SET_NULL; migrations 0006/0007;
   16 tests; full 419/3; code/security review accept. Отчёт —
   `docs/foundation/BA-APPF-002_DB006_REPORT.md`.
+- BA-APPF-002 / DB-005 + DB-007 — **TECHNICALLY ACCEPTED** (agent):
+  GameTranslation.name 60; GameSession mode↔subject CHECK
+  user/guest/preview/autotest + deleted tombstone; migrations
+  catalog.0008, gameplay.0012/0013; 9 tests; full 428/3. Отчёт —
+  `docs/foundation/BA-APPF-002_DB005_DB007_REPORT.md`.
 - Прохождение тестов не является приёмкой; отчёт исполнителя не является
   результатом независимого аудита.
 - Staging не затрагивать без отдельного разрешения. В текущей зоне

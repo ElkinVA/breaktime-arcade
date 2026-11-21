@@ -886,6 +886,20 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   CASCADE/DB-004 вне scope.
 - **Отчёт:** `docs/foundation/BA-APPF-002_DB006_REPORT.md`.
 
+### BA-APPF-002 / DB-005 + DB-007 — public name и mode↔subject
+
+- **ID:** BA-APPF-002 / DB-005, DB-007 (approved OD-DB-005/007).
+- **Результат:** `GameTranslation.name` 128→60 (`catalog.0008`, с precheck);
+  `GameSession` CHECK `ck_gameplay_session_mode_subject` user→user,
+  guest→anon, preview→user/anon, autotest→user; `deleted` tombstone allowed
+  (`gameplay.0012` — единый финальный migration); 14 tests.
+- **Проверки:** full **433 passed, 3 skipped**; ruff/format/mypy clean;
+  migrations applied/check/plan clean.
+- **Статус:** **TECHNICALLY ACCEPTED** (agent; code/security review —
+  ACCEPT); остатки — tombstone в aggregates и mode immutability — отдельные
+  срезы.
+- **Отчёт:** `docs/foundation/BA-APPF-002_DB005_DB007_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,
@@ -921,7 +935,10 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/R-036_PHASE1_REPORT.md`;
 - `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`;
 - `docs/foundation/BA-APPF-002_DB006_REPORT.md`;
+- `docs/foundation/BA-APPF-002_DB005_DB007_REPORT.md`;
 - `tests/integration/test_game_version_immutability.py`;
+- `tests/integration/test_game_session_mode_subject.py`;
+- `tests/integration/test_catalog_translation_name.py`;
 - `tests/unit/test_celery_delivery_contract.py`;
 - `tests/integration/test_catalog_public.py`;
 - `tests/integration/test_game_sessions.py`;

@@ -22,7 +22,7 @@ class GameTranslation(models.Model):
         on_delete=models.CASCADE,
         related_name="game_translations",
     )
-    name = models.CharField(max_length=128)
+    name = models.CharField(max_length=60)
     slug = CitextField(max_length=128, help_text="Уникален в рамках языка")
     short_description = models.CharField(max_length=160)
     description = models.TextField(max_length=1600)

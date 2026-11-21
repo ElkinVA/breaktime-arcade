@@ -332,6 +332,21 @@ clean; migration applied/check clean. Остаток — retention APPF-OD-030.
 `GameVersion.game` CASCADE/DB-004 вне scope. Отчёт —
 `docs/foundation/BA-APPF-002_DB006_REPORT.md`.
 
+## 1.19. App F / DB-005 + DB-007 — public name и mode↔subject
+
+**BA-APPF-002 / DB-005** — `GameTranslation.name` ограничен 60 символами
+(migration `catalog.0008`); длинное manifest name — будущий импортёр.
+**DB-007** — `GameSession` CHECK `ck_gameplay_session_mode_subject`:
+user→user, guest→anon, preview→user/anon, autotest→user; `deleted` tombstone
+разрешён для любого mode. Migration `gameplay.0012` (финальная, сразу с
+deleted exception). 14 targeted tests; full **433 passed, 3 skipped**;
+ruff/format/mypy clean; migration checks clean. Существующие
+агрегаты уже исключают preview/autotest (`is_test`, popularity только
+user/guest, playtime только user). Остатки: tombstone-сессии в старых
+popularity-кредитах и возможная смена mode через UPDATE — отдельные
+DB-001/mode-immutability срезы; DB-005 precheck не усекает данные. Отчёт —
+`docs/foundation/BA-APPF-002_DB005_DB007_REPORT.md`.
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -376,6 +391,7 @@ clean; migration applied/check clean. Остаток — retention APPF-OD-030.
 | R-036 Phase 1 | **TECHNICALLY ACCEPTED** (agent); Phase 2 — owner | Delivery observability/docstrings/contract tests; 402/3; code/security review accept; delivery behavior unchanged; Phase 2 awaiting owner |
 | BA-APPF-002 / DB-001 | **TECHNICALLY ACCEPTED** (agent) | Tombstone all user sessions on deletion; open aborted + ticket/binding cleared; finished/expired history kept; 403/3; review accept; migration 0011 |
 | BA-APPF-002 / DB-006 | **TECHNICALLY ACCEPTED** (agent) | GameVersion content immutable via model guard + DB trigger; audit FKs only →NULL; 419/3; code/security review accept; migrations 0006/0007 |
+| BA-APPF-002 / DB-005/007 | **TECHNICALLY ACCEPTED** (agent) | Public name 60; mode↔subject CHECK incl. deleted tombstone; 433/3; migrations 0008/0012 |
 | BA-DEVCONTROL-001 | **TECHNICALLY ACCEPTED** (agent); live setup — token/opt-in | Мониторинг/отчёты/задачи/ask/hooks; sandbox test runner; 31 tests; full 360/3; code/security review accept; Telegram API blocked — нужен proxy/VPN + токен |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 

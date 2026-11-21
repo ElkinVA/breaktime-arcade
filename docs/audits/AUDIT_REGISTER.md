@@ -471,6 +471,18 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Остаток | 0006/0007 intermediate; strict `manual_review_at`; `GameVersion.game` CASCADE/DB-004 вне scope |
 | Источник | `docs/foundation/BA-APPF-002_DB006_REPORT.md` |
 
+## BA-APPF-002 / DB-005 + DB-007 — public name и mode↔subject
+
+| Поле | Значение |
+|---|---|
+| Тип | Schema/integrity доработка approved DB-005/007 |
+| Результат | GameTranslation.name 60; GameSession CHECK user/guest/preview/autotest + deleted tombstone |
+| Проверки | 433 passed, 3 skipped; 14 targeted; ruff/format/mypy clean; migrations 0008/0012 applied; makemigrations/migrate --plan clean |
+| Статус | **TECHNICALLY ACCEPTED** (agent) |
+| Review | code-reviewer/security-auditor — см. итог |
+| Остаток | DB-005 precheck блокирует длинные имена без truncation; tombstone aggregates/mode immutability — отдельные срезы; preview/autotest creation flow отсутствует |
+| Источник | `docs/foundation/BA-APPF-002_DB005_DB007_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

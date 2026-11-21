@@ -4,6 +4,7 @@
 **Текущий пакет:** R-036 Phase 1 (delivery observability, non-behavioral),
 BA-APPF-002 / DB-001 (tombstone-анонимизация сессий при удалении),
 BA-APPF-002 / DB-006 (immutable GameVersion),
+BA-APPF-002 / DB-005+007 (name 60, mode↔subject),
 BA-QUALITY-002, BA-ZIP-HARDENING-001 (R-035),
 BA-DEVCONTROL-001 (Telegram Dev Control) и BA-ZIP-WORKER-001
 (изолированный extraction worker);
@@ -21,6 +22,7 @@ Phase 2 — **AWAITING OWNER DECISION**. BA-APPF-002 / DB-001 session
 tombstone — **TECHNICALLY ACCEPTED** (agent; owner chose tombstone);
 review accept; migration 0011. DB-006 GameVersion immutability —
 **TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT).
+DB-005/007 — **TECHNICALLY ACCEPTED** (agent; review pending in registry).
 
 ## Активная задача
 
@@ -80,6 +82,12 @@ hash/version; `created_by`/`manual_review_by` только unchanged/→NULL;
 full 419/3. Отчёт —
 `docs/foundation/BA-APPF-002_DB006_REPORT.md`.
 
+**BA-APPF-002 / DB-005 + DB-007** — **TECHNICALLY ACCEPTED** (agent):
+`GameTranslation.name` ограничен 60; `GameSession` CHECK user→user,
+guest→anon, preview→user/anon, autotest→user, deleted tombstone allowed.
+Migrations `catalog.0008`, `gameplay.0012`; 14 tests; full 433/3.
+Отчёт — `docs/foundation/BA-APPF-002_DB005_DB007_REPORT.md`.
+
 ## Следующий шаг
 
 1. Владелец: `python3 devcontrol/setup_token.py --verify` (или без
@@ -107,11 +115,10 @@ full 419/3. Отчёт —
    DECISION** (`docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`,
    `docs/foundation/R-036_PHASE1_REPORT.md`).
 6. R-037/R-038: retention `zip_uploads`; live Telegram/Dev Control.
-7. DB-001 и DB-006 выполнены; DB-005/007 остаются в BA-APPF-002. Следующий
-   независимый срез — DB-005 (name length) / DB-007 (mode↔subject) или
-   другой READY без изменения утверждённых требований; BA-DOC-README-001
-   требует разрешения на защищённые файлы. Phase 2 R-036 не начинать до
-   решения владельца.
+7. DB-001/005/006/007 выполнены; SDK/iframe/player ждут BA-SDK/ENV/BA-GAME.
+   Следующий независимый срез — другой READY без изменения утверждённых
+   требований; BA-DOC-README-001 требует разрешения на защищённые файлы.
+   Phase 2 R-036 не начинать до решения владельца.
 8. manifest/catalog/locales — после BA-GAME-2.2; SDK/iframe/host protocol —
    после утверждения BA-SDK-1.1 v1.1.0 и BA-GAME-2.2; EventLog/verifier —
    после схем сообщений.
@@ -141,7 +148,7 @@ full 419/3. Отчёт —
 
 ```text
 pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
-pytest (full)              -> 419 passed, 3 skipped, 1 warning
+pytest (full)              -> 433 passed, 3 skipped, 1 warning
 coverage                   -> 90.88 %, no module < 70 %
 ZIP tests                  -> 54 passed; 2000 files fsync 7.7s
 benchmark 10k              -> GIN search_vector FTS 2.4 ms; full OR 150 ms;
@@ -158,6 +165,8 @@ DB-001                     -> all user sessions tombstoned; open aborted,
                               migration 0011 applied; submit_result -> E_OWNERSHIP
 DB-006                     -> GameVersion trigger+save guard; audit FKs only
                               →NULL; user.delete SET_NULL; migrations 0006/0007
+DB-005/007                 -> name max 60; mode/subject CHECK incl. deleted
+                              tombstone; migrations 0008/0012
 docker compose config --quiet -> OK
 ./verify_stack.sh          -> СТЕК ЗДОРОВ (zip-worker healthy)
 E2E queue: web uploads -> enqueue_extraction -> zip-worker ->

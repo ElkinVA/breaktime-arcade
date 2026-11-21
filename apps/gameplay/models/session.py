@@ -101,6 +101,16 @@ class GameSession(models.Model):
                 name="ck_gameplay_session_subject",
             ),
             models.CheckConstraint(
+                condition=(
+                    models.Q(subject_type="deleted")
+                    | models.Q(mode="user", subject_type="user")
+                    | models.Q(mode="guest", subject_type="anon")
+                    | models.Q(mode="preview", subject_type__in=["user", "anon"])
+                    | models.Q(mode="autotest", subject_type="user")
+                ),
+                name="ck_gameplay_session_mode_subject",
+            ),
+            models.CheckConstraint(
                 condition=models.Q(max_session_seconds__lte=7200),
                 name="ck_gameplay_session_max_seconds",
             ),
