@@ -10,6 +10,21 @@ Provenance и SHA-256: `../ai-dev/docs/project-reference/README.md` (read-only).
 Актуальное состояние: `docs/status/PROJECT_STATUS.md` и
 `docs/handoff/NOW.md`. Навигация — `docs/handoff/`.
 
+## Быстрый старт
+
+```bash
+make env       # только если .env ещё нет
+make certs
+make assets
+make up
+make check     # pytest + ruff/format + mypy
+./verify_stack.sh
+```
+
+Dev: https://portal.test:8443. Остановка — `make down` (volumes не удаляются).
+Подробно — `docs/runbook/install.md`; E2E — `tests/e2e` из host `.venv`
+(см. `.claude/skills/ba-testing/SKILL.md`).
+
 - Архитектура: `docs/architecture.md`
 - Эксплуатация: `docs/runbook/`
 - Снимок кода для анализа: `bash scripts/collect_project.sh`

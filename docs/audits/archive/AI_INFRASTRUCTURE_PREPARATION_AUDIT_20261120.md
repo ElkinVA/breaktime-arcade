@@ -1,4 +1,8 @@
-# AI_INFRASTRUCTURE_PREPARATION_AUDIT
+# AI_INFRASTRUCTURE_PREPARATION_AUDIT (исторический, 2026-11-20)
+
+> Архив. Документ отражает состояние на 2026-11-20 и не является текущим
+> статусом проекта. Актуальные источники — `docs/handoff/NOW.md`,
+> `docs/status/PROJECT_STATUS.md`, `docs/status/BACKLOG.md`.
 
 **Дата аудита:** 2026-11-20, ~08:15 MSK (данные по текущей сессии — частичные; сессия продолжается).
 **Объекты:** `/home/elkinva/projects/ba` и `/home/elkinva/projects/ai-dev`.

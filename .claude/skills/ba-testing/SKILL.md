@@ -31,10 +31,10 @@ BA_E2E=1 BA_E2E_BASE_URL=https://portal.test:8443 \
   .venv/bin/python -m pytest tests/e2e -m e2e
 ```
 
-Текущий факт: `make test` — 185 passed, 2 skipped; `make lint` — 333 files
-formatted; `make types` — 316 source files. E2E в контейнере `web` падает
-из-за отсутствующего `libatomic.so.1`; host-прогон — 13 passed. Не выдавай
-эти команды за успешные, если они не запускались.
+Текущий факт (2026-11-21): `make test` — 403 passed, 3 skipped; `make lint` —
+371 files formatted; `make types` — 338 source files. E2E в контейнере `web`
+падает из-за отсутствующего `libatomic.so.1`; host-прогон — 13 passed. Не
+выдавай эти команды за успешные, если они не запускались.
 
 ## Правила результата
 

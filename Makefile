@@ -7,9 +7,10 @@ COMPOSE := docker compose -f compose.yml -f compose.dev-lite.yml
 AS_USER := --user $(shell id -u):$(shell id -g)
 PY      := $(COMPOSE) exec -T web python
 PYU     := $(COMPOSE) exec -T $(AS_USER) web python
+PYTHON  ?= .venv/bin/python
 
 .PHONY: help env certs staging-up staging-down staging-reset staging-status staging-logs backup restore-check assets lock build up down restart ps logs migrate makemigrations \
-        superuser shell psql test coverage lint fmt types check dump clean
+        superuser shell psql test test-fresh e2e coverage lint fmt types check dump clean clean-caches precommit-install
 
 help:
 > @grep -E '^[a-z-]+:' Makefile | sed 's/:.*//' | sort
@@ -64,6 +65,13 @@ psql:
 test:
 > $(PYU) -m pytest
 
+test-fresh:
+> $(PYU) -m pytest --create-db
+
+e2e:
+> BA_E2E=1 BA_E2E_BASE_URL=$${BA_E2E_BASE_URL:-https://portal.test:8443} \
+>   $(PYTHON) -m pytest tests/e2e -m e2e
+
 coverage:
 > $(PYU) -m pytest --cov=apps --cov-report=term-missing
 
@@ -103,6 +111,13 @@ staging-logs:
 
 dump:
 > @bash scripts/collect_project.sh
+
+clean-caches:
+> rm -rf .pytest_cache .ruff_cache .mypy_cache .coverage htmlcov \
+>   test-results playwright-report static/dist
+
+precommit-install:
+> $(PYTHON) -m pre_commit install
 
 clean:
 > $(COMPOSE) down --remove-orphans

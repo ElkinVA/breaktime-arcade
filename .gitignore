@@ -37,9 +37,17 @@ node_modules/
 project_dump.txt
 project_dump.log
 
-# ОС
+# ОС и редакторы
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Следы merge/rebase
+*.orig
+*.rej
 
 # Staging secrets (§2.5)
 .env.staging

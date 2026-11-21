@@ -9,7 +9,9 @@ Arcade. It does not change production, the DeepSeek endpoint, or secrets.
   permits another path. `ai-dev` is a read-only sibling from here.
 - Never modify `CLAUDE.md`, `technical_specification/**`, `.env*`, `certs/**`,
   `creds/**`, or user/global Claude configs without explicit approval.
-- Never push, publish, deploy, rotate keys, or change the provider endpoint.
+- Commit/push to the existing `main` is allowed when the current owner
+  instruction or `OD-AUTONOMY-004` authorizes it and checks pass. Never
+  deploy, publish, rotate keys, or change the provider endpoint.
 - Main agent coordinates; subagents must not edit the same files concurrently.
 - If a requirement is ambiguous or a protected file must change, stop and ask.
 
@@ -94,7 +96,8 @@ global endpoint, token or model configuration without owner approval.
   test DB, and write-like commands touching `.env`, `certs`, `creds`, `.git`,
   `technical_specification`, `CLAUDE.md`, user config, or the sibling
   repository. It is defense-in-depth, not a sandbox.
-- No duplicate syntax/lint/test hook; pre-commit and CI cover those.
+- No duplicate syntax/lint/test hook; `make precommit-install` installs the
+  existing pre-commit checks; CI covers the same commands.
 - `ai-dev` has its own `.claude` guard; it blocks writes to `ba`, secrets and
   user config, and allows output only under `~/ai-handoff` and `/tmp`.
 
@@ -108,12 +111,12 @@ global endpoint, token or model configuration without owner approval.
 
 ## Test environment
 
-Verified 2026-11-20 inside the dev-lite web container:
+Verified 2026-11-21 inside the dev-lite web container:
 
 ```text
-make test        -> 185 passed, 2 skipped
-make lint        -> ruff check passed; 333 files formatted
-make types       -> Success: no issues found in 316 source files
+make test        -> 403 passed, 3 skipped
+make lint        -> ruff check passed; 371 files formatted
+make types       -> Success: no issues found in 338 source files
 ./verify_stack.sh -> СТЕК ЗДОРОВ
 ```
 
