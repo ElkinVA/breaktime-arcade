@@ -8,6 +8,11 @@
         · {{ game.primary_genre.code }}
     </p>
     <h1 class="text-4xl font-display font-bold mb-4">{{ title }}</h1>
+    {% if localization %}
+        <p class="mb-4">
+            <span class="inline-block rounded-full border border-text/10 px-3 py-1 text-sm" data-testid="game-localization">{% if localization.is_full %}{% ba_t "catalog.localization_full" %}{% else %}{% ba_t "catalog.localization_partial" covered=localization.covered total=localization.total %}{% endif %}</span>
+        </p>
+    {% endif %}
     {% if translation %}
         <p class="text-muted mb-6">{{ translation.short_description }}</p>
         <div class="prose prose-invert max-w-none mb-6">{{ translation.description|linebreaks }}</div>

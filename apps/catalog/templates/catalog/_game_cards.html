@@ -17,6 +17,9 @@
                     {% if card.game.mobile_support %}
                         <span class="rounded-full border border-text/10 px-2 py-1">mobile</span>
                     {% endif %}
+                    {% if card.localization %}
+                        <span class="rounded-full border border-text/10 px-2 py-1" data-testid="card-localization">{% if card.localization.is_full %}{% ba_t "catalog.localization_full" %}{% else %}{% ba_t "catalog.localization_partial" covered=card.localization.covered total=card.localization.total %}{% endif %}</span>
+                    {% endif %}
                 </div>
                 <div class="mt-3 flex items-center gap-1 text-sm" data-testid="card-rating">
                     {% if card.rating_count %}

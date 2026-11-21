@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -30,6 +31,7 @@ from apps.catalog.models import (
     GenreTranslation,
     TagTranslation,
 )
+from apps.catalog.services.localization import localization_coverage
 from apps.catalog.services.popularity import popularity_counts, popularity_subquery
 from apps.catalog.services.search import Unaccent
 from apps.i18n.models import Language
@@ -101,7 +103,7 @@ def _rating_sort_annotations() -> tuple[Coalesce, Coalesce]:
 def published_games() -> QuerySet[Game]:
     return (
         Game.objects.filter(status=Game.STATUS_PUBLISHED)
-        .select_related("primary_genre")
+        .select_related("primary_genre", "current_version")
         .prefetch_related("translations__language")
     )
 
@@ -229,10 +231,16 @@ def localized_translation(game: Game, language_code: str) -> GameTranslation | N
     return translations[0] if translations else None
 
 
-def card_items(games: QuerySet[Game], language_code: str) -> list[dict[str, Any]]:
+def card_items(
+    games: QuerySet[Game],
+    language_code: str,
+    active_language_codes: Iterable[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Карточки каталога; покрытие считается, когда передан список языков."""
     game_list = list(games)
     ratings = rating_summaries(game.pk for game in game_list)
     popularity = popularity_counts(game.pk for game in game_list)
+    localization_codes = tuple(active_language_codes) if active_language_codes is not None else None
     items: list[dict[str, Any]] = []
     for game in game_list:
         rating = ratings[game.pk]
@@ -243,6 +251,11 @@ def card_items(games: QuerySet[Game], language_code: str) -> list[dict[str, Any]
                 "rating_average": rating["average"],
                 "rating_count": rating["count"],
                 "popularity": popularity.get(game.pk, 0),
+                "localization": (
+                    localization_coverage(game, localization_codes)
+                    if localization_codes is not None
+                    else None
+                ),
             }
         )
     return items

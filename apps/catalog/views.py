@@ -27,6 +27,7 @@ from apps.catalog.services.catalog import (
     tag_options,
     top_rated_games,
 )
+from apps.catalog.services.localization import localization_coverage
 from apps.catalog.services.popularity import popularity
 from apps.gameplay.api.throttling import (
     GuestIpRateThrottle,
@@ -37,6 +38,7 @@ from apps.gameplay.services.sessions import (
     activate_session,
     create_session,
 )
+from apps.i18n.services.language_registry import get_active_language_codes_safely
 from apps.leaderboards.services.queries import get_leaderboard
 from apps.ratings.services.aggregates import summary as rating_summary
 
@@ -47,16 +49,18 @@ def _language(request: HttpRequest) -> str:
 
 def home(request: HttpRequest) -> TemplateResponse:
     language_code = _language(request)
+    active_language_codes = get_active_language_codes_safely()
     return TemplateResponse(
         request,
         "catalog/home.html",
         {
             "title": "Breaktime Arcade",
-            "popular_cards": card_items(popular_games(), language_code),
-            "rated_cards": card_items(top_rated_games(), language_code),
+            "popular_cards": card_items(popular_games(), language_code, active_language_codes),
+            "rated_cards": card_items(top_rated_games(), language_code, active_language_codes),
             "latest_cards": card_items(
                 published_games().order_by("-published_at", "-id")[:6],
                 language_code,
+                active_language_codes,
             ),
         },
     )
@@ -68,7 +72,7 @@ def game_list(request: HttpRequest) -> TemplateResponse:
     context = {
         "title": "Каталог",
         "games": games,
-        "cards": card_items(games, _language(request)),
+        "cards": card_items(games, _language(request), get_active_language_codes_safely()),
         "filters": filters,
         "genres": genre_options(_language(request)),
         "tags": tag_options(_language(request)),
@@ -95,6 +99,7 @@ def game_detail(request: HttpRequest, slug: str) -> TemplateResponse:
             "rating_average": ratings["average"],
             "rating_count": ratings["count"],
             "popularity": popularity(game.pk),
+            "localization": localization_coverage(game, get_active_language_codes_safely()),
         },
     )
 
@@ -252,7 +257,7 @@ def genre_detail(request: HttpRequest, slug: str) -> TemplateResponse:
             "genre": genre,
             "genre_name": translation.name if translation else genre.code,
             "games": games,
-            "cards": card_items(games, language_code),
+            "cards": card_items(games, language_code, get_active_language_codes_safely()),
             "language_code": language_code,
         },
     )
