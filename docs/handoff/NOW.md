@@ -1,6 +1,12 @@
 # NOW — Breaktime Arcade
 
-**Дата:** 2026-11-21
+**Дата:** 2026-11-22
+
+**Сверка фактического состояния:** код Browser Arcade/App F опережает
+исторические формулировки ниже; нормативные BA-SDK-1.1/BA-ENV-1.1/BA-GAME-2.2
+и product acceptance не закрыты. Актуальная карта и три категории работ —
+`docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md`. STOP установлен; новые задачи
+автоматически не запускаются.
 **Текущий пакет:** R-036 Phase 1 (delivery observability, non-behavioral),
 BA-APPF-002 / DB-001 (tombstone-анонимизация сессий при удалении),
 BA-APPF-002 / DB-006 (immutable GameVersion),

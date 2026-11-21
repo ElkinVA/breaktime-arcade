@@ -385,7 +385,7 @@ Full **456 passed, 4 skipped**; JS `node --check` clean. Независимый 
 | BA-STAGE-2.4 | **PARTIAL**; owner recovery, LoginEvent, regeneration реализованы | 9 2FA integration tests; roles/CRM step-up остаются |
 | BA-STAGE-2.5 | **PARTIAL**; account retention cleanup реализован | 1 retention test; SecurityEvent/GameStorage/mail/backup/consent сроки не покрыты |
 | BA-QUALITY-001 | **IMPLEMENTED / AWAITING INDEPENDENT REVIEW** | `make coverage`; 81.65 % при пороге 70 %; низкие модули перечислены |
-| BA-CATALOG-001 | **PARTIAL**; публичный список/фильтры/поиск/detail/genre/HTMX | 5 integration tests; missing FTS/ratings/popularity/App F |
+| BA-CATALOG-001 | **IMPLEMENTED / TECHNICAL REVIEW**; публичный list/detail/genre/filters/search/FTS/tags/ratings/popularity/pagination/SEO | Product acceptance pending; missing rating vote UI and TOP-100 leaderboard pagination; audit — `BA_PRODUCT_ROADMAP_AUDIT.md` |
 | BA-CATALOG-002 | **IMPLEMENTED / AWAITING INDEPENDENT REVIEW** | M2M `GameGenre`/`GameTag`, фильтры; 6 integration tests; без FTS/ratings/play |
 | BA-CATALOG-003 | **PARTIAL**; FTS+trigram+language config | 7 tests; query-time vector |
 | BA-CATALOG-004 | **PARTIAL**; persisted vector/GIN/backfill | 7 tests; unaccent/ranking/bulk добавлены в 005 |
@@ -567,6 +567,12 @@ App F и решениями владельца.
 на SQL-исправления/App F. До этого App F не считать готовым к реализации или
 приёмке.
 
+**Сверка 2026-11-22:** этот раздел — историческая запись нормативного плана,
+а не текущая карта. Код Browser Arcade/App F уже содержит server slices,
+runtime A+B, каталог, SEO/i18n, аккаунты, ZIP preflight/extract/worker и CRM
+dashboard; нормативные контракты и product acceptance остаются открытыми.
+Актуальная дорожная карта и три категории — `docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md`.
+
 ## 8. Ссылки
 
 - [TASK_HISTORY](../tasks/TASK_HISTORY.md)
@@ -685,3 +691,13 @@ canonical/noindex and HTMX fragment support. `ARCADE-CRM-DASHBOARD-001`
 (`4242a98`) then replaced the CRM stub with real operational counters. Product
 queue continues with leaderboard attempts, SEO meta and empty-search. Full gate
 **776 passed, 11 skipped**.
+
+## 1.25. Browser Arcade / App F — сверка с ТЗ (2026-11-22)
+
+После завершения текущей продуктовой очереди проведена read-only сверка с
+BA-PLAT-4.2/BA-GAME-2.2. Фактический код опережает историческую запись §7,
+но нормативные контракты и product acceptance не закрыты. Работы разделены
+на A (можно реализовывать), B (внешние юридические/инфраструктурные действия)
+и C (реализовано, нужна продуктовая приёмка). Актуальная карта —
+`docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md`. STOP установлен; новых задач
+автоматически не запускается. Свежий quality gate: **792 passed, 11 skipped**.

@@ -1073,3 +1073,12 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   today, top-popular games, rating aggregate, new votes and latest backup.
 - QA caught a formatting gate; retry fixed it; `4242a98`; full gate
   **776 passed, 11 skipped**.
+
+### BA-PRODUCT-ROADMAP-001 — сверка Browser Arcade с ТЗ
+
+- Проведена сверка кода с BA-PLAT-4.2/BA-GAME-2.2 и реестрами.
+- Текущая реализация разделена на A (можно делать), B (внешние решения) и C
+  (реализовано, нужна продуктовая приёмка); NOW/PROJECT_STATUS/BACKLOG
+  отмечены без изменения требований.
+- STOP установлен; новых задач автоматически не запускалось.
+- Отчёт: `docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md`.

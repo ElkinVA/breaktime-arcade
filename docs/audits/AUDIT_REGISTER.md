@@ -537,3 +537,14 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **TECHNICALLY ACCEPTED** (agent); product/infrastructure activation owner |
 | Остаток | R-040 OS sandbox; live Telegram/VPS not exercised; sandbox scripts/ copy gap |
 | Источник | `docs/foundation/AI_AUTONOMY_EVIDENCE.md` |
+
+## BA-PRODUCT-ROADMAP-001 — Browser Arcade / App F сверка с ТЗ
+
+| Поле | Значение |
+|---|---|
+| Тип | Read-only product/roadmap audit |
+| Результат | Фактическое состояние отделено от нормативного плана; работы разделены на A/B/C; зафиксированы внешние блокеры и крупные этапы |
+| Проверки | Сверены BA-PLAT-4.2, BA-GAME-2.2, BA-SDK/ENV, NOW/PROJECT_STATUS/BACKLOG, код, маршруты, пустые модули и тесты; полный gate 792 passed, 11 skipped |
+| Статус | AUDIT COMPLETE; implementation не запускалась |
+| Остаток | App F/pipeline/CRM/legal/production остаются незакрытыми |
+| Источник | `docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md` |

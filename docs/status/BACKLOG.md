@@ -18,7 +18,7 @@
 | BA-STAGE-2.4 | 2FA completion: owner recovery, LoginEvent, regeneration | Major | **PARTIAL** — реализовано без CRM/ролей | Остались роли/CRM step-up и encryption; retention закрыт в 2.5 |
 | BA-STAGE-2.5 | Retention cleanup: LoginEvent 12 мес., AnonymousIdentity 90 дней, токены, reservation | Major | **PARTIAL** — account cleanup реализован | SecurityEvent/GameStorage/mail/backup/consent сроки не покрыты |
 | BA-QUALITY-001 | Coverage доменных модулей ≥70 %, CI-порог, анализ пробелов | Major | **IMPLEMENTED / AWAITING INDEPENDENT REVIEW** | `make coverage` 81.65 % при пороге 70 %; низкие модули остаются |
-| BA-CATALOG-001 | Публичный каталог: список/фильтры/поиск на существующих моделях | Major | **PARTIAL** — list/detail/filters/HTMX реализованы | Нет tags/доп. жанров/FTS/ratings/popularity/play |
+| BA-CATALOG-001 | Публичный каталог: список/фильтры/поиск на существующих моделях | Major | **IMPLEMENTED / TECHNICAL REVIEW** — list/detail/filters/HTMX, tags, FTS, ratings/popularity display, pagination, SEO, empty-search fallback | Нет rating vote UI, TOP-100 leaderboard pagination, части CRM-диагностики; product acceptance owner. Сверка — `docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md` |
 | BA-CATALOG-002 | Дополнительные жанры и теги: M2M-модели, фильтры, тесты | Major | **IMPLEMENTED / AWAITING INDEPENDENT REVIEW** | `catalog.0003`; 6 tests; FTS/ratings/play вне пакета |
 | BA-CATALOG-003 | PostgreSQL FTS + `pg_trgm` поиск с конфигурацией языка | Major | **PARTIAL** — SearchVector/trigram реализованы в запросе | Нет persisted vector/GIN/unaccent/ranking |
 | BA-CATALOG-004 | Persisted `search_vector`, GIN, `unaccent`, backfill | Major | **PARTIAL** — vector/backfill есть; unaccent/ranking/bulk нет | GIN-индекс существует с 0001 |
@@ -60,6 +60,9 @@
   бизнес-логики.
 
 
-**Browser Arcade product (2026-11-21):** `ARCADE-RATING-DETAIL-001` and
-`ARCADE-RATING-LIST-001` completed through the autonomous cycle; commits
-`63b6137`, `3c58dcb`; technical review accept; product acceptance owner.
+**Browser Arcade product (2026-11-22 audit):** rating/popularity/catalog sorts,
+home blocks, i18n, profile records, locale badge, sitemap, pagination, SEO meta,
+CRM dashboard, leaderboard attempts and empty-search are implemented and
+technically reviewed; product acceptance remains owner-level. The normative
+stage plan is not re-opened by these slices. Full roadmap and A/B/C split —
+`docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md`.
