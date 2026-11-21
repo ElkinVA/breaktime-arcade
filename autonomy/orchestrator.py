@@ -5,8 +5,10 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import fcntl
 import json
+import shutil
 import subprocess
 import sys
 import uuid
@@ -15,6 +17,7 @@ from typing import Any
 
 from autonomy.runner import ClaudeRunner, RunResult
 from autonomy.state import (
+    BLOCKED,
     COMPLETED,
     QA,
     READY,
@@ -68,26 +71,32 @@ PROTECTED_PARTS = (
 def _git(
     args: list[str],
     *,
-    cwd: Path = ROOT,
+    cwd: Path | None = None,
     check: bool = True,
 ) -> subprocess.CompletedProcess[str]:
-    result = subprocess.run(["git", *args], cwd=cwd, text=True, capture_output=True, check=False)
+    result = subprocess.run(
+        ["git", *args], cwd=cwd or ROOT, text=True, capture_output=True, check=False
+    )
     if check and result.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed: {result.stderr[-800:]}")
     return result
 
 
-def _head(cwd: Path = ROOT) -> str:
+def _head(cwd: Path | None = None) -> str:
     return _git(["rev-parse", "HEAD"], cwd=cwd).stdout.strip()
+
+
+class MergeGateError(RuntimeError):
+    """A merge precondition is broken; retrying the task cannot fix it."""
 
 
 def _assert_main_clean() -> None:
     branch = _git(["symbolic-ref", "--short", "HEAD"]).stdout.strip()
     if branch != "main":
-        raise RuntimeError(f"orchestrator must run on main, got {branch or 'detached HEAD'}")
+        raise MergeGateError(f"orchestrator must run on main, got {branch or 'detached HEAD'}")
     status = _git(["status", "--porcelain", "--untracked-files=no"]).stdout.strip()
     if status:
-        raise RuntimeError(f"main worktree is dirty: {status[:800]}")
+        raise MergeGateError(f"main worktree is dirty: {status[:800]}")
 
 
 def _create_worktree(task: Task) -> tuple[Path, str]:
@@ -105,6 +114,11 @@ def _remove_worktree(path: Path) -> None:
     if path.exists():
         _git(["worktree", "remove", "--force", str(path)], check=False)
     _git(["worktree", "prune"], check=False)
+    # Drop the now-empty per-task directory created around the worktree.
+    parent = path.parent
+    if parent != WORKTREE_ROOT and parent.is_relative_to(WORKTREE_ROOT) and parent.is_dir():
+        with contextlib.suppress(OSError):
+            parent.rmdir()
 
 
 def _cleanup_worktrees() -> None:
@@ -117,6 +131,16 @@ def _cleanup_worktrees() -> None:
     for path in paths:
         if path.is_relative_to(WORKTREE_ROOT):
             _remove_worktree(path)
+    _git(["worktree", "prune"], check=False)
+    # Remove leftovers that git no longer tracks (e.g. an interrupted
+    # `worktree add`, or a directory whose metadata was already pruned).
+    if not WORKTREE_ROOT.is_dir():
+        return
+    for child in WORKTREE_ROOT.iterdir():
+        if child.is_symlink():
+            child.unlink(missing_ok=True)
+        elif child.is_dir():
+            shutil.rmtree(child, ignore_errors=True)
 
 
 def _safe_file(name: str, root: Path | None = None) -> Path:
@@ -130,7 +154,8 @@ def _safe_file(name: str, root: Path | None = None) -> Path:
     return path
 
 
-def _developer_files(developer: RunResult, root: Path = ROOT) -> list[str]:
+def _developer_files(developer: RunResult, root: Path | None = None) -> list[str]:
+    root = root or ROOT
     try:
         parsed = _parse_json(developer.result)
     except ValueError, json.JSONDecodeError:
@@ -181,9 +206,15 @@ def _commit_candidate(task: Task, files: list[str], worktree: Path) -> str:
 
 def _merge_candidate(candidate: str, base: str) -> str:
     _assert_main_clean()
-    if _head() != base:
-        raise RuntimeError("main moved while the task was running; refusing to merge")
-    _git(["merge", "--ff-only", candidate])
+    current = _head()
+    if current != base:
+        raise MergeGateError(
+            f"merge base drift: main is at {current[:12]}, candidate was based on {base[:12]}"
+        )
+    result = _git(["merge", "--ff-only", candidate], check=False)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()[-500:] or "git merge returned non-zero"
+        raise MergeGateError(f"fast-forward merge failed: {detail}")
     return _head()
 
 
@@ -368,6 +399,7 @@ class Orchestrator:
             verdict = _parse_json(review.result)
             if verdict.get("verdict") != "accept":
                 _remove_worktree(worktree)
+                self.store.set_worktree(task.id, None, None)
                 worktree = None
                 retried = self.store.retry(task.id, json.dumps(verdict, ensure_ascii=False)[:4000])
                 return {
@@ -392,6 +424,21 @@ class Orchestrator:
                 "candidate": candidate,
                 "evidence": completed.evidence if completed else [],
                 "review": verdict,
+            }
+        except MergeGateError as exc:
+            # Dirty main, moved base or a failed fast-forward cannot be fixed
+            # by rerunning the task: discard the candidate and block with the
+            # concrete git reason instead of burning the retry budget.
+            if worktree is not None:
+                _remove_worktree(worktree)
+            self.store.set_worktree(task.id, None, None)
+            reason = f"MERGE_GATE: {exc}"
+            self.store.transition(task.id, BLOCKED, blocked_reason=reason, error=reason)
+            return {
+                "status": "blocked",
+                "task": task.id,
+                "reason": reason,
+                "error": f"{type(exc).__name__}: {exc}",
             }
         except Exception as exc:  # noqa: BLE001 - task boundary is fail-closed
             if worktree is not None:
