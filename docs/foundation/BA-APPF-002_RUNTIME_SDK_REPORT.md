@@ -16,8 +16,9 @@ v1.1.0 submitted, но не утверждены владельцем; прод�
 - runtime URL из `GameVersion.host_label` + `runtime_hash` (full 64 hex);
 - тесты view/SDK-контракта и JS syntax checks.
 
-Не входит: probe-игра, Playwright E2E, staging/prod runtime origin,
-EventLog/verifier/replay, CRM preview/autotest flow.
+Входит также test-only probe (`games-src/probe`) и Playwright E2E handshake.
+Не входит: staging/prod runtime origin, EventLog/verifier/replay, CRM
+preview/autotest flow.
 
 ## 2. SDK
 
@@ -68,7 +69,8 @@ nginx dev `/v/<vhash>` расширен до 12–64 hex.
 
 ```text
 play/SDK targeted -> 7 passed
-pytest (full)     -> 448 passed, 3 skipped, 1 warning
+pytest (full)     -> 448 passed, 4 skipped, 1 warning
+runtime E2E       -> 1 passed (probe handshake + storage relay)
 ruff/format/mypy  -> clean
 npm run check:js  -> clean (3 files)
 ```
@@ -85,7 +87,7 @@ npm run check:js  -> clean (3 files)
 
 ## 6. Остатки
 
-- Нет probe-игры и Playwright E2E cross-origin handshake.
+- Probe/E2E есть; staging/prod runtime volume/origin ещё не настроены.
 - JS payload validation — lightweight, не полный JSON Schema 2020-12.
 - API `POST /sessions` по-прежнему отдаёт snake_case `session_id`, SDK/host
   context — camelCase `sessionId`; нужен adapter/contract decision.

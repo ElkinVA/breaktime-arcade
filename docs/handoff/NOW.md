@@ -102,8 +102,8 @@ Game identity immutable после публикации и DELETE forbidden; Gam
 **BA-APPF-002 / runtime A+B** — **IMPLEMENTED / TECHNICAL REVIEW**:
 `ba-sdk.js`, host protocol, player host, `game_play` server-side
 create+activate, exact runtime origin/full hash, no-store, CSRF relay,
-guest normalization; 7 added tests; full 448/3; JS syntax clean.
-Code/security review — **INCOMPLETE** (E2E/probe, diff evidence,
+guest normalization; 7 added tests; full 448/4; JS syntax clean.
+Code/security review — **INCOMPLETE** (diff evidence, parentOrigin,
 parentOrigin residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
 
 ## Следующий шаг
@@ -166,7 +166,7 @@ parentOrigin residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_
 
 ```text
 pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
-pytest (full)              -> 448 passed, 3 skipped, 1 warning
+pytest (full)              -> 448 passed, 4 skipped, 1 warning
 coverage                   -> 90.88 %, no module < 70 %
 ZIP tests                  -> 54 passed; 2000 files fsync 7.7s
 benchmark 10k              -> GIN search_vector FTS 2.4 ms; full OR 150 ms;
@@ -187,7 +187,7 @@ DB-005/007                 -> name max 60; mode/subject CHECK incl. deleted
                               tombstone; migrations 0008/0012
 DB-004/residuals           -> Game identity/delete guard; GamePlayCredit
                               cleanup; mode immutable; migrations 0009/0010/0013
-Runtime A+B                -> play view active session + exact runtime URL;
+Runtime A+B/E2E             -> play view active session + exact runtime URL; probe handshake/storage E2E 1 passed;
                               SDK/host/player node --check; review incomplete
 docker compose config --quiet -> OK
 ./verify_stack.sh          -> СТЕК ЗДОРОВ (zip-worker healthy)

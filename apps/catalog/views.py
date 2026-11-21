@@ -91,7 +91,12 @@ def _runtime_origin(host_label: str) -> str:
     parsed = urlparse(settings.PORTAL_ORIGIN)
     port = parsed.port
     suffix = "" if port in (None, 443) else f":{port}"
-    return f"https://{host_label}.{settings.GAMES_DOMAIN}{suffix}"
+    host = (
+        host_label
+        if host_label.endswith(f".{settings.GAMES_DOMAIN}")
+        else f"{host_label}.{settings.GAMES_DOMAIN}"
+    )
+    return f"https://{host}{suffix}"
 
 
 def _session_create_allowed(request: HttpRequest) -> bool:

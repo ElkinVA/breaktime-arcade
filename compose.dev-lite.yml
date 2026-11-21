@@ -19,6 +19,7 @@ services:
       - static_data:/app/staticfiles
       - media_data:/app/media
       - app_var:/app/var
+      - runtime_data:/app/runtime
     ports:
       - "127.0.0.1:8000:8000"
     deploy:
@@ -96,7 +97,7 @@ services:
     volumes:
       - ./infra/nginx/dev.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/nginx/certs:ro
-      - ./var/runtime:/app/runtime:ro
+      - runtime_data:/app/runtime:ro
       - static_data:/app/staticfiles:ro
       - media_data:/app/media:ro
     deploy:

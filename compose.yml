@@ -252,5 +252,6 @@ volumes:
   static_data:
   media_data:
   app_var:
+  runtime_data:
   zip_uploads:
   zip_artifacts:

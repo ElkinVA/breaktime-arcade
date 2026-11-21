@@ -366,8 +366,8 @@ clean. Отчёт — `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 `game_play` с серверным create+activate (ticket не рендерится), no-store,
 точный runtime origin, full `runtime_hash`, CSRF relay, guest normalization.
 `play.html` использует iframe sandbox; `game_detail` получил Play link.
-Full **448 passed, 3 skipped**; JS `node --check` clean. Независимый review —
-**INCOMPLETE** (нет E2E/probe и diff-evidence; parentOrigin fragment —
+Full **448 passed, 4 skipped**; JS `node --check` clean. Независимый review —
+**INCOMPLETE** (E2E/probe уже есть, но diff-evidence и parentOrigin residual —
 residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
 
 ## 2. Статусы работ
@@ -416,7 +416,7 @@ residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
 | BA-APPF-002 / DB-006 | **TECHNICALLY ACCEPTED** (agent) | GameVersion content immutable via model guard + DB trigger; audit FKs only →NULL; 419/3; code/security review accept; migrations 0006/0007 |
 | BA-APPF-002 / DB-005/007 | **TECHNICALLY ACCEPTED** (agent) | Public name 60; mode↔subject CHECK incl. deleted tombstone; 433/3; migrations 0008/0012 |
 | BA-APPF-002 / DB-004 + residuals | **TECHNICALLY ACCEPTED** (agent) | Game identity/delete guard; GamePlayCredit cleanup; mode immutable; 441/3; migrations 0009/0010/0013 |
-| BA-APPF-002 / runtime A+B | **IMPLEMENTED / TECHNICAL REVIEW** | SDK, host protocol, player host, play view; 448/3; review incomplete; E2E/probe pending |
+| BA-APPF-002 / runtime A+B | **IMPLEMENTED / TECHNICAL REVIEW** | SDK, host protocol, player host, play view; 448/4; runtime E2E 1 passed; review incomplete |
 | BA-DEVCONTROL-001 | **TECHNICALLY ACCEPTED** (agent); live setup — token/opt-in | Мониторинг/отчёты/задачи/ask/hooks; sandbox test runner; 31 tests; full 360/3; code/security review accept; Telegram API blocked — нужен proxy/VPN + токен |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 

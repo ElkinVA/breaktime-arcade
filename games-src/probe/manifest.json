@@ -1,0 +1,26 @@
+{
+  "cartridge": 1,
+  "protocol": 1,
+  "id": "probe",
+  "version": "1.0.0",
+  "sdkVersion": "1.1.0",
+  "entry": "index.html",
+  "name": "BA runtime probe",
+  "defaultLanguage": "en",
+  "supportedLanguages": ["en"],
+  "score": {
+    "type": "integer",
+    "unit": "points",
+    "direction": "higher_is_better",
+    "minValue": 0,
+    "maxValue": 1000
+  },
+  "limits": {
+    "minPlaytimeSeconds": 15,
+    "maxSessionSeconds": 1800,
+    "pauseOnBlur": true
+  },
+  "assets": {
+    "critical": ["index.html", "css/probe.css", "js/ba-sdk.js", "js/probe.js"]
+  }
+}

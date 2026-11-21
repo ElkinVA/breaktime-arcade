@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BA runtime probe</title>
+  <link rel="stylesheet" href="css/probe.css">
+</head>
+<body>
+  <main>
+    <h1>BA runtime probe</h1>
+    <p id="probe-status" data-state="init">initializing…</p>
+    <pre id="probe-context"></pre>
+    <button id="probe-submit" type="button">Submit</button>
+    <button id="probe-leaderboard" type="button">Leaderboard</button>
+    <button id="probe-storage" type="button">Storage</button>
+    <button id="probe-exit" type="button">Exit</button>
+  </main>
+  <script src="js/ba-sdk.js"></script>
+  <script src="js/probe.js"></script>
+</body>
+</html>

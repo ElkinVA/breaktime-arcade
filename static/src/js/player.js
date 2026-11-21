@@ -161,7 +161,12 @@ if (frame) {
                 `/api/v1/games/${gameId}/storage`,
                 {
                     method: "PUT",
-                    headers: headers({ "If-Match": response.headers.get("ETag") || `"${current.revision ?? 0}"` }),
+                    headers: headers({
+                        "If-Match":
+                            current.revision === 0
+                                ? "*"
+                                : response.headers.get("ETag") || `"${current.revision ?? 0}"`,
+                    }),
                     body: JSON.stringify(next),
                 },
             );
