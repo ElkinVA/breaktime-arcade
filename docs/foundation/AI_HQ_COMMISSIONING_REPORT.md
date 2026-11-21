@@ -59,14 +59,22 @@ Full cycle for each: Flash Developer → Flash QA → Pro Reviewer → commit �
 merge. The first became `COMPLETED`; the second was claimed and completed
 automatically without an owner command.
 
-A third real product task, `ARCADE-POPULARITY-001` (`f211161`), was proposed by
-the Pro Architect and completed automatically: 30-day popularity indicator,
-cached read and `sort=popular`. It passed the cycle, but the independent
-reviewer flagged a product-behavior divergence: secondary ordering is
-`-published_at/-id`, while §2.8 specifies `WR ↓, id ↑`. That needs a product
-decision/follow-up; it was not silently changed.
+A third product task, `ARCADE-POPULARITY-001` (`f211161`), added the
+30-day popularity indicator/cache and `sort=popular`. Its reviewer flagged the
+secondary order; follow-up `ARCADE-POPULARITY-ORDER-001` (`670923f`) then
+aligned it exactly to §2.8 (`WR ↓, id ↑`) and passed the full cycle.
 
-Final repository gate: **729 passed, 11 skipped**; ruff/format/mypy clean.
+`ARCADE-CATALOG-SORTS-001` (`3f5b16a`) added Bayesian WR scoring and
+`sort=rating`/`votes`. Its reviewer accepted with minor edge-case debt
+(no-aggregate zero-vote ordering, `RATING_WR_M=0`, search+sort test gap).
+
+The localization follow-up `ARCADE-I18N-UI-001` was claimed but the run hit the
+hard **TOKEN_BUDGET** before commit: 8,726,671 tokens / 7.58 USD against the
+5,000,000-token / 5 USD limit. The task was released as READY; no i18n change
+was merged. This is a real budget constraint, not code failure; raising it is an
+owner cost decision. No limit was bypassed.
+
+Final repository gate: **737 passed, 11 skipped**; ruff/format/mypy clean.
 
 ## 5. AI HQ state
 

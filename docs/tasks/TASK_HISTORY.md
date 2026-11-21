@@ -1015,7 +1015,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Результат:** публичная карточка игры показывает агрегат рейтинга и count;
   каталог показывает compact summary без N+1; zero state явный.
 - **Проверки:** полный цикл Flash Developer → Flash QA → Pro Reviewer →
-  commit/merge; full **729 passed, 11 skipped**.
+  commit/merge; full **737 passed, 11 skipped**.
 - **Коммиты:** `63b6137`, `3c58dcb`.
 - **Статус:** **TECHNICALLY ACCEPTED** (agent review); product acceptance owner.
 
@@ -1024,6 +1024,17 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 
 - 30-day popularity read with cache/DB fallback, cards/detail indicator and
   `sort=popular`; Flash Developer → Flash QA → Pro Reviewer → `f211161`.
-- Full **729 passed, 11 skipped**.
+- Full **737 passed, 11 skipped**.
 - Review: accepted; minor: secondary sort should be reconciled with §2.8
   (`WR ↓, id ↑`) and UI strings need i18n. Product follow-up, not infra.
+
+
+### ARCADE-CATALOG-SORTS-001 / ARCADE-POPULARITY-ORDER-001 / ARCADE-I18N-UI-001
+
+- `ARCADE-CATALOG-SORTS-001` (`3f5b16a`) — Bayesian WR, rating/votes sorts;
+  accepted with minor edge-case debt.
+- `ARCADE-POPULARITY-ORDER-001` (`670923f`) — exact §2.8 secondary sort
+  (`WR ↓, id ↑`); accepted.
+- `ARCADE-I18N-UI-001` — claimed, then hard **TOKEN_BUDGET** stopped before
+  commit; task returned to READY; no change merged. Owner cost decision needed.
+- Full gate **737 passed, 11 skipped**.
