@@ -165,7 +165,7 @@
   `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 - BA-APPF-002 runtime A+B — **IMPLEMENTED / TECHNICAL REVIEW**:
   SDK/host/player/play view, server-side create+activate, exact runtime
-  origin, CSRF relay; full 448/4; E2E/probe и review evidence отсутствуют.
+  origin, CSRF relay; full 449/4; E2E/probe и review evidence отсутствуют.
   Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
 - Прохождение тестов не является приёмкой; отчёт исполнителя не является
   результатом независимого аудита.

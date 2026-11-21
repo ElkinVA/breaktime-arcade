@@ -156,6 +156,7 @@ class SessionResultView(APIView):
                 value=serializer.validated_data["value"],
                 duration_ms=serializer.validated_data["durationMs"],
                 seed=serializer.validated_data.get("seed"),
+                event_log=serializer.validated_data.get("eventLog"),
             )
         except SessionError as exc:
             return _error(exc)

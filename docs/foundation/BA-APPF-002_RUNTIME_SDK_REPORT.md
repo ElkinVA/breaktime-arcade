@@ -33,7 +33,9 @@ indexedDB/top.location/parent.document.
 - API: `context`, `ready`, `t`, `on`, `submitResult` (10 с, guest
   normalization), `leaderboard.top(10/100)`, `leaderboard.myBest`,
   `storage.get/set/remove`, `newSession`, `exit`, `fail`;
-- ticket в SDK/iframe не передаётся.
+- ticket в SDK/iframe не передаётся;
+- server-side eventLog validation: seed, `v`, events, monotonic `t`, `t <=
+  durationMs+1000`, declared `verification.eventKinds`, raw/gzip limits.
 
 ## 3. Host и player
 
@@ -69,7 +71,7 @@ nginx dev `/v/<vhash>` расширен до 12–64 hex.
 
 ```text
 play/SDK targeted -> 7 passed
-pytest (full)     -> 448 passed, 4 skipped, 1 warning
+pytest (full)     -> 449 passed, 4 skipped, 1 warning
 runtime E2E       -> 2 passed (handshake/storage + bad-portal-origin)
 ruff/format/mypy  -> clean
 npm run check:js  -> clean (3 files)

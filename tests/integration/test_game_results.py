@@ -116,12 +116,15 @@ def _result(
     value: int = 100,
     duration_ms: int = 30_000,
     seed: str | None = None,
+    event_log: object | None = None,
     with_csrf: bool = True,
 ) -> object:
     headers = {"HTTP_X_CSRFTOKEN": csrf} if with_csrf else {}
     payload: dict[str, object] = {"value": value, "durationMs": duration_ms}
     if seed is not None:
         payload["seed"] = seed
+    if event_log is not None:
+        payload["eventLog"] = event_log
     return client.post(
         f"{API}/{session_id}/result",
         data=json.dumps(payload),
@@ -403,6 +406,52 @@ def test_hundred_parallel_results_keep_single_best() -> None:
     assert entries.count() == 1
     assert entries.get().value == 99
     assert GameResult.objects.filter(session__in=sessions).count() == 100
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_eventlog_seed_and_event_kinds_are_validated() -> None:
+    game = _game(technical_id="eventlog_game")
+    user = User.objects.create_user(login="eventlog", password="correct horse battery staple")
+    client, csrf = _client(user)
+    session_id = _ready_session(client, csrf, game)
+    session = GameSession.objects.get(pk=session_id)
+
+    valid = _result(
+        client,
+        csrf,
+        session_id,
+        event_log={"v": 1, "seed": session.seed, "events": []},
+    )
+    assert valid.status_code == 200, valid.content
+
+    wrong_session_id = _ready_session(client, csrf, game)
+    wrong_seed = _result(
+        client,
+        csrf,
+        wrong_session_id,
+        key="eventlog-wrong-seed",
+        event_log={"v": 1, "seed": "wrong", "events": []},
+    )
+    assert wrong_seed.status_code == 400
+    assert wrong_seed.json()["code"] == "E_MESSAGE_INVALID"
+
+    game = _game(technical_id="eventlog_kind_game")
+    session_id = _ready_session(client, csrf, game)
+    session = GameSession.objects.get(pk=session_id)
+    undeclared = _result(
+        client,
+        csrf,
+        session_id,
+        key="eventlog-kind",
+        event_log={
+            "v": 1,
+            "seed": session.seed,
+            "events": [{"t": 0, "k": "not-declared", "d": {}}],
+        },
+    )
+    assert undeclared.status_code == 400
+    assert undeclared.json()["code"] == "E_MESSAGE_INVALID"
 
 
 @pytest.mark.django_db

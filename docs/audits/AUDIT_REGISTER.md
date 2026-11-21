@@ -501,7 +501,7 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 |---|---|
 | Тип | Runtime/SDK/iframe/player implementation |
 | Результат | official SDK, host protocol, player host, play view server-side activation, exact runtime origin/full hash, CSRF relay, guest normalization |
-| Проверки | 448 passed, 4 skipped; 3 play tests + 4 static SDK checks + 2 runtime E2E; ruff/format/mypy clean; node --check clean |
+| Проверки | 449 passed, 4 skipped; 3 play tests + 4 static SDK checks + 2 runtime E2E + eventLog validation; ruff/format/mypy clean; node --check clean |
 | Статус | **IMPLEMENTED / TECHNICAL REVIEW**; BA-SDK-1.1 submitted not approved |
 | Review | code-reviewer — INCOMPLETE; security-auditor — INCOMPLETE (diff evidence, parentOrigin residual); probe/E2E 2 passed |
 | Остаток | JS schema validation, snake/camel API adapter, retry policy, staging/prod origin, static collectstatic perms |

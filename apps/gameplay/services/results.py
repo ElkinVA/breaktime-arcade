@@ -15,6 +15,7 @@ from uuid import UUID
 from django.db import connection, transaction
 
 from apps.accounts.models import AnonymousIdentity, User
+from apps.core.contracts import validate_eventlog_semantics
 from apps.gameplay.models import GameResult, GameSession, LeaderboardEntry
 from apps.gameplay.services.sessions import SessionError, _now
 
@@ -91,6 +92,7 @@ def submit_result(
     value: int,
     duration_ms: int,
     seed: str | None = None,
+    event_log: object | None = None,
     now: datetime | None = None,
 ) -> dict[str, object]:
     current = _now(now)
@@ -128,6 +130,22 @@ def submit_result(
 
         if seed is not None and seed != session.seed:
             raise SessionError("E_MESSAGE_INVALID", "Seed does not match the session", 400)
+        if event_log is not None:
+            if not isinstance(event_log, dict):
+                raise SessionError("E_MESSAGE_INVALID", "Invalid eventLog", 400)
+            if event_log.get("seed") != session.seed:
+                raise SessionError("E_MESSAGE_INVALID", "eventLog seed does not match", 400)
+            verification = (session.game_version.manifest or {}).get("verification", {})
+            event_kinds = (
+                verification.get("eventKinds", []) if isinstance(verification, dict) else []
+            )
+            errors = validate_eventlog_semantics(
+                event_log,
+                event_kinds if isinstance(event_kinds, list) else [],
+                duration_ms,
+            )
+            if errors:
+                raise SessionError("E_MESSAGE_INVALID", "Invalid eventLog", 400)
 
         game = session.game
         last = session.last_heartbeat_at or session.activated_at or session.created_at

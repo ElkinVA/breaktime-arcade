@@ -20,6 +20,11 @@
     "maxSessionSeconds": 1800,
     "pauseOnBlur": true
   },
+  "verification": {
+    "profile": {"maxPointsPerSecond": 10, "maxIdleGapMs": 5000},
+    "eventKinds": ["start", "submit"],
+    "eventSchema": {"type": "object"}
+  },
   "assets": {
     "critical": ["index.html", "css/probe.css", "js/ba-sdk.js", "js/probe.js"]
   }
