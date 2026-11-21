@@ -810,6 +810,20 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   review — **ACCEPT**; остаток — directory fsync best-effort.
 - **Отчёт:** `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`.
 
+### BA-QUALITY-002 — search benchmark, GIN и покрытие
+
+- **ID:** BA-QUALITY-002.
+- **Результат:** dev-only `catalog_benchmark` (seed/rollback, EXPLAIN/
+  ANALYZE, candidate DDL с DROP); существующий GIN `search_vector`
+  подтверждён на 10k (FTS 2.4 мс); trigram GIN не выбран, `unaccent` STABLE;
+  новый индекс не добавлен. Coverage 90.88 %, ни одного модуля <70 %;
+  тесты hibp/health/storage/theme/i18n/pipeline/CRM backup.
+- **Проверки:** full 397/3 skipped; ruff/mypy; coverage 90.88 %.
+- **Статус:** **TECHNICALLY ACCEPTED** (agent, 2026-11-21); code/security
+  review — **ACCEPT**; full OR 10k ~150 мс — residual (продуктовая форма
+  запроса).
+- **Отчёт:** `docs/foundation/BA-QUALITY-002_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,
@@ -840,6 +854,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`;
 - `docs/foundation/BA-DEVCONTROL-001_REPORT.md`;
 - `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`;
+- `docs/foundation/BA-QUALITY-002_REPORT.md`;
 - `tests/integration/test_catalog_public.py`;
 - `tests/integration/test_game_sessions.py`;
 - `reports/BA_AUDIT_20261118_162920.zip` (исторический generated-отчёт).

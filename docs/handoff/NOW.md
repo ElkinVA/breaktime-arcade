@@ -1,7 +1,7 @@
 # NOW — Breaktime Arcade
 
 **Дата:** 2026-11-20
-**Текущий пакет:** BA-ZIP-HARDENING-001 (R-035),
+**Текущий пакет:** BA-QUALITY-002, BA-ZIP-HARDENING-001 (R-035),
 BA-DEVCONTROL-001 (Telegram Dev Control) и BA-ZIP-WORKER-001
 (изолированный extraction worker);
 App F server slices: SESSION-002, RESULT-001, LEADERBOARD-001, STORAGE-001,
@@ -67,8 +67,10 @@ Code/security review — **ACCEPT**. Отчёт —
    destination, method allowlist stored/deflate (central+local), read/write
    коды; code/security review accept; отчёт
    `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`.
-5. R-036: pre-existing глобальный `CELERY_TASK_ACKS_LATE=True` — отдельное
-   решение владельца/аудит идемпотентности default-очереди.
+5. BA-QUALITY-002 — **TECHNICALLY ACCEPTED** (agent); code/security review
+   accept; full OR 10k ~150 мс — residual. R-036: полный Pro-анализ
+   глобального `CELERY_TASK_ACKS_LATE=True` — отдельный срез, без изменения
+   поведения; решение — владелец.
 6. R-037/R-038: retention `zip_uploads`; live Telegram/Dev Control.
 7. Независимый READY-пакет — **BA-QUALITY-002** (dev-only), если владелец
    не выберет ZIP-продолжение.
@@ -99,8 +101,11 @@ Code/security review — **ACCEPT**. Отчёт —
 
 ```text
 pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
-pytest (full)              -> 369 passed, 3 skipped, 1 warning
-ZIP tests (preflight+extract+worker) -> 54 passed; 2000 files fsync 7.7s
+pytest (full)              -> 397 passed, 3 skipped, 1 warning
+coverage                   -> 90.88 %, no module < 70 %
+ZIP tests                  -> 54 passed; 2000 files fsync 7.7s
+benchmark 10k              -> GIN search_vector FTS 2.4 ms; full OR 150 ms;
+                              trigram index not used; unaccent STABLE
 pytest tests/unit/test_devcontrol.py -> 31 passed (1 host-only skip in web)
 Telegram API from WSL/Windows: TCP 443 timeout; proxy/VPN required
 ruff check apps config tests -> All checks passed

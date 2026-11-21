@@ -281,6 +281,17 @@ staging/destination каталогов перед atomic rename, fsync COMPLETED
 Остаток: directory fsync best-effort. Отчёт —
 `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`.
 
+## 1.15. Качество поиска и покрытие — BA-QUALITY-002
+
+**BA-QUALITY-002** — **TECHNICALLY ACCEPTED** (agent, 2026-11-21);
+code/security review — **ACCEPT**. Dev-only benchmark
+`catalog_benchmark` подтвердил существующий GIN на persisted
+`search_vector` (10k: Bitmap Index Scan ~2.4 мс для FTS). Кандидатные
+trigram/unaccent GIN не выбраны/невозможны (`unaccent` STABLE), новый
+индекс не добавлен. Full OR остаётся Seq Scan (~150 мс на 10k) — residual.
+Покрытие: **90.88 %, ни одного модуля <70 %**; 397 passed, 3 skipped.
+Отчёт — `docs/foundation/BA-QUALITY-002_REPORT.md`.
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -321,6 +332,7 @@ staging/destination каталогов перед atomic rename, fsync COMPLETED
 | BA-ZIP-EXTRACT-001 | **TECHNICALLY ACCEPTED** (agent); product — owner | Streaming safe extraction; 11 tests; full 308/2 skipped; security review accept; worker isolation — BA-ZIP-WORKER-001 |
 | BA-ZIP-WORKER-001 | **TECHNICALLY ACCEPTED** (agent); product — owner | Отдельный `zip-worker` (`zipnet`, prefork, read_only, limits, cancel, audit); 22 new tests; full 330/2 skipped; code/security review accept; R-033/R-035/R-036/R-037 |
 | BA-ZIP-HARDENING-001 (R-035) | **TECHNICALLY ACCEPTED** (agent); product — owner | fsync files/dirs, stored/deflate local+central, read/write codes; 54 ZIP tests; full 369/3; 2000 files 7.7s; review accept |
+| BA-QUALITY-002 | **TECHNICALLY ACCEPTED** (agent); product — owner | GIN search_vector подтверждён; trigram/unaccent не обоснован; coverage 90.88 %; 397/3; review accept |
 | BA-DEVCONTROL-001 | **TECHNICALLY ACCEPTED** (agent); live setup — token/opt-in | Мониторинг/отчёты/задачи/ask/hooks; sandbox test runner; 31 tests; full 360/3; code/security review accept; Telegram API blocked — нужен proxy/VPN + токен |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 

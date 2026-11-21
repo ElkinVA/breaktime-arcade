@@ -413,6 +413,18 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Остаток | Directory fsync best-effort; close OSError edge; per-file fsync overhead |
 | Источник | `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md` |
 
+## BA-QUALITY-002 — search benchmark/GIN/coverage
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая quality-работа; не аудит этапа |
+| Результат | Dev-only benchmark/EXPLAIN; existing GIN search_vector подтверждён (10k FTS 2.4 мс); trigram/unaccent GIN не обоснован; coverage 90.88 %, <70 % нет |
+| Проверки | 397/3 skipped; ruff/mypy; coverage 90.88 %; benchmark 1k/10k |
+| Статус | **TECHNICALLY ACCEPTED** (agent); product — owner |
+| Review | code-reviewer — **ACCEPT**; security-auditor — **ACCEPT** (dev-only guard, DDL cleanup, SQL constants) |
+| Остаток | Full OR 10k ~150 мс — Seq Scan; изменение формы запроса — продуктовое решение |
+| Источник | `docs/foundation/BA-QUALITY-002_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.
