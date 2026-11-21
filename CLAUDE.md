@@ -12,8 +12,10 @@ endpoints, поля, версии и результаты проверок.
 Реализованы срезы: core, accounts §2.10 (**PARTIAL**), 2FA staff (**PARTIAL**),
 catalog (**PARTIAL**: published-only, фильтры, поиск, detail/genre/HTMX),
 i18n (6 языков), theme, CRM backup/restore-check, dev-lite/staging nginx.
-App F (gameplay, leaderboards, ratings, SDK, player/runtime) **не реализован**;
-`schemas/*.json` содержат DRAFT App F; `sdk/1.1.0/ba-sdk.js` и `games-src/*` пусты.
+App F server slices — session/result/leaderboard/storage/playtime/ratings/
+popularity — реализованы и ожидают продуктовой приёмки. App F runtime/SDK/
+player и `games-src` **не реализованы**; `schemas/*.json` содержат DRAFT
+App F; `sdk/1.1.0/ba-sdk.js` пуст.
 Views каталога — частично, CRM — stub. Не считать это принятой функциональностью.
 
 ## AI workflow (обязательно)
@@ -21,7 +23,8 @@ Views каталога — частично, CRM — stub. Не считать �
   полные реестры — по необходимости.
 - Pro (`architect`, `code-reviewer`, `security-auditor`) планирует и проверяет
   в text-only режиме; Flash реализует и запускает проверки.
-- Никакого self-review; `IMPLEMENTED` ≠ `ACCEPTED`. Приёмка — только владелец.
+- Никакого self-review; `IMPLEMENTED` ≠ `ACCEPTED`. Техническая приёмка
+  агента — по OD-AUTONOMY-003; продуктовая/юридическая — только владелец.
 - После пакета обновить NOW, шесть реестров и PROJECT_STATUS; указать модели.
 - Защищённые файлы (`CLAUDE.md`, ТЗ, `.env`, `certs/`, `creds/`) — только с
   явного разрешения; секреты не выводить.
@@ -61,7 +64,7 @@ Nginx, Gunicorn, Docker Compose, Django Templates + HTMX 2 + Vanilla JS ES2022
 - Импорт идемпотентен; ручные overrides владельца не затираются (diff/conflict flow).
 - Dev-lite / staging / production раздельны по compose project, сетям, томам, БД, секретам.
 
-## Команды (все через Makefile, выполняются ВНУТРИ контейнера web)
+## Команды (через Makefile; quality/DB — в web, инфраструктура — на хосте)
 make up | down | restart | ps | logs        — стек
 make env | certs | assets | lock | build    — окружение и сборка
 make makemigrations | migrate | psql | shell | superuser — БД
@@ -69,6 +72,8 @@ make test | lint | fmt | types | check      — качество (pytest/ruff/my
 make backup | restore-check                 — бэкапы
 make staging-up | staging-down | staging-status | staging-logs
 Dev: https://portal.test:8443 ; web также 127.0.0.1:8000 ; staging :8444.
+`env/certs/assets/lock/build/up/down/restart/staging-*/verify_*` — на хосте;
+`test/lint/fmt/types/check/migrate/shell/psql` — в `web`.
 Проверки: ./verify_stack.sh, ./verify_staging_final.sh (read-only).
 
 ## Процесс работы над задачей

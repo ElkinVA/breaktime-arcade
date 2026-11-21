@@ -16,8 +16,14 @@ import shlex
 import sys
 from pathlib import Path
 
-ROOT = Path(os.environ.get("CLAUDE_PROJECT_DIR", str(Path(__file__).resolve().parents[2]))).resolve()
-SIBLING = Path("/home/elkinva/projects/ai-dev") if ROOT.name == "ba" else Path("/home/elkinva/projects/ba")
+ROOT = Path(
+    os.environ.get("CLAUDE_PROJECT_DIR", str(Path(__file__).resolve().parents[2]))
+).resolve()
+SIBLING = (
+    Path("/home/elkinva/projects/ai-dev")
+    if ROOT.name == "ba"
+    else Path("/home/elkinva/projects/ba")
+)
 
 PROTECTED_NAMES = {
     ".env",
@@ -57,15 +63,22 @@ GIT_WRITE = re.compile(
     r"\bgit\s+(?:-C\s+\S+\s+)?(?:add|commit|reset|clean|checkout|restore|push|stash|tag|rebase|apply|merge)\b"
 )
 DESTRUCTIVE = (
-    (re.compile(r"\bdocker[-\s]compose\b[^\n]*\bdown\b[^\n]*(-v|--volumes)\b"), "docker compose down -v"),
-    (re.compile(r"\bdocker[-\s]compose\b[^\n]*\brm\b[^\n]*(-v|--volumes)\b"), "docker compose rm -v"),
+    (
+        re.compile(r"\bdocker[-\s]compose\b[^\n]*\bdown\b[^\n]*(-v|--volumes)\b"),
+        "docker compose down -v",
+    ),
+    (
+        re.compile(r"\bdocker[-\s]compose\b[^\n]*\brm\b[^\n]*(-v|--volumes)\b"),
+        "docker compose rm -v",
+    ),
     (re.compile(r"\bdocker\s+volume\s+rm\b"), "docker volume rm"),
     (re.compile(r"\bdocker\s+system\s+prune\b"), "docker system prune"),
     (re.compile(r"\bgit\s+reset\b[^\n]*--hard\b"), "git reset --hard"),
     (re.compile(r"\bgit\s+clean\s+-[a-zA-Z]*[fx]"), "git clean -f/-x"),
-    (re.compile(r"\bgit\s+push\b[^\n]*(--force|--force-with-lease|\+[A-Za-z0-9])"), "git push force"),
-    (re.compile(r"\bgit\s+checkout\s+--\b"), "git checkout --"),
-    (re.compile(r"\bgit\s+restore\b"), "git restore"),
+    (
+        re.compile(r"\bgit\s+push\b[^\n]*(--force|--force-with-lease|\+[A-Za-z0-9])"),
+        "git push force",
+    ),
     (re.compile(r"\bgit\s+commit\b[^\n]*--amend\b"), "git commit --amend"),
     (re.compile(r"\bgit\s+rebase\b"), "git rebase"),
     (re.compile(r"\bgit\s+tag\s+-d\b"), "git tag -d"),
@@ -133,6 +146,7 @@ def path_is_protected(path: Path) -> bool:
 
 
 def protected_path_mentioned(command: str, cwd: Path) -> bool:
+    command = _strip_safe_env(command)
     for name in PROTECTED_NAMES:
         if name in command:
             return True
@@ -163,6 +177,48 @@ def rm_outside_tmp(command: str) -> bool:
     return False
 
 
+def _restore_paths(command: str, cwd: Path) -> list[Path]:
+    """Return explicit worktree paths for ``git restore``/``checkout --``."""
+    try:
+        tokens = shlex.split(command, comments=False, posix=True)
+    except ValueError:
+        return []
+    if "restore" in tokens:
+        index = tokens.index("restore")
+    elif "checkout" in tokens and "--" in tokens:
+        index = tokens.index("checkout")
+    else:
+        return []
+    if "--staged" in tokens[index + 1 :]:
+        return []
+    paths: list[Path] = []
+    for token in tokens[index + 1 :]:
+        cleaned = token.strip("'\"")
+        if not cleaned or cleaned == "--" or cleaned.startswith("-"):
+            continue
+        candidate = Path(os.path.expandvars(os.path.expanduser(cleaned)))
+        if not candidate.is_absolute():
+            candidate = cwd / candidate
+        paths.append(candidate.resolve(strict=False))
+    return paths
+
+
+def _restore_allowed(path: Path) -> bool:
+    if path == ROOT:
+        return False
+    try:
+        path.relative_to(ROOT)
+    except ValueError:
+        return False
+    return not path_is_protected(path)
+
+
+def _strip_safe_env(command: str) -> str:
+    for name in SAFE_ENV_NAMES:
+        command = command.replace(name, "")
+    return command
+
+
 def main() -> int:
     try:
         data = json.load(sys.stdin)
@@ -176,8 +232,13 @@ def main() -> int:
         return 0
     cwd = Path(data.get("cwd") or ROOT).resolve()
 
-    if (WRITE_LIKE.search(command) or GIT_WRITE.search(command)) and has_unexpandable_syntax(command):
-        print("BA bash guard: BLOCKED unexpandable path/glob in a write-like command.", file=sys.stderr)
+    if (WRITE_LIKE.search(command) or GIT_WRITE.search(command)) and has_unexpandable_syntax(
+        command
+    ):
+        print(
+            "BA bash guard: BLOCKED unexpandable path/glob in a write-like command.",
+            file=sys.stderr,
+        )
         return 2
 
     for pattern, label in DESTRUCTIVE:
@@ -189,10 +250,21 @@ def main() -> int:
         print("BA bash guard: BLOCKED recursive rm outside /tmp.", file=sys.stderr)
         return 2
 
+    if re.search(r"\bgit\s+(?:restore|checkout\s+--)\b", command):
+        paths = _restore_paths(command, cwd)
+        if not paths or not all(_restore_allowed(path) for path in paths):
+            print(
+                "BA bash guard: BLOCKED bare/protected/out-of-project git restore/checkout.",
+                file=sys.stderr,
+            )
+            return 2
+
     if re.search(r"\bDROP\s+(?:DATABASE|TABLE)\b", command, re.IGNORECASE) and not re.search(
         r"\b(?:ba_schema_check_|test_)", command
     ):
-        print("BA bash guard: BLOCKED DROP DATABASE/TABLE outside a test database.", file=sys.stderr)
+        print(
+            "BA bash guard: BLOCKED DROP DATABASE/TABLE outside a test database.", file=sys.stderr
+        )
         return 2
 
     if protected_path_mentioned(command, cwd) and WRITE_LIKE.search(command):
@@ -204,12 +276,17 @@ def main() -> int:
         )
         return 2
 
-    if SECRET_READ.search(command) and any(token in command for token in (".env", "deepseek.env")):
+    secret_command = _strip_safe_env(command)
+    if SECRET_READ.search(secret_command) and any(
+        token in secret_command for token in (".env", "deepseek.env")
+    ):
         print("BA bash guard: BLOCKED reading a secret path via shell.", file=sys.stderr)
         return 2
 
     if protected_path_mentioned(command, cwd) and GIT_WRITE.search(command):
-        print("BA bash guard: BLOCKED git write operation touching a protected path.", file=sys.stderr)
+        print(
+            "BA bash guard: BLOCKED git write operation touching a protected path.", file=sys.stderr
+        )
         return 2
 
     if re.search(r"\bgit\s+add\b", command) and protected_path_mentioned(command, cwd):
@@ -217,13 +294,19 @@ def main() -> int:
         return 2
 
     if str(SIBLING) in command and GIT_WRITE.search(command):
-        print("BA bash guard: BLOCKED git write operation against the sibling repository.", file=sys.stderr)
+        print(
+            "BA bash guard: BLOCKED git write operation against the sibling repository.",
+            file=sys.stderr,
+        )
         return 2
 
     if re.search(rf'\bcd\s+["\']?{re.escape(str(SIBLING))}(?:["\']|\s|$)', command) and (
         WRITE_LIKE.search(command) or GIT_WRITE.search(command)
     ):
-        print("BA bash guard: BLOCKED write-like command after cd into the sibling repository.", file=sys.stderr)
+        print(
+            "BA bash guard: BLOCKED write-like command after cd into the sibling repository.",
+            file=sys.stderr,
+        )
         return 2
 
     if re.search(r'\bcd\s+["\']?(?:\.\./)+ai-dev(?:["\']|/|\s|$)', command) and (
