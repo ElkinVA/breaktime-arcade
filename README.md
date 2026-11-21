@@ -27,5 +27,6 @@ Dev: https://portal.test:8443. Остановка — `make down` (volumes не 
 
 - Архитектура: `docs/architecture.md`
 - Эксплуатация: `docs/runbook/`
+- Автономный запуск: `docs/runbook/autonomy.md`
 - Снимок кода для анализа: `bash scripts/collect_project.sh`
 - Каркас: `scripts/bootstrap_structure.sh`; наполнение — по этапам §2.25.
