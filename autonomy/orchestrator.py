@@ -93,8 +93,10 @@ def _assert_main_clean() -> None:
 def _create_worktree(task: Task) -> tuple[Path, str]:
     _assert_main_clean()
     base = _head()
-    WORKTREE_ROOT.mkdir(parents=True, exist_ok=True)
-    path = WORKTREE_ROOT / f"{task.id}-{uuid.uuid4().hex[:12]}"
+    path = WORKTREE_ROOT / f"{task.id}-{uuid.uuid4().hex[:12]}" / "ba"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Keep basename "ba": project hooks derive the sibling repo from ROOT.name
+    # and would otherwise treat the worktree as the sibling repository.
     _git(["worktree", "add", "--detach", str(path), base])
     return path, base
 
