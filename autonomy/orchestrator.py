@@ -62,17 +62,25 @@ def _parse_json(value: str) -> dict[str, Any]:
         parsed = json.loads(value)
     except json.JSONDecodeError:
         # Agents sometimes prepend prose (and the prose can contain braces,
-        # e.g. Django template syntax). Prefer the last valid JSON object.
+        # e.g. Django template syntax). Try every `${` start and prefer the
+        # outer contract object (verdict/status/tasks), not a nested finding.
         decoder = json.JSONDecoder()
-        parsed = None
-        for start in reversed([index for index, char in enumerate(value) if char == "{"]):
+        candidates: list[dict[str, Any]] = []
+        for start in [index for index, char in enumerate(value) if char == "{"]:
             try:
                 candidate, _end = decoder.raw_decode(value[start:])
             except json.JSONDecodeError:
                 continue
             if isinstance(candidate, dict):
-                parsed = candidate
-                break
+                candidates.append(candidate)
+        parsed = next(
+            (
+                candidate
+                for candidate in candidates
+                if any(key in candidate for key in ("verdict", "status", "tasks"))
+            ),
+            candidates[-1] if candidates else None,
+        )
         if parsed is None:
             raise
     if not isinstance(parsed, dict):

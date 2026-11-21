@@ -8,6 +8,7 @@ from autonomy.orchestrator import (
     Orchestrator,
     _commit_staged,
     _developer_files,
+    _parse_json,
     _safe_file,
     _stage_task,
     _unstage,
@@ -318,3 +319,13 @@ def test_developer_files_rejects_unsafe_or_empty_reports() -> None:
         pass
     else:
         raise AssertionError("empty file list must be rejected")
+
+
+def test_parse_json_prefers_outer_contract_after_prose() -> None:
+    text = (
+        "Review prose with a brace {example}.\n```json\n"
+        '{"verdict":"accept","findings":[{"summary":"nested"}]}\n```'
+    )
+    parsed = _parse_json(text)
+    assert parsed["verdict"] == "accept"
+    assert parsed["findings"][0]["summary"] == "nested"
