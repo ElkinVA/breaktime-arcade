@@ -7,10 +7,19 @@ from collections.abc import Iterable
 from decimal import Decimal
 from uuid import UUID
 
+from django.conf import settings
 from django.db import connection
 from django.db.models import Count, Sum
 
 from apps.ratings.models import GameRatingAggregate, GameRatingVote
+
+
+def weighted_rating(average: Decimal, count: int) -> float:
+    """Bayesian WR = (v/(v+m))*R + (m/(v+m))*C (§2.8)."""
+    votes = Decimal(count)
+    m = Decimal(str(settings.RATING_WR_M))
+    c = Decimal(str(settings.RATING_WR_C))
+    return float((votes / (votes + m)) * average + (m / (votes + m)) * c)
 
 
 def _lock(game_id: UUID) -> None:
@@ -34,7 +43,7 @@ def recalculate(game) -> GameRatingAggregate:
             "total": total,
             "count": count,
             "average": average.quantize(Decimal("0.01")),
-            "wr_score": float(average),
+            "wr_score": weighted_rating(average, count),
             "distribution": distribution,
         },
     )

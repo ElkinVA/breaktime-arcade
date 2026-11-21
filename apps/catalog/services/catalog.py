@@ -11,7 +11,17 @@ from django.contrib.postgres.search import (
     SearchVector,
     TrigramSimilarity,
 )
-from django.db.models import F, Q, QuerySet
+from django.db.models import (
+    F,
+    FloatField,
+    IntegerField,
+    OuterRef,
+    Q,
+    QuerySet,
+    Subquery,
+    Value,
+)
+from django.db.models.functions import Coalesce
 
 from apps.catalog.models import (
     Game,
@@ -22,6 +32,7 @@ from apps.catalog.models import (
 from apps.catalog.services.popularity import popularity_counts, popularity_subquery
 from apps.catalog.services.search import Unaccent
 from apps.i18n.models import Language
+from apps.ratings.models import GameRatingAggregate
 from apps.ratings.services.aggregates import summaries as rating_summaries
 
 DURATION_BUCKETS = {
@@ -33,7 +44,9 @@ DURATION_BUCKETS = {
 SORT_NEW = "new"
 SORT_OLD = "old"
 SORT_POPULAR = "popular"
-SORT_CHOICES = {SORT_NEW, SORT_OLD, SORT_POPULAR}
+SORT_RATING = "rating"
+SORT_VOTES = "votes"
+SORT_CHOICES = {SORT_NEW, SORT_OLD, SORT_POPULAR, SORT_RATING, SORT_VOTES}
 
 
 @dataclass(frozen=True)
@@ -69,6 +82,16 @@ def parse_filters(params: Any) -> CatalogFilters:
         mobile=str(params.get("mobile") or "").lower() in {"1", "true", "on", "yes"},
         duration=duration,
         sort=sort,
+    )
+
+
+def _rating_sort_annotations() -> tuple[Coalesce, Coalesce]:
+    aggregates = GameRatingAggregate.objects.filter(game=OuterRef("pk"))
+    wr_score = Subquery(aggregates.values("wr_score")[:1], output_field=FloatField())
+    vote_count = Subquery(aggregates.values("count")[:1], output_field=IntegerField())
+    return (
+        Coalesce(wr_score, Value(0.0), output_field=FloatField()),
+        Coalesce(vote_count, Value(0), output_field=IntegerField()),
     )
 
 
@@ -137,8 +160,17 @@ def filter_games(filters: CatalogFilters, language_code: str = "en") -> QuerySet
         queryset = queryset.annotate(
             rank=SearchRank(F("translations__search_vector"), stored_query)
         )
-        if filters.sort not in {SORT_OLD, SORT_POPULAR}:
+        if filters.sort not in {SORT_OLD, SORT_POPULAR, SORT_RATING, SORT_VOTES}:
             return queryset.order_by("-rank", "-published_at", "-id")
+    if filters.sort in {SORT_RATING, SORT_VOTES}:
+        wr_score, vote_count = _rating_sort_annotations()
+        queryset = queryset.annotate(
+            rating_wr_score=wr_score,
+            rating_vote_count=vote_count,
+        )
+        if filters.sort == SORT_RATING:
+            return queryset.order_by("-rating_wr_score", "-rating_vote_count", "id")
+        return queryset.order_by("-rating_vote_count", "-rating_wr_score", "id")
     if filters.sort == SORT_POPULAR:
         return queryset.annotate(popularity_30d=popularity_subquery()).order_by(
             "-popularity_30d", "-published_at", "-id"

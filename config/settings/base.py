@@ -27,6 +27,13 @@ def env_int(name: str, default: int) -> int:
         return default
 
 
+def env_float(name: str, default: float) -> float:
+    try:
+        return float(env(name, str(default)))
+    except ValueError:
+        return default
+
+
 def env_list(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in env(name, default).split(",") if item.strip()]
 
@@ -348,6 +355,11 @@ REST_FRAMEWORK = {
     },
     "UNAUTHENTICATED_USER": "django.contrib.auth.models.AnonymousUser",
 }
+
+# --- Рейтинг: формула WR (§2.8) -----------------------------------------
+# WR = (v / (v + m)) * R + (m / (v + m)) * C
+RATING_WR_M = env_int("RATING_WR_M", 20)
+RATING_WR_C = env_float("RATING_WR_C", 3.5)
 
 # --- Константы пайплайна (§2.14.2) --------------------------------------
 BA_SDK_DEFAULT_VERSION = env("BA_SDK_DEFAULT_VERSION", "1.1.0")

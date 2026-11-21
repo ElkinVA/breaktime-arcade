@@ -39,6 +39,8 @@
             <span class="block text-xs text-muted mb-1">Sort</span>
             <select class="w-full rounded-lg border border-text/10 bg-surface px-3 py-2" name="sort">
                 <option value="new" {% if filters.sort == "new" %}selected{% endif %}>Newest</option>
+                <option value="rating" {% if filters.sort == "rating" %}selected{% endif %}>Rating</option>
+                <option value="votes" {% if filters.sort == "votes" %}selected{% endif %}>Most voted</option>
                 <option value="popular" {% if filters.sort == "popular" %}selected{% endif %}>Popular</option>
                 <option value="old" {% if filters.sort == "old" %}selected{% endif %}>Oldest</option>
             </select>
