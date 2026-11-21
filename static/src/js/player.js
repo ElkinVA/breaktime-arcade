@@ -217,6 +217,20 @@ if (frame) {
         }
     }
 
+    function startHeartbeat() {
+        globalThis.setInterval(() => {
+            if (document.visibilityState !== "visible") {
+                return;
+            }
+            void api(`/api/v1/sessions/${sessionId}/heartbeat`, {
+                method: "POST",
+                headers: headers(),
+            }).catch(() => {
+                /* session expiry is surfaced by the next SDK request */
+            });
+        }, 30000);
+    }
+
     const bridge = new HostBridge({
         iframe: frame,
         iframeOrigin,
@@ -246,5 +260,6 @@ if (frame) {
         }
     });
 
+    startHeartbeat();
     frame.src = runtimeUrl;
 }

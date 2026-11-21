@@ -52,7 +52,7 @@ indexedDB/top.location/parent.document.
 - newSession → `POST /sessions` + `/activate`;
 - exit → `/close`;
 - pause/resume по visibility;
-- CSRF через `X-CSRFToken`; сетевые/5xx повторы до 3 с сохранением Idempotency-Key.
+- CSRF через `X-CSRFToken`; сетевые/5xx повторы до 3 с сохранением Idempotency-Key; heartbeat 30 с при видимой вкладке.
 
 `game_play` view:
 
