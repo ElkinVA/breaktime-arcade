@@ -922,7 +922,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Проверки:** full **448 passed, 4 skipped**; ruff/format/mypy clean;
   `npm run check:js` clean.
 - **Статус:** **IMPLEMENTED / TECHNICAL REVIEW** (code/security review
-  incomplete: diff evidence/parentOrigin residual; probe/E2E 1 passed; BA-SDK-1.1 не утверждён).
+  incomplete: diff evidence/parentOrigin residual; probe/E2E 2 passed; BA-SDK-1.1 не утверждён).
 - **Отчёт:** `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
 
 ## 4. Источники и пробелы

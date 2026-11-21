@@ -102,7 +102,7 @@ Game identity immutable после публикации и DELETE forbidden; Gam
 **BA-APPF-002 / runtime A+B** — **IMPLEMENTED / TECHNICAL REVIEW**:
 `ba-sdk.js`, host protocol, player host, `game_play` server-side
 create+activate, exact runtime origin/full hash, no-store, CSRF relay,
-guest normalization; 8 added tests; full 448/4; JS syntax clean; runtime E2E 1 passed.
+guest normalization; 8 added tests; full 448/4; JS syntax clean; runtime E2E 2 passed.
 Code/security review — **INCOMPLETE** (diff evidence, JSON-Schema, parentOrigin residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
 
 ## Следующий шаг
@@ -186,7 +186,7 @@ DB-005/007                 -> name max 60; mode/subject CHECK incl. deleted
                               tombstone; migrations 0008/0012
 DB-004/residuals           -> Game identity/delete guard; GamePlayCredit
                               cleanup; mode immutable; migrations 0009/0010/0013
-Runtime A+B/E2E             -> play view active session + exact runtime URL; probe handshake/storage E2E 1 passed;
+Runtime A+B/E2E             -> play view active session + exact runtime URL; probe handshake/storage E2E 2 passed;
                               SDK/host/player node --check; review incomplete
 docker compose config --quiet -> OK
 ./verify_stack.sh          -> СТЕК ЗДОРОВ (zip-worker healthy)

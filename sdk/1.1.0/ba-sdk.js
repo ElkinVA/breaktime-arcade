@@ -105,6 +105,68 @@
         );
     }
 
+    function isObject(value) {
+        return value !== null && typeof value === "object" && !Array.isArray(value);
+    }
+
+    function validHostPayload(type, payload) {
+        if (!isObject(payload)) {
+            return false;
+        }
+        if (type === "ba:context") {
+            return (
+                isUuid(payload.sessionId) &&
+                typeof payload.gameId === "string" &&
+                typeof payload.gameVersion === "string" &&
+                typeof payload.mode === "string" &&
+                (payload.nickname === null || typeof payload.nickname === "string") &&
+                typeof payload.language === "string" &&
+                typeof payload.fallbackLanguage === "string" &&
+                isObject(payload.strings) &&
+                isObject(payload.score) &&
+                isObject(payload.limits) &&
+                typeof payload.trustLevel === "string" &&
+                typeof payload.seed === "string"
+            );
+        }
+        if (type === "ba:result") {
+            return (
+                typeof payload.status === "string" &&
+                (payload.rank === null || Number.isInteger(payload.rank)) &&
+                typeof payload.isPersonalBest === "boolean" &&
+                typeof payload.isRecord === "boolean" &&
+                typeof payload.trustLevel === "string"
+            );
+        }
+        if (type === "ba:leaderboard:data") {
+            return (
+                Array.isArray(payload.entries) &&
+                (payload.myRank === null || Number.isInteger(payload.myRank)) &&
+                payload.entries.every(
+                    (entry) =>
+                        isObject(entry) &&
+                        Number.isInteger(entry.rank) &&
+                        (entry.nickname === null || typeof entry.nickname === "string") &&
+                        typeof entry.value === "number",
+                )
+            );
+        }
+        if (type === "ba:storage:data") {
+            return Object.prototype.hasOwnProperty.call(payload, "value");
+        }
+        if (type === "ba:session") {
+            return (
+                isUuid(payload.sessionId) &&
+                typeof payload.seed === "string" &&
+                (payload.context === undefined || isObject(payload.context))
+            );
+        }
+        if (type === "ba:error") {
+            return typeof payload.code === "string" && payload.code.length > 0;
+        }
+        return type === "ba:pause" || type === "ba:resume";
+    }
+
     class BreaktimeArcadeSDK {
         constructor(fragment) {
             this.parentOrigin = fragment.parentOrigin;
@@ -383,6 +445,9 @@
             this.seenOrder.push(data.requestId);
             if (this.seenOrder.length > SEEN_LIMIT) {
                 this.seen.delete(this.seenOrder.shift());
+            }
+            if (!validHostPayload(data.type, data.payload)) {
+                return;
             }
 
             if (data.type === "ba:context") {

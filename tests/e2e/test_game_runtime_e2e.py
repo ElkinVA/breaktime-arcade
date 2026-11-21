@@ -61,3 +61,25 @@ def test_probe_handshake_and_storage_relay(page: Page) -> None:
     frame.locator("#probe-storage").click()
     expect(status).to_have_attribute("data-state", "storage", timeout=10000)
     expect(status).to_contain_text('"n":1')
+
+
+def test_probe_rejects_mismatched_portal_origin(page: Page) -> None:
+    page.goto(f"{BASE_URL}/en/games/probe/play/", wait_until="domcontentloaded")
+    runtime_url = page.locator("#game-frame").get_attribute("src")
+    assert runtime_url is not None
+    bad_url = runtime_url.replace(
+        "p=https%3A%2F%2Fportal.test%3A8443",
+        "p=https%3A%2F%2Fevil.test",
+    )
+    page.evaluate(
+        """(src) => {
+            const frame = document.createElement("iframe");
+            frame.id = "bad-frame";
+            frame.src = src;
+            document.body.appendChild(frame);
+        }""",
+        bad_url,
+    )
+    bad_status = page.frame_locator("#bad-frame").locator("#probe-status")
+    expect(bad_status).to_have_attribute("data-state", "error", timeout=15000)
+    expect(bad_status).to_contain_text("BA_SDK_BAD_FRAGMENT")

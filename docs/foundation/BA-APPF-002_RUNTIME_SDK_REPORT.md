@@ -70,7 +70,7 @@ nginx dev `/v/<vhash>` расширен до 12–64 hex.
 ```text
 play/SDK targeted -> 7 passed
 pytest (full)     -> 448 passed, 4 skipped, 1 warning
-runtime E2E       -> 1 passed (probe handshake + storage relay)
+runtime E2E       -> 2 passed (handshake/storage + bad-portal-origin)
 ruff/format/mypy  -> clean
 npm run check:js  -> clean (3 files)
 ```
