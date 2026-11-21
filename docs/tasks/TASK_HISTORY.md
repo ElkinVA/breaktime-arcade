@@ -992,7 +992,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   Flash Developer/QA sessions; Pro Reviewer `36f8fac4...` accepted after
   initial reject; task `AUTONOMY-GUARD-TESTS-001` COMPLETED; next task
   `AUTONOMY-CONFIG-CONTRACT-001` claimed automatically.
-- **Проверки:** `make check` 657 passed, 4 skipped; autonomy unit tests 8;
+- **Проверки:** `make check` 670 passed, 4 skipped; autonomy unit tests 13;
   guard tests 193; ruff/format/mypy clean.
 - **Статус:** **IMPLEMENTED / TECHNICAL REVIEW**; no game/App F changes.
 - **Отчёт:** `docs/foundation/AI_AUTONOMY_AUDIT.md`,
