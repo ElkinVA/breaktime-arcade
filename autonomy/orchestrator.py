@@ -15,6 +15,13 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from autonomy.budget import (
+    MAX_TASKS,
+    Budget,
+    BudgetReached,
+    BudgetStop,
+    BudgetTracker,
+)
 from autonomy.runner import ClaudeRunner, RunResult
 from autonomy.state import (
     BLOCKED,
@@ -294,14 +301,37 @@ class Orchestrator:
         *,
         commit: bool = True,
         worktrees: bool = True,
+        budget: Budget | None = None,
     ) -> None:
         self.runner = runner
         self.store = store or StateStore(STATE_ROOT)
         self.commit = commit
         self.worktrees = worktrees
+        self.budget = budget or Budget.from_env()
 
-    def propose(self) -> list[Task]:
+    def _account(
+        self,
+        task_id: str | None,
+        result: RunResult,
+        tracker: BudgetTracker,
+    ) -> None:
+        """Persist actual model usage and add it to the run budget."""
+        usage = result.usage
+        self.store.record_usage(task_id, usage.to_dict())
+        tracker.add(usage)
+
+    @staticmethod
+    def _guard(tracker: BudgetTracker) -> None:
+        """Stop at this safe boundary if a hard limit has been reached."""
+        stop = tracker.stop()
+        if stop is not None:
+            raise BudgetReached(stop)
+
+    def propose(self, tracker: BudgetTracker | None = None) -> list[Task]:
+        tracker = tracker or BudgetTracker(self.budget)
         result = self.runner.architect(_architect_prompt(self.store))
+        self._account(None, result, tracker)
+        self._guard(tracker)
         parsed = _parse_json(result.result)
         raw_tasks = parsed.get("tasks", [])
         if raw_tasks is None:
@@ -339,14 +369,25 @@ class Orchestrator:
         )
         return added
 
-    def run_once(self, *, propose: bool = True) -> dict[str, Any]:
+    def run_once(
+        self, *, propose: bool = True, tracker: BudgetTracker | None = None
+    ) -> dict[str, Any]:
+        tracker = tracker or BudgetTracker(self.budget)
+        stop = tracker.stop()
+        if stop is not None:
+            report = stop.to_report()
+            self._write_event(report)
+            return report
         self.store.recover_running()
         self._cleanup_orphan_worktrees()
         task = self.store.claim_next()
-        report: dict[str, Any]
         if task is None and propose:
             try:
-                self.propose()
+                self.propose(tracker=tracker)
+            except BudgetReached as exc:
+                report = exc.stop.to_report(phase="architect")
+                self._write_event(report)
+                return report
             except Exception as exc:  # noqa: BLE001 - architect failure is a run error
                 report = {"status": "blocked", "reason": "architect failed", "error": str(exc)}
                 self._write_event(report)
@@ -357,7 +398,11 @@ class Orchestrator:
             self._write_event(report)
             return report
 
-        report = self._run_isolated(task) if self.worktrees else self._run_inplace(task)
+        report = (
+            self._run_isolated(task, tracker)
+            if self.worktrees
+            else self._run_inplace(task, tracker)
+        )
         self._write_event(report)
         return report
 
@@ -366,13 +411,16 @@ class Orchestrator:
             return
         _cleanup_worktrees()
 
-    def _run_isolated(self, task: Task) -> dict[str, Any]:
+    def _run_isolated(self, task: Task, tracker: BudgetTracker | None = None) -> dict[str, Any]:
+        tracker = tracker or BudgetTracker(self.budget)
         worktree: Path | None = None
         base: str | None = None
         try:
             worktree, base = _create_worktree(task)
             self.store.set_worktree(task.id, str(worktree), base)
             developer = self.runner.developer(_developer_prompt(task), cwd=worktree)
+            self._account(task.id, developer, tracker)
+            self._guard(tracker)
             self.store.transition(
                 task.id,
                 QA,
@@ -381,6 +429,8 @@ class Orchestrator:
                 evidence=developer.evidence_path,
             )
             qa = self.runner.qa(_qa_prompt(task, developer), cwd=worktree)
+            self._account(task.id, qa, tracker)
+            self._guard(tracker)
             self.store.transition(
                 task.id, REVIEW, session_id=qa.session_id, model=qa.model, evidence=qa.evidence_path
             )
@@ -396,6 +446,7 @@ class Orchestrator:
                 ),
                 cwd=worktree,
             )
+            self._account(task.id, review, tracker)
             verdict = _parse_json(review.result)
             if verdict.get("verdict") != "accept":
                 _remove_worktree(worktree)
@@ -423,8 +474,16 @@ class Orchestrator:
                 "commit": merged,
                 "candidate": candidate,
                 "evidence": completed.evidence if completed else [],
+                "usage": tracker.usage.to_dict(),
                 "review": verdict,
             }
+        except BudgetReached as exc:
+            # A budget stop is a safe boundary between model calls: discard
+            # the candidate, release the task and let the next run retry it.
+            if worktree is not None:
+                _remove_worktree(worktree)
+            self.store.release(task.id, f"BUDGET:{exc.stop.reason}")
+            return exc.stop.to_report(task=task.id)
         except MergeGateError as exc:
             # Dirty main, moved base or a failed fast-forward cannot be fixed
             # by rerunning the task: discard the candidate and block with the
@@ -450,11 +509,14 @@ class Orchestrator:
                 "error": f"{type(exc).__name__}: {exc}",
             }
 
-    def _run_inplace(self, task: Task) -> dict[str, Any]:
+    def _run_inplace(self, task: Task, tracker: BudgetTracker | None = None) -> dict[str, Any]:
+        tracker = tracker or BudgetTracker(self.budget)
         files: list[str] = []
         staged = False
         try:
             developer = self.runner.developer(_developer_prompt(task))
+            self._account(task.id, developer, tracker)
+            self._guard(tracker)
             self.store.transition(
                 task.id,
                 QA,
@@ -463,6 +525,8 @@ class Orchestrator:
                 evidence=developer.evidence_path,
             )
             qa = self.runner.qa(_qa_prompt(task, developer))
+            self._account(task.id, qa, tracker)
+            self._guard(tracker)
             self.store.transition(
                 task.id, REVIEW, session_id=qa.session_id, model=qa.model, evidence=qa.evidence_path
             )
@@ -483,6 +547,7 @@ class Orchestrator:
                     task, developer, qa, _git_diff(files, base=base, candidate=candidate, root=ROOT)
                 )
             )
+            self._account(task.id, review, tracker)
             verdict = _parse_json(review.result)
             if verdict.get("verdict") != "accept":
                 if staged:
@@ -507,8 +572,14 @@ class Orchestrator:
                 "task": task.id,
                 "commit": candidate or "not committed (test)",
                 "evidence": completed.evidence if completed else [],
+                "usage": tracker.usage.to_dict(),
                 "review": verdict,
             }
+        except BudgetReached as exc:
+            if staged:
+                _unstage(files)
+            self.store.release(task.id, f"BUDGET:{exc.stop.reason}")
+            return exc.stop.to_report(task=task.id)
         except Exception as exc:  # noqa: BLE001 - task boundary is fail-closed
             if staged:
                 _unstage(files)
@@ -519,16 +590,45 @@ class Orchestrator:
                 "error": f"{type(exc).__name__}: {exc}",
             }
 
-    def run(self, max_tasks: int, *, propose: bool = True) -> list[dict[str, Any]]:
+    def run(
+        self,
+        max_tasks: int | None = None,
+        *,
+        propose: bool = True,
+        tracker: BudgetTracker | None = None,
+    ) -> list[dict[str, Any]]:
+        tracker = tracker or BudgetTracker(self.budget)
+        requested = self.budget.max_tasks if max_tasks is None else max_tasks
+        cap = self.budget.task_cap(requested)
         reports: list[dict[str, Any]] = []
-        for _ in range(max_tasks):
+        budget_stopped = False
+        for _ in range(cap):
+            stop = tracker.stop()
+            if stop is not None:
+                reports.append(stop.to_report())
+                budget_stopped = True
+                break
             if STOP_FILE.exists():
                 reports.append({"status": "stopped", "reason": "STOP file"})
                 break
-            report = self.run_once(propose=propose)
+            report = self.run_once(propose=propose, tracker=tracker)
             reports.append(report)
             if report["status"] in {"idle", "stopped"}:
+                budget_stopped = budget_stopped or report.get("reason") == "BUDGET"
                 break
+        attempted = [report for report in reports if report.get("task")]
+        if requested > cap and not budget_stopped and len(attempted) >= cap:
+            # The CLI asked for more tasks than the hard cap. Surface the
+            # truncation as a normal budget stop instead of silently running
+            # fewer tasks.
+            reports.append(
+                BudgetStop(
+                    MAX_TASKS,
+                    float(cap),
+                    float(cap),
+                    tracker.usage,
+                ).to_report(requested=requested)
+            )
         return reports
 
     def _write_event(self, value: dict[str, Any]) -> None:
@@ -542,7 +642,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     run = sub.add_parser("run")
-    run.add_argument("--max-tasks", type=int, default=1)
+    run.add_argument(
+        "--max-tasks",
+        type=int,
+        default=None,
+        help="task count; clamped to BA_MAX_TASKS_PER_RUN",
+    )
     run.add_argument("--no-propose", action="store_true")
     sub.add_parser("status")
     sub.add_parser("propose")
@@ -586,7 +691,11 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps([item.to_dict() for item in added], ensure_ascii=False, indent=2))
         return 0
     if args.command == "propose":
-        proposed = orchestrator.propose()
+        try:
+            proposed = orchestrator.propose()
+        except BudgetReached as exc:
+            print(json.dumps(exc.stop.to_report(phase="architect"), ensure_ascii=False, indent=2))
+            return 2
         print(json.dumps([task.to_dict() for task in proposed], ensure_ascii=False, indent=2))
         return 0
     with RUN_LOCK.open("a+") as lock:

@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from autonomy.budget import Usage
+
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE_ROOT = ROOT / ".autonomy" / "evidence"
 ARCHITECT_MODEL = os.environ.get("BA_ARCHITECT_MODEL", "deepseek-v4-pro")
@@ -35,6 +37,12 @@ class RunResult:
     result: str
     evidence_path: str
     duration_seconds: float
+    total_cost_usd: float | None = None
+
+    @property
+    def usage(self) -> Usage:
+        """Actual token and cost usage reported by the model invocation."""
+        return Usage.from_model_usage(self.model_usage, total_cost_usd=self.total_cost_usd)
 
 
 class ClaudeRunner:
@@ -87,6 +95,10 @@ class ClaudeRunner:
         model_usage = payload.get("modelUsage") or {}
         session_id = payload.get("session_id")
         result = payload.get("result") or ""
+        total_cost = payload.get("total_cost_usd")
+        if not isinstance(total_cost, (int, float)) or isinstance(total_cost, bool):
+            total_cost = None
+        usage = Usage.from_model_usage(model_usage, total_cost_usd=total_cost)
         evidence = {
             "role": role,
             "requested_model": model,
@@ -96,6 +108,8 @@ class ClaudeRunner:
             "returncode": completed.returncode,
             "session_id": session_id,
             "modelUsage": model_usage,
+            "usage": usage.to_dict(),
+            "total_cost_usd": total_cost,
             "is_error": payload.get("is_error"),
             "result": result,
             "duration_seconds": duration,
@@ -116,6 +130,7 @@ class ClaudeRunner:
             result=result,
             evidence_path=evidence_path,
             duration_seconds=duration,
+            total_cost_usd=total_cost,
         )
 
     @staticmethod

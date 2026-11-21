@@ -30,6 +30,28 @@ Evidence с фактическими `modelUsage`, `session_id` и diff — в
 использовали Pro, а Developer/QA — Flash. `--dangerously-skip-permissions`
 не используется. Для остановки создайте `.autonomy/STOP`.
 
+### Жёсткие бюджеты запуска
+
+`orchestrator run` ограничен жёсткими лимитами (значения по умолчанию
+указаны в `autonomy/budget.py`); лимиты задаются окружением:
+
+| Переменная | По умолчанию | Что ограничивает |
+| --- | --- | --- |
+| `BA_MAX_TASKS_PER_RUN` | `1` | задач на один запуск |
+| `BA_MAX_RUN_SECONDS` | `3600` | wall-clock запуска, секунды |
+| `BA_MAX_TOKENS` | `5000000` | суммарные токены (input/output/cache) |
+| `BA_MAX_COST_USD` | `5.0` | расчётная стоимость API, USD |
+
+`--max-tasks` не может превысить `BA_MAX_TASKS_PER_RUN`: CLI-запрос
+усекается. Остановка происходит на ближайшей безопасной границе (между
+вызовами модели); в JSON-отчёте появляется
+`{"status": "stopped", "reason": "BUDGET", "budget_reason": ...}`.
+Устойчивые машинные коды: `MAX_TASKS`, `WALL_CLOCK`, `TOKEN_BUDGET`,
+`COST_BUDGET`. Фактические токены и стоимость берутся из `modelUsage`
+(`inputTokens`, `outputTokens`, `cacheReadInputTokens`,
+`cacheCreationInputTokens`, `costUSD`) и сохраняются в evidence, задаче,
+run-записи и общем `state.json`.
+
 ## Почему агент останавливается
 
 Claude Code работает **turn-based**: один ответ — один turn. Внутри turn

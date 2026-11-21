@@ -44,6 +44,43 @@ def _fingerprint(title: str, acceptance: list[str]) -> str:
     return hashlib.sha256(raw).hexdigest()[:24]
 
 
+USAGE_KEYS = (
+    "input_tokens",
+    "output_tokens",
+    "cache_read_tokens",
+    "cache_creation_tokens",
+)
+
+
+def empty_usage() -> dict[str, Any]:
+    return {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 0,
+        "total_tokens": 0,
+        "cost_usd": 0.0,
+    }
+
+
+def merge_usage(base: dict[str, Any] | None, extra: dict[str, Any] | None) -> dict[str, Any]:
+    """Add two usage snapshots without letting persisted values go backwards."""
+    merged = empty_usage()
+    for source in (base or {}, extra or {}):
+        if not isinstance(source, dict):
+            continue
+        for key in USAGE_KEYS:
+            value = source.get(key)
+            if isinstance(value, int) and not isinstance(value, bool):
+                merged[key] += value
+        cost = source.get("cost_usd")
+        if isinstance(cost, (int, float)) and not isinstance(cost, bool):
+            merged["cost_usd"] += float(cost)
+    merged["total_tokens"] = sum(merged[key] for key in USAGE_KEYS)
+    merged["cost_usd"] = round(merged["cost_usd"], 6)
+    return merged
+
+
 @dataclass
 class Task:
     id: str
@@ -63,6 +100,7 @@ class Task:
     base_commit: str | None = None
     candidate_commit: str | None = None
     evidence: list[str] = field(default_factory=list)
+    usage: dict[str, Any] = field(default_factory=empty_usage)
     blocked_reason: str | None = None
     last_error: str | None = None
     fingerprint: str = ""
@@ -95,6 +133,7 @@ class Task:
             "base_commit": self.base_commit,
             "candidate_commit": self.candidate_commit,
             "evidence": self.evidence,
+            "usage": self.usage,
             "blocked_reason": self.blocked_reason,
             "last_error": self.last_error,
             "fingerprint": self.fingerprint,
@@ -109,7 +148,13 @@ class StateStore:
         root.mkdir(parents=True, exist_ok=True)
 
     def _default(self) -> dict[str, Any]:
-        return {"version": 1, "current": None, "tasks": {}, "runs": []}
+        return {
+            "version": 1,
+            "current": None,
+            "tasks": {},
+            "runs": [],
+            "usage": empty_usage(),
+        }
 
     @contextmanager
     def locked(self) -> Iterator[dict[str, Any]]:
@@ -204,6 +249,7 @@ class StateStore:
                     "task_id": task.id,
                     "started_at": _now(),
                     "status": "started",
+                    "usage": empty_usage(),
                 }
             )
             return task
@@ -245,6 +291,54 @@ class StateStore:
                 if run.get("task_id") == task_id and run.get("run_id") == task.run_id:
                     run["status"] = status.lower()
                     run["finished_at"] = _now()
+                    run["usage"] = dict(task.usage)
+                    break
+            return task
+
+    def record_usage(self, task_id: str | None, usage: dict[str, Any]) -> dict[str, Any]:
+        """Persist actual model usage on the task, the run record and globally."""
+        with self.locked() as state:
+            state["usage"] = merge_usage(state.get("usage"), usage)
+            if task_id is not None:
+                value = state["tasks"].get(task_id)
+                if value is not None:
+                    task = Task.from_dict(value)
+                    task.usage = merge_usage(task.usage, usage)
+                    task.updated_at = _now()
+                    state["tasks"][task_id] = task.to_dict()
+                    for run in reversed(state["runs"]):
+                        if run.get("task_id") == task_id and run.get("run_id") == task.run_id:
+                            run["usage"] = merge_usage(run.get("usage"), usage)
+                            break
+            total: dict[str, Any] = state["usage"]
+            return total
+
+    def release(self, task_id: str, reason: str) -> Task | None:
+        """Return a task to READY after a control-plane budget stop.
+
+        A budget stop is not a task failure: the worktree is discarded, the
+        attempt is not counted against ``max_attempts``, and the task remains
+        eligible for the next run.
+        """
+        with self.locked() as state:
+            value = state["tasks"].get(task_id)
+            if value is None:
+                return None
+            task = Task.from_dict(value)
+            task.status = READY
+            task.attempts = max(0, task.attempts - 1)
+            task.worktree = None
+            task.base_commit = None
+            task.candidate_commit = None
+            task.last_error = reason
+            task.updated_at = _now()
+            state["tasks"][task_id] = task.to_dict()
+            state["current"] = None
+            for run in reversed(state["runs"]):
+                if run.get("task_id") == task_id and run.get("run_id") == task.run_id:
+                    run["status"] = "budget_stopped"
+                    run["finished_at"] = _now()
+                    run["reason"] = reason
                     break
             return task
 
