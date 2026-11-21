@@ -447,6 +447,18 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Phase 2 | **AWAITING OWNER DECISION** (idempotency guards, reject, visibility timeout, worker) |
 | Источник | `docs/foundation/R-036_PHASE1_REPORT.md` |
 
+## BA-APPF-002 / DB-001 — tombstone-анонимизация сессий при удалении
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая privacy-доработка approved DB-001; owner chose tombstone |
+| Результат | Все сессии пользователя получают subject_type=deleted + random UUID; created/active aborted + ticket/binding cleared; finished/expired state kept; migration gameplay.0011 |
+| Проверки | 403 passed, 3 skipped; ruff/format/mypy clean; makemigrations/migrate --plan clean; 0011 applied |
+| Статус | **TECHNICALLY ACCEPTED** (agent); first review reject, re-review accept |
+| Review | code-reviewer — **ACCEPT** (after tombstone/lock); security-auditor — **ACCEPT** (after tombstone/lock); blockers/majors нет |
+| Остаток | Retention сессий/результатов APPF-OD-030 не утверждён; строгая гарантия после удаления — за счёт порядка row-lock, без DB-trigger |
+| Источник | `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

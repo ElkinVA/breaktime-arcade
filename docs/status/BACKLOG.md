@@ -1,6 +1,6 @@
 # BACKLOG — Breaktime Arcade
 
-**Дата:** 2026-11-20 (BA-ZIP-PREFLIGHT-001).  
+**Дата:** 2026-11-21 (R-036 Phase 1; BA-APPF-002 / DB-001 session cleanup).
 Единый backlog. Статусы: `IN_PROGRESS`, `READY`, `BLOCKED`,
 `DONE_NOT_ACCEPTED`, `ACCEPTED`. Приоритет: `Blocker`, `Critical`, `Major`,
 `Minor`, `Improvement`.
@@ -43,7 +43,7 @@
 | R-036 | Глобальный `CELERY_TASK_ACKS_LATE`: анализ семантики/идемпотентности, варианты доставки | Major | **PHASE 1 TECHNICALLY ACCEPTED (agent) / PHASE 2 AWAITING OWNER DECISION** | `docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`; Phase 1: observability/docstrings/5 contract tests, 402/3, code/security review accept; Phase 2 (idempotency guards + reject) требует владельца; отчёт `docs/foundation/R-036_PHASE1_REPORT.md` |
 | BA-DEVCONTROL-001 | Telegram Dev Control: статус/задачи/отчёты, запуск/пауза/stop, уведомления, owner-only, hooks | Major | **TECHNICALLY ACCEPTED** (agent); live setup — token/opt-in | Мониторинг/отчёты/задачи/ask/hooks работают; автономный `/continue` выключен по умолчанию и **gated** до sandbox/явного risk acceptance (R-039); sandbox test runner реализован; 31 tests; full 360/3; Telegram API blocked — нужен proxy/VPN + токен + opt-in; отчёт `docs/foundation/BA-DEVCONTROL-001_REPORT.md` |
 | APPF-RETENTION | Таблица сроков хранения и юридические вопросы | Major | **PREPARED / AWAITING OWNER** | `docs/decisions/RETENTION_PROPOSAL.md`; сроки не утверждены |
-| BA-APPF-002 | Реализация App F по BA-APPF-001 | Blocker | **READY (частично)** — DB-001/005/006/007 утверждены, DB-002/003/004/008 делегированы | Result/Leaderboard/Storage можно проектировать; SDK/iframe ждут утверждения BA-SDK/ENV и BA-GAME |
+| BA-APPF-002 | Реализация App F по BA-APPF-001 | Blocker | **PARTIAL / IN_PROGRESS** — DB-001 session tombstone выполнен; DB-005/006/007 остаются; DB-002/003/004/008 делегированы | DB-001: все сессии пользователя tombstoned, open закрыты, 403/3, review accept; Result/Leaderboard/Storage реализованы; SDK/iframe ждут BA-SDK/ENV/BA-GAME |
 | BA-DB-SCHEMA-002 | Исправления DB-001…DB-008 в SQL/моделях | Blocker | **BLOCKED** | Нужны решения владельца по APPF-DEC-035/039/040/041 |
 | BA-PROD-001 | Production compose/Nginx/monitoring/WAL/PITR/S3 | Blocker | **BLOCKED** | Владелец: домены/TLS, хостинг, S3/CDN, backup |
 | BA-DOC-README-001 | Актуализация README/CLAUDE/.claude и AI Dev-статуса | Minor | READY | Требует разрешения на защищённые файлы |

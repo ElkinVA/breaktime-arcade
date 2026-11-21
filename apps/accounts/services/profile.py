@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import timedelta
+from uuid import uuid4
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -112,11 +113,35 @@ def anonymize_user(user: User) -> None:
     UserLegalAcceptance.objects.filter(user=user).delete()
     AccountToken.objects.filter(user=user).delete()
 
-    # DB-001: anonymise results, remove leaderboard rows in the same flow.
-    from apps.gameplay.models import UserGamePlaytime
+    # DB-001: tombstone session identity and close open sessions under row
+    # locks before anonymising results, so a concurrent submit_result cannot
+    # create a fresh result after the result pass has run.
+    from apps.gameplay.models import GameSession, UserGamePlaytime
     from apps.gameplay.services.results import anonymize_user_results
     from apps.gameplay.services.storage import delete_user_storage
     from apps.ratings.services.voting import remove_user_ratings
+
+    open_states = {GameSession.STATE_CREATED, GameSession.STATE_ACTIVE}
+    for session in (
+        GameSession.objects.select_for_update()
+        .filter(
+            subject_type=GameSession.SUBJECT_USER,
+            subject_id=user.id,
+        )
+        .order_by("pk")
+    ):
+        session.subject_type = GameSession.SUBJECT_DELETED
+        session.subject_id = uuid4()
+        update_fields = ["subject_type", "subject_id", "updated_at"]
+        if session.state in open_states:
+            session.state = GameSession.STATE_ABORTED
+            session.ticket_hash = None
+            session.ticket_expires_at = None
+            session.binding_nonce_hash = ""
+            update_fields.extend(
+                ["state", "ticket_hash", "ticket_expires_at", "binding_nonce_hash"]
+            )
+        session.save(update_fields=update_fields)
 
     anonymize_user_results(user)
     delete_user_storage(user)

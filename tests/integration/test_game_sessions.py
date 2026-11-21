@@ -20,9 +20,11 @@ from redis.exceptions import RedisError
 
 from apps.accounts.models import AnonymousIdentity, User
 from apps.accounts.services.anonymous import COOKIE_NAME
+from apps.accounts.services.profile import anonymize_user
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.gameplay.api import throttling
 from apps.gameplay.models import GameSession, UserGamePlaytime
+from apps.gameplay.services.results import submit_result
 from apps.gameplay.services.sessions import SessionError, activate_session, heartbeat
 
 LOCMEM_CACHES = {
@@ -760,6 +762,94 @@ def test_game_with_sessions_is_protected_from_delete() -> None:
     _create(client, csrf, game)
     with pytest.raises(ProtectedError):
         game.delete()
+
+
+@pytest.mark.django_db
+def test_user_deletion_tombstones_sessions_and_keeps_finished_history() -> None:
+    user = User.objects.create_user(
+        login="delete_sessions", password="correct horse battery staple"
+    )
+    game = _game(technical_id="delete_sessions_game")
+    created = GameSession.objects.create(
+        game=game,
+        game_version=game.current_version,
+        subject_type=GameSession.SUBJECT_USER,
+        subject_id=user.id,
+        mode=GameSession.MODE_USER,
+        state=GameSession.STATE_CREATED,
+        ticket_hash="c" * 64,
+        ticket_expires_at=timezone.now() + timedelta(seconds=60),
+        binding_nonce_hash="d" * 64,
+        seed="seed-created",
+    )
+    active = GameSession.objects.create(
+        game=game,
+        game_version=game.current_version,
+        subject_type=GameSession.SUBJECT_USER,
+        subject_id=user.id,
+        mode=GameSession.MODE_USER,
+        state=GameSession.STATE_ACTIVE,
+        seed="seed-active",
+    )
+    finished = GameSession.objects.create(
+        game=game,
+        game_version=game.current_version,
+        subject_type=GameSession.SUBJECT_USER,
+        subject_id=user.id,
+        mode=GameSession.MODE_USER,
+        state=GameSession.STATE_FINISHED,
+        seed="seed-finished",
+    )
+    expired = GameSession.objects.create(
+        game=game,
+        game_version=game.current_version,
+        subject_type=GameSession.SUBJECT_USER,
+        subject_id=user.id,
+        mode=GameSession.MODE_USER,
+        state=GameSession.STATE_EXPIRED,
+        seed="seed-expired",
+    )
+    anon_subject = uuid4()
+    anon = GameSession.objects.create(
+        game=game,
+        game_version=game.current_version,
+        subject_type=GameSession.SUBJECT_ANON,
+        subject_id=anon_subject,
+        mode=GameSession.MODE_GUEST,
+        state=GameSession.STATE_ACTIVE,
+        seed="seed-anon",
+    )
+
+    anonymize_user(user)
+
+    for session in (created, active, finished, expired):
+        session.refresh_from_db()
+        assert session.subject_type == GameSession.SUBJECT_DELETED
+        assert session.subject_id != user.id
+    assert created.state == GameSession.STATE_ABORTED
+    assert created.ticket_hash is None
+    assert created.ticket_expires_at is None
+    assert created.binding_nonce_hash == ""
+    assert active.state == GameSession.STATE_ABORTED
+    assert finished.state == GameSession.STATE_FINISHED
+    assert expired.state == GameSession.STATE_EXPIRED
+    assert (
+        len({created.subject_id, active.subject_id, finished.subject_id, expired.subject_id}) == 4
+    )
+    request = RequestFactory().post("/")
+    request.user = user
+    with pytest.raises(SessionError) as exc:
+        submit_result(
+            request,
+            active.pk,
+            idempotency_key="deleted-session",
+            value=1,
+            duration_ms=1,
+        )
+    assert exc.value.code == "E_OWNERSHIP"
+    anon.refresh_from_db()
+    assert anon.subject_type == GameSession.SUBJECT_ANON
+    assert anon.subject_id == anon_subject
 
 
 @pytest.mark.django_db

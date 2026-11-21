@@ -88,8 +88,10 @@
 
 ### GameSession / GameResult
 
-- `GameSession`: ровно один субъект (`user_id` xor `anon_id`); mode/state
-  CHECK; `ticket_hash`; `credited_ms >= 0`; max 7 200 000 мс.
+- `GameSession`: `subject_type ∈ {user,anon,deleted}` + `subject_id`
+  (DB-001; `deleted` — tombstone при удалении, `subject_id` случайный,
+  связи с users нет); mode/state CHECK; `ticket_hash`; `credited_ms >= 0`;
+  max 7 200 000 мс.
 - `GameResult`: `session_id UNIQUE`; `game_id` добавлен для индексов §2.11.3;
   `UNIQUE(session_id,idempotency_key)`; `is_test`, quarantine, trust level.
 - `LeaderboardEntry`: `UNIQUE(game_id,epoch,user_id)`, indexes по value

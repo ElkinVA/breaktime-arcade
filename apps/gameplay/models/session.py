@@ -40,9 +40,11 @@ class GameSession(models.Model):
 
     SUBJECT_USER = "user"
     SUBJECT_ANON = "anon"
+    SUBJECT_DELETED = "deleted"
     SUBJECT_CHOICES = [
         (SUBJECT_USER, "Пользователь"),
         (SUBJECT_ANON, "Гость"),
+        (SUBJECT_DELETED, "Удалён"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid7, db_default=UUID7(), editable=False)
@@ -95,7 +97,7 @@ class GameSession(models.Model):
                 name="ck_gameplay_session_mode",
             ),
             models.CheckConstraint(
-                condition=models.Q(subject_type__in=["user", "anon"]),
+                condition=models.Q(subject_type__in=["user", "anon", "deleted"]),
                 name="ck_gameplay_session_subject",
             ),
             models.CheckConstraint(

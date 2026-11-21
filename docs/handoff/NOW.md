@@ -2,6 +2,7 @@
 
 **Дата:** 2026-11-21
 **Текущий пакет:** R-036 Phase 1 (delivery observability, non-behavioral),
+BA-APPF-002 / DB-001 (tombstone-анонимизация сессий при удалении),
 BA-QUALITY-002, BA-ZIP-HARDENING-001 (R-035),
 BA-DEVCONTROL-001 (Telegram Dev Control) и BA-ZIP-WORKER-001
 (изолированный extraction worker);
@@ -15,7 +16,9 @@ ACCEPTED** агентом (OD-TECH-001, 2026-11-20); продуктовая пр
 (code-reviewer/security-auditor, deepseek-v4-pro, text-only) — **ACCEPT**;
 остатки R-033/R-035/R-036/R-037 (non-blocking). R-036 Phase 1 —
 **IMPLEMENTED / TECHNICALLY ACCEPTED** (agent; delivery behavior unchanged);
-Phase 2 — **AWAITING OWNER DECISION**.
+Phase 2 — **AWAITING OWNER DECISION**. BA-APPF-002 / DB-001 session
+tombstone — **TECHNICALLY ACCEPTED** (agent; owner chose tombstone);
+review accept; migration 0011.
 
 ## Активная задача
 
@@ -60,6 +63,14 @@ shutdown; только безопасные поля), R-036 docstrings, 5 contr
 Поведение доставки не изменялось. Phase 2 — **AWAITING OWNER DECISION**.
 Отчёт — `docs/foundation/R-036_PHASE1_REPORT.md`.
 
+**BA-APPF-002 / DB-001** — **TECHNICALLY ACCEPTED** (agent, 2026-11-21;
+owner chose tombstone): все сессии пользователя при удалении получают
+`subject_type=deleted` + случайный per-session UUID; created/active
+закрываются и очищают ticket/binding; finished/expired состояния
+сохраняются. Migration `gameplay.0011`; full 403/3; first review reject,
+re-review accept. Отчёт —
+`docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`.
+
 ## Следующий шаг
 
 1. Владелец: `python3 devcontrol/setup_token.py --verify` (или без
@@ -87,10 +98,10 @@ shutdown; только безопасные поля), R-036 docstrings, 5 contr
    DECISION** (`docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`,
    `docs/foundation/R-036_PHASE1_REPORT.md`).
 6. R-037/R-038: retention `zip_uploads`; live Telegram/Dev Control.
-7. Следующий независимый срез — BA-APPF-002 (частично; DB-002/003/004/008
-   делегированы) или другой READY без изменения утверждённых требований;
-   BA-DOC-README-001 требует разрешения на защищённые файлы. Phase 2 R-036
-   не начинать до решения владельца.
+7. BA-APPF-002 / DB-001 session tombstone выполнен. Следующий независимый
+   срез — BA-APPF-002 DB-005/006/007 (approved) или другой READY без
+   изменения утверждённых требований; BA-DOC-README-001 требует разрешения
+   на защищённые файлы. Phase 2 R-036 не начинать до решения владельца.
 8. manifest/catalog/locales — после BA-GAME-2.2; SDK/iframe/host protocol —
    после утверждения BA-SDK-1.1 v1.1.0 и BA-GAME-2.2; EventLog/verifier —
    после схем сообщений.
@@ -120,7 +131,7 @@ shutdown; только безопасные поля), R-036 docstrings, 5 contr
 
 ```text
 pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
-pytest (full)              -> 402 passed, 3 skipped, 1 warning
+pytest (full)              -> 403 passed, 3 skipped, 1 warning
 coverage                   -> 90.88 %, no module < 70 %
 ZIP tests                  -> 54 passed; 2000 files fsync 7.7s
 benchmark 10k              -> GIN search_vector FTS 2.4 ms; full OR 150 ms;
@@ -132,6 +143,9 @@ ruff format --check        -> 371 files already formatted
 mypy                       -> Success: no issues found in 338 source files
 R-036 live                 -> celery.task.received task=crm.backup_status_alert,
                               queue=celery, redelivered=false, retries=0
+DB-001                     -> all user sessions tombstoned; open aborted,
+                              ticket/binding cleared; finished/expired kept;
+                              migration 0011 applied; submit_result -> E_OWNERSHIP
 docker compose config --quiet -> OK
 ./verify_stack.sh          -> СТЕК ЗДОРОВ (zip-worker healthy)
 E2E queue: web uploads -> enqueue_extraction -> zip-worker ->
@@ -188,6 +202,7 @@ host E2E (13 сценариев, после локальной настройк�
 `docs/foundation/BA-QUALITY-002_REPORT.md`,
 `docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`,
 `docs/foundation/R-036_PHASE1_REPORT.md`,
+`docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`,
 `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`,
 `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`,
 `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`,

@@ -858,6 +858,21 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   DECISION**. Поведение доставки не изменялось.
 - **Отчёт:** `docs/foundation/R-036_PHASE1_REPORT.md`.
 
+### BA-APPF-002 / DB-001 — tombstone-анонимизация сессий при удалении
+
+- **ID:** BA-APPF-002 / DB-001 (approved OD-DB-001; owner chose tombstone).
+- **Результат:** `GameSession.SUBJECT_DELETED`; migration `gameplay.0011`
+  расширяет check constraint; `anonymize_user` блокирует все сессии
+  пользователя, ставит `subject_type=deleted` и случайный per-session UUID,
+  created/active закрывает и очищает ticket/binding; finished/expired
+  сохраняют состояние.
+- **Проверки:** full **403 passed, 3 skipped**; ruff/format/mypy clean;
+  migration applied, `makemigrations --check`/`migrate --plan` clean.
+- **Статус:** **TECHNICALLY ACCEPTED** (agent); first review — reject,
+  re-review after tombstone/lock — **ACCEPT** (blockers/majors нет);
+  retention APPF-OD-030 остаётся.
+- **Отчёт:** `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,
@@ -891,6 +906,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/BA-QUALITY-002_REPORT.md`;
 - `docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`;
 - `docs/foundation/R-036_PHASE1_REPORT.md`;
+- `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`;
 - `tests/unit/test_celery_delivery_contract.py`;
 - `tests/integration/test_catalog_public.py`;
 - `tests/integration/test_game_sessions.py`;

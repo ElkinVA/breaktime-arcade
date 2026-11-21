@@ -142,6 +142,12 @@
   5 contract tests; live `celery.task.received`; full 402/3; code/security
   review accept; delivery behavior unchanged. Phase 2 — AWAITING OWNER
   DECISION. Отчёт — `docs/foundation/R-036_PHASE1_REPORT.md`.
+- BA-APPF-002 / DB-001 — **TECHNICALLY ACCEPTED** (agent; owner chose
+  tombstone): все сессии пользователя при удалении получают
+  subject_type=deleted + random per-session UUID; created/active aborted,
+  ticket/binding cleared; finished/expired state kept; migration 0011;
+  403/3; review accept. Отчёт —
+  `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`.
 - Прохождение тестов не является приёмкой; отчёт исполнителя не является
   результатом независимого аудита.
 - Staging не затрагивать без отдельного разрешения. В текущей зоне

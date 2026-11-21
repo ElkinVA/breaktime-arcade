@@ -1,6 +1,6 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-21 (R-036 Phase 1).
+**Дата актуализации:** 2026-11-21 (R-036 Phase 1; DB-001 session tombstone).
 Документ — краткая панель текущего состояния. Нормативные требования
 определяются только утверждёнными ТЗ и решениями владельца; отчёты агентов,
 аудиты и реестры не заменяют приёмку.
@@ -308,6 +308,18 @@ handler). Full — **402 passed, 3 skipped**; ruff/format/mypy clean.
 Phase 2 — **AWAITING OWNER DECISION**; отчёт —
 `docs/foundation/R-036_PHASE1_REPORT.md`.
 
+## 1.17. App F / DB-001 — tombstone-анонимизация сессий при удалении
+
+**BA-APPF-002 / DB-001** (approved OD-DB-001; owner chose tombstone) —
+**TECHNICALLY ACCEPTED** (agent, 2026-11-21); first review found finished-
+session UUID + race; re-review after fix — **ACCEPT**. `GameSession` получает
+`SUBJECT_DELETED`; migration `gameplay.0011`; `anonymize_user` блокирует все
+сессии пользователя, ставит `subject_type=deleted` + случайный per-session
+UUID, created/active закрывает и очищает ticket/binding; finished/expired
+состояния сохраняются. Full — **403 passed, 3 skipped**; ruff/format/mypy
+clean; migration applied/check clean. Остаток — retention APPF-OD-030.
+Отчёт — `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`.
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -350,6 +362,7 @@ Phase 2 — **AWAITING OWNER DECISION**; отчёт —
 | BA-ZIP-HARDENING-001 (R-035) | **TECHNICALLY ACCEPTED** (agent); product — owner | fsync files/dirs, stored/deflate local+central, read/write codes; 54 ZIP tests; full 369/3; 2000 files 7.7s; review accept |
 | BA-QUALITY-002 | **TECHNICALLY ACCEPTED** (agent); product — owner | GIN search_vector подтверждён; trigram/unaccent не обоснован; coverage 90.88 %; 397/3; review accept |
 | R-036 Phase 1 | **TECHNICALLY ACCEPTED** (agent); Phase 2 — owner | Delivery observability/docstrings/contract tests; 402/3; code/security review accept; delivery behavior unchanged; Phase 2 awaiting owner |
+| BA-APPF-002 / DB-001 | **TECHNICALLY ACCEPTED** (agent) | Tombstone all user sessions on deletion; open aborted + ticket/binding cleared; finished/expired history kept; 403/3; review accept; migration 0011 |
 | BA-DEVCONTROL-001 | **TECHNICALLY ACCEPTED** (agent); live setup — token/opt-in | Мониторинг/отчёты/задачи/ask/hooks; sandbox test runner; 31 tests; full 360/3; code/security review accept; Telegram API blocked — нужен proxy/VPN + токен |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
