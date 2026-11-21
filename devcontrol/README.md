@@ -95,6 +95,31 @@ devcontrol/bot.py  ──►  claude --bg | agents --json | logs | stop
    Claude-сессия или не включён `DEVCONTROL_ALLOW_AUTONOMOUS=1`, `/continue`
    вернёт отказ.
 
+## Сеть и Telegram API
+
+Проверьте доступность API из WSL **и** Windows:
+
+```bash
+curl -4 -sS -o /dev/null -w '%{http_code}\n' --connect-timeout 5 https://api.telegram.org/
+```
+
+Если соединение в timeout, API блокируется провайдером/сетью — бот не сможет
+работать без VPN или HTTP/HTTPS-прокси, покрывающего WSL2.
+
+Поддерживается HTTP/HTTPS-прокси:
+
+```bash
+python3 devcontrol/setup_token.py --verify --proxy http://HOST:PORT
+# или в creds/telegram.env:
+TELEGRAM_PROXY=http://HOST:PORT
+```
+
+- SOCKS stdlib не поддерживает; нужен HTTP-порт прокси.
+- Прокси на Windows `127.0.0.1` из WSL2-NAT обычно недоступен; используйте
+  адрес Windows-хоста (default gateway) или mirrored networking.
+- `setup_token.py` без `--verify` сохраняет токен и при недоступной сети;
+  `--verify` теперь тоже сохраняет при сетевой ошибке (но не при 401/403).
+
 ## Команды
 
 `/start` `/help` — справка и меню (inline-кнопки)
@@ -150,7 +175,7 @@ docker compose -f compose.yml -f compose.dev-lite.yml exec -T --user 1000:1000 \
   web python -m mypy devcontrol
 ```
 
-Тесты (28) используют фейковый Telegram transport и фейковый Claude
+Тесты (31) используют фейковый Telegram transport и фейковый Claude
 controller; живой токен для них не нужен. Покрыты owner-auth (message и
 callback), повторный `/continue`, pause/resume, stop-confirm с expiry,
 redaction токенов/секретов, частичный inbox/dedupe, corrupt state, hooks,

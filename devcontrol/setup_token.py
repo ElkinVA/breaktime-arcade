@@ -48,6 +48,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--force", action="store_true", help="overwrite existing file")
     parser.add_argument("--verify", action="store_true", help="call getMe before saving")
     parser.add_argument(
+        "--proxy",
+        default=None,
+        help="HTTP/HTTPS proxy for api.telegram.org, e.g. http://127.0.0.1:7890",
+    )
+    parser.add_argument(
         "--enable-autonomous",
         action="store_true",
         help="explicitly enable autonomous Claude launch (runs as your user)",
@@ -77,18 +82,31 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.verify:
         try:
-            me = TelegramClient(token, timeout=15).get_me()
+            me = TelegramClient(token, timeout=15, proxy=args.proxy).get_me()
         except TelegramError as exc:
-            print(f"getMe failed: {exc}", file=sys.stderr)
-            return 2
-        username = me.get("username") if isinstance(me, dict) else None
-        print(f"Token verified for @{username or 'unknown'}")
+            if exc.status_code in {401, 403}:
+                print(
+                    f"Telegram rejected the token (HTTP {exc.status_code}); "
+                    "credentials were not saved.",
+                    file=sys.stderr,
+                )
+                return 2
+            print(
+                f"getMe unavailable ({exc}); credentials will be saved unverified. "
+                "Fix network/proxy and re-run --verify later.",
+                file=sys.stderr,
+            )
+        else:
+            username = me.get("username") if isinstance(me, dict) else None
+            print(f"Token verified for @{username or 'unknown'}")
 
+    proxy_line = f"TELEGRAM_PROXY={args.proxy}\n" if args.proxy else ""
     text = (
         "# BA Dev Control credentials — keep this file 0600 and out of Git.\n"
         f"TELEGRAM_BOT_TOKEN={token}\n"
         f"TELEGRAM_OWNER_ID={owner_id}\n"
         f"DEVCONTROL_ALLOW_AUTONOMOUS={'1' if args.enable_autonomous else '0'}\n"
+        f"{proxy_line}"
     )
     _write_private(args.creds, text)
     if args.enable_autonomous:

@@ -788,7 +788,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   state/events/inbox в `~/.local/state/ba-devcontrol`; токен в
   `creds/telegram.env` (0600); узкий permissions, hooks Stop/
   PermissionRequest/SessionEnd; systemd unit.
-- **Проверки:** 28 unit tests (fakes) + sandbox runner; full 357/3 skipped; ruff/mypy;
+- **Проверки:** 31 unit tests (fakes) + sandbox runner; full 360/3 skipped; ruff/mypy;
   live `--bg` probe (id/sessionId/state/logs/stop); Stop hook записал
   `turn_done`; sandbox runner real run `test_plural.py` — 7 passed, exit 0,
   no leftovers; code/security review — **ACCEPT**.

@@ -100,7 +100,11 @@ class App:
         self.config = config
         self.paths = RuntimePaths(config.runtime_dir)
         self.store = store or StateStore(self.paths)
-        self.client = client or TelegramClient(config.token, timeout=config.poll_timeout + 15)
+        self.client = client or TelegramClient(
+            config.token,
+            timeout=config.poll_timeout + 15,
+            proxy=config.proxy,
+        )
         self.controller = controller or ClaudeController(
             project_dir=config.project_dir,
             claude_bin=config.claude_bin,

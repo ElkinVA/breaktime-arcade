@@ -56,7 +56,7 @@ Telegram long polling ──► devcontrol/bot.py ──► claude --bg / agents
 | `devcontrol/githooks/pre-push` | pre-push secret-scan |
 | `devcontrol/claude-settings.json` | permissions + hooks для `--settings` |
 | `devcontrol/systemd/`, `install_service.sh` | systemd user service |
-| `tests/unit/test_devcontrol.py` | 28 unit tests (fakes + sandbox helpers) |
+| `tests/unit/test_devcontrol.py` | 31 unit tests (fakes + sandbox helpers + proxy/setup) |
 
 ## 4. Безопасность
 
@@ -93,8 +93,8 @@ Telegram long polling ──► devcontrol/bot.py ──► claude --bg / agents
 ## 5. Проверки
 
 ```text
-pytest tests/unit/test_devcontrol.py -> 28 passed (1 host-only skip in web)
-pytest (full)                        -> 357 passed, 3 skipped, 1 warning
+pytest tests/unit/test_devcontrol.py -> 31 passed (1 host-only skip in web)
+pytest (full)                        -> 360 passed, 3 skipped, 1 warning
 sandbox runner tests/unit/test_plural.py -> 7 passed, exit 0, no leftover containers
 ruff check apps config tests devcontrol -> All checks passed
 ruff format --check                  -> 359 files already formatted
@@ -126,7 +126,11 @@ allow-list прошёл no-tools probe.
   reboot — `/status`, `/resume` (полный UUID).
 - Первый реальный автономный запуск может быть остановлен auto-mode
   classifier; бот сообщит об отказе, владелец должен одобрить permission-конфиг.
-- Нет live Telegram-проверки до ввода токена владельцем.
+- Нет live Telegram-проверки: `api.telegram.org:443` недоступен и из WSL,
+  и из Windows (TCP timeout), локального прокси нет. Добавлена поддержка
+  `TELEGRAM_PROXY` (HTTP/HTTPS); `setup_token.py` сохраняет credentials при
+  сетевой ошибке. Нужен VPN/прокси, покрывающий WSL2, либо запуск на хосте
+  с доступом к Telegram.
 - Sandbox test runner: тестовый код — только в отдельной compose-сети с
   test-only DB/Redis/Mailpit, копией кода без `.env`/certs/creds, без
   egress/docker.sock; `pytest`/`make check/test`/`docker compose exec`

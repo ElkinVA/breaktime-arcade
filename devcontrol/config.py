@@ -76,6 +76,7 @@ class Config:
     max_log_chars: int = 3500
     bot_username: str | None = None
     allow_autonomous: bool = False
+    proxy: str | None = None
 
     @property
     def settings_path(self) -> Path:
@@ -135,4 +136,5 @@ class Config:
             max_log_chars=int(values.get("DEVCONTROL_MAX_LOG_CHARS", "3500")),
             bot_username=values.get("TELEGRAM_BOT_USERNAME"),
             allow_autonomous=allow_raw.strip().lower() in {"1", "true", "yes", "on"},
+            proxy=(os.environ.get("TELEGRAM_PROXY") or values.get("TELEGRAM_PROXY") or None),
         )

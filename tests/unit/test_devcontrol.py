@@ -468,6 +468,72 @@ def test_corrupt_state_recovers(tmp_path: Path) -> None:
     assert store.load_state()["status"] == "RUNNING"
 
 
+def test_telegram_proxy_support() -> None:
+    import urllib.request
+
+    from devcontrol.telegram import TelegramClient
+
+    client = TelegramClient(
+        "12345678:abcdefghijklmnopqrstuvwxyzABCDE",
+        proxy="http://127.0.0.1:7890",
+    )
+    assert any(
+        isinstance(handler, urllib.request.ProxyHandler) for handler in client._opener.handlers
+    )
+    with pytest.raises(ValueError):
+        TelegramClient(
+            "12345678:abcdefghijklmnopqrstuvwxyzABCDE",
+            proxy="socks5://127.0.0.1:1080",
+        )
+
+
+def test_setup_token_saves_on_network_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import devcontrol.setup_token as setup
+
+    fake_token = "12345678:abcdefghijklmnopqrstuvwxyzABCDE"
+
+    class FailingClient:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def get_me(self) -> dict[str, str]:
+            raise setup.TelegramError("network error: unreachable")
+
+    monkeypatch.setattr(setup, "TelegramClient", FailingClient)
+    monkeypatch.setattr(setup.getpass, "getpass", lambda _prompt: fake_token)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "815600407")
+    creds = tmp_path / "telegram.env"
+
+    assert setup.main(["--verify", "--creds", str(creds)]) == 0
+    text = creds.read_text(encoding="utf-8")
+    assert f"TELEGRAM_BOT_TOKEN={fake_token}" in text
+    assert "TELEGRAM_OWNER_ID=815600407" in text
+    assert stat.S_IMODE(creds.stat().st_mode) == 0o600
+
+
+def test_setup_token_rejects_invalid_token(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import devcontrol.setup_token as setup
+
+    fake_token = "12345678:abcdefghijklmnopqrstuvwxyzABCDE"
+
+    class RejectingClient:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def get_me(self) -> dict[str, str]:
+            raise setup.TelegramError("Unauthorized", status_code=401)
+
+    monkeypatch.setattr(setup, "TelegramClient", RejectingClient)
+    monkeypatch.setattr(setup.getpass, "getpass", lambda _prompt: fake_token)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "815600407")
+    creds = tmp_path / "telegram.env"
+
+    assert setup.main(["--verify", "--creds", str(creds)]) == 2
+    assert not creds.exists()
+
+
 def test_settings_reject_git_fetch_and_mypy_injection() -> None:
     settings = json.loads(Path("devcontrol/claude-settings.json").read_text(encoding="utf-8"))
     allow = settings["permissions"]["allow"]

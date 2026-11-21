@@ -36,7 +36,7 @@ cleaner. 22 new tests; full 330 passed, 2 skipped. Отчёт —
 (@breaktime_arcade_dev_bot): owner-only long polling, команды/кнопки,
 одна фоновая сессия через `claude --bg`/`agents --json`/`logs`/`stop`,
 state/events/inbox в `~/.local/state/ba-devcontrol`, узкий permissions,
-hooks Stop/PermissionRequest/SessionEnd. 28 tests; full 357/3 skipped;
+hooks Stop/PermissionRequest/SessionEnd. 31 tests; full 360/3 skipped;
 live `--bg` probe + Stop hook прошли. **BA-DEVCONTROL-002**: sandbox
 test runner (`devcontrol/sandbox/run_tests.py`) — test-only DB/Redis/
 Mailpit, копия без `.env`/certs/creds, internal network, no docker.sock/
@@ -50,9 +50,12 @@ Code/security review — **ACCEPT**. Отчёт —
 
 ## Следующий шаг
 
-1. Владелец: `python3 devcontrol/setup_token.py --verify`, затем
+1. Владелец: `python3 devcontrol/setup_token.py --verify` (или без
+   `--verify`, чтобы сохранить токен при недоступной сети), затем
    `python3 devcontrol/bot.py` или `./devcontrol/install_service.sh`;
-   live `/start`/`/status`. Без токена бот не запускает сессии.
+   live `/start`/`/status`. **Telegram API из WSL и Windows сейчас
+   недоступен (TCP 443 timeout), локального прокси нет** — нужен VPN или
+   HTTP-прокси, покрывающий WSL2; поддержан `TELEGRAM_PROXY` (R-038).
 2. Владелец выбрал **A** (OD-DEVCONTROL-002): sandbox test runner
    реализован; после токена включить opt-in `--enable-autonomous`.
    Остаточный host-user риск не-тестовых действий (git/static/status)
@@ -93,8 +96,9 @@ Code/security review — **ACCEPT**. Отчёт —
 
 ```text
 pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
-pytest (full)              -> 357 passed, 3 skipped, 1 warning
-pytest tests/unit/test_devcontrol.py -> 28 passed (1 host-only skip in web)
+pytest (full)              -> 360 passed, 3 skipped, 1 warning
+pytest tests/unit/test_devcontrol.py -> 31 passed (1 host-only skip in web)
+Telegram API from WSL/Windows: TCP 443 timeout; proxy/VPN required
 ruff check apps config tests -> All checks passed
 ruff format --check        -> 348 files already formatted
 mypy                       -> Success: no issues found in 321 source files

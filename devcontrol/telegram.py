@@ -37,9 +37,16 @@ _SECRET_VALUES = (
 class TelegramError(Exception):
     """Telegram API/network error with a sanitised description."""
 
-    def __init__(self, message: str, *, retry_after: int | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        retry_after: int | None = None,
+        status_code: int | None = None,
+    ) -> None:
         super().__init__(message)
         self.retry_after = retry_after
+        self.status_code = status_code
 
 
 def redact_secrets(text: str) -> str:
@@ -88,12 +95,19 @@ class TelegramClient:
         *,
         base_url: str = "https://api.telegram.org",
         timeout: int = 30,
+        proxy: str | None = None,
     ) -> None:
         if urlparse(base_url).scheme != "https":
             raise ValueError("Telegram base_url must use https")
+        if proxy and urlparse(proxy).scheme not in {"http", "https"}:
+            raise ValueError("Only HTTP/HTTPS proxies are supported")
         self._token = token
         self._base = f"{base_url.rstrip('/')}/bot{token}"
         self._timeout = timeout
+        handlers: list[urllib.request.BaseHandler] = []
+        if proxy:
+            handlers.append(urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
+        self._opener = urllib.request.build_opener(*handlers)
 
     def _sanitize(self, text: str) -> str:
         return sanitize_text(text, self._token)
@@ -112,14 +126,17 @@ class TelegramClient:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
+        status_code: int | None = None
         try:
             # URL built from a validated https base; no user-controlled scheme.
-            with urllib.request.urlopen(  # noqa: S310
+            with self._opener.open(  # noqa: S310
                 request, timeout=timeout or self._timeout
             ) as response:
                 body = response.read().decode("utf-8", "replace")
+                status_code = response.status
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", "replace")
+            status_code = exc.code
         except urllib.error.URLError as exc:
             raise TelegramError(self._sanitize(f"network error: {exc.reason}")) from None
         except TimeoutError:
@@ -137,6 +154,7 @@ class TelegramClient:
             raise TelegramError(
                 self._sanitize(str(description or "telegram API error")),
                 retry_after=retry_after,
+                status_code=status_code,
             )
         return parsed.get("result")
 
