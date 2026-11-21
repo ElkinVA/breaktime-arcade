@@ -61,6 +61,18 @@ def _parse_json(value: str) -> dict[str, Any]:
     try:
         parsed = json.loads(value)
     except json.JSONDecodeError:
+        # A truncated object can be completed by appending the missing
+        # closing brace(es); accept only a complete contract object.
+        if value.startswith("{"):
+            for suffix in ("}", "}}", "]}", "}]}", "}}]"):
+                try:
+                    repaired = json.loads(value + suffix)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(repaired, dict) and any(
+                    key in repaired for key in ("verdict", "status", "tasks")
+                ):
+                    return repaired
         # Agents sometimes prepend prose (and the prose can contain braces,
         # e.g. Django template syntax). Try every `${` start and prefer the
         # outer contract object (verdict/status/tasks), not a nested finding.
