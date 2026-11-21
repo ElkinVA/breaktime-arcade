@@ -4,6 +4,8 @@ import json
 
 from rest_framework import serializers  # type: ignore[import-untyped]
 
+from apps.core.contracts import validate_schema
+
 MAX_EVENT_LOG_BYTES = 2 * 1024 * 1024
 MAX_EVENT_LOG_EVENTS = 20_000
 
@@ -35,4 +37,7 @@ class SessionResultSerializer(serializers.Serializer):
             raise serializers.ValidationError("eventLog has too many events")
         if len(json.dumps(value, separators=(",", ":"), ensure_ascii=False)) > MAX_EVENT_LOG_BYTES:
             raise serializers.ValidationError("eventLog is too large")
+        schema_errors = validate_schema("eventlog.json", value)
+        if schema_errors:
+            raise serializers.ValidationError("eventLog does not match schema")
         return value

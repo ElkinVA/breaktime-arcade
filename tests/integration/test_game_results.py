@@ -453,6 +453,16 @@ def test_eventlog_seed_and_event_kinds_are_validated() -> None:
     assert undeclared.status_code == 400
     assert undeclared.json()["code"] == "E_MESSAGE_INVALID"
 
+    invalid_schema = _result(
+        client,
+        csrf,
+        session_id,
+        key="eventlog-schema",
+        event_log={"seed": session.seed, "events": []},
+    )
+    assert invalid_schema.status_code == 400
+    assert invalid_schema.json()["code"] == "E_INVALID_REQUEST"
+
 
 @pytest.mark.django_db
 @override_settings(CACHES=LOCMEM_CACHES)

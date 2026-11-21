@@ -9,6 +9,16 @@
         status.textContent = text;
     }
 
+    window.addEventListener("message", (event) => {
+        if (event.source !== window.parent) {
+            return;
+        }
+        const data = event.data;
+        if (data?.source === "ba-host" && data.type === "ba:error") {
+            setStatus("host-error", data.payload?.code || "E_INTERNAL");
+        }
+    });
+
     async function main() {
         try {
             const ba = await BreaktimeArcade.init({ timeoutMs: 5000 });
@@ -50,6 +60,20 @@
                 } catch (error) {
                     setStatus("error", `${error.code || "E_INTERNAL"}: ${error.message}`);
                 }
+            });
+
+            document.getElementById("probe-bad").addEventListener("click", () => {
+                parent.postMessage(
+                    {
+                        source: "ba-sdk",
+                        protocol: 1,
+                        type: "ba:storage",
+                        requestId: crypto.randomUUID(),
+                        sessionId: ba.context.sessionId,
+                        payload: { op: "delete", key: "x" },
+                    },
+                    "*",
+                );
             });
 
             document.getElementById("probe-exit").addEventListener("click", () => {

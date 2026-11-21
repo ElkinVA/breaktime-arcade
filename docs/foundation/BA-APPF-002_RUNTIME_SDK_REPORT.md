@@ -34,8 +34,8 @@ indexedDB/top.location/parent.document.
   normalization), `leaderboard.top(10/100)`, `leaderboard.myBest`,
   `storage.get/set/remove`, `newSession`, `exit`, `fail`;
 - ticket в SDK/iframe не передаётся; portal origin pin — `window.BA_PORTAL_ORIGIN` или `meta[name=ba-portal-origin]`;
-- server-side eventLog validation: seed, `v`, events, monotonic `t`, `t <=
-  durationMs+1000`, declared `verification.eventKinds`, raw/gzip limits.
+- server-side eventLog validation: JSON Schema, seed, `v`, events, monotonic
+  `t`, `t <= durationMs+1000`, declared `verification.eventKinds`, raw/gzip limits.
 
 ## 3. Host и player
 
@@ -73,6 +73,7 @@ nginx dev `/v/<vhash>` расширен до 12–64 hex.
 play/SDK targeted -> 7 passed
 pytest (full)     -> 452 passed, 4 skipped, 1 warning
 runtime E2E       -> 2 passed (handshake/storage + bad-portal-origin)
+host negative      -> probe bad-message -> E_MESSAGE_INVALID
 ruff/format/mypy  -> clean
 npm run check:js  -> clean (3 files)
 npm run test:js   -> 4 passed (host bridge negative/rate/replay)

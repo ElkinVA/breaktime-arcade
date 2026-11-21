@@ -62,6 +62,10 @@ def test_probe_handshake_and_storage_relay(page: Page) -> None:
     expect(status).to_have_attribute("data-state", "storage", timeout=10000)
     expect(status).to_contain_text('"n":1')
 
+    frame.locator("#probe-bad").click()
+    expect(status).to_have_attribute("data-state", "host-error", timeout=10000)
+    expect(status).to_contain_text("E_MESSAGE_INVALID")
+
 
 def test_probe_rejects_mismatched_portal_origin(page: Page) -> None:
     page.goto(f"{BASE_URL}/en/games/probe/play/", wait_until="domcontentloaded")
