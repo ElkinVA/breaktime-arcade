@@ -27,6 +27,9 @@ if str(PROJECT_ROOT) not in sys.path:
 from devcontrol.config import default_runtime_dir  # noqa: E402
 
 ALLOWED_ROOTS = (
+    ".claude/agents",
+    ".claude/hooks",
+    ".claude/settings.json",
     "apps",
     "config",
     "devcontrol",

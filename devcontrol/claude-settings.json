@@ -62,6 +62,8 @@
       "Bash(git diff *^*)",
       "Bash(mypy --config-file*)",
       "Bash(mypy --plugins*)",
+      "Bash(pytest*)",
+      "Bash(make test*)",
       "Bash(docker compose down -v*)",
       "Bash(docker compose down --volumes*)",
       "Bash(docker compose config*)",

@@ -601,6 +601,10 @@ def test_sandbox_copy_excludes_secrets(tmp_path: Path) -> None:
     assert ".env.staging" not in files
     assert not any(path.startswith((".git/", "certs/", "creds/")) for path in files)
     assert not any(path.startswith("docs/") for path in files)
+    assert ".claude/settings.json" in files
+    assert any(path.startswith(".claude/agents/") for path in files)
+    assert any(path.startswith(".claude/hooks/") for path in files)
+    assert not any(path.startswith(".claude/settings.local") for path in files)
 
     code = tmp_path / "code"
     code.mkdir()
