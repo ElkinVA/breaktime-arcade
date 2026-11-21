@@ -31,6 +31,10 @@ STATUSES = {READY, RUNNING, QA, REVIEW, COMPLETED, BLOCKED, FAILED}
 PRIORITY_RANK = {"Blocker": 0, "Critical": 1, "Major": 2, "Minor": 3, "Improvement": 4}
 
 
+class StateError(RuntimeError):
+    """Persisted queue is unreadable; never silently replace it with an empty one."""
+
+
 def _now() -> str:
     return datetime.now(UTC).isoformat()
 
@@ -117,10 +121,10 @@ class StateStore:
             return self._default()
         try:
             value = json.loads(self.path.read_text(encoding="utf-8"))
-        except OSError, json.JSONDecodeError:
-            return self._default()
+        except (OSError, json.JSONDecodeError) as exc:
+            raise StateError(f"cannot read {self.path}: {exc}") from exc
         if not isinstance(value, dict) or not isinstance(value.get("tasks"), dict):
-            return self._default()
+            raise StateError(f"invalid queue state shape in {self.path}")
         return value
 
     def _write(self, state: dict[str, Any]) -> None:

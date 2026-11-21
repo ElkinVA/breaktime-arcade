@@ -103,7 +103,7 @@ class ClaudeRunner:
         evidence_path = self._write_evidence(evidence)
         if completed.returncode != 0 or payload.get("is_error"):
             raise RunnerError(f"{role} failed: {result or completed.stderr[-500:]}")
-        if not self._actual_model_matches(role, model_usage):
+        if not self._actual_model_matches(role, model_usage, model):
             raise RunnerError(f"{role} did not use expected model {model}: {model_usage}")
         return RunResult(
             role=role,
@@ -138,11 +138,34 @@ class ClaudeRunner:
         return value
 
     @staticmethod
-    def _actual_model_matches(role: str, model_usage: dict[str, Any]) -> bool:
-        names = set(model_usage)
-        if role in {"architect", "reviewer"}:
-            return any("v4-pro" in name or name == "deepseek-v4-pro" for name in names)
-        return any("flash" in name for name in names)
+    def _actual_model_matches(
+        role: str,
+        model_usage: dict[str, Any],
+        requested_model: str | None = None,
+    ) -> bool:
+        if not isinstance(model_usage, dict) or not model_usage:
+            return False
+        expected = "v4-pro" if role in {"architect", "reviewer"} else "flash"
+        candidates = [
+            name
+            for name in model_usage
+            if (requested_model and name == requested_model)
+            or (not requested_model and expected in name)
+            or (requested_model and expected in name)
+        ]
+        for name in candidates:
+            usage = model_usage.get(name)
+            if not isinstance(usage, dict):
+                continue
+            input_tokens = usage.get("inputTokens", 0) or 0
+            output_tokens = usage.get("outputTokens", 0) or 0
+            if (
+                isinstance(input_tokens, int)
+                and isinstance(output_tokens, int)
+                and input_tokens + output_tokens > 0
+            ):
+                return True
+        return False
 
     @staticmethod
     def _write_evidence(evidence: dict[str, Any]) -> str:

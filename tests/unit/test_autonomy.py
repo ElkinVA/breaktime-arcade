@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from autonomy.orchestrator import Orchestrator
+import pytest
+from autonomy.orchestrator import Orchestrator, _developer_files, _safe_file, _stage_task
 from autonomy.runner import ClaudeRunner, RunResult
 from autonomy.state import (
     BLOCKED,
@@ -11,6 +12,7 @@ from autonomy.state import (
     QA,
     READY,
     RUNNING,
+    StateError,
     StateStore,
     Task,
 )
@@ -48,6 +50,14 @@ def test_queue_dedup_completed_and_recovery(tmp_path: Path) -> None:
     )
     assert store.recover_running() == []
     assert store.get(task.id).status == COMPLETED
+
+
+def test_corrupt_state_fails_closed(tmp_path: Path) -> None:
+    store = StateStore(tmp_path)
+    store.path.write_text("{not json")
+    with pytest.raises(StateError):
+        store.snapshot()
+    assert store.path.read_text() == "{not json"
 
 
 def test_dependency_blocks_claim_until_completed(tmp_path: Path) -> None:
@@ -121,7 +131,11 @@ class FakeRunner:
         return self._result("architect", self.architect_result, "deepseek-v4-pro")
 
     def developer(self, prompt: str) -> RunResult:
-        return self._result("developer", '{"status":"done"}', "deepseek-flash[1m]")
+        return self._result(
+            "developer",
+            '{"status":"done","files":["tests/unit/test_autonomy.py"]}',
+            "deepseek-flash[1m]",
+        )
 
     def qa(self, prompt: str) -> RunResult:
         return self._result("qa", '{"status":"pass"}', "deepseek-flash")
@@ -194,7 +208,10 @@ def test_architect_only_enqueues_autonomy_tasks(tmp_path: Path) -> None:
 
 def test_runner_parses_json_and_role_model() -> None:
     payload = {
-        "modelUsage": {"deepseek-v4-pro": {}, "deepseek-flash": {}},
+        "modelUsage": {
+            "deepseek-v4-pro": {"inputTokens": 1, "outputTokens": 1},
+            "deepseek-flash": {"inputTokens": 1, "outputTokens": 1},
+        },
         "session_id": "s",
         "result": "{}",
     }
@@ -202,3 +219,63 @@ def test_runner_parses_json_and_role_model() -> None:
     assert ClaudeRunner._actual_model_matches("architect", payload["modelUsage"]) is True
     assert ClaudeRunner._actual_model_matches("developer", payload["modelUsage"]) is True
     assert ClaudeRunner._actual_model_matches("developer", {"deepseek-v4-pro": {}}) is False
+    assert ClaudeRunner._actual_model_matches("architect", {"deepseek-v4-pro": {}}) is False
+    assert (
+        ClaudeRunner._actual_model_matches(
+            "architect", {"deepseek-flash": {"inputTokens": 10, "outputTokens": 10}}
+        )
+        is False
+    )
+
+
+def test_safe_file_rejects_protected_and_escaping_paths(tmp_path: Path, monkeypatch) -> None:
+    import autonomy.orchestrator as orchestrator
+
+    monkeypatch.setattr(orchestrator, "ROOT", tmp_path)
+    safe = tmp_path / "tests" / "unit" / "test_x.py"
+    safe.parent.mkdir(parents=True)
+    safe.write_text("x")
+    assert _safe_file("tests/unit/test_x.py") == safe
+    for name in (".env", ".claude/settings.json", "../outside.py", "/etc/hosts"):
+        with pytest.raises(RuntimeError):
+            _safe_file(name)
+
+
+def test_stage_task_rejects_pre_staged_unrelated_changes(monkeypatch) -> None:
+    import autonomy.orchestrator as orchestrator
+
+    calls: list[list[str]] = []
+
+    class Completed:
+        returncode = 0
+        stderr = ""
+        stdout = "tests/unit/other.py\n"
+
+    def fake_run(cmd, **kwargs):
+        calls.append(cmd)
+        return Completed()
+
+    monkeypatch.setattr(orchestrator.subprocess, "run", fake_run)
+    with pytest.raises(RuntimeError, match="unexpected staged"):
+        _stage_task(["tests/unit/test_autonomy.py"])
+    assert calls[0][:3] == ["git", "add", "--"]
+
+
+def test_developer_files_rejects_unsafe_or_empty_reports() -> None:
+    empty = RunResult(
+        role="developer",
+        model="deepseek-flash",
+        agent="autonomy-developer",
+        returncode=0,
+        session_id="s",
+        model_usage={},
+        result='{"status":"done","files":[]}',
+        evidence_path="",
+        duration_seconds=0,
+    )
+    try:
+        _developer_files(empty)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("empty file list must be rejected")

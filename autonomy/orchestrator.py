@@ -48,11 +48,36 @@ def _parse_json(value: str) -> dict[str, Any]:
     return parsed
 
 
-def _git_diff(files: list[str], *, committed: bool) -> str:
+PROTECTED_PARTS = (
+    ".env",
+    "certs/",
+    "creds/",
+    "technical_specification/",
+    "CLAUDE.md",
+    ".git/",
+    ".claude/settings",
+    ".claude/hooks",
+    "docs/spec/",
+    "reports/",
+    "infra/nginx/staging.conf",
+)
+
+
+def _safe_file(name: str) -> Path:
+    path = (ROOT / name).resolve()
+    if not path.is_relative_to(ROOT.resolve()) or not path.is_file():
+        raise RuntimeError(f"developer reported an unsafe or missing path: {name}")
+    normalized = path.relative_to(ROOT.resolve()).as_posix()
+    if normalized == ".env" or normalized.startswith(PROTECTED_PARTS):
+        raise RuntimeError(f"developer reported a protected path: {name}")
+    return path
+
+
+def _git_diff(files: list[str], *, staged: bool) -> str:
     try:
-        if committed:
+        if staged:
             result = subprocess.run(
-                ["git", "show", "--format=", "--patch", "HEAD", "--", *files],
+                ["git", "diff", "--cached", "--", *files],
                 cwd=ROOT,
                 text=True,
                 capture_output=True,
@@ -98,23 +123,41 @@ def _developer_files(developer: RunResult) -> list[str]:
         name = str(value).strip()
         if not name or name.startswith("/") or ".." in name.split("/"):
             continue
+        _safe_file(name)
         files.append(name)
+    if not files:
+        raise RuntimeError("developer reported no safe files; refusing an empty change")
     return files
 
 
-def _commit_task(task: Task, files: list[str]) -> str:
-    if not files:
-        raise RuntimeError("developer reported no files; refusing to accept an empty change")
-    protected = (".env", "certs/", "creds/", "technical_specification/", "CLAUDE.md", ".git/")
-    if any(name.startswith(protected) for name in files):
-        raise RuntimeError("developer reported a protected path")
+def _stage_task(files: list[str]) -> None:
     add = subprocess.run(["git", "add", "--", *files], cwd=ROOT, capture_output=True, text=True)
     if add.returncode != 0:
         raise RuntimeError(f"git add failed: {add.stderr[-500:]}")
+    staged = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"], cwd=ROOT, capture_output=True, text=True
+    )
+    if staged.returncode != 0:
+        raise RuntimeError(f"git diff --cached failed: {staged.stderr[-500:]}")
+    unexpected = set(staged.stdout.splitlines()) - set(files)
+    if unexpected:
+        raise RuntimeError(f"unexpected staged paths: {sorted(unexpected)}")
+
+
+def _unstage(files: list[str]) -> None:
+    subprocess.run(
+        ["git", "restore", "--staged", "--", *files],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+
+
+def _commit_staged(task: Task, files: list[str]) -> str:
     subject = f"autonomy({task.id}): {task.title}"
     body = "Co-Authored-By: Claude Code <noreply@anthropic.com>"
     commit = subprocess.run(
-        ["git", "commit", "-m", subject, "-m", body],
+        ["git", "commit", "--only", "-m", subject, "-m", body, "--", *files],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -168,9 +211,12 @@ def _reviewer_prompt(
         f"Acceptance criteria:\n- " + "\n- ".join(task.acceptance) + "\n"
         f"Developer report:\n{developer.result[:8000]}\n"
         f"QA report:\n{qa.result[:8000]}\n"
-        f"Actual git diff:\n{diff}\n"
-        "Independently review the diff and evidence. Return the strict JSON "
-        "verdict from your instructions."
+        f"Actual git diff (staged candidate; the orchestrator commits only after "
+        f"your accept):\n{diff}\n"
+        "Independently review the staged candidate and evidence. Do not reject "
+        "solely because the commit is created after your verdict; reject if the "
+        "diff is not the reported deliverable or if it is unsafe. Return the strict "
+        "JSON verdict from your instructions."
     )
 
 
@@ -189,8 +235,13 @@ class Orchestrator:
     def propose(self) -> list[Task]:
         result = self.runner.architect(_architect_prompt(self.store))
         parsed = _parse_json(result.result)
+        raw_tasks = parsed.get("tasks", [])
+        if raw_tasks is None:
+            raw_tasks = []
+        if not isinstance(raw_tasks, list):
+            raise ValueError("architect tasks must be a list")
         proposed: list[Task] = []
-        for item in parsed.get("tasks", []):
+        for item in raw_tasks:
             if not isinstance(item, dict):
                 continue
             task_id = str(item.get("id", "")).strip()
@@ -223,15 +274,22 @@ class Orchestrator:
     def run_once(self, *, propose: bool = True) -> dict[str, Any]:
         self.store.recover_running()
         task = self.store.claim_next()
-        if task is None and propose:
-            self.propose()
-            task = self.store.claim_next()
         report: dict[str, Any]
+        if task is None and propose:
+            try:
+                self.propose()
+            except Exception as exc:  # noqa: BLE001 - architect failure is a run error
+                report = {"status": "blocked", "reason": "architect failed", "error": str(exc)}
+                self._write_event(report)
+                return report
+            task = self.store.claim_next()
         if task is None:
             report = {"status": "idle", "reason": "no READY tasks", "completed": []}
             self._write_event(report)
             return report
 
+        files: list[str] = []
+        staged = False
         try:
             developer = self.runner.developer(_developer_prompt(task))
             self.store.transition(
@@ -246,12 +304,17 @@ class Orchestrator:
                 task.id, REVIEW, session_id=qa.session_id, model=qa.model, evidence=qa.evidence_path
             )
             files = _developer_files(developer)
-            commit = _commit_task(task, files) if self.commit else "not committed (test)"
+            if self.commit:
+                _stage_task(files)
+                staged = True
             review = self.runner.reviewer(
-                _reviewer_prompt(task, developer, qa, _git_diff(files, committed=self.commit))
+                _reviewer_prompt(task, developer, qa, _git_diff(files, staged=staged))
             )
             verdict = _parse_json(review.result)
             if verdict.get("verdict") != "accept":
+                if staged:
+                    _unstage(files)
+                    staged = False
                 retried = self.store.retry(task.id, json.dumps(verdict, ensure_ascii=False)[:4000])
                 report = {
                     "status": "retry" if retried and retried.status == READY else "blocked",
@@ -259,6 +322,8 @@ class Orchestrator:
                     "review": verdict,
                 }
             else:
+                commit = _commit_staged(task, files) if self.commit else "not committed (test)"
+                staged = False
                 completed = self.store.transition(
                     task.id,
                     COMPLETED,
@@ -274,6 +339,8 @@ class Orchestrator:
                     "review": verdict,
                 }
         except Exception as exc:  # noqa: BLE001 - task boundary is fail-closed
+            if staged:
+                _unstage(files)
             retried = self.store.retry(task.id, f"{type(exc).__name__}: {exc}")
             report = {
                 "status": "retry" if retried and retried.status == READY else "blocked",
@@ -325,11 +392,14 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(store.snapshot(), ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     if args.command == "recover":
-        print(
-            json.dumps(
-                [task.to_dict() for task in store.recover_running()], ensure_ascii=False, indent=2
-            )
-        )
+        with RUN_LOCK.open("a+") as lock:
+            try:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                print(json.dumps({"status": "locked", "reason": "a run is active"}))
+                return 3
+            recovered = store.recover_running()
+        print(json.dumps([task.to_dict() for task in recovered], ensure_ascii=False, indent=2))
         return 0
     orchestrator = Orchestrator(ClaudeRunner(), store)
     if args.command == "enqueue":
