@@ -45,7 +45,7 @@ from apps.gameplay.services.sessions import (
     create_session,
 )
 from apps.i18n.services.language_registry import get_active_language_codes_safely
-from apps.leaderboards.services.queries import get_leaderboard
+from apps.leaderboards.services.queries import get_leaderboard, get_personal_section
 from apps.ratings.services.aggregates import summary as rating_summary
 
 
@@ -232,6 +232,7 @@ def game_leaderboard(request: HttpRequest, slug: str) -> TemplateResponse:
         raise Http404("leaderboard is not available")
     translation = localized_translation(game, _language(request))
     payload = get_leaderboard(game, limit=10, user=request.user)
+    personal = get_personal_section(game, request.user)
     return TemplateResponse(
         request,
         "catalog/game_leaderboard.html",
@@ -242,6 +243,7 @@ def game_leaderboard(request: HttpRequest, slug: str) -> TemplateResponse:
             "entries": payload["entries"],
             "my_rank": payload["me"]["rank"] if payload["me"] else None,
             "score_direction": payload["direction"],
+            "personal": personal,
         },
     )
 

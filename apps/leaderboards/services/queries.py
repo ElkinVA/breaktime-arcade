@@ -16,7 +16,17 @@ from django.db.models import (
 )
 from django.db.models.functions import Coalesce
 
-from apps.gameplay.models import LeaderboardEntry
+from apps.gameplay.models import GameResult, LeaderboardEntry
+
+PERSONAL_ATTEMPTS_LIMIT = 20
+
+# §2.11.1: for ``leaderboard_only_verified`` games a result is admissible only
+# from ``heuristic_validated`` upwards.
+_ADMISSIBLE_TRUST_LEVELS = (
+    GameResult.TRUST_HEURISTIC_VALIDATED,
+    GameResult.TRUST_REPLAY_VERIFIED,
+    GameResult.TRUST_SERVER_AUTHORITATIVE,
+)
 
 
 def rank_annotation() -> Expression:
@@ -119,3 +129,59 @@ def get_personal_best(game, user) -> dict[str, Any]:
         "achieved_at": entry.achieved_at.isoformat(),
         "rank": rank,
     }
+
+
+def get_personal_attempts(
+    game, user, *, limit: int = PERSONAL_ATTEMPTS_LIMIT
+) -> list[dict[str, Any]]:
+    """Latest admissible own attempts, newest first (§2.11 item 6).
+
+    Admission mirrors §2.11.1: only public, non-quarantined, non-test results
+    of the current epoch; for ``leaderboard_only_verified`` games only results
+    at ``heuristic_validated`` or above are listed.
+    """
+    if user is None or not getattr(user, "is_authenticated", False):
+        return []
+    queryset = GameResult.objects.filter(
+        game=game,
+        epoch=game.leaderboard_epoch,
+        user=user,
+        is_public=True,
+        is_quarantined=False,
+        is_test=False,
+    )
+    if game.leaderboard_only_verified:
+        queryset = queryset.filter(trust_level__in=_ADMISSIBLE_TRUST_LEVELS)
+    return [
+        {
+            "value": result.value,
+            "achieved_at": result.created_at,
+            "trust_level": result.trust_level,
+        }
+        for result in queryset.order_by("-created_at", "-id")[:limit]
+    ]
+
+
+def get_personal_section(
+    game, user, *, limit: int = PERSONAL_ATTEMPTS_LIMIT
+) -> dict[str, Any] | None:
+    """Personal best and latest attempts for the signed-in subject (§2.11 item 6).
+
+    Returns ``None`` for guests so the public leaderboard stays unchanged.
+    """
+    if user is None or not getattr(user, "is_authenticated", False):
+        return None
+    epoch = game.leaderboard_epoch
+    entry = (
+        LeaderboardEntry.objects.filter(game=game, epoch=epoch, user=user, is_public=True)
+        .only("value", "achieved_at", "user_id")
+        .first()
+    )
+    best = None
+    if entry is not None:
+        best = {
+            "value": entry.value,
+            "rank": _rank(game, epoch, entry.value, entry.achieved_at, entry.user_id),
+            "achieved_at": entry.achieved_at,
+        }
+    return {"best": best, "attempts": get_personal_attempts(game, user, limit=limit)}
