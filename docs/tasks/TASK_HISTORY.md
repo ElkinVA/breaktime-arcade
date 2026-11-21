@@ -1008,3 +1008,13 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   five-task package cap enforced.
 - **Остатки:** OS-sandbox gap R-040; live Telegram/VPS systemd not exercised;
   worktree full-check gap documented.
+
+
+### ARCADE-RATING-DETAIL-001 / ARCADE-RATING-LIST-001 — Browser Arcade rating summaries
+
+- **Результат:** публичная карточка игры показывает агрегат рейтинга и count;
+  каталог показывает compact summary без N+1; zero state явный.
+- **Проверки:** полный цикл Flash Developer → Flash QA → Pro Reviewer →
+  commit/merge; full **724 passed, 11 skipped**.
+- **Коммиты:** `63b6137`, `3c58dcb`.
+- **Статус:** **TECHNICALLY ACCEPTED** (agent review); product acceptance owner.

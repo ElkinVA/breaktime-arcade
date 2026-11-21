@@ -649,3 +649,13 @@ Telegram notifier and VPS transfer package. Final gate **720 passed,
 11 skipped**; ruff/format/mypy clean. Technical debt: R-040 (no OS sandbox),
 live Telegram/VPS start not exercised, worktree QA uses sandbox/targeted checks.
 No game/App F features changed. Evidence — `docs/foundation/AI_AUTONOMY_EVIDENCE.md`.
+
+
+## 1.24. Browser Arcade product cycle after AI HQ commissioning
+
+Two real catalog/rating UI tasks were completed through the autonomous cycle:
+`ARCADE-RATING-DETAIL-001` (`63b6137`) and `ARCADE-RATING-LIST-001`
+(`3c58dcb`). Auto-next worked: the second was claimed and completed after the
+first without an owner command. Full gate **724 passed, 11 skipped**.
+AI HQ VPS installation and live Telegram delivery remain owner/network
+blockers; see `docs/foundation/AI_HQ_COMMISSIONING_REPORT.md`.

@@ -58,3 +58,8 @@
 - После пакета обновлять шесть реестров и `PROJECT_STATUS.md`.
 - `verify_stack.sh` — для инфраструктуры/релизных проверок, не для каждой
   бизнес-логики.
+
+
+**Browser Arcade product (2026-11-21):** `ARCADE-RATING-DETAIL-001` and
+`ARCADE-RATING-LIST-001` completed through the autonomous cycle; commits
+`63b6137`, `3c58dcb`; technical review accept; product acceptance owner.
