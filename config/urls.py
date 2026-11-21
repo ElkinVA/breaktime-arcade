@@ -7,13 +7,16 @@ from django.conf.urls.i18n import i18n_patterns
 from django.conf.urls.static import static
 from django.urls import include, path
 
-from apps.core import health
+from apps.core import health, sitemap
 from apps.i18n.views import root_redirect
 
 urlpatterns = [
     # Пробы живучести без языкового префикса
     path("healthz", health.healthz, name="healthz"),
     path("readyz", health.readyz, name="readyz"),
+    # SEO: sitemap-index и robots.txt без языкового префикса (§2.19)
+    path("sitemap.xml", sitemap.sitemap_index, name="sitemap_index"),
+    path("robots.txt", sitemap.robots_txt, name="robots_txt"),
     # Тема
     path("", include("apps.theme.urls")),
     # CRM (без языкового префикса, с защищённым префиксом)
@@ -26,6 +29,8 @@ urlpatterns = [
 
 # Языковые префиксы для публичных страниц
 urlpatterns += i18n_patterns(
+    # SEO: языковая карта сайта /<lang>/sitemap.xml (§2.19)
+    path("sitemap.xml", sitemap.sitemap_language, name="sitemap_language"),
     # Аккаунты и кабинет
     path("auth/", include("apps.accounts.urls", namespace="accounts")),
     path("account/", include("apps.accounts.account_urls", namespace="account")),
