@@ -75,6 +75,7 @@ pytest (full)     -> 452 passed, 4 skipped, 1 warning
 runtime E2E       -> 2 passed (handshake/storage + bad-portal-origin)
 ruff/format/mypy  -> clean
 npm run check:js  -> clean (3 files)
+npm run test:js   -> 4 passed (host bridge negative/rate/replay)
 ```
 
 ## 5. Независимый review

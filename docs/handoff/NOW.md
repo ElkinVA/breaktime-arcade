@@ -102,7 +102,7 @@ Game identity immutable после публикации и DELETE forbidden; Gam
 **BA-APPF-002 / runtime A+B** — **IMPLEMENTED / TECHNICAL REVIEW**:
 `ba-sdk.js`, host protocol, player host, `game_play` server-side
 create+activate, exact runtime origin/full hash, no-store, CSRF relay,
-guest normalization + server-side eventLog validation; 9 added tests; full 452/4; JS syntax clean; runtime E2E 2 passed.
+guest normalization + server-side eventLog validation; 9 added tests; full 452/4; JS syntax clean; runtime E2E 2 passed; JS host tests 4 passed.
 Code/security review — **INCOMPLETE** (diff evidence, JSON-Schema, parentOrigin residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
 
 ## Следующий шаг
