@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import shutil
 import stat
 import sys
 import time
@@ -465,6 +466,98 @@ def test_corrupt_state_recovers(tmp_path: Path) -> None:
     assert store.load_state()["status"] == "IDLE"
     store.update_state(status="RUNNING")
     assert store.load_state()["status"] == "RUNNING"
+
+
+def test_settings_reject_git_fetch_and_mypy_injection() -> None:
+    settings = json.loads(Path("devcontrol/claude-settings.json").read_text(encoding="utf-8"))
+    allow = settings["permissions"]["allow"]
+    deny = settings["permissions"]["deny"]
+    assert "Bash(git fetch origin)" in allow
+    assert "Bash(git push origin main)" in allow
+    assert "Bash(make types)" in allow
+    assert "Bash(git diff)" in allow
+    assert "Bash(git log --oneline)" in allow
+    assert "Bash(git log --stat)" in allow
+    assert not any(rule.startswith("Bash(git fetch*") for rule in allow)
+    assert not any(rule.startswith("Bash(git push origin main*") for rule in allow)
+    assert "Bash(git diff*)" not in allow
+    assert "Bash(git log*)" not in allow
+    assert "Bash(mypy*)" not in allow
+    for rule in (
+        "Bash(git fetch ext::*)",
+        "Bash(git fetch --upload-pack*)",
+        "Bash(git -c *)",
+        "Bash(git log *-p*)",
+        "Bash(git log *--all*)",
+        "Bash(git log *-L*)",
+        "Bash(git log *--format*)",
+        "Bash(git commit *--amend*)",
+        "Bash(git diff *HEAD*)",
+        "Bash(git diff *..*)",
+        "Bash(mypy --config-file*)",
+        "Bash(mypy --plugins*)",
+    ):
+        assert rule in deny
+
+
+def test_claude_env_does_not_leak_telegram_or_db() -> None:
+    from devcontrol.claude import ClaudeController
+
+    controller = ClaudeController(
+        project_dir=Path(),
+        session_name="test",
+        settings_path=Path("devcontrol/claude-settings.json"),
+    )
+    env = controller._env()
+    assert env["GIT_ALLOW_PROTOCOL"] == "ssh,https"
+    assert not any(key.startswith(("TELEGRAM_", "POSTGRES_", "REDIS_")) for key in env)
+
+
+def test_sandbox_path_validation() -> None:
+    from devcontrol.sandbox.run_tests import SandboxError, validate_path
+
+    assert validate_path("tests/unit/test_plural.py") == "tests/unit/test_plural.py"
+    assert validate_path("tests/unit/test_plural.py::test_plural") is not None
+    for bad in ("../apps", "docs/readme.md", "/etc/passwd", "tests/../apps"):
+        with pytest.raises(SandboxError):
+            validate_path(bad)
+
+
+def test_sandbox_copy_excludes_secrets(tmp_path: Path) -> None:
+    if shutil.which("git") is None:
+        pytest.skip("git is required for the host-side sandbox runner")
+    from devcontrol.sandbox.run_tests import copy_project, project_files
+
+    files = [str(path) for path in project_files()]
+    assert any(path.startswith("apps/") for path in files)
+    assert any(path.startswith("tests/") for path in files)
+    assert ".env" not in files
+    assert ".env.staging" not in files
+    assert not any(path.startswith((".git/", "certs/", "creds/")) for path in files)
+    assert not any(path.startswith("docs/") for path in files)
+
+    code = tmp_path / "code"
+    code.mkdir()
+    assert copy_project(code) > 0
+    assert (code / "apps").is_dir()
+    assert (code / "pytest.ini").is_file()
+    assert not (code / ".env").exists()
+    assert not (code / "creds").exists()
+
+
+def test_sandbox_compose_is_isolated(tmp_path: Path) -> None:
+    from devcontrol.sandbox.run_tests import compose_document
+
+    document = compose_document(
+        "ba-sandbox-test", tmp_path / "code", ["pytest", "-q", "tests/unit/test_plural.py"]
+    )
+    assert "internal: true" in document
+    assert "test-only" in document
+    assert "TELEGRAM" not in document
+    assert "read_only: true" in document
+    assert "no-new-privileges:true" in document
+    assert "docker.sock" not in document
+    assert "cap_drop: [ALL]" in document
 
 
 def test_parse_start_reference_and_chunking() -> None:

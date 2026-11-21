@@ -132,6 +132,8 @@ class ClaudeController:
     def _env(self) -> dict[str, str]:
         env = {key: os.environ[key] for key in SAFE_ENV_KEYS if key in os.environ}
         env.setdefault("PATH", f"{Path.home()}/.local/bin:/usr/local/bin:/usr/bin:/bin")
+        # Prevent git ext:: / arbitrary local transports even if a command slips.
+        env["GIT_ALLOW_PROTOCOL"] = "ssh,https"
         return env
 
     def _run(

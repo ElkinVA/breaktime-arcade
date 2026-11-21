@@ -788,14 +788,13 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   state/events/inbox в `~/.local/state/ba-devcontrol`; токен в
   `creds/telegram.env` (0600); узкий permissions, hooks Stop/
   PermissionRequest/SessionEnd; systemd unit.
-- **Проверки:** 23 unit tests (fakes); full 353/2 skipped; ruff/mypy;
+- **Проверки:** 28 unit tests (fakes) + sandbox runner; full 357/3 skipped; ruff/mypy;
   live `--bg` probe (id/sessionId/state/logs/stop); Stop hook записал
-  `turn_done`; широкий allow-list отклонён auto-mode, суженный прошёл
-  no-tools probe.
-- **Статус:** **IMPLEMENTED / PARTIAL — READ-ONLY CONTROL PLANE**:
-  мониторинг/отчёты/задачи/hooks работают; автономный `/continue` выключен и
-  gated до sandbox или явного risk acceptance владельца (R-039); нужен
-  токен/live Telegram.
+  `turn_done`; sandbox runner real run `test_plural.py` — 7 passed, exit 0,
+  no leftovers; code/security review — **ACCEPT**.
+- **Статус:** **TECHNICALLY ACCEPTED** (agent, 2026-11-21); live setup —
+  токен/live Telegram + opt-in `--enable-autonomous`. Автономный `/continue`
+  по умолчанию выключен; тесты — только в sandbox.
 - **Отчёт:** `docs/foundation/BA-DEVCONTROL-001_REPORT.md`.
 
 ## 4. Источники и пробелы

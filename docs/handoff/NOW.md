@@ -36,13 +36,16 @@ cleaner. 22 new tests; full 330 passed, 2 skipped. Отчёт —
 (@breaktime_arcade_dev_bot): owner-only long polling, команды/кнопки,
 одна фоновая сессия через `claude --bg`/`agents --json`/`logs`/`stop`,
 state/events/inbox в `~/.local/state/ba-devcontrol`, узкий permissions,
-hooks Stop/PermissionRequest/SessionEnd. 23 tests; full 353/2 skipped;
-live `--bg` probe + Stop hook прошли. Статус — **IMPLEMENTED / PARTIAL —
-READ-ONLY CONTROL PLANE**: мониторинг/отчёты/задачи/hooks работают; нужен
-токен владельца (setup_token.py) и live Telegram. Автономный `/continue`
-выключен по умолчанию и **gated** до sandbox-тест-раннера или явного risk
-acceptance владельца (R-039: test execution в контейнере с секретами).
-Отчёт — `docs/foundation/BA-DEVCONTROL-001_REPORT.md`, README —
+hooks Stop/PermissionRequest/SessionEnd. 28 tests; full 357/3 skipped;
+live `--bg` probe + Stop hook прошли. **BA-DEVCONTROL-002**: sandbox
+test runner (`devcontrol/sandbox/run_tests.py`) — test-only DB/Redis/
+Mailpit, копия без `.env`/certs/creds, internal network, no docker.sock/
+egress; реальный прогон `tests/unit/test_plural.py` — 7 passed, exit 0,
+без остатков. Статус — **TECHNICALLY ACCEPTED** (agent, 2026-11-21);
+live setup — токен владельца (setup_token.py) и opt-in
+`--enable-autonomous`; автономный `/continue` выключен по умолчанию.
+Code/security review — **ACCEPT**. Отчёт —
+`docs/foundation/BA-DEVCONTROL-001_REPORT.md`, README —
 `devcontrol/README.md`.
 
 ## Следующий шаг
@@ -50,10 +53,10 @@ acceptance владельца (R-039: test execution в контейнере с 
 1. Владелец: `python3 devcontrol/setup_token.py --verify`, затем
    `python3 devcontrol/bot.py` или `./devcontrol/install_service.sh`;
    live `/start`/`/status`. Без токена бот не запускает сессии.
-2. Автономный запуск по умолчанию **выключен**. Нужно решение владельца:
-   (A) sandboxed test runner без секретов/egress — рекомендуемый путь;
-   (B) явно принять host-user/test-execution риск и включить opt-in;
-   (C) оставить read-only control plane. R-038/R-039.
+2. Владелец выбрал **A** (OD-DEVCONTROL-002): sandbox test runner
+   реализован; после токена включить opt-in `--enable-autonomous`.
+   Остаточный host-user риск не-тестовых действий (git/static/status)
+   принимается opt-in; тесты — только в sandbox. R-038/R-039.
 3. Продуктовая приёмка владельцем ZIP PREFLIGHT/EXTRACT/WORKER
    (техническая приёмка агентом уже выполнена, OD-TECH-001).
 4. R-035 hardening/publish: fsync родительского каталога/audit, method
@@ -90,8 +93,8 @@ acceptance владельца (R-039: test execution в контейнере с 
 
 ```text
 pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
-pytest (full)              -> 353 passed, 2 skipped, 1 warning
-pytest tests/unit/test_devcontrol.py -> 23 passed
+pytest (full)              -> 357 passed, 3 skipped, 1 warning
+pytest tests/unit/test_devcontrol.py -> 28 passed (1 host-only skip in web)
 ruff check apps config tests -> All checks passed
 ruff format --check        -> 348 files already formatted
 mypy                       -> Success: no issues found in 321 source files

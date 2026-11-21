@@ -396,9 +396,9 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 |---|---|
 | Тип | Инфраструктурный компонент; не аудит этапа |
 | Результат | Отдельный stdlib-сервис: owner-only Telegram long polling, команды/кнопки, `claude --bg`/agents/logs/stop, state/events/inbox, hooks Stop/PermissionRequest/SessionEnd, systemd unit |
-| Проверки | 23 unit tests; full 353/2 skipped; ruff/mypy; live `--bg` probe (id/sessionId/state/logs/stop); Stop hook `turn_done`; hardened permissions; security review conditions fixed |
-| Статус | **IMPLEMENTED / PARTIAL — READ-ONLY CONTROL PLANE**: мониторинг/отчёты работают; автономный launch gated (R-039); нет live Telegram (токен) |
-| Review | security review: BLOCKER sandbox-escape закрыт opt-in/deny; MAJOR test-execution остаётся → code review **REJECT** для включения автономного режима |
+| Проверки | 28 unit tests; full 357/3 skipped; ruff/mypy; live `--bg` probe; Stop hook `turn_done`; sandbox test runner (real test passed, exit 0, no leftovers); hardened permissions |
+| Статус | **TECHNICALLY ACCEPTED** (agent); live Telegram/token setup pending |
+| Review | code-reviewer — **ACCEPT**; security-auditor — **ACCEPT** после sandbox test runner, env/permissions hardening, git history narrowing; residual R-038/R-039 non-blocking |
 | Источник | `docs/foundation/BA-DEVCONTROL-001_REPORT.md` |
 
 ## Общие ограничения

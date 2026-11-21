@@ -1,12 +1,13 @@
 # BA-DEVCONTROL-001 — Telegram Dev Control
 
 **Дата:** 2026-11-20/21
-**Статус:** **IMPLEMENTED / PARTIAL — READ-ONLY CONTROL PLANE**.
+**Статус:** **TECHNICALLY ACCEPTED** (agent, 2026-11-21); live setup —
+токен + opt-in.
 Мониторинг/отчёты/задачи/inbox/hooks работают; автономный `/continue`
-выключен по умолчанию и **gated** до sandbox-тест-раннера или явного
-принятия риска владельцем (R-039). Code review: **REJECT** для включения
-автономного режима; security review: BLOCKER sandbox-escape закрыт, остался
-test-execution MAJOR.
+включается только после `setup_token.py --enable-autonomous`. Sandbox
+test runner реализован: код агента исполняется только в изолированной
+среде без `.env`/certs/creds, без egress и docker.sock (R-039 снижен).
+Финальный Pro-review после sandbox — ожидается.
 **Исполнитель:** основная сессия / `deepseek-flash[1m]`.
 **Исследование:** `claude-code-guide` (Claude Code 2.1.329) + live probes.
 **Основание:** OD-DEVCONTROL-001; запрос владельца на автономную разработку и
@@ -51,9 +52,11 @@ Telegram long polling ──► devcontrol/bot.py ──► claude --bg / agents
 | `devcontrol/status_cli.py` | события задачи/ревью/блокировки/pending |
 | `devcontrol/setup_token.py` | getpass-ввод токена, `getMe`, 0600 |
 | `devcontrol/hooks/` | Stop / PermissionRequest / SessionEnd |
+| `devcontrol/sandbox/run_tests.py` | изолированный test runner: копия кода без секретов, private test DB/Redis/Mailpit, internal network, no docker.sock |
+| `devcontrol/githooks/pre-push` | pre-push secret-scan |
 | `devcontrol/claude-settings.json` | permissions + hooks для `--settings` |
 | `devcontrol/systemd/`, `install_service.sh` | systemd user service |
-| `tests/unit/test_devcontrol.py` | 14 unit tests (fakes) |
+| `tests/unit/test_devcontrol.py` | 28 unit tests (fakes + sandbox helpers) |
 
 ## 4. Безопасность
 
@@ -90,8 +93,9 @@ Telegram long polling ──► devcontrol/bot.py ──► claude --bg / agents
 ## 5. Проверки
 
 ```text
-pytest tests/unit/test_devcontrol.py -> 23 passed
-pytest (full)                        -> 353 passed, 2 skipped, 1 warning
+pytest tests/unit/test_devcontrol.py -> 28 passed (1 host-only skip in web)
+pytest (full)                        -> 357 passed, 3 skipped, 1 warning
+sandbox runner tests/unit/test_plural.py -> 7 passed, exit 0, no leftover containers
 ruff check apps config tests devcontrol -> All checks passed
 ruff format --check                  -> 359 files already formatted
 mypy (files apps, config, devcontrol) -> Success: 333 source files
@@ -123,9 +127,14 @@ allow-list прошёл no-tools probe.
 - Первый реальный автономный запуск может быть остановлен auto-mode
   classifier; бот сообщит об отказе, владелец должен одобрить permission-конфиг.
 - Нет live Telegram-проверки до ввода токена владельцем.
-- При включённом opt-in автономный агент работает под пользователем и может
-  исполнять код/тесты; при docker-группе это root-эквивалент. Это осознанный
-  выбор владельца; безопаснее отдельный пользователь/контейнер без docker.sock.
+- Sandbox test runner: тестовый код — только в отдельной compose-сети с
+  test-only DB/Redis/Mailpit, копией кода без `.env`/certs/creds, без
+  egress/docker.sock; `pytest`/`make check/test`/`docker compose exec`
+  удалены из allowlist агента.
+- При opt-in процесс агента работает под пользователем (git/static/status);
+  при docker-группе это root-эквивалент для **не-тестовых** действий.
+  Тестовое исполнение изолировано sandbox; безопаснее отдельный
+  пользователь/контейнер без docker.sock.
 
 ## 7. Подключение
 
@@ -139,19 +148,15 @@ allow-list прошёл no-tools probe.
 5. В Telegram `/start`, `/status`; `/continue` — только когда в проекте нет
    другой активной Claude-сессии и включён opt-in.
 
-## 8. Решение владельца (blocks autonomous enable)
+## 8. Решение владельца
 
-Автономный режим не включается без явного решения владельца:
-
-- **A (рекомендуется):** sandboxed test runner — отдельный контейнер без
-  реальных `.env`/certs/creds, без edge-egress и docker.sock; агент
-  запускает тесты только через защищённый runner. После этого
-  `DEVCONTROL_ALLOW_AUTONOMOUS=1` можно включать.
-- **B:** владелец явно принимает host-user/test-execution риск (Claude
-  работает под пользователем; при docker-группе это root-эквивалент) и
-  включает opt-in через `setup_token.py --enable-autonomous`.
-- **C:** оставить Dev Control как read-only control plane (мониторинг,
-  отчёты, задачи, логи, ручной запуск сессии владельцем).
+Владелец выбрал **вариант A — sandbox test runner** (2026-11-21).
+Реализовано: агент исполняет тесты только в изолированной среде без
+реальных секретов/egress/docker.sock; `pytest`/`make test/check`/
+`docker compose exec` удалены из allowlist. Автономный запуск остаётся
+opt-in (`--enable-autonomous`) после ввода токена; host-user риск процесса
+агента (git/static/status) остаётся, но произвольный тестовый код — в
+sandbox.
 
 ## 9. Следующий шаг
 

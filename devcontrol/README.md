@@ -76,10 +76,12 @@ devcontrol/bot.py  ──►  claude --bg | agents --json | logs | stop
    python3 devcontrol/setup_token.py --force --verify --enable-autonomous
    ```
 
-   Claude будет работать **под вашим пользователем**. Если пользователь
-   входит в группу `docker`, это фактически доступ к root хоста; перед
-   включением используйте отдельного пользователя/контейнер без
-   `/var/run/docker.sock` либо примите риск осознанно.
+   Тестовый код агента исполняется только в **sandbox** (test-only
+   DB/Redis/Mailpit, копия кода без `.env`/certs/creds, без egress и
+   docker.sock). Процесс агента (git/static/status) работает **под вашим
+   пользователем**; при docker-группе это root-эквивалент для не-тестовых
+   действий. Безопаснее отдельный пользователь/контейнер без
+   `/var/run/docker.sock`; включайте opt-in осознанно.
 
 5. Для systemd создайте `~/.config/ba/deepseek.env` (0600) с
    `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, model-переменными; Telegram
@@ -148,18 +150,37 @@ docker compose -f compose.yml -f compose.dev-lite.yml exec -T --user 1000:1000 \
   web python -m mypy devcontrol
 ```
 
-Тесты (23) используют фейковый Telegram transport и фейковый Claude
+Тесты (28) используют фейковый Telegram transport и фейковый Claude
 controller; живой токен для них не нужен. Покрыты owner-auth (message и
 callback), повторный `/continue`, pause/resume, stop-confirm с expiry,
-redaction токенов/секретов, частичный inbox/dedupe, corrupt state, hooks.
+redaction токенов/секретов, частичный inbox/dedupe, corrupt state, hooks,
+sandbox path validation/copy/compose. Один host-only sandbox-тест
+пропускается в web-контейнере без git.
+
+## Sandbox test runner
+
+Агент не запускает `pytest`/`make test`/`docker compose exec` напрямую.
+Единственный путь —
+
+```bash
+python3 devcontrol/sandbox/run_tests.py [tests/... | apps/...]
+```
+
+Runner копирует tracked/untracked файлы (кроме `.env`, `certs`, `creds`,
+`docs`, `var`), поднимает private PostgreSQL/Redis/Mailpit во внутренней
+compose-сети, запускает pytest в контейнере с `read_only` rootfs,
+`cap_drop: ALL`, без docker.sock и без внешнего egress, затем удаляет
+временный проект. Реальный прогон `tests/unit/test_plural.py` — 7 passed,
+exit 0, без остатков контейнеров.
 
 ## Ограничения и остатки
 
-- **Главный риск:** при включённом автономном запуске Claude работает под
-  пользователем и может исполнять код/тесты; при docker-группе это
-  эквивалент root хоста. Поэтому запуск выключен по умолчанию; безопасный
-  вариант — отдельный пользователь/контейнер без docker.sock. Владелец
-  принимает риск явно через `--enable-autonomous`.
+- **Главный риск:** при opt-in процесс агента работает под пользователем
+  (git/static/status); при docker-группе это root-эквивалент для
+  не-тестовых действий. Тестовое исполнение изолировано sandbox. Запуск
+  выключен по умолчанию; безопасный вариант — отдельный
+  пользователь/контейнер без docker.sock. Владелец принимает риск явно
+  через `--enable-autonomous`.
 - Нет поддерживаемого mid-turn message injection в `--bg`; используется inbox.
 - `claude logs` — сырой TUI; бот очищает ANSI/шум, но это не structured log.
 - `agents --json` не содержит last-activity; heartbeat бота — отдельный.
