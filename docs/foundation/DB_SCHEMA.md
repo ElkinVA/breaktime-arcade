@@ -76,13 +76,14 @@
 
 - `UNIQUE(game_id, semver)`.
 - `UNIQUE(id, game_id)` — для составных FK.
-- `reject_game_version_update` запрещает UPDATE; immutable.
+- `ba_game_version_immutable` запрещает изменение content/hash; только
+  `created_by_id`/`manual_review_by_id` могут быть обнулены (DB-006).
 - `package_hash`/`runtime_hash` — char(64); `manifest` — JSONB.
 - `supported_languages` — JSONB; `claimed_verification` — CHECK.
 
 ### GameAsset
 
-- `version_id` nullable; составной FK `(version_id,game_id) → 
+- `version_id` nullable; составной FK `(version_id,game_id) →
   catalog_game_version(id,game_id)` гарантирует принадлежность версии игре.
 - `type` — cover/screenshot; `alt` — JSONB per language.
 

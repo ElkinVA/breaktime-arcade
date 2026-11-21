@@ -1,6 +1,6 @@
 # CONTEXT_RECOVERY — Breaktime Arcade
 
-Краткая инструкция для нового сеанса Claude Code после `/compact` или потери истории чата. Не полагаться на память предыдущей сессии, старые отчёты или сообщения исполнителя как на доказательство.  
+Краткая инструкция для нового сеанса Claude Code после `/compact` или потери истории чата. Не полагаться на память предыдущей сессии, старые отчёты или сообщения исполнителя как на доказательство.
 **Дата актуализации:** 2026-11-20 (BA-ZIP-WORKER-001).
 **Первый документ новой сессии — `NOW.md`; полные реестры — по необходимости.**
 
@@ -148,6 +148,11 @@
   ticket/binding cleared; finished/expired state kept; migration 0011;
   403/3; review accept. Отчёт —
   `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`.
+- BA-APPF-002 / DB-006 — **TECHNICALLY ACCEPTED** (agent): model `save()` +
+  PostgreSQL trigger; GameVersion content/hash/version immutable; audit FKs
+  only unchanged/→NULL; user-deletion SET_NULL; migrations 0006/0007;
+  16 tests; full 419/3; code/security review accept. Отчёт —
+  `docs/foundation/BA-APPF-002_DB006_REPORT.md`.
 - Прохождение тестов не является приёмкой; отчёт исполнителя не является
   результатом независимого аудита.
 - Staging не затрагивать без отдельного разрешения. В текущей зоне

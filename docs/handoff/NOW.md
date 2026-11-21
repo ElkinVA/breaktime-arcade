@@ -3,6 +3,7 @@
 **Дата:** 2026-11-21
 **Текущий пакет:** R-036 Phase 1 (delivery observability, non-behavioral),
 BA-APPF-002 / DB-001 (tombstone-анонимизация сессий при удалении),
+BA-APPF-002 / DB-006 (immutable GameVersion),
 BA-QUALITY-002, BA-ZIP-HARDENING-001 (R-035),
 BA-DEVCONTROL-001 (Telegram Dev Control) и BA-ZIP-WORKER-001
 (изолированный extraction worker);
@@ -18,7 +19,8 @@ ACCEPTED** агентом (OD-TECH-001, 2026-11-20); продуктовая пр
 **IMPLEMENTED / TECHNICALLY ACCEPTED** (agent; delivery behavior unchanged);
 Phase 2 — **AWAITING OWNER DECISION**. BA-APPF-002 / DB-001 session
 tombstone — **TECHNICALLY ACCEPTED** (agent; owner chose tombstone);
-review accept; migration 0011.
+review accept; migration 0011. DB-006 GameVersion immutability —
+**TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT).
 
 ## Активная задача
 
@@ -71,6 +73,13 @@ owner chose tombstone): все сессии пользователя при уд
 re-review accept. Отчёт —
 `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`.
 
+**BA-APPF-002 / DB-006** — **TECHNICALLY ACCEPTED** (agent; code/security
+review ACCEPT): model `save()` guard + PostgreSQL trigger защищают content/
+hash/version; `created_by`/`manual_review_by` только unchanged/→NULL;
+`ON DELETE SET NULL` проходит. Migrations `catalog.0006`/`0007`; 16 tests;
+full 419/3. Отчёт —
+`docs/foundation/BA-APPF-002_DB006_REPORT.md`.
+
 ## Следующий шаг
 
 1. Владелец: `python3 devcontrol/setup_token.py --verify` (или без
@@ -98,10 +107,11 @@ re-review accept. Отчёт —
    DECISION** (`docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`,
    `docs/foundation/R-036_PHASE1_REPORT.md`).
 6. R-037/R-038: retention `zip_uploads`; live Telegram/Dev Control.
-7. BA-APPF-002 / DB-001 session tombstone выполнен. Следующий независимый
-   срез — BA-APPF-002 DB-005/006/007 (approved) или другой READY без
-   изменения утверждённых требований; BA-DOC-README-001 требует разрешения
-   на защищённые файлы. Phase 2 R-036 не начинать до решения владельца.
+7. DB-001 и DB-006 выполнены; DB-005/007 остаются в BA-APPF-002. Следующий
+   независимый срез — DB-005 (name length) / DB-007 (mode↔subject) или
+   другой READY без изменения утверждённых требований; BA-DOC-README-001
+   требует разрешения на защищённые файлы. Phase 2 R-036 не начинать до
+   решения владельца.
 8. manifest/catalog/locales — после BA-GAME-2.2; SDK/iframe/host protocol —
    после утверждения BA-SDK-1.1 v1.1.0 и BA-GAME-2.2; EventLog/verifier —
    после схем сообщений.
@@ -131,7 +141,7 @@ re-review accept. Отчёт —
 
 ```text
 pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
-pytest (full)              -> 403 passed, 3 skipped, 1 warning
+pytest (full)              -> 419 passed, 3 skipped, 1 warning
 coverage                   -> 90.88 %, no module < 70 %
 ZIP tests                  -> 54 passed; 2000 files fsync 7.7s
 benchmark 10k              -> GIN search_vector FTS 2.4 ms; full OR 150 ms;
@@ -146,6 +156,8 @@ R-036 live                 -> celery.task.received task=crm.backup_status_alert,
 DB-001                     -> all user sessions tombstoned; open aborted,
                               ticket/binding cleared; finished/expired kept;
                               migration 0011 applied; submit_result -> E_OWNERSHIP
+DB-006                     -> GameVersion trigger+save guard; audit FKs only
+                              →NULL; user.delete SET_NULL; migrations 0006/0007
 docker compose config --quiet -> OK
 ./verify_stack.sh          -> СТЕК ЗДОРОВ (zip-worker healthy)
 E2E queue: web uploads -> enqueue_extraction -> zip-worker ->
@@ -203,6 +215,7 @@ host E2E (13 сценариев, после локальной настройк�
 `docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`,
 `docs/foundation/R-036_PHASE1_REPORT.md`,
 `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`,
+`docs/foundation/BA-APPF-002_DB006_REPORT.md`,
 `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`,
 `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`,
 `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`,

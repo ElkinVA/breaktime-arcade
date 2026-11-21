@@ -1,6 +1,6 @@
 # TASK_HISTORY — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-20 (BA-ZIP-PREFLIGHT-001).  
+**Дата актуализации:** 2026-11-20 (BA-ZIP-PREFLIGHT-001).
 Хронология подтверждённых работ и аудитов. Запись не является приёмкой.
 Точные даты ранних работ в постоянных файлах не зафиксированы; ниже указано
 «дата не зафиксирована», а не выдуманная дата. Статусы: `COMPLETED`,
@@ -873,6 +873,19 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   retention APPF-OD-030 остаётся.
 - **Отчёт:** `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`.
 
+### BA-APPF-002 / DB-006 — immutable GameVersion
+
+- **ID:** BA-APPF-002 / DB-006 (approved OD-DB-006).
+- **Результат:** model `save()` guard + PostgreSQL trigger; content/hash/
+  version immutable; `created_by`/`manual_review_by` только unchanged/→NULL;
+  `ON DELETE SET NULL` проходит. Migrations `catalog.0006`/`0007`; 14 tests.
+- **Проверки:** targeted 16 passed; full **419 passed, 3 skipped**; ruff/
+  format/mypy clean; `makemigrations --check`/`migrate --plan` clean.
+- **Статус:** **TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT);
+  остатки — 0006/0007 intermediate, strict `manual_review_at`, `game`
+  CASCADE/DB-004 вне scope.
+- **Отчёт:** `docs/foundation/BA-APPF-002_DB006_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,
@@ -907,6 +920,8 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`;
 - `docs/foundation/R-036_PHASE1_REPORT.md`;
 - `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`;
+- `docs/foundation/BA-APPF-002_DB006_REPORT.md`;
+- `tests/integration/test_game_version_immutability.py`;
 - `tests/unit/test_celery_delivery_contract.py`;
 - `tests/integration/test_catalog_public.py`;
 - `tests/integration/test_game_sessions.py`;

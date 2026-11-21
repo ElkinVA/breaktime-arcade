@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from typing import Any
+
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.core.fields import UUID7
@@ -44,6 +47,30 @@ class GameVersion(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    IMMUTABLE_FIELDS = (
+        "id",
+        "game_id",
+        "semver",
+        "package_hash",
+        "runtime_hash",
+        "sdk_version",
+        "sdk_contract_version",
+        "size_bytes",
+        "manifest",
+        "entry_path",
+        "critical_path_bytes_declared",
+        "critical_path_bytes_measured",
+        "supported_languages",
+        "claimed_verification",
+        "validation_report",
+        "import_report",
+        "injection_report",
+        "e2e_report",
+        "manual_review_at",
+        "created_at",
+    )
+    AUDIT_FIELDS = ("created_by", "manual_review_by")
+
     class Meta:
         db_table = "catalog_game_version"
         unique_together = [("game", "semver")]
@@ -52,3 +79,42 @@ class GameVersion(models.Model):
 
     def __str__(self) -> str:
         return f"{self.game} v{self.semver}"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Reject ORM changes to content; only audit FKs may be nulled (DB-006)."""
+        if not self._state.adding and self.pk is not None:
+            update_fields = kwargs.get("update_fields")
+            if update_fields is None:
+                fields_to_check = set(self.IMMUTABLE_FIELDS)
+                audit_to_check = set(self.AUDIT_FIELDS)
+            else:
+                names = set(update_fields)
+                fields_to_check = {
+                    field
+                    for field in self.IMMUTABLE_FIELDS
+                    if field in names or (field == "game_id" and "game" in names)
+                }
+                audit_to_check = {field for field in self.AUDIT_FIELDS if field in names}
+            if fields_to_check or audit_to_check:
+                previous = (
+                    type(self)
+                    .objects.filter(pk=self.pk)
+                    .values("created_by_id", "manual_review_by_id", *fields_to_check)
+                    .first()
+                )
+                if previous is not None:
+                    for field in fields_to_check:
+                        if getattr(self, field) != previous[field]:
+                            raise ValidationError(
+                                f"GameVersion.{field} is immutable",
+                                code="game_version_immutable",
+                            )
+                    for field in audit_to_check:
+                        old = previous[f"{field}_id"]
+                        new = getattr(self, f"{field}_id")
+                        if new != old and new is not None:
+                            raise ValidationError(
+                                f"GameVersion.{field} may only be nulled",
+                                code="game_version_audit_immutable",
+                            )
+        super().save(*args, **kwargs)

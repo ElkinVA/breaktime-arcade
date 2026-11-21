@@ -459,6 +459,18 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Остаток | Retention сессий/результатов APPF-OD-030 не утверждён; строгая гарантия после удаления — за счёт порядка row-lock, без DB-trigger |
 | Источник | `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md` |
 
+## BA-APPF-002 / DB-006 — immutable GameVersion
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая integrity-доработка approved DB-006 |
+| Результат | model `save()` guard + PostgreSQL trigger; content/hash/version immutable; audit FKs only unchanged/→NULL; SET_NULL user deletion works |
+| Проверки | 419 passed, 3 skipped; ruff/format/mypy clean; 16 targeted tests; makemigrations/migrate --plan clean; 0006/0007 applied |
+| Статус | **TECHNICALLY ACCEPTED** (agent) |
+| Review | security-auditor — **ACCEPT**; code-reviewer — **ACCEPT** |
+| Остаток | 0006/0007 intermediate; strict `manual_review_at`; `GameVersion.game` CASCADE/DB-004 вне scope |
+| Источник | `docs/foundation/BA-APPF-002_DB006_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

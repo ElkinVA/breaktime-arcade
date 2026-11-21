@@ -320,6 +320,18 @@ UUID, created/active закрывает и очищает ticket/binding; finish
 clean; migration applied/check clean. Остаток — retention APPF-OD-030.
 Отчёт — `docs/foundation/BA-APPF-002_DB001_SESSION_CLEANUP_REPORT.md`.
 
+## 1.18. App F / DB-006 — immutable GameVersion
+
+**BA-APPF-002 / DB-006** (approved OD-DB-006) — **TECHNICALLY ACCEPTED**
+(agent; code/security review — **ACCEPT**). `GameVersion` content/hash/version
+защищены model `save()` guard и PostgreSQL trigger; `created_by`/
+`manual_review_by` только unchanged/→NULL, поэтому `ON DELETE SET NULL` не
+ломает каталог. Migrations `catalog.0006`/`0007`; 16 tests; full
+**419 passed, 3 skipped**; ruff/format/mypy clean; migration checks clean.
+Остатки: 0006/0007 intermediate, strict `manual_review_at`,
+`GameVersion.game` CASCADE/DB-004 вне scope. Отчёт —
+`docs/foundation/BA-APPF-002_DB006_REPORT.md`.
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -363,6 +375,7 @@ clean; migration applied/check clean. Остаток — retention APPF-OD-030.
 | BA-QUALITY-002 | **TECHNICALLY ACCEPTED** (agent); product — owner | GIN search_vector подтверждён; trigram/unaccent не обоснован; coverage 90.88 %; 397/3; review accept |
 | R-036 Phase 1 | **TECHNICALLY ACCEPTED** (agent); Phase 2 — owner | Delivery observability/docstrings/contract tests; 402/3; code/security review accept; delivery behavior unchanged; Phase 2 awaiting owner |
 | BA-APPF-002 / DB-001 | **TECHNICALLY ACCEPTED** (agent) | Tombstone all user sessions on deletion; open aborted + ticket/binding cleared; finished/expired history kept; 403/3; review accept; migration 0011 |
+| BA-APPF-002 / DB-006 | **TECHNICALLY ACCEPTED** (agent) | GameVersion content immutable via model guard + DB trigger; audit FKs only →NULL; 419/3; code/security review accept; migrations 0006/0007 |
 | BA-DEVCONTROL-001 | **TECHNICALLY ACCEPTED** (agent); live setup — token/opt-in | Мониторинг/отчёты/задачи/ask/hooks; sandbox test runner; 31 tests; full 360/3; code/security review accept; Telegram API blocked — нужен proxy/VPN + токен |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 
