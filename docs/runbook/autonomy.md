@@ -30,6 +30,24 @@ Evidence с фактическими `modelUsage`, `session_id` и diff — в
 использовали Pro, а Developer/QA — Flash. `--dangerously-skip-permissions`
 не используется. Для остановки создайте `.autonomy/STOP`.
 
+### Минимальная изоляция model-процессов (AUTONOMY-SECURITY-001)
+
+Все role-вызовы `claude` запускаются с явным allowlist окружения
+(`autonomy/sandbox.py`): передаются только model/provider-переменные,
+процессные basics и не-секретные proxy/TLS настройки. DB, Telegram, AWS,
+Django, Redis, Celery, Docker, CI/VCS и прочие секреты не наследуются;
+proxy-URL с credentials отбрасываются. Architect/Developer/QA/Reviewer
+запускаются только с `cwd` внутри `.autonomy/worktrees/<task>/...`;
+отклоняются main checkout, относительные и выходящие за worktree пути,
+symlink-escape, `.env`/`certs`/`creds`/`secrets`/`.ssh`/`.aws` и socket-файлы.
+
+Это **прикладная**, а не OS-изоляция: дочерний процесс по-прежнему работает
+от host-пользователя и может обратиться к абсолютным путям вне worktree
+через инструменты/shell, не покрытые hooks. Остаточный разрыв зафиксирован
+как технический долг **R-040** в `docs/risks/RISK_REGISTER.md`; до полного
+автономного доверия требуется внешний sandbox (namespace/seccomp/AppArmor,
+отдельный пользователь, скрытый `docker.sock`).
+
 ### Жёсткие бюджеты запуска
 
 `orchestrator run` ограничен жёсткими лимитами (значения по умолчанию

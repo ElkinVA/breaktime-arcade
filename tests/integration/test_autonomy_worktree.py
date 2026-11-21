@@ -89,6 +89,7 @@ class FakeRunner:
         self.before_verdict = before_verdict
         self.calls: list[str] = []
         self.reviewed_head: str | None = None
+        self.architect_cwd: Path | None = None
 
     def _result(self, role: str, result: str, model: str) -> RunResult:
         self.calls.append(role)
@@ -103,6 +104,15 @@ class FakeRunner:
             evidence_path=f"/tmp/{role}.json",
             duration_seconds=0.1,
         )
+
+    def architect(self, prompt: str, cwd: Path | None = None) -> RunResult:
+        del prompt
+        # Assert the cleanup precondition while the worktree still exists.
+        assert cwd is not None
+        assert cwd.is_dir()
+        assert (cwd / ".git").is_file()
+        self.architect_cwd = cwd
+        return self._result("architect", '{"tasks": []}', "deepseek-v4-pro")
 
     def developer(self, prompt: str, cwd: Path | None = None) -> RunResult:
         assert cwd is not None
@@ -301,3 +311,20 @@ def test_recovery_removes_orphan_worktrees_and_resumes_without_duplicates(
     assert runner.calls.count("developer") == 1
     assert store.get(TASK_ID).status == COMPLETED  # type: ignore[union-attr]
     assert _git(root, "rev-parse", "HEAD") == report["commit"]
+
+
+def test_propose_runs_architect_in_disposable_worktree_and_cleans_up(
+    git_repo: tuple[Path, Path, Path],
+) -> None:
+    root, worktrees, state_dir = git_repo
+    store = StateStore(state_dir)
+    runner = FakeRunner()
+
+    added = Orchestrator(runner, store, worktrees=True).propose()
+
+    assert added == []
+    # The Architect callback asserted cwd/.git while the worktree existed.
+    assert runner.architect_cwd is not None
+    assert not runner.architect_cwd.exists()
+    assert not any(worktrees.iterdir())
+    assert _git(root, "status", "--porcelain", "--untracked-files=no") == ""

@@ -12,6 +12,11 @@ from pathlib import Path
 from typing import Any
 
 from autonomy.budget import Usage
+from autonomy.sandbox import (
+    SandboxError,
+    build_child_env,
+    validate_worktree_cwd,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE_ROOT = ROOT / ".autonomy" / "evidence"
@@ -46,10 +51,34 @@ class RunResult:
 
 
 class ClaudeRunner:
-    def __init__(self, root: Path = ROOT, timeout: int = DEFAULT_TIMEOUT) -> None:
-        self.root = root
+    def __init__(
+        self,
+        root: Path = ROOT,
+        timeout: int = DEFAULT_TIMEOUT,
+        *,
+        worktree_root: Path | None = None,
+    ) -> None:
+        self.root = Path(root).resolve()
         self.timeout = timeout
+        self.worktree_root = (
+            Path(worktree_root).resolve()
+            if worktree_root is not None
+            else self.root / ".autonomy" / "worktrees"
+        )
         EVIDENCE_ROOT.mkdir(parents=True, exist_ok=True)
+
+    def _worktree_cwd(self, role: str, cwd: Path | None) -> Path:
+        """Require a validated isolated worktree for a model role."""
+        if cwd is None:
+            raise RunnerError(f"{role} must run inside an isolated task worktree")
+        try:
+            return validate_worktree_cwd(
+                cwd,
+                project_root=self.root,
+                worktree_root=self.worktree_root,
+            )
+        except SandboxError as exc:
+            raise RunnerError(f"{role} rejected unsafe cwd: {exc}") from None
 
     def run(
         self,
@@ -79,6 +108,7 @@ class ClaudeRunner:
             prompt,
         ]
         started = time.monotonic()
+        child_env = build_child_env()
         try:
             completed = subprocess.run(  # noqa: S603 - fixed argv, no shell
                 command,
@@ -87,6 +117,7 @@ class ClaudeRunner:
                 capture_output=True,
                 timeout=timeout or self.timeout,
                 check=False,
+                env=child_env,
             )
         except subprocess.TimeoutExpired as exc:
             raise RunnerError(f"{role} timed out after {timeout or self.timeout}s") from exc
@@ -200,7 +231,7 @@ class ClaudeRunner:
             prompt=prompt,
             allowed_tools=["Read", "Grep", "Glob"],
             permission_mode="plan",
-            cwd=cwd,
+            cwd=self._worktree_cwd("architect", cwd),
         )
 
     def developer(self, prompt: str, cwd: Path | None = None) -> RunResult:
@@ -223,7 +254,7 @@ class ClaudeRunner:
                 "Bash(git diff:*)",
             ],
             permission_mode="acceptEdits",
-            cwd=cwd,
+            cwd=self._worktree_cwd("developer", cwd),
         )
 
     def qa(self, prompt: str, cwd: Path | None = None) -> RunResult:
@@ -243,7 +274,7 @@ class ClaudeRunner:
                 "Bash(git diff:*)",
             ],
             permission_mode="acceptEdits",
-            cwd=cwd,
+            cwd=self._worktree_cwd("qa", cwd),
         )
 
     def reviewer(self, prompt: str, cwd: Path | None = None) -> RunResult:
@@ -254,5 +285,5 @@ class ClaudeRunner:
             prompt=prompt,
             allowed_tools=["Read", "Grep", "Glob", "Bash(git diff:*)"],
             permission_mode="plan",
-            cwd=cwd,
+            cwd=self._worktree_cwd("reviewer", cwd),
         )

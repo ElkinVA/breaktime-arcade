@@ -329,7 +329,27 @@ class Orchestrator:
 
     def propose(self, tracker: BudgetTracker | None = None) -> list[Task]:
         tracker = tracker or BudgetTracker(self.budget)
-        result = self.runner.architect(_architect_prompt(self.store))
+        prompt = _architect_prompt(self.store)
+        worktree: Path | None = None
+        try:
+            if self.worktrees:
+                # The read-only Architect runs from a clean, disposable
+                # worktree too: no model process executes in the main checkout.
+                worktree, _base = _create_worktree(
+                    Task(
+                        id="AUTONOMY-ARCHITECT",
+                        title="Read-only architecture planning",
+                        priority="Minor",
+                        acceptance=["planning runs in a disposable worktree"],
+                    )
+                )
+                result = self.runner.architect(prompt, cwd=worktree)
+            else:
+                # Test/legacy mode keeps the original prompt-only signature.
+                result = self.runner.architect(prompt)
+        finally:
+            if worktree is not None:
+                _remove_worktree(worktree)
         self._account(None, result, tracker)
         self._guard(tracker)
         parsed = _parse_json(result.result)
