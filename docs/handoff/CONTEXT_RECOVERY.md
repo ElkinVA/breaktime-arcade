@@ -158,11 +158,15 @@
   user/guest/preview/autotest + deleted tombstone; migrations
   catalog.0008, gameplay.0012; 14 tests; full 433/3. Отчёт —
   `docs/foundation/BA-APPF-002_DB005_DB007_REPORT.md`.
-- BA-APPF-002 / DB-004 + residuals — **IMPLEMENTED / TECHNICAL REVIEW**:
+- BA-APPF-002 / DB-004 + residuals — **TECHNICALLY ACCEPTED** (agent):
   Game identity immutable после публикации + DELETE forbidden;
   GamePlayCredit удаляется при удалении аккаунта; GameSession.mode
-  immutable; migrations catalog.0009/gameplay.0013; 441/3. Отчёт —
+  immutable; migrations catalog.0009/0010/gameplay.0013; 441/3. Отчёт —
   `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
+- BA-APPF-002 runtime A+B — **IMPLEMENTED / TECHNICAL REVIEW**:
+  SDK/host/player/play view, server-side create+activate, exact runtime
+  origin, CSRF relay; full 448/3; E2E/probe и review evidence отсутствуют.
+  Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
 - Прохождение тестов не является приёмкой; отчёт исполнителя не является
   результатом независимого аудита.
 - Staging не затрагивать без отдельного разрешения. В текущей зоне

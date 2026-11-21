@@ -495,6 +495,18 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Остаток | GameDailyStats не пересчитывается; DELETE всех Game запрещён (архив — статус); mode immutable |
 | Источник | `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md` |
 
+## BA-APPF-002 — App F runtime/SDK/player, срез A+B
+
+| Поле | Значение |
+|---|---|
+| Тип | Runtime/SDK/iframe/player implementation |
+| Результат | official SDK, host protocol, player host, play view server-side activation, exact runtime origin/full hash, CSRF relay, guest normalization |
+| Проверки | 448 passed, 3 skipped; 3 play tests + 4 static SDK checks; ruff/format/mypy clean; node --check clean |
+| Статус | **IMPLEMENTED / TECHNICAL REVIEW**; BA-SDK-1.1 submitted not approved |
+| Review | code-reviewer — INCOMPLETE; security-auditor — INCOMPLETE (E2E/probe, diff evidence, parentOrigin residual) |
+| Остаток | probe/E2E, JS schema validation, snake/camel API adapter, retry policy, staging/prod origin |
+| Источник | `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

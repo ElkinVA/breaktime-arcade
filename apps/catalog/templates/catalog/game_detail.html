@@ -21,8 +21,12 @@
         <div><dt class="text-muted">Default language</dt><dd>{{ game.default_language }}</dd></div>
         <div><dt class="text-muted">Published</dt><dd>{{ game.published_at|date:"Y-m-d"|default:"—" }}</dd></div>
     </dl>
-    <span class="btn px-6 py-2 text-muted" title="Game runtime is implemented in App F">
-        Play — runtime pending
-    </span>
+    {% if game.current_version %}
+        <a class="btn px-6 py-2" href="{% url 'catalog:game_play' slug=game.slug %}">Play</a>
+    {% else %}
+        <span class="btn px-6 py-2 text-muted" title="Game has no published version">
+            Play — unavailable
+        </span>
+    {% endif %}
 </section>
 {% endblock %}

@@ -10,7 +10,7 @@ PYU     := $(COMPOSE) exec -T $(AS_USER) web python
 PYTHON  ?= .venv/bin/python
 
 .PHONY: help env certs staging-up staging-down staging-reset staging-status staging-logs backup restore-check assets lock build up down restart ps logs migrate makemigrations \
-        superuser shell psql test test-fresh e2e coverage lint fmt types check dump clean clean-caches precommit-install
+        superuser shell psql test test-fresh e2e js-check coverage lint fmt types check dump clean clean-caches precommit-install
 
 help:
 > @grep -E '^[a-z-]+:' Makefile | sed 's/:.*//' | sort
@@ -71,6 +71,9 @@ test-fresh:
 e2e:
 > BA_E2E=1 BA_E2E_BASE_URL=$${BA_E2E_BASE_URL:-https://portal.test:8443} \
 >   $(PYTHON) -m pytest tests/e2e -m e2e
+
+js-check:
+> npm run check:js
 
 coverage:
 > $(PYU) -m pytest --cov=apps --cov-report=term-missing

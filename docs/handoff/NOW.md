@@ -6,6 +6,7 @@ BA-APPF-002 / DB-001 (tombstone-анонимизация сессий при у�
 BA-APPF-002 / DB-006 (immutable GameVersion),
 BA-APPF-002 / DB-005+007 (name 60, mode↔subject),
 BA-APPF-002 / DB-004 + residuals (Game identity/delete, mode immutable),
+BA-APPF-002 / runtime A+B (SDK, host, player),
 BA-QUALITY-002, BA-ZIP-HARDENING-001 (R-035),
 BA-DEVCONTROL-001 (Telegram Dev Control) и BA-ZIP-WORKER-001
 (изолированный extraction worker);
@@ -25,7 +26,8 @@ review accept; migration 0011. DB-006 GameVersion immutability —
 **TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT).
 DB-005/007 — **TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT).
 DB-004 + residuals — **TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT) (Game identity/delete,
-GamePlayCredit cleanup, mode immutable).
+GamePlayCredit cleanup, mode immutable). Runtime A+B — **IMPLEMENTED /
+TECHNICAL REVIEW** (SDK/host/player/play view; review incomplete).
 
 ## Активная задача
 
@@ -97,6 +99,13 @@ Game identity immutable после публикации и DELETE forbidden; Gam
 `catalog.0009`/`0010`, `gameplay.0013`; 7 tests; full 441/3. Отчёт —
 `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 
+**BA-APPF-002 / runtime A+B** — **IMPLEMENTED / TECHNICAL REVIEW**:
+`ba-sdk.js`, host protocol, player host, `game_play` server-side
+create+activate, exact runtime origin/full hash, no-store, CSRF relay,
+guest normalization; 7 added tests; full 448/3; JS syntax clean.
+Code/security review — **INCOMPLETE** (E2E/probe, diff evidence,
+parentOrigin residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
+
 ## Следующий шаг
 
 1. Владелец: `python3 devcontrol/setup_token.py --verify` (или без
@@ -124,13 +133,13 @@ Game identity immutable после публикации и DELETE forbidden; Gam
    DECISION** (`docs/foundation/R-036_ACKS_LATE_ANALYSIS.md`,
    `docs/foundation/R-036_PHASE1_REPORT.md`).
 6. R-037/R-038: retention `zip_uploads`; live Telegram/Dev Control.
-7. DB-001/004/005/006/007 и residuals выполнены; SDK/iframe/player ждут
-   BA-SDK/ENV/BA-GAME. Следующий независимый срез — другой READY без
-   изменения утверждённых требований; BA-DOC-README-001 требует разрешения
-   на защищённые файлы. Phase 2 R-036 не начинать до решения владельца.
-8. manifest/catalog/locales — после BA-GAME-2.2; SDK/iframe/host protocol —
-   после утверждения BA-SDK-1.1 v1.1.0 и BA-GAME-2.2; EventLog/verifier —
-   после схем сообщений.
+7. DB-001/004/005/006/007 + runtime A+B реализованы. Следующий шаг —
+   probe-игра и Playwright E2E cross-origin handshake, затем повторный
+   code/security review; BA-SDK-1.1/ENV/BA-GAME всё ещё не утверждены.
+   BA-DOC-README-001 требует разрешения на защищённые файлы. Phase 2 R-036
+   не начинать до решения владельца.
+8. manifest/catalog/locales — после BA-GAME-2.2; EventLog/verifier — после
+   схем сообщений.
 
 ## Блокеры продукта
 
@@ -157,7 +166,7 @@ Game identity immutable после публикации и DELETE forbidden; Gam
 
 ```text
 pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
-pytest (full)              -> 441 passed, 3 skipped, 1 warning
+pytest (full)              -> 448 passed, 3 skipped, 1 warning
 coverage                   -> 90.88 %, no module < 70 %
 ZIP tests                  -> 54 passed; 2000 files fsync 7.7s
 benchmark 10k              -> GIN search_vector FTS 2.4 ms; full OR 150 ms;
@@ -178,6 +187,8 @@ DB-005/007                 -> name max 60; mode/subject CHECK incl. deleted
                               tombstone; migrations 0008/0012
 DB-004/residuals           -> Game identity/delete guard; GamePlayCredit
                               cleanup; mode immutable; migrations 0009/0010/0013
+Runtime A+B                -> play view active session + exact runtime URL;
+                              SDK/host/player node --check; review incomplete
 docker compose config --quiet -> OK
 ./verify_stack.sh          -> СТЕК ЗДОРОВ (zip-worker healthy)
 E2E queue: web uploads -> enqueue_extraction -> zip-worker ->

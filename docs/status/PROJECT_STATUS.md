@@ -359,6 +359,17 @@ model guard + migration `gameplay.0013`; DB-001 tombstone не меняет mode
 Full **441 passed, 3 skipped**; ruff/format/mypy clean; migration checks
 clean. Отчёт — `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 
+## 1.21. App F runtime, SDK и player — срез A+B
+
+**IMPLEMENTED / TECHNICAL REVIEW** (контракт BA-SDK-1.1 v1.1.0 submitted,
+не approved). Реализованы `sdk/1.1.0/ba-sdk.js`, host-протокол, player host,
+`game_play` с серверным create+activate (ticket не рендерится), no-store,
+точный runtime origin, full `runtime_hash`, CSRF relay, guest normalization.
+`play.html` использует iframe sandbox; `game_detail` получил Play link.
+Full **448 passed, 3 skipped**; JS `node --check` clean. Независимый review —
+**INCOMPLETE** (нет E2E/probe и diff-evidence; parentOrigin fragment —
+residual). Отчёт — `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -405,6 +416,7 @@ clean. Отчёт — `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 | BA-APPF-002 / DB-006 | **TECHNICALLY ACCEPTED** (agent) | GameVersion content immutable via model guard + DB trigger; audit FKs only →NULL; 419/3; code/security review accept; migrations 0006/0007 |
 | BA-APPF-002 / DB-005/007 | **TECHNICALLY ACCEPTED** (agent) | Public name 60; mode↔subject CHECK incl. deleted tombstone; 433/3; migrations 0008/0012 |
 | BA-APPF-002 / DB-004 + residuals | **TECHNICALLY ACCEPTED** (agent) | Game identity/delete guard; GamePlayCredit cleanup; mode immutable; 441/3; migrations 0009/0010/0013 |
+| BA-APPF-002 / runtime A+B | **IMPLEMENTED / TECHNICAL REVIEW** | SDK, host protocol, player host, play view; 448/3; review incomplete; E2E/probe pending |
 | BA-DEVCONTROL-001 | **TECHNICALLY ACCEPTED** (agent); live setup — token/opt-in | Мониторинг/отчёты/задачи/ask/hooks; sandbox test runner; 31 tests; full 360/3; code/security review accept; Telegram API blocked — нужен proxy/VPN + токен |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 

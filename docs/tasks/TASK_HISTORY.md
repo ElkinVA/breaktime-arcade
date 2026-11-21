@@ -912,6 +912,19 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Статус:** **TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT).
 - **Отчёт:** `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`.
 
+### BA-APPF-002 — App F runtime/SDK/player (срез A+B)
+
+- **ID:** BA-APPF-002 runtime first slice.
+- **Результат:** официальный `sdk/1.1.0/ba-sdk.js`, host-протокол,
+  player host, `game_play` с серверным create+activate, точный runtime
+  origin/full `runtime_hash`, CSRF relay, guest normalization, no-store,
+  Play link. 3 play tests + 4 static SDK checks.
+- **Проверки:** full **448 passed, 3 skipped**; ruff/format/mypy clean;
+  `npm run check:js` clean.
+- **Статус:** **IMPLEMENTED / TECHNICAL REVIEW** (code/security review
+  incomplete: нет E2E/probe и diff evidence; BA-SDK-1.1 не утверждён).
+- **Отчёт:** `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,
@@ -949,6 +962,9 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/BA-APPF-002_DB006_REPORT.md`;
 - `docs/foundation/BA-APPF-002_DB005_DB007_REPORT.md`;
 - `docs/foundation/BA-APPF-002_DB004_RESIDUALS_REPORT.md`;
+- `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`;
+- `tests/integration/test_game_play.py`;
+- `tests/unit/test_sdk_runtime_contract.py`;
 - `tests/integration/test_game_identity_immutability.py`;
 - `tests/integration/test_game_version_immutability.py`;
 - `tests/integration/test_game_session_mode_subject.py`;
