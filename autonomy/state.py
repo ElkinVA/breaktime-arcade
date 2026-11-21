@@ -274,6 +274,25 @@ class StateStore:
             state["tasks"][task_id] = task.to_dict()
             return task
 
+    def requeue(self, task_id: str, *, attempts: int = 0) -> Task | None:
+        """Operator recovery for a blocked task after a control-plane fix."""
+        with self.locked() as state:
+            value = state["tasks"].get(task_id)
+            if value is None:
+                return None
+            task = Task.from_dict(value)
+            task.status = READY
+            task.attempts = attempts
+            task.worktree = None
+            task.base_commit = None
+            task.candidate_commit = None
+            task.blocked_reason = None
+            task.last_error = None
+            task.updated_at = _now()
+            state["tasks"][task_id] = task.to_dict()
+            state["current"] = None
+            return task
+
     def retry(self, task_id: str, reason: str) -> Task | None:
         with self.locked() as state:
             value = state["tasks"].get(task_id)

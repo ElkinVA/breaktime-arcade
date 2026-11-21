@@ -217,9 +217,11 @@ def _developer_prompt(task: Task) -> str:
     return (
         f"Task ID: {task.id}\nTitle: {task.title}\n"
         f"Acceptance criteria:\n- " + "\n- ".join(task.acceptance) + "\n"
-        "Implement exactly this task in the isolated worktree. Do not change game "
-        "features. Run relevant checks and return the strict JSON report from your "
-        "instructions."
+        "Implement exactly this task in the isolated worktree. The worktree has no "
+        ".env: do not run make test/check there. Use "
+        "`python3 devcontrol/sandbox/run_tests.py ...` for tests and "
+        "/home/elkinva/projects/ba/.venv/bin/python -m ruff/mypy for lint. Do not "
+        "change game features. Return the strict JSON report from your instructions."
     )
 
 
@@ -228,7 +230,10 @@ def _qa_prompt(task: Task, developer: RunResult) -> str:
         f"Task ID: {task.id}\nTitle: {task.title}\n"
         f"Acceptance criteria:\n- " + "\n- ".join(task.acceptance) + "\n"
         f"Developer report:\n{developer.result[:8000]}\n"
-        "Run the real checks in this worktree and return the strict JSON QA report."
+        "The worktree has no .env: do not run make test/check there. Run tests via "
+        "`python3 devcontrol/sandbox/run_tests.py ...`; run targeted pytest with "
+        "/home/elkinva/projects/ba/.venv/bin/python when the sandbox would skip "
+        "git-dependent tests. Return the strict JSON QA report."
     )
 
 
