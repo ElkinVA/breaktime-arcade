@@ -1,8 +1,9 @@
 # NOW — Breaktime Arcade
 
 **Дата:** 2026-11-20
-**Текущий пакет:** BA-DEVCONTROL-001 (Telegram Dev Control) и
-BA-ZIP-WORKER-001 (изолированный extraction worker);
+**Текущий пакет:** BA-ZIP-HARDENING-001 (R-035),
+BA-DEVCONTROL-001 (Telegram Dev Control) и BA-ZIP-WORKER-001
+(изолированный extraction worker);
 App F server slices: SESSION-002, RESULT-001, LEADERBOARD-001, STORAGE-001,
 PLAYTIME-001, RATINGS-001, POPULARITY-001; ZIP: PREFLIGHT-001, EXTRACT-001,
 WORKER-001
@@ -62,8 +63,10 @@ Code/security review — **ACCEPT**. Отчёт —
    принимается opt-in; тесты — только в sandbox. R-038/R-039.
 3. Продуктовая приёмка владельцем ZIP PREFLIGHT/EXTRACT/WORKER
    (техническая приёмка агентом уже выполнена, OD-TECH-001).
-4. R-035 hardening/publish: fsync родительского каталога/audit, method
-   allowlist, раздельные коды чтения/записи.
+4. R-035 — **TECHNICALLY ACCEPTED** (agent): fsync файлов/staging/
+   destination, method allowlist stored/deflate (central+local), read/write
+   коды; code/security review accept; отчёт
+   `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`.
 5. R-036: pre-existing глобальный `CELERY_TASK_ACKS_LATE=True` — отдельное
    решение владельца/аудит идемпотентности default-очереди.
 6. R-037/R-038: retention `zip_uploads`; live Telegram/Dev Control.
@@ -96,7 +99,8 @@ Code/security review — **ACCEPT**. Отчёт —
 
 ```text
 pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
-pytest (full)              -> 360 passed, 3 skipped, 1 warning
+pytest (full)              -> 369 passed, 3 skipped, 1 warning
+ZIP tests (preflight+extract+worker) -> 54 passed; 2000 files fsync 7.7s
 pytest tests/unit/test_devcontrol.py -> 31 passed (1 host-only skip in web)
 Telegram API from WSL/Windows: TCP 443 timeout; proxy/VPN required
 ruff check apps config tests -> All checks passed
@@ -153,6 +157,7 @@ host E2E (13 сценариев, после локальной настройк�
 `docs/tasks/BA-ZIP-WORKER-001_PLAN.md`,
 `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`,
 `docs/foundation/BA-DEVCONTROL-001_REPORT.md`, `devcontrol/README.md`,
+`docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`,
 `docs/foundation/BA-ZIP-PREFLIGHT-001_REPORT.md`,
 `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`,
 `docs/tasks/APPF-SESSION-002_PLAN.md`,

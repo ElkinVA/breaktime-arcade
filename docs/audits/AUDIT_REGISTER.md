@@ -401,6 +401,18 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Review | code-reviewer — **ACCEPT**; security-auditor — **ACCEPT** после sandbox test runner, env/permissions hardening, git history narrowing; residual R-038/R-039 non-blocking |
 | Источник | `docs/foundation/BA-DEVCONTROL-001_REPORT.md` |
 
+## BA-ZIP-HARDENING-001 (R-035) — durability/error taxonomy
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая hardening-работа; не аудит этапа |
+| Результат | Method allowlist stored/deflate; fsync файлов + staging/destination dirs; fsync COMPLETED/ATTEMPTS/audit; read `X_ARCHIVE_BAD` / write `X_IO` |
+| Проверки | 54 ZIP tests; full 369/3 skipped; ruff/mypy; benchmark 2000 files 7.7s |
+| Статус | **TECHNICALLY ACCEPTED** (agent); product — owner |
+| Review | code-reviewer — **ACCEPT**; security-auditor — **ACCEPT** (local method validation, CRC/truncation split, preflight allowlist, benchmark) |
+| Остаток | Directory fsync best-effort; close OSError edge; per-file fsync overhead |
+| Источник | `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

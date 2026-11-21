@@ -270,6 +270,17 @@ Stop/PermissionRequest/SessionEnd. 31 tests; full 360/3 skipped; live probe
 автономный запуск может требовать одобрения permission-конфигурации.
 Отчёт — `docs/foundation/BA-DEVCONTROL-001_REPORT.md`.
 
+## 1.14. ZIP hardening — BA-ZIP-HARDENING-001 (R-035)
+
+**BA-ZIP-HARDENING-001** — **TECHNICALLY ACCEPTED** (agent, 2026-11-21);
+code/security review — **ACCEPT**. Закрывает
+остаток R-035: method allowlist (stored/deflate), fsync каждого файла и
+staging/destination каталогов перед atomic rename, fsync COMPLETED/ATTEMPTS
+и audit, раздельные коды read (`X_ARCHIVE_BAD`) / write (`X_IO`). 4 новых
+теста; full suite — 369 passed, 3 skipped; benchmark 2000 files — 7.7 с.
+Остаток: directory fsync best-effort. Отчёт —
+`docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`.
+
 ## 2. Статусы работ
 
 | Работа | Статус | Что означает |
@@ -309,6 +320,7 @@ Stop/PermissionRequest/SessionEnd. 31 tests; full 360/3 skipped; live probe
 | BA-ZIP-PREFLIGHT-001 | **TECHNICALLY ACCEPTED** (agent); product — owner | Metadata-only ZIP preflight; 16 tests; full 297/2 skipped; review accept; R-033 extraction sandbox — следующий пакет |
 | BA-ZIP-EXTRACT-001 | **TECHNICALLY ACCEPTED** (agent); product — owner | Streaming safe extraction; 11 tests; full 308/2 skipped; security review accept; worker isolation — BA-ZIP-WORKER-001 |
 | BA-ZIP-WORKER-001 | **TECHNICALLY ACCEPTED** (agent); product — owner | Отдельный `zip-worker` (`zipnet`, prefork, read_only, limits, cancel, audit); 22 new tests; full 330/2 skipped; code/security review accept; R-033/R-035/R-036/R-037 |
+| BA-ZIP-HARDENING-001 (R-035) | **TECHNICALLY ACCEPTED** (agent); product — owner | fsync files/dirs, stored/deflate local+central, read/write codes; 54 ZIP tests; full 369/3; 2000 files 7.7s; review accept |
 | BA-DEVCONTROL-001 | **TECHNICALLY ACCEPTED** (agent); live setup — token/opt-in | Мониторинг/отчёты/задачи/ask/hooks; sandbox test runner; 31 tests; full 360/3; code/security review accept; Telegram API blocked — нужен proxy/VPN + токен |
 | BA-DOC-002 | **COMPLETED**; не принят | Актуализация шести реестров; ожидает проверки владельцем |
 

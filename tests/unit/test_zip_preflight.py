@@ -15,6 +15,7 @@ from apps.pipeline.validation.codes import (
     V_COMPRESSION_RATIO,
     V_EXT_UNSUPPORTED,
     V_FILE_TOO_LARGE,
+    V_METHOD_UNSUPPORTED,
     V_PATH_ABSOLUTE,
     V_PATH_BACKSLASH,
     V_PATH_COLLISION,
@@ -38,6 +39,11 @@ def _zip(entries: dict[str, bytes], *, compression: int = zipfile.ZIP_DEFLATED) 
 
 def _codes(data: bytes) -> set[str]:
     return {item.code for item in preflight_zip(data).diagnostics}
+
+
+def test_unsupported_compression_method_is_blocked() -> None:
+    data = _zip({"index.html": b"x"}, compression=zipfile.ZIP_BZIP2)
+    assert V_METHOD_UNSUPPORTED in _codes(data)
 
 
 def test_valid_package_passes_without_extraction(monkeypatch) -> None:

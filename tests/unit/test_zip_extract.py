@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import io
+import os
 import stat
+import struct
 import time
 import zipfile
 from pathlib import Path
@@ -11,12 +13,14 @@ from typing import cast
 import pytest
 
 from apps.pipeline.services.unpack import (
+    X_ARCHIVE_BAD,
     X_CANCELLED,
     X_CRC_MISMATCH,
     X_DESTINATION_EXISTS,
     X_LIMIT_FILE,
     X_LIMIT_FILES,
     X_LIMIT_TOTAL,
+    X_METHOD_UNSUPPORTED,
     X_PATH_UNSAFE,
     X_PREFIX_CONFLICT,
     X_PREFLIGHT_REJECTED,
@@ -187,6 +191,153 @@ def test_cancel_check_aborts_and_cleans_up(tmp_path: Path) -> None:
             cancel_check=cancel,
         )
     assert error.value.code == X_CANCELLED
+    assert not (tmp_path / "pkg").exists()
+    _no_staging(tmp_path)
+
+
+def test_compression_method_allowlist(tmp_path: Path) -> None:
+    with pytest.raises(ExtractionError) as error:
+        extract_zip(
+            _zip({"index.html": b"x"}, compression=zipfile.ZIP_BZIP2),
+            tmp_path / "pkg",
+        )
+    assert error.value.code == X_PREFLIGHT_REJECTED
+    assert error.value.report is not None
+    assert not (tmp_path / "pkg").exists()
+    _no_staging(tmp_path)
+
+
+def test_lzma_method_is_rejected(tmp_path: Path) -> None:
+    with pytest.raises(ExtractionError) as error:
+        extract_zip(
+            _zip({"index.html": b"x"}, compression=zipfile.ZIP_LZMA),
+            tmp_path / "pkg",
+        )
+    assert error.value.code == X_PREFLIGHT_REJECTED
+    assert error.value.report is not None
+    assert not (tmp_path / "pkg").exists()
+    _no_staging(tmp_path)
+
+
+def test_local_header_method_mismatch_is_rejected(tmp_path: Path) -> None:
+    data = bytearray(_zip({"index.html": b"x"}, compression=zipfile.ZIP_STORED))
+    struct.pack_into("<H", data, 8, zipfile.ZIP_BZIP2)
+
+    with pytest.raises(ExtractionError) as error:
+        extract_zip(bytes(data), tmp_path / "pkg")
+    assert error.value.code == X_METHOD_UNSUPPORTED
+    assert not (tmp_path / "pkg").exists()
+    _no_staging(tmp_path)
+
+
+def test_files_and_directories_are_fsynced(tmp_path: Path, monkeypatch) -> None:
+    data = _zip({"index.html": b"x"})
+    real_fsync = os.fsync
+    calls: list[int] = []
+
+    def counting_fsync(fd: int) -> None:
+        calls.append(fd)
+        real_fsync(fd)
+
+    monkeypatch.setattr("apps.pipeline.services.unpack.os.fsync", counting_fsync)
+
+    extract_zip(data, tmp_path / "pkg")
+
+    assert len(calls) >= 3  # file + staging dir + destination parent
+
+
+def test_directory_fsync_failure_is_nonfatal(tmp_path: Path, monkeypatch) -> None:
+    data = _zip({"index.html": b"x"})
+    real_fsync = os.fsync
+
+    def flaky_fsync(fd: int) -> None:
+        if stat.S_ISDIR(os.fstat(fd).st_mode):
+            raise OSError("directory fsync failed")
+        real_fsync(fd)
+
+    monkeypatch.setattr("apps.pipeline.services.unpack.os.fsync", flaky_fsync)
+
+    result = extract_zip(data, tmp_path / "pkg")
+
+    assert result.root.is_dir()
+    assert (result.root / "index.html").read_bytes() == b"x"
+
+
+def test_archive_read_error_maps_to_archive_bad(tmp_path: Path, monkeypatch) -> None:
+    data = _zip({"index.html": b"x"})
+
+    class BadSource:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, _size: int) -> bytes:
+            raise OSError("read failed")
+
+    def bad_open(_self, _info, *_args, **_kwargs) -> BadSource:
+        return BadSource()
+
+    monkeypatch.setattr(zipfile.ZipFile, "open", bad_open)
+
+    with pytest.raises(ExtractionError) as error:
+        extract_zip(data, tmp_path / "pkg")
+    assert error.value.code == X_ARCHIVE_BAD
+    assert not (tmp_path / "pkg").exists()
+    _no_staging(tmp_path)
+
+
+def test_truncated_archive_maps_to_archive_bad(tmp_path: Path, monkeypatch) -> None:
+    data = _zip({"index.html": b"x"})
+
+    class TruncatedSource:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, _size: int) -> bytes:
+            raise zipfile.BadZipFile("Truncated file")
+
+    def bad_open(_self, _info, *_args, **_kwargs) -> TruncatedSource:
+        return TruncatedSource()
+
+    monkeypatch.setattr(zipfile.ZipFile, "open", bad_open)
+
+    with pytest.raises(ExtractionError) as error:
+        extract_zip(data, tmp_path / "pkg")
+    assert error.value.code == X_ARCHIVE_BAD
+    assert not (tmp_path / "pkg").exists()
+    _no_staging(tmp_path)
+
+
+def test_sink_write_error_maps_to_io(tmp_path: Path, monkeypatch) -> None:
+    data = _zip({"index.html": b"x"})
+
+    class BadSink:
+        def __init__(self, fd: int) -> None:
+            self._fd = fd
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            os.close(self._fd)
+            return False
+
+        def write(self, _data: bytes) -> int:
+            raise OSError("write failed")
+
+    def bad_fdopen(fd: int, *_args, **_kwargs) -> BadSink:
+        return BadSink(fd)
+
+    monkeypatch.setattr("apps.pipeline.services.unpack.os.fdopen", bad_fdopen)
+
+    with pytest.raises(ExtractionError) as error:
+        extract_zip(data, tmp_path / "pkg")
+    assert error.value.code == "X_IO"
     assert not (tmp_path / "pkg").exists()
     _no_staging(tmp_path)
 

@@ -36,6 +36,7 @@ from apps.pipeline.validation.codes import (
     V_COMPRESSION_RATIO,
     V_EXT_UNSUPPORTED,
     V_FILE_TOO_LARGE,
+    V_METHOD_UNSUPPORTED,
     V_PATH_ABSOLUTE,
     V_PATH_BACKSLASH,
     V_PATH_COLLISION,
@@ -211,6 +212,15 @@ def preflight_zip(data: bytes) -> PreflightReport:
         for info in infos:
             name = info.filename
             parts = _check_name(report, name)
+
+            if info.compress_type not in {zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED}:
+                _diag(
+                    report,
+                    V_METHOD_UNSUPPORTED,
+                    "Метод сжатия не поддерживается",
+                    file=name,
+                    hint="Разрешены только stored и deflate.",
+                )
 
             if info.flag_bits & 0x1:
                 _diag(report, V_ARCHIVE_ENCRYPTED, "Зашифрованные записи запрещены", file=name)

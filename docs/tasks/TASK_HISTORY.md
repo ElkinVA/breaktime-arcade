@@ -797,6 +797,19 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   по умолчанию выключен; тесты — только в sandbox.
 - **Отчёт:** `docs/foundation/BA-DEVCONTROL-001_REPORT.md`.
 
+### BA-ZIP-HARDENING-001 (R-035) — durability/error taxonomy/method allowlist
+
+- **ID:** BA-ZIP-HARDENING-001 (R-035).
+- **Результат:** `unpack.py` — только stored/deflate (`X_METHOD_UNSUPPORTED`),
+  fsync каждого файла и staging/destination dirs, read→`X_ARCHIVE_BAD`,
+  write→`X_IO`; `worker.py` — fsync parent dir для COMPLETED/ATTEMPTS,
+  audit flush+fsync + job dir; 4 новых теста.
+- **Проверки:** 54 ZIP tests; full 369/3 skipped; ruff/mypy; benchmark
+  2000 files — 7.7 с (<50 с).
+- **Статус:** **TECHNICALLY ACCEPTED** (agent, 2026-11-21); code/security
+  review — **ACCEPT**; остаток — directory fsync best-effort.
+- **Отчёт:** `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,
@@ -826,6 +839,7 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - `docs/foundation/BA-ZIP-EXTRACT-001_REPORT.md`;
 - `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`;
 - `docs/foundation/BA-DEVCONTROL-001_REPORT.md`;
+- `docs/foundation/BA-ZIP-HARDENING-001_REPORT.md`;
 - `tests/integration/test_catalog_public.py`;
 - `tests/integration/test_game_sessions.py`;
 - `reports/BA_AUDIT_20261118_162920.zip` (исторический generated-отчёт).

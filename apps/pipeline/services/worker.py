@@ -200,6 +200,21 @@ def _read_source(paths: JobPaths, max_zip_bytes: int) -> tuple[bytes, str]:
     return data, hashlib.sha256(data).hexdigest()
 
 
+def _fsync_dir(path: Path) -> None:
+    flags = os.O_RDONLY
+    if hasattr(os, "O_DIRECTORY"):
+        flags |= os.O_DIRECTORY
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        return
+    try:
+        with contextlib.suppress(OSError):
+            os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
 def _write_text_atomic(path: Path, text: str, mode: int = 0o600) -> None:
     temp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
@@ -212,6 +227,7 @@ def _write_text_atomic(path: Path, text: str, mode: int = 0o600) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         temp.replace(path)
+        _fsync_dir(path.parent)
     finally:
         with contextlib.suppress(OSError):
             temp.unlink(missing_ok=True)
@@ -265,6 +281,9 @@ def _audit(paths: JobPaths, event: str, **fields: Any) -> None:
         fd = os.open(paths.audit, flags, 0o600)
         with os.fdopen(fd, "a", encoding="utf-8") as handle:
             handle.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        _fsync_dir(paths.job_dir)
     except OSError:
         logger.warning(
             "zip.audit_write_failed",

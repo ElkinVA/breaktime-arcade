@@ -17,6 +17,7 @@ import lzma
 import os
 import re
 import shutil
+import struct
 import tempfile
 import time
 import unicodedata
@@ -45,7 +46,10 @@ X_SIZE_MISMATCH = "X_SIZE_MISMATCH"
 X_ARCHIVE_BAD = "X_ARCHIVE_BAD"
 X_TIMEOUT = "X_TIMEOUT"
 X_CANCELLED = "X_CANCELLED"
+X_METHOD_UNSUPPORTED = "X_METHOD_UNSUPPORTED"
 X_IO = "X_IO"
+
+ALLOWED_METHODS = frozenset({zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED})
 
 _CHUNK = 64 * 1024
 _DRIVE_RE = re.compile(r"^[A-Za-z]:")
@@ -117,6 +121,40 @@ def _parts(name: str) -> tuple[str, ...]:
         ):
             raise ExtractionError(X_PATH_UNSAFE, "Управляющие символы в пути")
     return parts
+
+
+def _local_method(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> int:
+    """Read the compression method from the local header (central may lie)."""
+    fp = archive.fp
+    if fp is None:
+        return -1
+    try:
+        fp.seek(info.header_offset)
+        header = fp.read(30)
+    except OSError:
+        return -1
+    if len(header) != 30 or header[:4] != b"PK\x03\x04":
+        return -1
+    try:
+        return int(struct.unpack_from("<H", header, 8)[0])
+    except struct.error:
+        return -1
+
+
+def _fsync_directory(path: Path) -> None:
+    """Best-effort directory fsync; data files are fsynced separately."""
+    flags = os.O_RDONLY
+    if hasattr(os, "O_DIRECTORY"):
+        flags |= os.O_DIRECTORY
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        return
+    try:
+        with contextlib.suppress(OSError):
+            os.fsync(fd)
+    finally:
+        os.close(fd)
 
 
 def _ensure_dir(root: Path, parts: tuple[str, ...]) -> None:
@@ -220,6 +258,15 @@ def extract_zip(
         infos = archive.infolist()
         if len(infos) > max_files:
             raise ExtractionError(X_LIMIT_FILES, "Превышен лимит числа записей")
+        for info in infos:
+            if (
+                info.compress_type not in ALLOWED_METHODS
+                or _local_method(archive, info) not in ALLOWED_METHODS
+            ):
+                raise ExtractionError(
+                    X_METHOD_UNSUPPORTED,
+                    "Метод сжатия не поддерживается (разрешены stored/deflate)",
+                )
         files, dirs = _entries(infos)
 
         try:
@@ -255,33 +302,52 @@ def extract_zip(
                 hasher = hashlib.sha256()
                 size = 0
                 try:
-                    with os.fdopen(fd, "wb") as sink, archive.open(info) as source:
-                        while True:
-                            chunk = source.read(_CHUNK)
-                            if not chunk:
-                                break
-                            size += len(chunk)
-                            total += len(chunk)
-                            if size > max_file_bytes:
-                                raise ExtractionError(
-                                    X_LIMIT_FILE,
-                                    "Файл превышает лимит распаковки",
-                                )
-                            if total > max_total_bytes:
-                                raise ExtractionError(
-                                    X_LIMIT_TOTAL,
-                                    "Пакет превышает лимит распаковки",
-                                )
-                            if deadline is not None and time.monotonic() > deadline:
-                                raise ExtractionError(X_TIMEOUT, "Превышено время распаковки")
-                            if cancel_check is not None and cancel_check():
-                                raise ExtractionError(X_CANCELLED, "Распаковка отменена")
-                            sink.write(chunk)
-                            hasher.update(chunk)
-                except zipfile.BadZipFile:
-                    raise ExtractionError(
-                        X_CRC_MISMATCH, "CRC или данные файла повреждены"
-                    ) from None
+                    with os.fdopen(fd, "wb") as sink:
+                        try:
+                            source = archive.open(info)
+                        except OSError:
+                            raise ExtractionError(
+                                X_ARCHIVE_BAD, "Не удалось открыть файл в архиве"
+                            ) from None
+                        with source:
+                            while True:
+                                try:
+                                    chunk = source.read(_CHUNK)
+                                except OSError:
+                                    raise ExtractionError(
+                                        X_ARCHIVE_BAD, "Ошибка чтения архива"
+                                    ) from None
+                                if not chunk:
+                                    break
+                                size += len(chunk)
+                                total += len(chunk)
+                                if size > max_file_bytes:
+                                    raise ExtractionError(
+                                        X_LIMIT_FILE,
+                                        "Файл превышает лимит распаковки",
+                                    )
+                                if total > max_total_bytes:
+                                    raise ExtractionError(
+                                        X_LIMIT_TOTAL,
+                                        "Пакет превышает лимит распаковки",
+                                    )
+                                if deadline is not None and time.monotonic() > deadline:
+                                    raise ExtractionError(X_TIMEOUT, "Превышено время распаковки")
+                                if cancel_check is not None and cancel_check():
+                                    raise ExtractionError(X_CANCELLED, "Распаковка отменена")
+                                try:
+                                    sink.write(chunk)
+                                except OSError:
+                                    raise ExtractionError(X_IO, "Ошибка записи") from None
+                                hasher.update(chunk)
+                        try:
+                            sink.flush()
+                            os.fsync(sink.fileno())
+                        except OSError:
+                            raise ExtractionError(X_IO, "Ошибка записи") from None
+                except zipfile.BadZipFile as exc:
+                    code = X_CRC_MISMATCH if "CRC" in str(exc) else X_ARCHIVE_BAD
+                    raise ExtractionError(code, "Файл в архиве повреждён") from None
                 except RuntimeError, EOFError, lzma.LZMAError:
                     raise ExtractionError(X_ARCHIVE_BAD, "Не удалось прочитать файл") from None
                 except OSError:
@@ -300,6 +366,7 @@ def extract_zip(
                     )
                 )
 
+            _fsync_directory(staging)
             try:
                 staging.rename(destination)
             except OSError as exc:
@@ -307,6 +374,7 @@ def extract_zip(
                     X_DESTINATION_EXISTS if exc.errno in {errno.EEXIST, errno.ENOTEMPTY} else X_IO
                 )
                 raise ExtractionError(code, "Не удалось опубликовать результат") from None
+            _fsync_directory(destination.parent)
             published = True
         finally:
             if not published:
