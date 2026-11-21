@@ -35,6 +35,7 @@ from apps.gameplay.services.sessions import (
     create_session,
 )
 from apps.leaderboards.services.queries import get_leaderboard
+from apps.ratings.services.aggregates import summary as rating_summary
 
 
 def _language(request: HttpRequest) -> str:
@@ -77,6 +78,7 @@ def game_detail(request: HttpRequest, slug: str) -> TemplateResponse:
     if game is None:
         raise Http404("game not found")
     translation = localized_translation(game, _language(request))
+    ratings = rating_summary(game)
     return TemplateResponse(
         request,
         "catalog/game_detail.html",
@@ -84,6 +86,8 @@ def game_detail(request: HttpRequest, slug: str) -> TemplateResponse:
             "title": translation.name if translation else game.technical_id,
             "game": game,
             "translation": translation,
+            "rating_average": ratings["average"],
+            "rating_count": ratings["count"],
         },
     )
 

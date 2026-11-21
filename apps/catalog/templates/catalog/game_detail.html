@@ -21,6 +21,21 @@
         <div><dt class="text-muted">Default language</dt><dd>{{ game.default_language }}</dd></div>
         <div><dt class="text-muted">Published</dt><dd>{{ game.published_at|date:"Y-m-d"|default:"—" }}</dd></div>
     </dl>
+    <section class="mb-8" aria-labelledby="rating-summary-heading">
+        <h2 id="rating-summary-heading" class="text-xl font-semibold mb-2">Ratings</h2>
+        {% if rating_count %}
+            <p class="text-2xl font-bold">
+                <span data-testid="rating-average">{{ rating_average|floatformat:2 }}</span>
+                <span class="text-base font-normal text-muted">/ 5</span>
+            </p>
+            <p class="text-sm text-muted">
+                <span data-testid="rating-count">{{ rating_count }}</span>
+                vote{{ rating_count|pluralize }}
+            </p>
+        {% else %}
+            <p class="text-muted" data-testid="rating-empty">No ratings yet.</p>
+        {% endif %}
+    </section>
     {% if game.current_version %}
         <a class="btn px-6 py-2" href="{% url 'catalog:game_play' slug=game.slug %}">Play</a>
         {% if game.leaderboard_enabled %}

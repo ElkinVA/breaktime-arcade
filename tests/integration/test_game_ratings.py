@@ -315,6 +315,40 @@ def test_parallel_rating_change_has_single_winner() -> None:
     assert row.change_count_30d == 1
 
 
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_public_detail_shows_rating_average_with_two_decimals_and_count() -> None:
+    game = _game(technical_id="detail_rating_game")
+    first = _user("kate")
+    second = _user("liam")
+    GameRatingVote.objects.create(game=game, user=first, value=5, changed_at=timezone.now())
+    GameRatingVote.objects.create(game=game, user=second, value=4, changed_at=timezone.now())
+    recalculate(game)
+
+    response = Client().get(f"/en/games/{game.slug}/")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert 'data-testid="rating-average">4.50<' in content
+    assert 'data-testid="rating-count">2<' in content
+    assert 'data-testid="rating-empty"' not in content
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_public_detail_shows_explicit_no_ratings_state() -> None:
+    game = _game(technical_id="detail_no_rating_game")
+
+    response = Client().get(f"/en/games/{game.slug}/")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert 'data-testid="rating-empty"' in content
+    assert "No ratings yet." in content
+    assert 'data-testid="rating-average"' not in content
+    assert 'data-testid="rating-count"' not in content
+
+
 @pytest.mark.django_db(transaction=True)
 @override_settings(CACHES=LOCMEM_CACHES)
 def test_parallel_votes_keep_aggregate_consistent() -> None:
