@@ -53,11 +53,17 @@
     }
 
     function pinnedPortalOrigin() {
-        if (typeof global.BA_PORTAL_ORIGIN !== "string" || !global.BA_PORTAL_ORIGIN) {
+        let value = global.BA_PORTAL_ORIGIN;
+        if ((typeof value !== "string" || !value) && global.document?.querySelector) {
+            value = global.document
+                .querySelector('meta[name="ba-portal-origin"]')
+                ?.getAttribute("content");
+        }
+        if (typeof value !== "string" || !value) {
             return null;
         }
         try {
-            return new URL(global.BA_PORTAL_ORIGIN).origin;
+            return new URL(value).origin;
         } catch {
             return null;
         }

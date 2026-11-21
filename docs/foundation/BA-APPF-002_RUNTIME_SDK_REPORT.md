@@ -33,7 +33,7 @@ indexedDB/top.location/parent.document.
 - API: `context`, `ready`, `t`, `on`, `submitResult` (10 с, guest
   normalization), `leaderboard.top(10/100)`, `leaderboard.myBest`,
   `storage.get/set/remove`, `newSession`, `exit`, `fail`;
-- ticket в SDK/iframe не передаётся;
+- ticket в SDK/iframe не передаётся; portal origin pin — `window.BA_PORTAL_ORIGIN` или `meta[name=ba-portal-origin]`;
 - server-side eventLog validation: seed, `v`, events, monotonic `t`, `t <=
   durationMs+1000`, declared `verification.eventKinds`, raw/gzip limits.
 
@@ -52,7 +52,7 @@ indexedDB/top.location/parent.document.
 - newSession → `POST /sessions` + `/activate`;
 - exit → `/close`;
 - pause/resume по visibility;
-- CSRF через `X-CSRFToken`.
+- CSRF через `X-CSRFToken`; сетевые/5xx повторы до 3 с сохранением Idempotency-Key.
 
 `game_play` view:
 

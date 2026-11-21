@@ -20,21 +20,39 @@ if (frame) {
     }
 
     async function api(path, options = {}) {
-        const response = await fetch(path, {
-            credentials: "same-origin",
-            ...options,
-        });
-        let payload = null;
-        if (response.status !== 204) {
-            payload = await response.json().catch(() => null);
+        let lastError;
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+            try {
+                const response = await fetch(path, {
+                    credentials: "same-origin",
+                    ...options,
+                });
+                let payload = null;
+                if (response.status !== 204) {
+                    payload = await response.json().catch(() => null);
+                }
+                if (response.ok) {
+                    return { response, payload };
+                }
+                const error = new Error(payload?.message || "request failed");
+                error.code = payload?.code || "E_INTERNAL";
+                error.status = response.status;
+                if (response.status < 500 || attempt === 2) {
+                    throw error;
+                }
+                lastError = error;
+            } catch (error) {
+                if (error.status && error.status < 500) {
+                    throw error;
+                }
+                lastError = error;
+                if (attempt === 2) {
+                    throw error;
+                }
+            }
+            await new Promise((resolve) => globalThis.setTimeout(resolve, 200 * 2 ** attempt));
         }
-        if (!response.ok) {
-            const error = new Error(payload?.message || "request failed");
-            error.code = payload?.code || "E_INTERNAL";
-            error.status = response.status;
-            throw error;
-        }
-        return { response, payload };
+        throw lastError;
     }
 
     async function createSession() {
