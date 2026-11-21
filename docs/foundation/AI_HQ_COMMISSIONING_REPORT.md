@@ -80,7 +80,18 @@ merge gates. Actual usage is retained in task/run/state records and reported by
 The historical i18n attempt is retained in the audit trail as a budget stop;
 the task is resumed under the new policy.
 
-Final repository gate: **737 passed, 11 skipped**; ruff/format/mypy clean.
+Product queue continued after the policy change: `ARCADE-I18N-UI-001`
+(`0c56116`), `ARCADE-HOME-BLOCKS-001` (`f7634b7`), `ARCADE-PROFILE-RECORDS-001`
+(`d330ee0`) and `ARCADE-LOCALE-BADGE-001` (`d3aa9f9`) are completed through
+Developer self-check → QA → Pro Reviewer → commit/merge. Localization coverage
+badge and account profile records are now part of the running product.
+
+Final repository gate: **754 passed, 11 skipped**; ruff/format/mypy clean.
+
+Current efficiency snapshot: 16 accepted tasks, 12 first-pass (75%), 4
+correction cycles, 1 QA failure, 1 review rejection, ~3.79 USD and ~3.78M
+tokens per accepted task. These are analytics only; token/cost no longer stop
+work.
 
 ## 5. AI HQ state
 
