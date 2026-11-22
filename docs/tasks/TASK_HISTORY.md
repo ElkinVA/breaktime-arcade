@@ -9,6 +9,21 @@
 
 ## 1. Записи работ
 
+### ARCADE-P4 — operational hardening + Neon Snake
+
+- **ID:** ARCADE-P4 (A1–A6, B).
+- **Назначение:** system-wide ZIP quota/retention, sync-wait analysis,
+  staging preparation, resilience, review evidence, first real game.
+- **Результат:** `0ba8bfe`, `16fb095` (quota/retention), A3/A4/A6 docs,
+  Neon Snake `d1ebc41`, catalogue/media/CSP/mobile fixes `5f8bd2b`; live
+  CRM→zip-worker→publish→iframe→SDK result/leaderboard; v1.1.0 update and
+  rollback. Fresh **966/12**, E2E **18**.
+- **Статус:** **IMPLEMENTED / TECHNICAL REVIEW**; product/staging/legal
+  owner-level. Hard FS quota/load NOT TESTED.
+- **Дата:** 2026-11-22.
+- **Отчёт:** `docs/foundation/ARCADE_P4_ACCEPTANCE_REPORT.md`,
+  `ARCADE_P4_PROGRESS.md`, `ARCADE_P4_OWNER_ACTION_LIST.md`.
+
 ### BA-AUDIT-001 — исходный независимый аудит
 
 - **ID:** BA-AUDIT-001.

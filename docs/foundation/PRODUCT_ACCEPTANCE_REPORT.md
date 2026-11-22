@@ -1,5 +1,9 @@
 # Product Acceptance Report — Browser Arcade P0–P2
 
+> P4 update: Neon Snake is now imported, published and verified live; P4
+> quota/retention and the residual R-041/R-042 analysis are in
+> `ARCADE_P4_ACCEPTANCE_REPORT.md`. This P0–P3 report remains the baseline.
+
 **Дата:** 2026-11-22
 **Область:** P0 contract closure, P1 public product, P2 ZIP pipeline/CRM.
 **Среда:** локальный dev-lite stack (`portal.test:8443`), PostgreSQL 18,

@@ -11,6 +11,11 @@
 | ID | Пакет | Приоритет | Статус | Зависимости / границы |
 |---|---|---|---|---|
 | ARCADE-PRODUCT-ACCEPTANCE-001 | E2E/product acceptance P0–P3 | Critical | **PASS (dev); external production actions owner** | 18 E2E; 930 fresh gate; ZIP isolation PASS; real game/legal/email/staging/deploy external |
+| ARCADE-P4-STORAGE-001 | System-wide ZIP quota, free-space fail-closed, retention cleanup | Critical | **TECHNICALLY ACCEPTED / Pro-accepted** (`0ba8bfe`, `16fb095`) | hard FS quota/staging/load NOT TESTED |
+| ARCADE-P4-A3-R041 | Sync import-wait analysis/decision | Major | **ANALYSED — keep sync** | `docs/audits/R-041_SYNC_WAIT_ANALYSIS.md` |
+| ARCADE-P4-A4-R042 | Staging verification preparation | Major | **PREPARED; live BLOCKED** | `.env.staging` absent; `verify_staging_p4.sh`, staging runbook |
+| ARCADE-P4-A6 | ZIP Worker Pro-review evidence | Major | **SAVED (available evidence)** | original P3 reviewer JSON not persisted; `docs/audits/ZIP_WORKER_REVIEW_EVIDENCE.md` |
+| ARCADE-P4-NEON-SNAKE-001 | First real Neon Snake game + full live E2E | Critical | **IMPLEMENTED / TECHNICAL REVIEW; product owner** | `d1ebc41`, `5f8bd2b`; live import/publish/iframe/result/leaderboard/update/rollback; fresh 966/12; E2E 18 |
 | ARCADE-P3-ZIP-WORKER-INTEGRATION-001 | Route ZIP extraction through isolated zip-worker | Blocker | **TECHNICALLY ACCEPTED / Pro-reviewed** (`9017254`) | Worker-only extraction, cleanup, runtime volume; staging live NOT TESTED |
 | ARCADE-P0-CONTRACT-CLOSURE-001 | ADR-APPF-001 / контракты App F | Blocker | **TECHNICALLY ACCEPTED** (Architect; `7c56f93`) | Внутренние решения; external/legal/paid actions owner |
 | ARCADE-P1-RATINGS-LEADERBOARD-001 | Rating UI + TOP-100 leaderboard | Major | **TECHNICALLY ACCEPTED** (`51a08d0`) | Product acceptance owner |

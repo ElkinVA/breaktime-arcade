@@ -2,6 +2,19 @@
 
 **Дата:** 2026-11-22
 
+**Текущий этап: P4 OPERATIONAL HARDENING + FIRST REAL GAME — IMPLEMENTED /
+PRO REVIEW ACCEPT; PRODUCT ACCEPTANCE OWNER.** Neon Snake v1.0.0 собран,
+импортирован через живой `zip-worker`, опубликован, запущен в iframe,
+результат сохранён (rank 1), leaderboard 200; v1.1.0 update и rollback
+проверены. Quota/retention — `0ba8bfe`/`16fb095`; A3/A4/A6 — документы
+`docs/audits/R-041_SYNC_WAIT_ANALYSIS.md`,
+`docs/audits/ZIP_WORKER_REVIEW_EVIDENCE.md`,
+`docs/runbook/staging_verification.md`. Fresh gate **966 passed, 12 skipped**;
+Browser E2E **18 passed**. Отчёты — `ARCADE_P4_ACCEPTANCE_REPORT.md`,
+`ARCADE_P4_OWNER_ACTION_LIST.md`, журнал — `ARCADE_P4_PROGRESS.md`.
+Staging live **NOT TESTED** (нет `.env.staging`); hard FS quota/load —
+NOT TESTED. Продуктовая/юридическая приёмка игры — владелец.
+
 **Сверка фактического состояния:** код Browser Arcade/App F опережает
 исторические формулировки ниже. Внутренние контракты BA-SDK-1.1/
 BA-ENV-1.1/BA-GAME-2.2 закрыты Architect в `ADR-APPF-001` (2026-11-22);

@@ -28,12 +28,12 @@
 |---|---|---|
 | P4-A1 | R-033 system-wide ZIP quota/reservation/free-space behavior | IMPLEMENTED (`ARCADE-P4-STORAGE-001`) |
 | P4-A2 | R-037 retention policy + active/completed/failed/abandoned cleanup, restart/retry tests | IMPLEMENTED (`ARCADE-P4-STORAGE-001`) |
-| P4-A3 | R-041 synchronous-wait analysis; async only if justified | PLANNED |
-| P4-A4 | staging template/instructions/ownership/runtime/backup/ZIP checks; live only when `.env.staging` exists | PARTIAL: storage compose/env template + shared `zip_quota` volume; live NOT TESTED |
+| P4-A3 | R-041 synchronous-wait analysis; async only if justified | DONE: keep sync; `docs/audits/R-041_SYNC_WAIT_ANALYSIS.md` |
+| P4-A4 | staging template/instructions/ownership/runtime/backup/ZIP checks; live only when `.env.staging` exists | DONE (prepared): `docs/runbook/staging_verification.md`, `verify_staging_p4.sh`; live **NOT TESTED/BLOCKED** |
 | P4-A5 | resilience: concurrent imports, worker/broker failure, redelivery, duplicate, cleanup failure, disk pressure, recovery | IMPLEMENTED: quota/free-space/duplicate/cleanup rerun/broker-failure tests; load/stress not performed |
-| P4-A6 | preserve full Pro Review JSON/findings/fixes/confirmation/not-tested | PLANNED |
-| P4-B1 | implement Neon Snake as a real game package with full assets/locales/SDK behavior | PLANNED |
-| P4-B2 | full E2E: build → validate → worker → CRM → publish → public/iframe → SDK result → leaderboard; update/rollback/mobile/console | PLANNED |
+| P4-A6 | preserve full Pro Review JSON/findings/fixes/confirmation/not-tested | DONE (available evidence): `docs/audits/ZIP_WORKER_REVIEW_EVIDENCE.md`; original P3 reviewer JSON was not persisted |
+| P4-B1 | implement Neon Snake as a real game package with full assets/locales/SDK behavior | IMPLEMENTED (`d1ebc41`); independent review **ACCEPT**, major fixed/closed |
+| P4-B2 | full E2E: build → validate → worker → CRM → publish → public/iframe → SDK result → leaderboard; update/rollback/mobile/console | DONE live on dev; details in acceptance report |
 
 ## 3. Decisions
 
@@ -57,3 +57,21 @@
   Tests cover concurrent reservations, exhaustion, free-space pressure,
   duplicate import, cleanup rerun/restart and preservation of published
   runtimes. Not tested: live staging/.env.staging, hard FS quota, stress/load.
+- 2026-11-22: strict quota follow-up `16fb095` (2× archive reservation,
+  fail-closed `statvfs`) accepted by Pro reviewer.
+- 2026-11-22: `ARCADE-P4-NEON-SNAKE-001` implemented in an isolated
+  worktree (Developer `deepseek-flash[1m]`), imported and published through
+  the live CRM/worker; game commits `d1ebc41`, catalogue/media fixes
+  `5f8bd2b`.
+- 2026-11-22 live: CRM upload of `neon_snake-1.0.0.zip` → zip-worker
+  `zip.extract`/`zip.complete` (23 files, 131 ms) → card v1.0.0 published;
+  public detail/play/iframe loaded; authenticated session result `saved`,
+  rank 1, `heuristic_validated`, credited 30 s; leaderboard 200; v1.1.0
+  update published; rollback to v1.0.0; bad ZIP rejected with
+  `V_MANIFEST_SCHEMA`.
+- 2026-11-22 defects found/fixed during live game acceptance: imported media
+  was `0640` (nginx 403), catalogue detail did not render cover/screenshots,
+  HTMX injected an inline `<style>` blocked by CSP, 360px header overflow.
+- 2026-11-22 fresh gate after fixes: **966 passed, 12 skipped**; Browser E2E
+  **18 passed**; sandbox game package **13 passed**, import **1 passed**,
+  catalog public **11 passed**, pipeline **15 passed**.

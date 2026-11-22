@@ -11,6 +11,18 @@ BA-AUDIT-003 и BA-DOC-AUDIT-001 отдельные постоянные фай�
 найдены; для App F существует
 `docs/foundation/BA-AUDIT-APP-F-REPORT.md`.
 
+## ARCADE-P4 — hardening and first game
+
+| Поле | Значение |
+|---|---|
+| Цель | Проверить R-033/R-037/R-041/R-042, resilience и первую реальную игру |
+| Область | ZIP quota/retention, isolated worker, CRM import/publish, public iframe/SDK, update/rollback, mobile/console |
+| Итоговый статус | **IMPLEMENTED / TECHNICAL REVIEW**; product/staging/legal — owner |
+| Доказательства | fresh **966/12**, E2E **18**, live worker import 131 ms, result `saved/rank 1`, leaderboard 200, v1.1.0/rollback, bad ZIP `V_MANIFEST_SCHEMA` |
+| Исправлено | media 0644/403; отсутствие cover/screenshots на detail; HTMX inline style/CSP; 360px header overflow |
+| Остаётся | staging `.env.staging` NOT TESTED; hard FS quota/load NOT TESTED; original P3 reviewer JSON not persisted |
+| Документы | `docs/foundation/ARCADE_P4_ACCEPTANCE_REPORT.md`, `docs/foundation/ARCADE_P4_PROGRESS.md`, `docs/audits/ZIP_WORKER_REVIEW_EVIDENCE.md`, `docs/audits/R-041_SYNC_WAIT_ANALYSIS.md` |
+
 ## BA-AUDIT-002
 
 | Поле | Значение |

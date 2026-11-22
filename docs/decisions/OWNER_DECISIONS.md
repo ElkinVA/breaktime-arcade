@@ -248,6 +248,7 @@ Architect уполномочен закрыть внутренние контр�
 | OD-ARCH-2FA-001 | Роли §2.16, обязательный TOTP staff, recovery, step-up (пароль+TOTP), журнал/уведомления | CRM/2FA | **ARCHITECT-ACCEPTED (technical/internal)**; production legal/security review — внешняя |
 | OD-ARCH-EMAIL-001 | Единый email-адаптер поверх Django SMTP; dev/staging Mailpit; production provider — внешнее действие | Email | **ARCHITECT-ACCEPTED (technical/internal)** — ADR D12 |
 | OD-ARCH-PROD-001 | Production requirements зафиксированы письменно; deploy/домены/TLS/S3/CDN/Sentry/credentials не выполнялись | Production | **ARCHITECT-ACCEPTED (requirements only)** — ADR D13 |
+| OD-ARCH-R041-001 | Синхронный ZIP-импорт (≤75 с) сохраняется для текущего staff-объёма; async — только при доказанном росте нагрузки | ZIP/CRM | **ARCHITECT-ACCEPTED (technical/internal)** — `docs/audits/R-041_SYNC_WAIT_ANALYSIS.md` |
 
 ### D.1. Внешние действия, которые НЕ являются техническими решениями
 

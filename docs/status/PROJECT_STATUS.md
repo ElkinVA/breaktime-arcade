@@ -1,7 +1,27 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-22 (P0/P1/P2 technical acceptance; product
-acceptance remains owner-level).
+**Дата актуализации:** 2026-11-22 (P4 operational hardening + first real
+game; product acceptance remains owner-level).
+
+## 0.1. P4 — фактическое состояние
+
+- **A1/A2 quota/retention:** `0ba8bfe`, strict follow-up `16fb095`;
+  system-wide app-layer quota/free-space fail-closed, active-aware cleanup;
+  Pro review accept. Hard FS quota **NOT TESTED**.
+- **A3 R-041:** sync import kept after analysis; async not justified.
+- **A4 R-042:** staging runbook/read-only checks prepared; live staging
+  **BLOCKED/NOT TESTED** (`.env.staging` absent).
+- **A5 resilience:** concurrent quota, free-space, duplicate, broker
+  failure, cleanup rerun, published-runtime preservation tests; no stress.
+- **A6:** available ZIP Worker review evidence saved; original P3 JSON was
+  not persisted.
+- **B Neon Snake:** package `d1ebc41`, media/catalog fixes `5f8bd2b`; live
+  CRM→zip-worker→publish→iframe→SDK result/leaderboard; v1.1.0 update and
+  rollback to v1.0.0; bad ZIP rejected.
+- **Checks:** fresh gate **966 passed, 12 skipped**, Browser E2E **18
+  passed**, sandbox package/import/catalog/pipeline green.
+- **External:** real game product/legal rights, staging, email, domains/TLS,
+  S3/hosting/DR, production deploy — owner action list P4.
 
 ## 0. P0/P1/P2 — фактическое состояние
 
