@@ -363,7 +363,12 @@ RATING_WR_C = env_float("RATING_WR_C", 3.5)
 
 # --- Константы пайплайна (§2.14.2) --------------------------------------
 BA_SDK_DEFAULT_VERSION = env("BA_SDK_DEFAULT_VERSION", "1.1.0")
+SDK_SOURCE_ROOT = Path(env("SDK_SOURCE_ROOT", str(BASE_DIR / "sdk")))
 ZIP_MAX_BYTES = env_int("ZIP_MAX_BYTES", 26_214_400)
+ZIP_PIPELINE_STORAGE_ROOT = Path(
+    env("ZIP_PIPELINE_STORAGE_ROOT", str(BASE_DIR / "var" / "pipeline"))
+)
+ZIP_PUBLIC_RUNTIME_ROOT = Path(env("ZIP_PUBLIC_RUNTIME_ROOT", str(BASE_DIR / "var" / "runtime")))
 CRITICAL_PATH_WARN_BYTES = env_int("CRITICAL_PATH_WARN_BYTES", 2_097_152)
 CRITICAL_PATH_MAX_BYTES = env_int("CRITICAL_PATH_MAX_BYTES", 4_194_304)
 ADMIN_URL_PREFIX = env("ADMIN_URL_PREFIX", "crm/")
