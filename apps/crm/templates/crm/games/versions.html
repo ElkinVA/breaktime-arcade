@@ -1,0 +1,64 @@
+{% if versions %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="text-left text-muted border-b border-text/10">
+                <tr>
+                    <th class="px-3 py-2">Версия</th>
+                    <th class="px-3 py-2">Создана</th>
+                    <th class="px-3 py-2">SDK</th>
+                    <th class="px-3 py-2">Размер</th>
+                    <th class="px-3 py-2">Языки пакета</th>
+                    <th class="px-3 py-2">Валидация</th>
+                    <th class="px-3 py-2">Автотест</th>
+                    <th class="px-3 py-2">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in versions %}
+                    <tr class="border-b border-text/5 last:border-0" data-testid="crm-version-row">
+                        <td class="px-3 py-2 font-semibold">
+                            v{{ row.version.semver }}
+                            {% if row.is_current %}<span class="text-xs text-accent">· текущая</span>{% endif %}
+                        </td>
+                        <td class="px-3 py-2 text-muted">{{ row.version.created_at|date:"Y-m-d H:i" }}</td>
+                        <td class="px-3 py-2">{{ row.version.sdk_version }}</td>
+                        <td class="px-3 py-2">{{ row.version.size_bytes }} B</td>
+                        <td class="px-3 py-2" data-testid="crm-version-languages">
+                            {{ row.version.supported_languages|join:", "|default:"—" }}
+                        </td>
+                        <td class="px-3 py-2" data-testid="crm-version-validation">
+                            {% if row.blockers %}{{ row.blockers }} блок.{% else %}OK{% endif %}
+                        </td>
+                        <td class="px-3 py-2" data-testid="crm-version-autotest">
+                            {% if row.autotest_passed %}Пройден{% else %}Не пройден{% endif %}
+                        </td>
+                        <td class="px-3 py-2">
+                            {% if row.is_current %}
+                                <span class="text-muted">—</span>
+                            {% else %}
+                                <div class="flex flex-wrap gap-2">
+                                    <form method="post" action="{% url 'crm:game_publish' row.version.game_id %}" data-testid="crm-publish-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="version_id" value="{{ row.version.id }}">
+                                        <button type="submit" class="px-3 py-1 rounded bg-accent text-bg font-semibold disabled:opacity-40"{% if not row.publishable %} disabled title="Публикация недоступна: проверьте валидацию и автотест"{% endif %}>
+                                            Опубликовать
+                                        </button>
+                                    </form>
+                                    <form method="post" action="{% url 'crm:game_rollback' row.version.game_id %}" data-testid="crm-rollback-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="version_id" value="{{ row.version.id }}">
+                                        <button type="submit" class="px-3 py-1 rounded border border-text/20 hover:border-accent">
+                                            Откатить
+                                        </button>
+                                    </form>
+                                </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <p class="text-muted" data-testid="crm-versions-empty">У игры пока нет версий.</p>
+{% endif %}

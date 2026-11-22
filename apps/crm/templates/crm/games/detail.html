@@ -1,0 +1,53 @@
+{% extends "crm/base.html" %}
+
+{% block title %}{{ card.title }} · CRM{% endblock %}
+
+{% block crm_content %}
+<p class="mb-4 text-sm">
+    <a class="text-muted hover:text-accent" href="{% url 'crm:games' %}">← Все игры</a>
+</p>
+
+<div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold" data-testid="crm-card-title">{{ card.title }}</h1>
+        <p class="text-sm text-muted">
+            {{ card.game.technical_id }} · {{ card.game.host_label }}
+        </p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Статус</p>
+        <p class="text-xl font-display font-bold" data-testid="crm-card-status">{{ card.game.get_status_display }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Текущая версия</p>
+        <p class="text-xl font-display font-bold" data-testid="crm-card-current-version">
+            {% if card.current_version %}v{{ card.current_version.semver }}{% else %}—{% endif %}
+        </p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Жанр</p>
+        <p class="text-xl font-display font-bold" data-testid="crm-card-genre">{{ card.game.primary_genre.code }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Покрытие локализации</p>
+        <p class="text-xl font-display font-bold" data-testid="crm-card-localization">
+            {% if card.localization %}{{ card.localization.covered }}/{{ card.localization.total }}{% else %}—{% endif %}
+        </p>
+    </div>
+</div>
+
+<section class="bg-surface rounded-card border border-text/10 p-5">
+    <div class="flex flex-wrap items-end justify-between gap-2 mb-4">
+        <div>
+            <h2 class="text-xl font-display font-bold">История версий</h2>
+            <p class="text-sm text-muted">
+                Публикация и откат выполняются только POST-запросами с CSRF и проверяются сервисом.
+            </p>
+        </div>
+    </div>
+    {% include "crm/games/versions.html" with versions=card.versions current_version=card.current_version %}
+</section>
+{% endblock %}

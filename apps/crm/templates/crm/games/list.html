@@ -1,0 +1,87 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Игры · CRM{% endblock %}
+
+{% block crm_content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold">Игры</h1>
+        <p class="text-sm text-muted">Инвентарь игр, версии и покрытие локализации.</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Всего</p>
+        <p class="text-3xl font-display font-bold" data-testid="crm-games-total">{{ page.counters.total }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Опубликовано</p>
+        <p class="text-3xl font-display font-bold" data-testid="crm-games-published">{{ page.counters.published }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Черновики</p>
+        <p class="text-3xl font-display font-bold" data-testid="crm-games-draft">{{ page.counters.draft }}</p>
+    </div>
+</div>
+
+<form method="get" action="{% url 'crm:games' %}" class="flex flex-wrap items-end gap-4 p-4 mb-6 bg-surface rounded-card border border-text/10" data-testid="crm-games-filters">
+    <label class="flex flex-col gap-1 text-sm">
+        <span class="text-muted">Статус</span>
+        <select name="status" class="bg-bg border border-text/20 rounded px-3 py-2">
+            <option value="">Все статусы</option>
+            {% for code, label in page.statuses %}
+                <option value="{{ code }}"{% if page.filters.status == code %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label class="flex flex-col gap-1 text-sm">
+        <span class="text-muted">Жанр</span>
+        <select name="genre" class="bg-bg border border-text/20 rounded px-3 py-2">
+            <option value="">Все жанры</option>
+            {% for genre in page.genres %}
+                <option value="{{ genre.code }}"{% if page.filters.genre == genre.code %} selected{% endif %}>{{ genre.code }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <button type="submit" class="px-4 py-2 rounded bg-accent text-bg font-semibold">Применить</button>
+</form>
+
+<div class="overflow-x-auto bg-surface rounded-card border border-text/10">
+    <table class="w-full text-sm">
+        <thead class="text-left text-muted border-b border-text/10">
+            <tr>
+                <th class="px-4 py-3">Название</th>
+                <th class="px-4 py-3">Жанр</th>
+                <th class="px-4 py-3">Версия</th>
+                <th class="px-4 py-3">Статус</th>
+                <th class="px-4 py-3">Локализация</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in page.rows %}
+                <tr class="border-b border-text/5 last:border-0" data-testid="crm-game-row">
+                    <td class="px-4 py-3">
+                        <a class="font-semibold hover:text-accent" href="{% url 'crm:game_detail' row.game.id %}" data-testid="crm-game-link">
+                            {{ row.title }}
+                        </a>
+                        <div class="text-xs text-muted">{{ row.game.technical_id }}</div>
+                    </td>
+                    <td class="px-4 py-3">{{ row.game.primary_genre.code }}</td>
+                    <td class="px-4 py-3" data-testid="crm-game-version">
+                        {% if row.version %}v{{ row.version.semver }}{% else %}—{% endif %}
+                    </td>
+                    <td class="px-4 py-3" data-testid="crm-game-status">{{ row.game.get_status_display }}</td>
+                    <td class="px-4 py-3" data-testid="crm-game-localization">{% if row.localization %}{{ row.localization.covered }}/{{ row.localization.total }}{% else %}—{% endif %}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="5" class="px-4 py-6 text-muted" data-testid="crm-games-empty">
+                        Игры не найдены.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

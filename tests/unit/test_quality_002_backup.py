@@ -6,9 +6,11 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from django.contrib.sessions.middleware import SessionMiddleware
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import RequestFactory
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.crm.models.backup import BackupRun
@@ -206,10 +208,19 @@ def test_backup_commands(monkeypatch, tmp_path: Path) -> None:
         call_command("restore_check")
 
 
+@pytest.mark.django_db
 def test_crm_views(monkeypatch) -> None:
     request = RequestFactory().get("/crm/login/")
-    assert login_view(request).template_name == "crm/login.html"
-    assert logout_view(request).status_code == 302
+    request.user = SimpleNamespace(is_authenticated=False, is_staff=False)
+    login_response = login_view(request)
+    assert login_response.status_code == 302
+    assert login_response.url.startswith(reverse("accounts:login"))
+    assert "next=" in login_response.url
+
+    logout_request = RequestFactory().post("/crm/logout/")
+    SessionMiddleware(lambda _request: None).process_request(logout_request)
+    logout_request.session.save()
+    assert logout_view(logout_request).status_code == 302
 
     anonymous = RequestFactory().get("/crm/")
     anonymous.user = SimpleNamespace(is_authenticated=False, is_staff=False)
