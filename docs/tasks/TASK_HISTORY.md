@@ -1082,3 +1082,28 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   отмечены без изменения требований.
 - STOP установлен; новых задач автоматически не запускалось.
 - Отчёт: `docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md`.
+
+### ARCADE-P0/P1/P2 — implementation wave
+
+- `ARCADE-P0-CONTRACT-CLOSURE-001` (`7c56f93`) — ADR-APPF-001: BA-GAME A,
+  BA-SDK/ENV, 64 КиБ/strict unknown/`sessionId`, DB-001…008, App F,
+  retention, roles/2FA/step-up, email adapter, production requirements.
+- `ARCADE-P1-RATINGS-LEADERBOARD-001` (`51a08d0`) — rating UI, TOP-100,
+  pagination/current-user row; `ARCADE-P1-SEO-I18N-A11Y-001` (`a167a47`) —
+  JSON-LD, CLDR plural, accessibility.
+- `ARCADE-P2-PIPELINE-001` (`059b7fa`) — ZIP intake/validation/import,
+  SDK runtime bundle/hashes, reports/conflicts, autotest, publish/rollback.
+- `ARCADE-P2-CRM-GAMES-001` (`f938315`) — staff login/2FA, inventory,
+  card/version history.
+- `ARCADE-P2-CRM-WIZARD-001` (`de1c975`) — upload wizard/reports/diff,
+  password+TOTP step-up.
+- `ARCADE-P2-CRM-ROLES-001` (`6dd54d7`) — TZ roles, least privilege, audit,
+  self/last-owner lockout.
+- `ARCADE-P2-MODERATION-001` (`03061c0`) — rating hide/restore, complaints,
+  aggregate recalc, audit.
+- `ARCADE-P2-CONTENT-ANALYTICS-001` (`11c9805`) — translations/content,
+  local analytics, safe exports.
+- Models: Developer/QA `deepseek-flash[1m]`; Architect/Reviewer
+  `deepseek-v4-pro`; QA/Pro review per package; full fresh gate
+  **917 passed, 12 skipped**.
+- Product acceptance remains owner-level; external actions not performed.

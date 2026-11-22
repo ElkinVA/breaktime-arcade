@@ -10,6 +10,15 @@
 
 | ID | Пакет | Приоритет | Статус | Зависимости / границы |
 |---|---|---|---|---|
+| ARCADE-P0-CONTRACT-CLOSURE-001 | ADR-APPF-001 / контракты App F | Blocker | **TECHNICALLY ACCEPTED** (Architect; `7c56f93`) | Внутренние решения; external/legal/paid actions owner |
+| ARCADE-P1-RATINGS-LEADERBOARD-001 | Rating UI + TOP-100 leaderboard | Major | **TECHNICALLY ACCEPTED** (`51a08d0`) | Product acceptance owner |
+| ARCADE-P1-SEO-I18N-A11Y-001 | JSON-LD, CLDR plural, accessibility | Major | **TECHNICALLY ACCEPTED** (`a167a47`) | Product acceptance owner |
+| ARCADE-P2-PIPELINE-001 | ZIP intake/import/runtime/publish/rollback | Critical | **TECHNICALLY ACCEPTED** (`059b7fa`) | Real game ZIP/rights external |
+| ARCADE-P2-CRM-GAMES-001 | CRM login/2FA, inventory, card/versions | Critical | **TECHNICALLY ACCEPTED** (`f938315`) | Product acceptance owner |
+| ARCADE-P2-CRM-WIZARD-001 | CRM upload wizard/reports/diff/step-up publish | Critical | **TECHNICALLY ACCEPTED** (`de1c975`) | Product acceptance owner |
+| ARCADE-P2-CRM-ROLES-001 | Staff roles, least privilege, audit | Critical | **TECHNICALLY ACCEPTED** (`6dd54d7`) | Product acceptance owner |
+| ARCADE-P2-MODERATION-001 | Rating moderation and complaints | Major | **TECHNICALLY ACCEPTED** (`03061c0`) | Retention values/legal remain |
+| ARCADE-P2-CONTENT-ANALYTICS-001 | Translations/content/local analytics | Major | **TECHNICALLY ACCEPTED** (`11c9805`) | External analytics not used |
 | BA-I18N-002 | Устойчивость языкового кэша и ошибок i18n: R-006/R-007, безопасный `language_url`, узкие исключения, regression-тесты | Major | **COMPLETED** (не accepted) | Не меняет ТЗ/схемы; dev-only; R-003/R-004/R-005 остаются |
 | BA-STAGE-1.2-E2E | Browser/E2E-проверки публичной оболочки и fallback | Major | **IMPLEMENTED / AWAITING INDEPENDENT REVIEW** | 11 E2E passed на dev-стеке; не приёмка |
 | BA-STAGE-2.1 | Аккаунты: регистрация/вход/профиль в рамках §2.10 | Major | **PARTIAL** — core реализован, не принят | Blockers: legal texts/versions, game history/records, email bounce, anonymous request wiring |

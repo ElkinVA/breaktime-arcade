@@ -1,7 +1,29 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-22 (ADR-APPF-001: внутренняя приёмка
-контрактов; внешние действия не выполнялись).
+**Дата актуализации:** 2026-11-22 (P0/P1/P2 technical acceptance; product
+acceptance remains owner-level).
+
+## 0. P0/P1/P2 — фактическое состояние
+
+- **P0** `ARCADE-P0-CONTRACT-CLOSURE-001` → `7c56f93`: ADR-APPF-001,
+  BA-GAME A, BA-SDK/ENV, 64 КиБ/strict unknown/`sessionId`, DB-001…008,
+  App F trust/EventLog/storage/leaderboard, retention, roles/2FA/step-up,
+  email adapter, production requirements. Внутренняя техническая приёмка;
+  юридические/платные/инфраструктурные действия не выполнялись.
+- **P1** `51a08d0` rating UI + TOP-100 leaderboard; `a167a47` JSON-LD,
+  CLDR plurals и accessibility. Product acceptance owner.
+- **P2** `059b7fa` ZIP intake/import/runtime/publish; `f938315` CRM games;
+  `de1c975` CRM wizard/reports/step-up; `6dd54d7` roles/audit;
+  `03061c0` rating moderation/complaints; `11c9805` translations/content/
+  local analytics. Technical acceptance with independent Pro review.
+- Full fresh gate: **917 passed, 12 skipped**.
+- Models: Developer/QA `deepseek-flash[1m]`; Architect/Reviewer
+  `deepseek-v4-pro`; evidence in `.autonomy/evidence/`.
+- Остаются: продуктовая приёмка владельца, App F runtime product review,
+  legal/email/domains/TLS/S3/hosting/real game/deploy; STOP снят.
+
+**Дата предыдущей актуализации:** 2026-11-22 (ADR-APPF-001: внутренняя
+приёмка контрактов; внешние действия не выполнялись).
 Документ — краткая панель текущего состояния. Нормативные требования
 определяются только утверждёнными ТЗ и решениями владельца; отчёты агентов,
 аудиты и реестры не заменяют приёмку.

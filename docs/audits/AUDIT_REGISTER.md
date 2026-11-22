@@ -548,3 +548,14 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | AUDIT COMPLETE; implementation не запускалась |
 | Остаток | App F/pipeline/CRM/legal/production остаются незакрытыми |
 | Источник | `docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md` |
+
+## ARCADE-P0/P1/P2 — technical acceptance 2026-11-22
+
+| Поле | Значение |
+|---|---|
+| Тип | Product/App F implementation wave |
+| Результат | P0 ADR-APPF-001; P1 ratings/leaderboard + SEO/i18n/a11y; P2 ZIP pipeline, CRM games/wizard/roles/moderation/content-analytics |
+| Проверки | Full fresh gate 917 passed, 12 skipped; each package: Developer self-check, Flash QA, independent Pro Reviewer; evidence in `.autonomy/evidence/` |
+| Статус | TECHNICALLY ACCEPTED; product acceptance owner; external actions not performed |
+| Остаток | Real game/rights, legal texts, email provider, domains/TLS, S3/CDN/hosting/DR, production deploy; App F runtime product review |
+| Источник | `docs/handoff/NOW.md`, `docs/status/PROJECT_STATUS.md`, commits `7c56f93`…`11c9805` |

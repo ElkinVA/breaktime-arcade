@@ -7,12 +7,19 @@
 BA-ENV-1.1/BA-GAME-2.2 закрыты Architect в `ADR-APPF-001` (2026-11-22);
 product acceptance и внешние юридические/платные/инфраструктурные действия
 не закрыты. Актуальная карта и три категории работ —
-`docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md`. STOP установлен; новые задачи
-автоматически не запускаются.
-**Текущий пакет:** ARCADE-P0-CONTRACT-CLOSURE-001 — ADR-APPF-001:
-canonical BA-GAME A, внутренняя приёмка BA-SDK/ENV v1.1.0, 64 КиБ/
-unknown/`sessionId`, DB-001…008, App F trust/EventLog/storage/leaderboard,
-retention, roles/2FA/step-up, email adapter, production requirements.
+`docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md`. STOP снят владельцем
+2026-11-22; P0/P1/P2 выполнены. Новые внешние/платные/юридические действия
+по-прежнему требуют владельца.
+
+**Текущий пакет:** P2 CRM/pipeline закрыт:
+`ARCADE-P2-PIPELINE-001` (`059b7fa`), `ARCADE-P2-CRM-GAMES-001`
+(`f938315`), `ARCADE-P2-CRM-WIZARD-001` (`de1c975`),
+`ARCADE-P2-CRM-ROLES-001` (`6dd54d7`), `ARCADE-P2-MODERATION-001`
+(`03061c0`), `ARCADE-P2-CONTENT-ANALYTICS-001` (`11c9805`).
+P0 — `ADR-APPF-001` (`7c56f93`); P1 — рейтинги/TOP-100 (`51a08d0`) и
+SEO/CLDR/a11y (`a167a47`). Полный fresh gate: **917 passed, 12 skipped**.
+Модели: Developer/QA — `deepseek-flash[1m]`; Architect/Reviewer —
+`deepseek-v4-pro`; каждый пакет имеет evidence и независимый review.
 R-036 Phase 1 (delivery observability, non-behavioral),
 BA-APPF-002 / DB-001 (tombstone-анонимизация сессий при удалении),
 BA-APPF-002 / DB-006 (immutable GameVersion),
