@@ -193,8 +193,12 @@ def _cleanup_worktrees() -> None:
 def _safe_file(name: str, root: Path | None = None) -> Path:
     root = root or ROOT
     path = (root / name).resolve()
-    if not path.is_relative_to(root.resolve()) or not path.is_file():
-        raise RuntimeError(f"developer reported an unsafe or missing path: {name}")
+    if not path.is_relative_to(root.resolve()):
+        raise RuntimeError(f"developer reported an unsafe path: {name}")
+    # A missing path is a legitimate deletion reported by the developer; it is
+    # still confined to the worktree and protected-path rules below.
+    if path.exists() and not path.is_file():
+        raise RuntimeError(f"developer reported a non-file path: {name}")
     normalized = path.relative_to(root.resolve()).as_posix()
     if normalized == ".env" or normalized.startswith(PROTECTED_PARTS):
         raise RuntimeError(f"developer reported a protected path: {name}")
