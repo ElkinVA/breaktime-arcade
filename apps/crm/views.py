@@ -71,6 +71,13 @@ from apps.crm.services.step_up import (
     mark_step_up,
 )
 from apps.i18n.services.language_registry import get_active_language_codes_safely
+from apps.moderation.models import Complaint
+from apps.moderation.services.complaints import (
+    assign_complaint,
+    reject_complaint,
+    resolve_complaint,
+)
+from apps.moderation.services.ratings import set_rating_visibility
 from apps.pipeline.models import GameImportDraft
 from apps.pipeline.services.artifacts import ArtifactError
 from apps.pipeline.services.publishing import publish_version
@@ -683,17 +690,175 @@ def content_overview(request: HttpRequest) -> TemplateResponse:
     )
 
 
+_MODERATION_ERRORS = {
+    "forbidden": "Недостаточно прав для модерации.",
+    "not_found": "Запись не найдена.",
+    "reason_required": "Укажите причину решения.",
+    "reason_too_long": "Причина слишком длинная (максимум 255 символов).",
+    "no_change": "Статус уже установлен.",
+    "closed": "Жалоба уже закрыта.",
+    "assignee_not_found": "Сотрудник для назначения не найден.",
+    "invalid_assignee": "Назначать жалобу можно только модератору или владельцу.",
+    "resolution_required": "Укажите решение по жалобе.",
+}
+
+
+def _moderation_step_up_redirect(request: HttpRequest) -> HttpResponseRedirect | None:
+    """Require an explicit password + TOTP elevation before a decision."""
+    allowed, reason = _authorize_step_up(request)
+    if allowed:
+        return None
+    messages.error(request, reason)
+    if reason == _STEP_UP_REQUIRED:
+        return _step_up_redirect(reverse("crm:moderation"))
+    return redirect("crm:moderation")
+
+
 @role_required(MODERATION_MANAGE)
 def moderation_queue(request: HttpRequest) -> TemplateResponse:
-    """Moderation queue over real rating votes for moderators/owners."""
+    """Rating and complaint queues for moderators/owners (§2.16.2)."""
     votes = (
-        GameRatingVote.objects.select_related("game", "user").order_by("-created_at").all()[:100]
+        GameRatingVote.objects.select_related("game", "user", "moderated_by")
+        .order_by("-created_at")
+        .all()[:100]
     )
+    complaints = (
+        Complaint.objects.select_related("game", "rating", "reporter", "assigned_to")
+        .order_by("-created_at")
+        .all()[:100]
+    )
+    assignees = User.objects.filter(
+        is_staff=True,
+        is_active=True,
+        crm_role__in=[StaffRole.OWNER, StaffRole.MODERATOR],
+    ).order_by("login")
     return TemplateResponse(
         request,
         "crm/moderation.html",
-        {"title": "Модерация · CRM", "votes": votes},
+        {
+            "title": "Модерация · CRM",
+            "votes": votes,
+            "complaints": complaints,
+            "assignees": assignees,
+        },
     )
+
+
+def _rating_visibility_view(
+    request: HttpRequest,
+    vote_id: UUID,
+    *,
+    visible: bool,
+) -> HttpResponseRedirect:
+    refused = _moderation_step_up_redirect(request)
+    if refused is not None:
+        return refused
+    actor = _staff_user(request)
+    result = set_rating_visibility(
+        actor=actor,
+        vote_id=vote_id,
+        visible=visible,
+        reason=str(request.POST.get("reason") or ""),
+        ip=request.META.get("REMOTE_ADDR"),
+    )
+    if result.ok:
+        messages.success(
+            request,
+            "Оценка восстановлена." if visible else "Оценка скрыта.",
+        )
+    else:
+        messages.error(request, _MODERATION_ERRORS.get(result.reason, "Решение отклонено."))
+    return redirect("crm:moderation")
+
+
+@role_required(MODERATION_MANAGE)
+@require_POST
+def rating_hide(request: HttpRequest, vote_id: UUID) -> HttpResponseRedirect:
+    """Hide a rating with a mandatory reason; the vote row is preserved."""
+    return _rating_visibility_view(request, vote_id, visible=False)
+
+
+@role_required(MODERATION_MANAGE)
+@require_POST
+def rating_restore(request: HttpRequest, vote_id: UUID) -> HttpResponseRedirect:
+    """Restore a hidden rating with a mandatory reason."""
+    return _rating_visibility_view(request, vote_id, visible=True)
+
+
+def _complaint_error_redirect(request: HttpRequest, reason: str) -> HttpResponseRedirect:
+    messages.error(request, _MODERATION_ERRORS.get(reason, "Решение отклонено."))
+    return redirect("crm:moderation")
+
+
+def _posted_assignee_id(request: HttpRequest) -> tuple[UUID | None, bool]:
+    """Return ``(assignee_id, valid)``; empty means "assign to the actor"."""
+    raw = str(request.POST.get("assignee_id") or request.POST.get("user_id") or "").strip()
+    if not raw:
+        return None, True
+    try:
+        return UUID(raw), True
+    except ValueError:
+        return None, False
+
+
+@role_required(MODERATION_MANAGE)
+@require_POST
+def complaint_assign(request: HttpRequest, complaint_id: UUID) -> HttpResponseRedirect:
+    """Assign or reassign an open complaint to a moderator/owner."""
+    refused = _moderation_step_up_redirect(request)
+    if refused is not None:
+        return refused
+    assignee_id, valid = _posted_assignee_id(request)
+    if not valid:
+        return _complaint_error_redirect(request, "assignee_not_found")
+    result = assign_complaint(
+        actor=_staff_user(request),
+        complaint_id=complaint_id,
+        assignee_id=assignee_id,
+        ip=request.META.get("REMOTE_ADDR"),
+    )
+    if result.ok:
+        messages.success(request, "Жалоба назначена.")
+        return redirect("crm:moderation")
+    return _complaint_error_redirect(request, result.reason)
+
+
+@role_required(MODERATION_MANAGE)
+@require_POST
+def complaint_resolve(request: HttpRequest, complaint_id: UUID) -> HttpResponseRedirect:
+    """Resolve a complaint with a mandatory resolution note."""
+    refused = _moderation_step_up_redirect(request)
+    if refused is not None:
+        return refused
+    result = resolve_complaint(
+        actor=_staff_user(request),
+        complaint_id=complaint_id,
+        resolution=str(request.POST.get("resolution") or ""),
+        ip=request.META.get("REMOTE_ADDR"),
+    )
+    if result.ok:
+        messages.success(request, "Жалоба решена.")
+        return redirect("crm:moderation")
+    return _complaint_error_redirect(request, result.reason)
+
+
+@role_required(MODERATION_MANAGE)
+@require_POST
+def complaint_reject(request: HttpRequest, complaint_id: UUID) -> HttpResponseRedirect:
+    """Reject a complaint with a mandatory resolution note."""
+    refused = _moderation_step_up_redirect(request)
+    if refused is not None:
+        return refused
+    result = reject_complaint(
+        actor=_staff_user(request),
+        complaint_id=complaint_id,
+        resolution=str(request.POST.get("resolution") or ""),
+        ip=request.META.get("REMOTE_ADDR"),
+    )
+    if result.ok:
+        messages.success(request, "Жалоба отклонена.")
+        return redirect("crm:moderation")
+    return _complaint_error_redirect(request, result.reason)
 
 
 @role_required(AUDIT_VIEW)
@@ -709,6 +874,9 @@ def audit_log(request: HttpRequest) -> TemplateResponse:
 
 __all__ = [
     "audit_log",
+    "complaint_assign",
+    "complaint_reject",
+    "complaint_resolve",
     "content_overview",
     "dashboard",
     "game_detail",
@@ -718,6 +886,8 @@ __all__ = [
     "login_view",
     "logout_view",
     "moderation_queue",
+    "rating_hide",
+    "rating_restore",
     "staff_management",
     "step_up",
     "wizard_analysis",

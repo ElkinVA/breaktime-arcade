@@ -31,6 +31,7 @@ class GameRatingVote(models.Model):
         related_name="moderated_rating_votes",
     )
     reason = models.CharField(max_length=255, blank=True)
+    moderated_at = models.DateTimeField(null=True, blank=True)
     change_count_30d = models.PositiveSmallIntegerField(default=0)
     change_window_started_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

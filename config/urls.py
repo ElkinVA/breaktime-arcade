@@ -25,6 +25,7 @@ urlpatterns = [
     path("api/v1/", include("apps.gameplay.api.urls")),
     path("api/v1/", include("apps.leaderboards.urls")),
     path("api/v1/", include("apps.ratings.api.urls")),
+    path("api/v1/", include("apps.moderation.api.urls")),
 ]
 
 # Языковые префиксы для публичных страниц

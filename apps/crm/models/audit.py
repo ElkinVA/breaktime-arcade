@@ -23,6 +23,11 @@ class AdminAuditLog(models.Model):
     ACTION_STAFF_DEACTIVATED = "staff.deactivated"
     ACTION_GAME_PUBLISHED = "game.published"
     ACTION_GAME_ROLLED_BACK = "game.rolled_back"
+    ACTION_RATING_HIDDEN = "rating.hidden"
+    ACTION_RATING_RESTORED = "rating.restored"
+    ACTION_COMPLAINT_ASSIGNED = "complaint.assigned"
+    ACTION_COMPLAINT_RESOLVED = "complaint.resolved"
+    ACTION_COMPLAINT_REJECTED = "complaint.rejected"
 
     ACTION_CHOICES = [
         (ACTION_STAFF_ROLE_CHANGED, "Смена роли сотрудника"),
@@ -30,6 +35,11 @@ class AdminAuditLog(models.Model):
         (ACTION_STAFF_DEACTIVATED, "Деактивация сотрудника"),
         (ACTION_GAME_PUBLISHED, "Публикация версии"),
         (ACTION_GAME_ROLLED_BACK, "Откат версии"),
+        (ACTION_RATING_HIDDEN, "Скрытие оценки"),
+        (ACTION_RATING_RESTORED, "Восстановление оценки"),
+        (ACTION_COMPLAINT_ASSIGNED, "Назначение жалобы"),
+        (ACTION_COMPLAINT_RESOLVED, "Решение по жалобе"),
+        (ACTION_COMPLAINT_REJECTED, "Отклонение жалобы"),
     ]
 
     id = models.BigAutoField(primary_key=True)

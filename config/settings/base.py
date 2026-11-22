@@ -353,6 +353,7 @@ REST_FRAMEWORK = {
         "leaderboard_read": "120/min",
         "rating": "20/day",
         "rating_read": "120/min",
+        "reports": "20/day",
     },
     "UNAUTHENTICATED_USER": "django.contrib.auth.models.AnonymousUser",
 }

@@ -16,6 +16,32 @@ urlpatterns = [
     path("staff/", views.staff_management, name="staff"),
     path("content/", views.content_overview, name="content"),
     path("moderation/", views.moderation_queue, name="moderation"),
+    path("moderation/complaints/", views.moderation_queue, name="complaints"),
+    path(
+        "moderation/ratings/<uuid:vote_id>/hide/",
+        views.rating_hide,
+        name="rating_hide",
+    ),
+    path(
+        "moderation/ratings/<uuid:vote_id>/restore/",
+        views.rating_restore,
+        name="rating_restore",
+    ),
+    path(
+        "moderation/complaints/<uuid:complaint_id>/assign/",
+        views.complaint_assign,
+        name="complaint_assign",
+    ),
+    path(
+        "moderation/complaints/<uuid:complaint_id>/resolve/",
+        views.complaint_resolve,
+        name="complaint_resolve",
+    ),
+    path(
+        "moderation/complaints/<uuid:complaint_id>/reject/",
+        views.complaint_reject,
+        name="complaint_reject",
+    ),
     path("audit/", views.audit_log, name="audit"),
     path("games/", views.games_list, name="games"),
     path("games/add/", views.wizard_upload, name="game_add"),

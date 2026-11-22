@@ -3,35 +3,180 @@
 {% block title %}Модерация · CRM{% endblock %}
 
 {% block crm_content %}
-<h1 class="text-3xl font-display font-bold mb-6">Модерация</h1>
-<p class="text-sm text-muted mb-4">Последние оценки игр для ручной проверки.</p>
+<h1 class="text-3xl font-display font-bold mb-2">Модерация</h1>
+<p class="text-sm text-muted mb-6">
+    Решения требуют подтверждения паролем и кодом TOTP и записываются в журнал аудита.
+</p>
 
-<div class="overflow-x-auto bg-surface rounded-card border border-text/10">
-    <table class="w-full text-sm">
-        <thead class="text-left text-muted border-b border-text/10">
-            <tr>
-                <th class="px-4 py-3">Игра</th>
-                <th class="px-4 py-3">Пользователь</th>
-                <th class="px-4 py-3">Оценка</th>
-                <th class="px-4 py-3">Статус</th>
-                <th class="px-4 py-3">Создана</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for vote in votes %}
-                <tr class="border-b border-text/5 last:border-0" data-testid="crm-moderation-vote">
-                    <td class="px-4 py-3">{{ vote.game.technical_id }}</td>
-                    <td class="px-4 py-3">{{ vote.user.login }}</td>
-                    <td class="px-4 py-3">{{ vote.value }}</td>
-                    <td class="px-4 py-3">{% if vote.is_valid %}Допущена{% else %}Отклонена{% endif %}</td>
-                    <td class="px-4 py-3 text-muted">{{ vote.created_at|date:"Y-m-d H:i" }}</td>
-                </tr>
-            {% empty %}
+<section class="mb-10" aria-labelledby="moderation-ratings-heading">
+    <h2 id="moderation-ratings-heading" class="text-xl font-semibold mb-3">Оценки</h2>
+    <div class="overflow-x-auto bg-surface rounded-card border border-text/10">
+        <table class="w-full text-sm">
+            <thead class="text-left text-muted border-b border-text/10">
                 <tr>
-                    <td colspan="5" class="px-4 py-6 text-muted" data-testid="crm-moderation-empty">Оценок нет.</td>
+                    <th class="px-4 py-3">Игра</th>
+                    <th class="px-4 py-3">Пользователь</th>
+                    <th class="px-4 py-3">Оценка</th>
+                    <th class="px-4 py-3">Статус</th>
+                    <th class="px-4 py-3">Причина</th>
+                    <th class="px-4 py-3">Создана</th>
+                    <th class="px-4 py-3">Решение</th>
                 </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+            </thead>
+            <tbody>
+                {% for vote in votes %}
+                    <tr class="border-b border-text/5 last:border-0 align-top" data-testid="crm-moderation-vote">
+                        <td class="px-4 py-3">{{ vote.game.technical_id }}</td>
+                        <td class="px-4 py-3">{{ vote.user.login }}</td>
+                        <td class="px-4 py-3" data-testid="crm-moderation-value">{{ vote.value }}</td>
+                        <td class="px-4 py-3" data-testid="crm-moderation-state">
+                            {% if vote.is_valid %}Допущена{% else %}Скрыта{% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-muted">{{ vote.reason|default:"—" }}</td>
+                        <td class="px-4 py-3 text-muted">{{ vote.created_at|date:"Y-m-d H:i" }}</td>
+                        <td class="px-4 py-3">
+                            <form method="post"
+                                  action="{% if vote.is_valid %}{% url 'crm:rating_hide' vote_id=vote.id %}{% else %}{% url 'crm:rating_restore' vote_id=vote.id %}{% endif %}"
+                                  class="flex flex-wrap items-center gap-2"
+                                  data-testid="crm-moderation-rating-form">
+                                {% csrf_token %}
+                                <label class="sr-only" for="rating-reason-{{ vote.id }}">Причина</label>
+                                <input id="rating-reason-{{ vote.id }}"
+                                       name="reason"
+                                       required
+                                       maxlength="255"
+                                       placeholder="Причина"
+                                       class="bg-bg border border-text/20 rounded px-2 py-1 text-xs"
+                                       data-testid="crm-moderation-reason">
+                                <button type="submit"
+                                        class="btn px-3 py-1 text-xs"
+                                        data-testid="crm-moderation-toggle">
+                                    {% if vote.is_valid %}Скрыть{% else %}Восстановить{% endif %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-4 py-6 text-muted" data-testid="crm-moderation-empty">Оценок нет.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section aria-labelledby="moderation-complaints-heading">
+    <h2 id="moderation-complaints-heading" class="text-xl font-semibold mb-3">Жалобы</h2>
+    <div class="overflow-x-auto bg-surface rounded-card border border-text/10">
+        <table class="w-full text-sm">
+            <thead class="text-left text-muted border-b border-text/10">
+                <tr>
+                    <th class="px-4 py-3">Игра</th>
+                    <th class="px-4 py-3">Объект</th>
+                    <th class="px-4 py-3">Тема</th>
+                    <th class="px-4 py-3">Категория</th>
+                    <th class="px-4 py-3">Автор</th>
+                    <th class="px-4 py-3">Статус</th>
+                    <th class="px-4 py-3">Исполнитель</th>
+                    <th class="px-4 py-3">Решение</th>
+                    <th class="px-4 py-3">Создана</th>
+                    <th class="px-4 py-3">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for complaint in complaints %}
+                    <tr class="border-b border-text/5 last:border-0 align-top" data-testid="crm-moderation-complaint">
+                        <td class="px-4 py-3">{{ complaint.game.technical_id }}</td>
+                        <td class="px-4 py-3">
+                            {{ complaint.get_target_type_display }}
+                            {% if complaint.rating %}<span class="text-muted">· {{ complaint.rating.value }}</span>{% endif %}
+                        </td>
+                        <td class="px-4 py-3">{{ complaint.subject }}</td>
+                        <td class="px-4 py-3 text-muted">{{ complaint.get_category_display }}</td>
+                        <td class="px-4 py-3">
+                            {% if complaint.reporter %}{{ complaint.reporter.login }}{% else %}—{% endif %}
+                        </td>
+                        <td class="px-4 py-3" data-testid="crm-moderation-complaint-status">
+                            {{ complaint.get_status_display }}
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if complaint.assigned_to %}{{ complaint.assigned_to.login }}{% else %}—{% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-muted" data-testid="crm-moderation-complaint-resolution">
+                            {{ complaint.resolution|default:"—" }}
+                        </td>
+                        <td class="px-4 py-3 text-muted">{{ complaint.created_at|date:"Y-m-d H:i" }}</td>
+                        <td class="px-4 py-3">
+                            {% if complaint.status == "new" or complaint.status == "assigned" %}
+                                <div class="space-y-2">
+                                    <form method="post"
+                                          action="{% url 'crm:complaint_assign' complaint_id=complaint.id %}"
+                                          class="flex flex-wrap items-center gap-2"
+                                          data-testid="crm-moderation-assign-form">
+                                        {% csrf_token %}
+                                        <label class="sr-only" for="assignee-{{ complaint.id }}">Исполнитель</label>
+                                        <select id="assignee-{{ complaint.id }}"
+                                                name="assignee_id"
+                                                class="bg-bg border border-text/20 rounded px-2 py-1 text-xs">
+                                            {% for staff in assignees %}
+                                                <option value="{{ staff.id }}"
+                                                        {% if complaint.assigned_to_id == staff.id %}selected{% endif %}>
+                                                    {{ staff.login }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                        <button type="submit"
+                                                class="btn px-3 py-1 text-xs"
+                                                data-testid="crm-moderation-assign">Назначить</button>
+                                    </form>
+                                    <form method="post"
+                                          action="{% url 'crm:complaint_resolve' complaint_id=complaint.id %}"
+                                          class="flex flex-wrap items-center gap-2"
+                                          data-testid="crm-moderation-resolve-form">
+                                        {% csrf_token %}
+                                        <label class="sr-only" for="resolve-{{ complaint.id }}">Решение</label>
+                                        <input id="resolve-{{ complaint.id }}"
+                                               name="resolution"
+                                               required
+                                               maxlength="2000"
+                                               placeholder="Решение"
+                                               class="bg-bg border border-text/20 rounded px-2 py-1 text-xs"
+                                               data-testid="crm-moderation-resolution">
+                                        <button type="submit"
+                                                class="btn px-3 py-1 text-xs"
+                                                data-testid="crm-moderation-resolve">Решить</button>
+                                    </form>
+                                    <form method="post"
+                                          action="{% url 'crm:complaint_reject' complaint_id=complaint.id %}"
+                                          class="flex flex-wrap items-center gap-2"
+                                          data-testid="crm-moderation-reject-form">
+                                        {% csrf_token %}
+                                        <label class="sr-only" for="reject-{{ complaint.id }}">Причина отклонения</label>
+                                        <input id="reject-{{ complaint.id }}"
+                                               name="resolution"
+                                               required
+                                               maxlength="2000"
+                                               placeholder="Причина отклонения"
+                                               class="bg-bg border border-text/20 rounded px-2 py-1 text-xs"
+                                               data-testid="crm-moderation-rejection">
+                                        <button type="submit"
+                                                class="btn px-3 py-1 text-xs"
+                                                data-testid="crm-moderation-reject">Отклонить</button>
+                                    </form>
+                                </div>
+                            {% else %}
+                                <span class="text-muted" data-testid="crm-moderation-complaint-closed">Закрыта</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="10" class="px-4 py-6 text-muted" data-testid="crm-moderation-complaints-empty">Жалоб нет.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
 {% endblock %}
