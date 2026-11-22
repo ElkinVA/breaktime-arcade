@@ -121,6 +121,69 @@ def test_free_space_pressure_is_a_stable_code(
     assert error.value.free == 100
 
 
+def test_free_space_probe_failure_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    uploads, artifacts, packages = _roots(tmp_path)
+    quota = _quota(tmp_path, (uploads, artifacts, packages), max_bytes=10_000)
+
+    def unavailable(_path: object) -> SimpleNamespace:
+        raise OSError("statvfs unavailable")
+
+    monkeypatch.setattr(quota_module.os, "statvfs", unavailable)
+
+    with pytest.raises(StorageQuotaError) as error:
+        quota.reserve(100)
+
+    assert error.value.code == X_STORAGE_FREE_SPACE
+    assert error.value.free == 0
+    # Fail-closed admission must not record a reservation or touch the roots.
+    assert not (quota.state_root / RESERVATIONS_FILE).exists()
+    assert sorted(uploads.iterdir()) == []
+    assert sorted(artifacts.iterdir()) == []
+    assert sorted(packages.iterdir()) == []
+
+
+def test_unknown_free_space_for_any_root_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    uploads, artifacts, packages = _roots(tmp_path)
+    quota = _quota(tmp_path, (uploads, artifacts, packages), max_bytes=10_000)
+    broken = packages.resolve()
+
+    def partial(path: object) -> SimpleNamespace:
+        if Path(path).resolve() == broken:
+            raise OSError("statvfs unavailable")
+        return SimpleNamespace(f_bavail=10**9, f_frsize=1)
+
+    monkeypatch.setattr(quota_module.os, "statvfs", partial)
+
+    with pytest.raises(StorageQuotaError) as error:
+        quota.reserve(100)
+
+    assert error.value.code == X_STORAGE_FREE_SPACE
+    assert not (quota.state_root / RESERVATIONS_FILE).exists()
+
+
+def test_concurrent_reserve_and_release_leave_no_reservations(tmp_path: Path) -> None:
+    uploads, artifacts, packages = _roots(tmp_path)
+    quota = _quota(tmp_path, (uploads, artifacts, packages), max_bytes=10_000)
+
+    def hold(_index: int) -> None:
+        reservation = quota.reserve(1_000)
+        time.sleep(0.01)
+        quota.release(reservation)
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(hold, range(8)))
+
+    state = json.loads((quota.state_root / RESERVATIONS_FILE).read_text(encoding="utf-8"))
+    assert state == {}
+    # All slots were released: the full quota is available again.
+    final = quota.reserve(10_000)
+    quota.release(final)
+
+
 def test_stale_reservation_expires_after_restart(tmp_path: Path) -> None:
     uploads, artifacts, packages = _roots(tmp_path)
     quota = _quota(

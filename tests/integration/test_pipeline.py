@@ -292,6 +292,49 @@ def test_quota_exhaustion_is_non_destructive_for_published_version(
 
 
 @pytest.mark.django_db
+def test_import_reserves_immutable_package_and_upload_source(
+    pipeline_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from apps.pipeline.services.quota import Reservation, StorageQuota
+
+    calls: list[tuple[str, int]] = []
+    original = StorageQuota.reserve
+
+    def spy(self: StorageQuota, amount: int, *, reason: str = "") -> Reservation:
+        calls.append((reason, amount))
+        return original(self, amount, reason=reason)
+
+    monkeypatch.setattr(StorageQuota, "reserve", spy)
+    data = _package()
+    result = _run(pipeline_env, data)
+
+    assert result.status == "created"
+    # Both copies written by the web import are reserved up front.
+    assert ("package-import", len(data) * 2) in calls
+
+
+@pytest.mark.django_db
+def test_import_quota_counts_both_copies_and_rejects_before_writing(
+    pipeline_env: Path, settings
+) -> None:
+    data = _package()
+    # Room for one archive only: under-reserving a single copy would admit
+    # this import and then write the second copy above the configured cap.
+    settings.ZIP_STORAGE_QUOTA_BYTES = len(data) + len(data) // 2
+    settings.ZIP_STORAGE_MIN_FREE_BYTES = 0
+    settings.ZIP_QUOTA_STATE_ROOT = pipeline_env / "quota-state"
+
+    result = _run(pipeline_env, data)
+
+    assert result.status == "rejected"
+    assert any(item.code == "X_STORAGE_QUOTA" for item in result.report.diagnostics)
+    # Rejection is non-destructive: nothing was copied into the ZIP roots.
+    assert not (pipeline_env / "store" / "packages").exists()
+    assert not (pipeline_env / "zip-uploads").exists()
+    assert Game.objects.count() == 0
+
+
+@pytest.mark.django_db
 def test_broker_failure_does_not_damage_published_version(pipeline_env: Path, monkeypatch) -> None:
     from apps.pipeline.services import extraction
 

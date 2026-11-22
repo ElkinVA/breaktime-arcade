@@ -98,6 +98,13 @@ from apps.pipeline.validation.text import (
 
 SDK_PACKAGE_PATH = "js/ba-sdk.js"
 
+# One web import writes two copies of the uploaded archive before the worker
+# result is cleaned up: the immutable original package and the transient
+# upload source.  Reserving both keeps the system-wide cap honest under
+# concurrent imports (each in-flight import would otherwise under-reserve by
+# one archive).
+IMPORT_WRITE_COPIES = 2
+
 
 @dataclass(slots=True)
 class ImportResult:
@@ -148,7 +155,7 @@ def import_package(
         artifacts_root=artifacts,
     )
     try:
-        reservation = quota.reserve(len(data), reason="package-import")
+        reservation = quota.reserve(len(data) * IMPORT_WRITE_COPIES, reason="package-import")
     except StorageQuotaError as exc:
         return _reject_quota(
             data,

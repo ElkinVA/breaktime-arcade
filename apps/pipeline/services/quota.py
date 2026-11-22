@@ -291,11 +291,32 @@ class StorageQuota:
                     requested=requested,
                     limit=self.max_bytes,
                 )
-            free_values = [
-                value for value in (_free_bytes(root) for root in self.roots) if value is not None
-            ]
-            free = min(free_values) if free_values else 0
-            if free_values and free - requested < self.min_free_bytes:
+            # Fail closed: if free space cannot be probed for *any* quota root,
+            # admission must not silently skip the min-free guard.  A root may
+            # be on a different filesystem, so a single unknown value makes the
+            # whole admission decision unsafe.
+            free_values: list[int] = []
+            for root in self.roots:
+                value = _free_bytes(root)
+                if value is None:
+                    raise StorageQuotaError(
+                        X_STORAGE_FREE_SPACE,
+                        "Не удалось определить свободное место для ZIP-хранилища",
+                        usage=usage + reserved,
+                        requested=requested,
+                        limit=self.max_bytes,
+                    )
+                free_values.append(value)
+            if not free_values:
+                raise StorageQuotaError(
+                    X_STORAGE_FREE_SPACE,
+                    "Не удалось определить свободное место для ZIP-хранилища",
+                    usage=usage + reserved,
+                    requested=requested,
+                    limit=self.max_bytes,
+                )
+            free = min(free_values)
+            if free - requested < self.min_free_bytes:
                 raise StorageQuotaError(
                     X_STORAGE_FREE_SPACE,
                     "Недостаточно свободного места для ZIP-хранилища",
