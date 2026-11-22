@@ -1,0 +1,14 @@
+{
+  "name": "Arquero",
+  "shortDescription": "Tensa, apunta y lanza flechas a blancos danzantes en un atardecer encendido.",
+  "description": "Arquero convierte un descanso corto en una prueba de tacto y ritmo. En un valle crepuscular de varias capas cruzan discos solares, fuegos fatuos veloces, guardianes de piedra y fénix poco frecuentes. Mueve el puntero o el dedo para apuntar, mantén para tensar y suelta para lanzar una flecha con física y trayectoria visible. Cada acierto construye un combo y cada fallo lo rompe. Tres aciertos seguidos suben el multiplicador hasta x5 y premian los tiros medidos frente al clic frenético. Cuatro fases cambian la mezcla, el ritmo y el comportamiento de los blancos sin llenar la pantalla. Puntos, combo, tiempo y tensión se leen en el móvil; partículas, destellos de impacto y un arco reactivo dan peso a cada disparo. Incluye seis idiomas, controles de puntero y teclado, pausa, sonido y flujo para invitados.",
+  "instructions": "Apunta con el puntero o el dedo. Mantén para tensar, suelta para disparar. Más tensión da una flecha más rápida y plana. Acierta antes de que terminen los sesenta segundos. Tres aciertos seguidos suben el multiplicador; un fallo lo reinicia.",
+  "controls": "Escritorio: el ratón apunta, mantén el botón izquierdo para tensar y suelta para disparar. Teclado: flechas o WASD para apuntar, espacio para tensar. Móvil: mantén en cualquier lugar para apuntar y tensar, suelta para disparar.",
+  "seoTitle": "Arquero — juego arcade de tiro con arco gratis",
+  "seoDescription": "Juega a Arquero online: tensa el arco, lee la trayectoria y acierta blancos móviles en sesenta segundos. Gratis, sin descargas.",
+  "coverAlt": "Arquero al atardecer tensando un arco luminoso hacia blancos flotantes.",
+  "screenshotAlts": [
+    "Partida de Arquero con puntos, combo, temporizador y trayectoria visible.",
+    "Pantalla de resultado con puntuación, precisión, mejor combo y clasificación."
+  ]
+}

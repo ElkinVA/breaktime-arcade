@@ -1,0 +1,14 @@
+{
+  "name": "Bogenschütze",
+  "shortDescription": "Spann den Bogen, ziele und triff tanzende Ziele im glühenden Abendrot.",
+  "description": "Der Bogenschütze verwandelt eine kurze Pause in eine Prüfung von Gefühl und Timing. Im Zentrum eines vielschichtigen Abendtals ziehen Sonnenscheiben, flinke Irrlichter, Steinwächter und seltene Phönixe vorbei. Bewege Zeiger oder Finger zum Zielen, halte zum Spannen und lass los, um einen physikalischen Pfeil entlang einer sichtbaren Flugbahn zu schicken. Jeder Treffer baut eine Kombo auf, jeder Fehlschuss bricht sie. Drei Treffer in Folge erhöhen den Multiplikator bis x5 und belohnen ruhige Schüsse statt hektisches Klicken. Vier Phasen verändern Mischung, Rhythmus und Verhalten der Ziele, ohne das Feld zu überfüllen. Punkte, Kombo, Zeit und Zugstärke bleiben auch auf dem Telefon lesbar; Partikel, Trefferblitze und ein reagierender Bogen geben jedem Schuss Gewicht. Sechs Sprachen, Zeiger- und Tastatursteuerung, Pause, Tonumschaltung und ein gastfreundlicher Ablauf sind enthalten.",
+  "instructions": "Ziele mit Zeiger oder Finger. Halten zum Spannen, loslassen zum Schießen. Längeres Spannen ergibt einen schnelleren, flacheren Pfeil. Triff die Ziele vor Ablauf der sechzig Sekunden. Drei Treffer in Folge erhöhen den Multiplikator; ein Fehlschuss setzt ihn zurück.",
+  "controls": "Desktop: Maus zielt, linke Taste spannen, loslassen zum Schießen. Tastatur: Pfeiltasten oder WASD zielen, Leertaste spannt. Mobil: überall halten zum Zielen und Spannen, loslassen zum Schießen.",
+  "seoTitle": "Bogenschütze — kostenloses Bogenschieß-Arcadespiel",
+  "seoDescription": "Spiele Bogenschütze online: spanne den Bogen, lies die Flugbahn und triff bewegliche Ziele in sechzig Sekunden. Kostenlos, ohne Download.",
+  "coverAlt": "Bogenschütze im Abendrot spannt einen leuchtenden Bogen auf schwebende Ziele.",
+  "screenshotAlts": [
+    "Bogenschütze-Spiel mit Punkten, Kombo, Timer und sichtbarer Pfeilflugbahn.",
+    "Ergebnisbildschirm mit Punkten, Genauigkeit, bester Kombo und Rangliste."
+  ]
+}

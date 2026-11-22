@@ -1,0 +1,14 @@
+{
+  "name": "Archer",
+  "shortDescription": "Bande, vise et décoche tes flèches sur des cibles dansantes au couchant.",
+  "description": "Archer transforme une courte pause en épreuve de précision et de timing. Au cœur d’une vallée crépusculaire, disques solaires, feux follets rapides, gardiens de pierre et phénix rares traversent le terrain. Déplace le pointeur ou le doigt pour viser, maintiens pour bander et relâche pour envoyer une flèche soumise à une trajectoire balistique visible. Chaque touche construit un combo, chaque raté le brise. Trois touches consécutives augmentent le multiplicateur jusqu’à x5 et récompensent les tirs posés plutôt que les clics frénétiques. Quatre phases font évoluer le mélange, le rythme et le comportement des cibles sans saturer l’écran. Score, combo, temps et tension restent lisibles sur mobile ; particules, éclats d’impact et arc réactif donnent du poids à chaque tir. Six langues, contrôles pointeur/clavier, pause, son et accueil invité sont inclus.",
+  "instructions": "Vise avec le pointeur ou le doigt. Maintiens pour bander, relâche pour tirer. Une tension plus longue donne une flèche plus rapide et plus tendue. Touche les cibles avant la fin des soixante secondes. Trois touches d’affilée augmentent le multiplicateur ; un raté le remet à zéro.",
+  "controls": "Bureau : la souris vise, maintiens le bouton gauche pour bander, relâche pour tirer. Clavier : flèches ou WASD pour viser, espace pour bander. Mobile : maintiens n’importe où pour viser et bander, relâche pour tirer.",
+  "seoTitle": "Archer — jeu d’arcade de tir à l’arc gratuit",
+  "seoDescription": "Joue à Archer en ligne : bande l’arc, lis la trajectoire et touche des cibles mobiles en soixante secondes. Gratuit, sans téléchargement.",
+  "coverAlt": "Archer au couchant bandant un arc lumineux vers des cibles flottantes.",
+  "screenshotAlts": [
+    "Partie d’Archer avec score, combo, chronomètre et trajectoire de flèche visible.",
+    "Écran de résultat avec score, précision, meilleur combo et classement."
+  ]
+}

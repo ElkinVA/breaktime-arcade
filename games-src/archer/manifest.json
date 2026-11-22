@@ -1,0 +1,71 @@
+{
+  "cartridge": 1,
+  "id": "archer",
+  "version": "1.3.1",
+  "sdkVersion": "^1.0",
+  "protocol": 1,
+  "name": "Archer",
+  "entry": "index.html",
+  "genre": "arcade",
+  "tags": ["aim", "skill", "shoot", "archery", "fantasy"],
+  "supportedLanguages": ["en", "de", "nl", "ru", "fr", "es"],
+  "defaultLanguage": "en",
+  "mobileSupport": true,
+  "orientation": "any",
+  "estimatedPlayMinutes": 3,
+  "theme": {"accent": "#FFB45E"},
+  "score": {
+    "type": "integer",
+    "unit": "points",
+    "direction": "higher_is_better",
+    "minValue": 0,
+    "maxValue": 100000,
+    "schemaVersion": 1
+  },
+  "limits": {
+    "minPlaytimeSeconds": 15,
+    "maxSessionSeconds": 1800,
+    "pauseOnBlur": true
+  },
+  "capabilities": {
+    "wasm": false,
+    "pointerLock": false,
+    "storage": "sdk",
+    "externalOrigins": []
+  },
+  "leaderboard": {
+    "enabled": true,
+    "claimedVerification": "heuristic_validated"
+  },
+  "verification": {
+    "profile": {"maxPointsPerSecond": 700, "maxIdleGapMs": 5000},
+    "eventKinds": ["start", "shoot", "hit", "miss", "combo", "end"],
+    "eventSchema": {
+      "type": "object",
+      "required": ["t", "k", "d"],
+      "properties": {
+        "t": {"type": "integer", "minimum": 0},
+        "k": {"type": "string"},
+        "d": {"type": "object"}
+      },
+      "additionalProperties": true
+    }
+  },
+  "assets": {
+    "cover": "assets/cover.webp",
+    "screenshots": ["assets/screen-1.webp", "assets/screen-2.webp"],
+    "critical": [
+      "index.html",
+      "css/style.css",
+      "js/ba-sdk.js",
+      "js/core.js",
+      "js/rng.js",
+      "js/game.js",
+      "locales/en.json"
+    ],
+    "criticalPathBytes": 28702
+  },
+  "credits": [
+    {"author": "Breaktime Arcade", "license": "CC0-1.0", "aiGenerated": true}
+  ]
+}

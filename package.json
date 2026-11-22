@@ -11,7 +11,8 @@
     "watch:css": "tailwindcss -i ./static/src/css/app.css -o ./static/dist/app.css --watch",
     "build": "npm run vendor && npm run build:css",
     "check:js": "node --check sdk/1.1.0/ba-sdk.js && node --check --input-type=module < static/src/js/host_protocol.js && node --check --input-type=module < static/src/js/player.js",
-    "test:js": "node --test tests/js/host_protocol.test.mjs"
+    "test:js": "node --test tests/js/host_protocol.test.mjs",
+    "test:archer": "node tests/js/archer.test.mjs"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.0.0",

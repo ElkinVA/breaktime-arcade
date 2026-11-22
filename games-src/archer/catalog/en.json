@@ -1,0 +1,14 @@
+{
+  "name": "Archer",
+  "shortDescription": "Draw, aim and loose arrows at dancing targets in a glowing sunset.",
+  "description": "Archer turns a sixty-second break into a test of touch and timing. The archer stands at the heart of a layered twilight valley while sun discs, swift wisps, stone guardians and rare phoenixes cross the range. Move the pointer or finger to aim, hold to draw the bow and release to send a physics-driven arrow along a visible ballistic arc. Every hit builds a combo; every miss breaks it. Three consecutive hits raise the multiplier up to x5, rewarding measured shots over frantic clicks. The round moves through four escalating phases, changing the mix, rhythm and behaviour of targets without turning the field into a wall of noise. Score, combo, time and draw power stay readable on a phone, while particle bursts, impact flashes and a reactive bow give every shot weight. Six interface languages, pointer and keyboard controls, pause/resume, sound toggle and a guest-friendly flow are built in. The platform SDK handles the session, heartbeat, verified result and leaderboard; the game never asks for registration and never blocks play behind a form.",
+  "instructions": "Aim by moving the pointer or finger. Hold to draw the bow; release to shoot. A longer draw gives a faster, flatter arrow. Hit targets before the sixty-second round ends. Three hits in a row raise the score multiplier; a miss resets it.",
+  "controls": "Desktop: mouse aims, hold left button to draw, release to shoot. Keyboard: arrow keys or WASD aim, Space draws. Mobile: hold anywhere to aim and draw, release to shoot.",
+  "seoTitle": "Archer — free sunset archery arcade game",
+  "seoDescription": "Play Archer online: draw the bow, read the ballistic arc and hit moving targets in a sixty-second sunset challenge. Free, no download.",
+  "coverAlt": "Archer at sunset drawing a glowing bow toward floating targets.",
+  "screenshotAlts": [
+    "Archer gameplay with score, combo multiplier, timer and a visible arrow trajectory.",
+    "Archer result screen with score, accuracy, best combo and leaderboard."
+  ]
+}
