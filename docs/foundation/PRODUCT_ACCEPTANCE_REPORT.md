@@ -4,9 +4,9 @@
 **Область:** P0 contract closure, P1 public product, P2 ZIP pipeline/CRM.
 **Среда:** локальный dev-lite stack (`portal.test:8443`), PostgreSQL 18,
 Redis cache/broker/throttle, Celery worker/beat, nginx, zip-worker.
-**Статус:** **TECHNICAL PRODUCT ACCEPTANCE — NOT PRODUCTION-READY**:
-основные пользовательские сценарии проверены; один архитектурный блокер
-изоляции ZIP и внешние действия не закрыты.
+**Статус:** **P3 ZIP ISOLATION ACCEPTED — NOT PRODUCTION-READY**:
+основные пользовательские сценарии и изоляция ZIP проверены; остаются
+внешние production-блокеры (реальная игра, legal/email/домены/TLS/S3/deploy).
 
 ## 1. Итог
 
@@ -19,17 +19,21 @@ Redis cache/broker/throttle, Celery worker/beat, nginx, zip-worker.
 | Version update / rollback | **PASS technically** | import v1.2.0 → publish; rollback to v1.0.0; republish v1.2.0; runtime hash moved to host path |
 | CRM games/versions/staff/moderation/content/analytics | **PASS read paths** | owner browser: `/crm/`, games, staff, moderation, content, translations, analytics, audit — all 200 |
 | CRM step-up publish | **PASS** | password+TOTP; publish redirected to published card; failed reuse of login TOTP correctly blocked |
-| ZIP/API/access security | **PARTIAL / BLOCKER** | unsafe path/forbidden API/origin mismatch/CSRF tests PASS; **ZIP extraction imports in web process, not isolated zip-worker** |
+| ZIP/API/access security | **PASS (P3)** | traversal/malformed rejected before enqueue; worker-only extraction; live source removed; cleanup task live; origin/CSRF/access tests PASS |
+| ZIP Worker isolation | **PASS** | live CRM upload → `ZipExtractionJob completed`; zip-worker log `zip.extract`/`zip.complete`; web has no `extract_zip`; source absent |
 | Adaptivity, localization, SEO | **PASS** | Playwright 360px/focus/labels; 6 language pages; JSON-LD VideoGame/BreadcrumbList; sitemap 200 |
 
 ## 2. Выполненные проверки
 
 - Browser E2E: **18 passed** (`BA_E2E=1`, Chromium, dev-lite). Включает
   аккаунты, 2FA, языки, 360px, catalog a11y, probe runtime/storage/origin.
-- Full fresh gate: **917 passed, 12 skipped** (`make test-fresh`).
+- Full fresh gate: **930 passed, 12 skipped** (`make test-fresh`).
 - Live smoke: `/healthz` 200, `/readyz` DB/cache/broker/i18n/backup ok.
 - Live CRM: owner pages all 200; anonymous `/crm/games/` → 302 login.
 - Live import/publish: synthetic fixture ZIP; runtime served after fixes.
+- Live isolated worker: `worker_acceptance` import → `ZipExtractionJob
+  completed`, worker `zip.extract`/`zip.complete` (93 ms), source removed;
+  upload cleanup task live removed an aged job.
 - Live App F: probe session/result/leaderboard/storage; rating UI; rollback.
 - Live SEO: JSON-LD, sitemap, DE pages.
 
@@ -43,22 +47,59 @@ Redis cache/broker/throttle, Celery worker/beat, nginx, zip-worker.
 | Runtime files были `700/600` | nginx 403 | `_make_runtime_public`: dirs 755/files 644 |
 | Runtime path без host label | nginx `/<host>/<hash>` не находил bundle | `store_runtime(..., host_label=...)`; путь `/<host>/<hash>` |
 | `rename` между volumes давал EXDEV | import отклонялся `X_ARTIFACT_IO` | staging рядом с target + copy + rename |
-| Runtime volume root был root-owned | web не мог публиковать | dev-lite `runtime-init` chown + `runtime-init` dependency |
+| Runtime volume root был root-owned | web не мог публиковать | base `zip-volume-init` chown runtime/zip volumes; web/nginx mounts |
+| ZIP import распаковывал в web | нарушение изоляции | P3: worker-only extraction, durable job, hash verification, no fallback |
+| Source ZIP оставался после timeout/failure | утечка до 25 МБ на job | cancel marker + TTL cleanup task on writable default worker |
+| Cleanup на read-only zip-worker не удалял | ложный `removed` | cleanup moved to default worker; counts only actual deletion |
+| Worker volume override терял app_var/media | backup/restore риск | explicit inherited mounts restored; compose test asserts |
 | Playwright host lacked `libasound.so.2` | E2E not runnable | local test-only `LD_LIBRARY_PATH` workaround; не product |
 | Rating E2E 429 из-за account age/limits | rating not testable immediately | acceptance fixture aged/playtime seeded; ограничение корректное |
 
-Исправления runtime/pipeline закоммичены в `dbbcf5d`.
+Runtime isolation/runtime-path fixes: `dbbcf5d`; P3 worker integration and
+review fixes: `021a36c`, `270f224`, `e9f66e2`, `9017254`.
 
-## 4. Не проверено / ограничения
+## 4. ZIP Worker isolation (P3) и ограничения
 
-- **BLOCKER:** `apps.pipeline.services.importer.import_package()` вызывает
-  `extract_zip()` в web-процессе, а не в изолированном `zip-worker`. Это
-  нарушает требование распаковки недоверенного ZIP в отдельном worker с
-  лимитами. Требуется отдельная интеграция worker → importer.
+**Изоляция:** `import_package` создаёт `ZipExtractionJob`, пишет source в
+приватный `zip_uploads/<uuid>/source.zip` и enqueue’ит `extract_zip_task` в
+очередь `zip`. Web **не импортирует и не вызывает** `extract_zip`; worker —
+единственный потребитель очереди `zip`, его сеть `zipnet` содержит только
+redis-broker, нет edge/db/cache, `read_only`, `cap_drop ALL`, `mem_limit
+512m`, `cpus 1.0`, `pids_limit 64`, `nofile 1024`, tmpfs `/tmp` 64 MiB,
+deadline 50 s; ZIP ≤25 MiB, распакованный бюджет/файлы — worker limits.
+Web проверяет `STATUS.json`/`COMPLETED.json`, package hash и каждый файл
+(sha256/размер/точный набор), затем копирует в собственный staging.
+
+**Cleanup:** terminal failures/timeouts cancel/source cleanup; abandoned
+uploads удаляет отдельная задача `cleanup_zip_uploads` на writable default
+worker (zip-worker uploads — read-only). Retention TTL — R-037.
+
+**Negative tests (PASS):** enqueue failure/no fallback, worker status
+rejection, timeout + CANCEL, hash mismatch, busy-not-terminal, malformed ZIP,
+path traversal, symlink/source permissions, duplicate/retry idempotency,
+cleanup of abandoned uploads, compose isolation invariants. Live: malformed
+traversal ZIP rejected before enqueue; aged upload removed by the actual
+Celery cleanup task.
+
+**Staging/prod runtime (static):** base `compose.yml` now mounts
+`runtime_data` at `/app/runtime` for web (rw) and nginx (ro), sets
+`ZIP_PUBLIC_RUNTIME_ROOT=/app/runtime`, and `zip-volume-init` chowns/chmods
+runtime + zip volumes. `docker compose ... compose.prod.yml config` passes;
+staging live is **NOT TESTED** because `.env.staging` is absent.
+
+**Ограничения:**
+
 - Реальный игровой ZIP и права на контент: **NOT TESTED**; использован
-  только synthetic CC0 fixture.
-- Production staging/prod compose не проверены на runtime volume/env;
-  текущий `runtime-init` добавлен только в dev-lite.
+  synthetic CC0 fixture.
+- Production/STAGING live stack не поднимался; **staging config NOT TESTED**
+  из-за отсутствующего `.env.staging` в среде. Base `compose.yml` содержит
+  runtime volume/env/init для web/nginx; `compose.prod.yml` config — PASS.
+- Staging/prod runtime serving, ownership на первом старте и backup/restore
+  live — **NOT TESTED**.
+- Синхронное ожидание worker до 75 с занимает web worker; production
+  load-test не проводился.
+- Hard filesystem quota для zip-томов (R-033) и retention uploads (R-037)
+  остаются остаточными рисками.
 - Реальная email-доставка, bounce, legal pages, domains/TLS, S3/CDN,
   monitoring/DR и production deploy: **NOT TESTED / EXTERNAL**.
 - CRM write-сценарии модерации/переводов/аналитики проверены read paths и
@@ -71,11 +112,11 @@ Redis cache/broker/throttle, Celery worker/beat, nginx, zip-worker.
 
 **Готово к demo/dev acceptance:** каталог, публичная игра, probe SDK,
 рейтинги, лидерборд, storage, CRM read/write games/wizard/roles/step-up,
-SEO/i18n/a11y.
+SEO/i18n/a11y, изолированный ZIP worker.
 
-**Не готово к production:** ZIP isolation blocker, real game, email, legal,
-domains/TLS, S3/CDN/hosting/DR, production secrets/deploy, staging/prod
-runtime volume verification.
+**Не готово к production:** real game/rights, email, legal,
+domains/TLS, S3/CDN/hosting/DR, production secrets/deploy, live
+staging/prod runtime verification, R-033/R-037 residuals.
 
 ## 6. Owner Action List
 
@@ -155,9 +196,10 @@ runtime volume verification.
 - **Антифрод рейтингов/популярности:** утвердить правила §2.9.6/R-032.
 - **Paid ads/external analytics:** без подтверждения не включать.
 
-## 7. Следующий технический шаг
+## 7. Следующий шаг
 
-`ARCADE-P3-ZIP-WORKER-INTEGRATION-001`: перенести extraction из web-процесса
-в изолированный `zip-worker`, добавить staging/prod runtime volume/env и
-повторно прогнать product acceptance. Это внутренняя работа, не требующая
-внешних данных.
+`ARCADE-P3-ZIP-WORKER-INTEGRATION-001` **COMPLETED / Pro-reviewed**.
+Внутренние работы по ZIP isolation закрыты. Следующий этап требует
+владельца/внешней стороны: реальный игровой ZIP/права, staging `.env.staging`
+и live staging runtime/backup verification, email, legal, domains/TLS,
+S3/CDN/hosting, production secrets/deploy.

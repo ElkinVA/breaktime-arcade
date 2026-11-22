@@ -23,9 +23,12 @@ acceptance remains owner-level).
   legal/email/domains/TLS/S3/hosting/real game/deploy; STOP снят.
 - **Product acceptance 2026-11-22:** E2E 18 passed; live ZIP→publish,
   public runtime, App F session/result/leaderboard/storage, rating/rollback,
-  CRM pages, SEO/a11y; отчёт `docs/foundation/PRODUCT_ACCEPTANCE_REPORT.md`.
-  **Production blocker:** ZIP extraction в web-процессе, не в
-  `zip-worker`; нужен `ARCADE-P3-ZIP-WORKER-INTEGRATION-001`.
+  CRM pages, SEO/a11y; fresh gate **930 passed, 12 skipped**. P3
+  `ARCADE-P3-ZIP-WORKER-INTEGRATION-001` (`9017254`, Pro-reviewed):
+  worker-only extraction, live `ZipExtractionJob completed`, source cleanup,
+  runtime volume/init. Отчёт `docs/foundation/PRODUCT_ACCEPTANCE_REPORT.md`.
+  Остаются external: real game/rights, email, legal, domains/TLS,
+  S3/hosting/DR, production deploy; staging live NOT TESTED.
 
 **Дата предыдущей актуализации:** 2026-11-22 (ADR-APPF-001: внутренняя
 приёмка контрактов; внешние действия не выполнялись).

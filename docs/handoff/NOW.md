@@ -23,11 +23,14 @@ SEO/CLDR/a11y (`a167a47`). Полный fresh gate: **917 passed, 12 skipped**.
 
 **Product acceptance 2026-11-22:** E2E 18 passed; live ZIP→publish,
 public runtime, App F session/result/leaderboard/storage, rating,
-rollback, CRM pages, SEO/a11y проверены. Отчёт —
+rollback, CRM pages, SEO/a11y проверены. P3 закрыт:
+`ARCADE-P3-ZIP-WORKER-INTEGRATION-001` (`9017254`, Pro-reviewed) —
+web не распаковывает ZIP, live worker job completed, source cleaned.
+Fresh gate 930 passed, 12 skipped. Отчёт —
 `docs/foundation/PRODUCT_ACCEPTANCE_REPORT.md`; действия владельца —
-`docs/foundation/OWNER_ACTION_LIST.md`. **Production blocker:** ZIP
-extraction всё ещё выполняется в web-процессе, не в изолированном
-`zip-worker`; нужен `ARCADE-P3-ZIP-WORKER-INTEGRATION-001`.
+`docs/foundation/OWNER_ACTION_LIST.md`. Остаются external production
+blockers: real game/rights, email, legal, domains/TLS, S3/hosting/DR,
+production deploy; staging live `.env.staging` NOT TESTED.
 R-036 Phase 1 (delivery observability, non-behavioral),
 BA-APPF-002 / DB-001 (tombstone-анонимизация сессий при удалении),
 BA-APPF-002 / DB-006 (immutable GameVersion),

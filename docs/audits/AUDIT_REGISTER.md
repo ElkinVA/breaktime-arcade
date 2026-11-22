@@ -559,3 +559,14 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | TECHNICALLY ACCEPTED; product acceptance owner; external actions not performed |
 | Остаток | Real game/rights, legal texts, email provider, domains/TLS, S3/CDN/hosting/DR, production deploy; App F runtime product review |
 | Источник | `docs/handoff/NOW.md`, `docs/status/PROJECT_STATUS.md`, commits `7c56f93`…`11c9805` |
+
+## ARCADE-P3-ZIP-WORKER-INTEGRATION-001 — isolated extraction
+
+| Поле | Значение |
+|---|---|
+| Тип | Security/architecture integration |
+| Результат | Product import only enqueues isolated zip-worker; source/hash verification; cleanup task on writable default worker; runtime volume/base init for environments |
+| Проверки | Pro Review accept after two findings fixed; live CRM upload → `ZipExtractionJob completed`; worker logs; source removed; cleanup task live; full gate 930 passed, 12 skipped; E2E 18 |
+| Статус | TECHNICALLY ACCEPTED; product acceptance owner |
+| Остаток | Staging live runtime/backup NOT TESTED (`.env.staging` absent); R-033/R-037; real game/email/legal/domains/TLS/S3/deploy external |
+| Источник | `docs/foundation/PRODUCT_ACCEPTANCE_REPORT.md`, commits `021a36c`…`9017254` |

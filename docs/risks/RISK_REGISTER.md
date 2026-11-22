@@ -93,3 +93,6 @@
 - R-035 — принятые minor-замечания review BA-ZIP-EXTRACT-001 (durability/error taxonomy); не блокируют safe-extraction core, закрываются в worker/publish слое.
 - Статус этапов и приёмки фиксируется в `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md` и `TASK_HISTORY.md`; это не означает, что формальные этапы закрыты.
 - Нормативные ТЗ и отсутствие BA-SDK-1.1/BA-ENV-1.1 не являются рисками, которые можно «исправить» документом; требуются оригиналы и решение владельца.
+- R-041 — CRM import synchronously waits for isolated worker up to `ZIP_IMPORT_WAIT_SECONDS` (75 s); each concurrent import ties a web worker. Production load-test not performed. Mitigation: async draft/progress UX; keep below worker hard timeout.
+- R-042 — Staging/production runtime volume, ownership, nginx serving and backup/restore are configured in base compose but not live-tested; `.env.staging` absent in acceptance environment. Mitigation: staging smoke before production; verify volume ownership and nginx runtime 200.
+- R-043 — `zip_uploads`/`zip_artifacts` have no hard filesystem quota; cleanup TTL task exists on writable default worker, but disk exhaustion remains an operational risk (R-033).

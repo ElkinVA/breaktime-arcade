@@ -73,6 +73,18 @@
 - **Если отложить:** функции остаются выключенными.
 - **Как:** список сервисов, договор/аккаунт, бюджет, consent-текст.
 
+### B8. Staging-конфигурация и запуск
+
+- **Что:** `.env.staging` с отдельными non-production секретами и разрешение
+  поднять staging (порт 8444, отдельные volumes/БД).
+- **Зачем:** проверить live staging runtime volume/nginx/backup/restore;
+  текущая среда не содержит `.env.staging`, поэтому staging config/live
+  остаются NOT TESTED.
+- **Если отложить:** production runtime/serving и restore-check не доказаны
+  на staging; ZIP isolation доказана на dev-lite.
+- **Как:** предоставить `.env.staging` через секрет-хранилище и подтвердить
+  окно staging-проверки; production deploy это не разрешает.
+
 ## C. Юридическое/продуктовое подтверждение
 
 - **Terms of Service / Privacy Policy:** подготовить проект можно, но

@@ -1107,3 +1107,16 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   `deepseek-v4-pro`; QA/Pro review per package; full fresh gate
   **917 passed, 12 skipped**.
 - Product acceptance remains owner-level; external actions not performed.
+
+### ARCADE-P3-ZIP-WORKER-INTEGRATION-001 — isolated extraction
+
+- `021a36c` — durable `ZipExtractionJob`, worker-only extraction, source/hash
+  verification, no in-process fallback.
+- `270f224`, `e9f66e2`, `9017254` — Pro-review findings: abandoned-upload
+  cleanup moved to writable default worker, actual-deletion accounting,
+  worker mounts preserved, base runtime volume/init for staging/prod.
+- Live CRM upload → `ZipExtractionJob completed`, zip-worker log
+  `zip.extract`/`zip.complete`, source removed; cleanup task live.
+- Full fresh gate **930 passed, 12 skipped**; Browser E2E 18 passed.
+- Pro reviewer: **accept** after delta review; product acceptance external
+  blockers remain. Staging live runtime NOT TESTED (missing `.env.staging`).
