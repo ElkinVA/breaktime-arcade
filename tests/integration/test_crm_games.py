@@ -97,6 +97,12 @@ def _staff_client(*, verified_2fa: bool = True) -> Client:
     return client
 
 
+def _elevate_step_up(client: Client) -> None:
+    session = client.session
+    session["crm_step_up_at"] = timezone.now().isoformat()
+    session.save()
+
+
 @pytest.mark.django_db
 def test_crm_login_uses_staff_login_flow() -> None:
     anonymous = Client()
@@ -225,6 +231,7 @@ def test_publish_and_rollback_are_post_only_and_switch_current_version() -> None
     new = _version(game, "2.0.0", autotest_passed=True)
     _set_current(game, new)
     client = _staff_client()
+    _elevate_step_up(client)
 
     publish_url = reverse("crm:game_publish", args=[game.id])
     rollback_url = reverse("crm:game_rollback", args=[game.id])

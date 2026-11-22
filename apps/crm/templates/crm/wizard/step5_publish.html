@@ -1,0 +1,71 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Публикация · CRM{% endblock %}
+
+{% block crm_content %}
+{% include "crm/wizard/stepper.html" with current_step=current_step %}
+
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold">Публикация</h1>
+        <p class="text-sm text-muted">
+            Публикация — атомарное переключение <code>Game.current_version</code>.
+            Требуется step-up: пароль и код TOTP текущего сотрудника.
+        </p>
+    </div>
+    <a class="text-sm text-muted hover:text-accent" href="{% url 'crm:wizard_check' draft.id %}">← К проверке</a>
+</div>
+
+<section class="p-5 bg-surface rounded-card border border-text/10 mb-6" data-testid="crm-wizard-publish-readiness">
+    <h2 class="text-lg font-display font-bold mb-2">Готовность</h2>
+    {% if readiness.ready %}
+        <p class="text-accent font-semibold" data-testid="crm-wizard-publish-ready">
+            Версия {{ readiness.version.semver }} готова к публикации.
+        </p>
+    {% else %}
+        <ul class="text-sm space-y-1 text-red-300" data-testid="crm-wizard-publish-blocked">
+            {% for reason in readiness.reasons %}
+                <li>{{ reason }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</section>
+
+{% if error %}
+<div class="mb-6 p-4 rounded-card border border-red-500/30 bg-red-500/10 text-sm" role="alert" data-testid="crm-wizard-publish-error">
+    {{ error }}
+</div>
+{% endif %}
+
+<form method="post" action="{% url 'crm:wizard_publish' draft.id %}"
+      class="p-5 bg-surface rounded-card border border-text/10 space-y-4"
+      data-testid="crm-wizard-publish-form">
+    {% csrf_token %}
+    {% if readiness.version %}<input type="hidden" name="version_id" value="{{ readiness.version.id }}">{% endif %}
+    {% if form.non_field_errors %}
+        <p class="text-sm text-red-300">{{ form.non_field_errors|join:" " }}</p>
+    {% endif %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <label class="flex flex-col gap-1 text-sm">
+            <span class="text-muted">{{ form.password.label }}</span>
+            {{ form.password }}
+            {% if form.password.errors %}<span class="text-red-300">{{ form.password.errors|join:" " }}</span>{% endif %}
+        </label>
+        <label class="flex flex-col gap-1 text-sm">
+            <span class="text-muted">{{ form.totp_code.label }}</span>
+            {{ form.totp_code }}
+            {% if form.totp_code.errors %}<span class="text-red-300">{{ form.totp_code.errors|join:" " }}</span>{% endif %}
+        </label>
+    </div>
+    <p class="text-xs text-muted">
+        Неудачное подтверждение не меняет ни карточку, ни текущую версию.
+        Подтверждение действует 15 минут для последующих действий в этой сессии.
+    </p>
+    <button type="submit"
+            class="px-4 py-2 rounded bg-accent text-bg font-semibold{% if not readiness.ready %} opacity-40{% endif %}"
+            data-testid="crm-wizard-publish-submit"
+            {% if not readiness.ready %}disabled aria-disabled="true"{% endif %}>
+        Опубликовать сейчас
+    </button>
+</form>
+{% endblock %}

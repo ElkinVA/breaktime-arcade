@@ -1,0 +1,13 @@
+<tr class="border-b border-text/5 last:border-0" data-testid="crm-wizard-diagnostic-row" data-severity="{{ diagnostic.severity }}">
+    <td class="px-3 py-2 align-top">
+        <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold {% if diagnostic.severity == 'blocker' %}bg-red-500/15 text-red-300{% elif diagnostic.severity == 'warning' %}bg-amber-500/15 text-amber-300{% else %}bg-text/10 text-muted{% endif %}">
+            {{ diagnostic.severity }}
+        </span>
+    </td>
+    <td class="px-3 py-2 align-top font-mono text-xs" data-testid="crm-wizard-diagnostic-code">{{ diagnostic.code }}</td>
+    <td class="px-3 py-2 align-top font-mono text-xs">{{ diagnostic.file|default:"—" }}</td>
+    <td class="px-3 py-2 align-top">
+        {{ diagnostic.message }}
+        {% if diagnostic.hint %}<div class="text-xs text-muted mt-1">{{ diagnostic.hint }}</div>{% endif %}
+    </td>
+</tr>

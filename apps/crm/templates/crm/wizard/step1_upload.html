@@ -1,0 +1,79 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Добавить игру · CRM{% endblock %}
+
+{% block crm_content %}
+{% include "crm/wizard/stepper.html" with current_step=current_step %}
+
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold">
+            {% if target_game %}Новая версия игры{% else %}Добавить игру{% endif %}
+        </h1>
+        <p class="text-sm text-muted">
+            ZIP ≤ 25 МБ. Пакет проходит intake, валидацию и импорт через общий пайплайн;
+            ручной повторный ввод полей карточки не требуется.
+        </p>
+    </div>
+    <a class="text-sm text-muted hover:text-accent" href="{% url 'crm:games' %}">← Все игры</a>
+</div>
+
+{% if target_game %}
+<div class="mb-6 p-4 rounded-card border border-accent/30 bg-surface text-sm" data-testid="crm-wizard-target-game">
+    Обновление существующей игры: <span class="font-semibold">{{ target_game.technical_id }}</span>.
+    <code>manifest.id</code> должен совпадать, иначе пакет будет отклонён.
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data"
+      action="{% url 'crm:wizard_upload' %}{% if target_game %}?game_id={{ target_game.id }}{% endif %}"
+      class="p-5 bg-surface rounded-card border border-text/10 space-y-4"
+      data-testid="crm-wizard-upload-form">
+    {% csrf_token %}
+    {% if target_game %}<input type="hidden" name="game_id" value="{{ target_game.id }}">{% endif %}
+    <label class="block text-sm font-semibold" for="{{ form.package.id_for_label }}">{{ form.package.label }}</label>
+    {{ form.package }}
+    {% if form.package.errors %}
+        <p class="text-sm text-red-300" data-testid="crm-wizard-upload-error">{{ form.package.errors|join:" " }}</p>
+    {% endif %}
+    <p class="text-xs text-muted">
+        Небезопасные пути, symlink, zip-бомбы, запрещённые расширения и превышение лимитов
+        отклоняются с построчной диагностикой.
+    </p>
+    <button type="submit" class="px-4 py-2 rounded bg-accent text-bg font-semibold" data-testid="crm-wizard-upload-submit">
+        Загрузить и проверить
+    </button>
+</form>
+
+{% if recent_drafts %}
+<section class="mt-8">
+    <h2 class="text-xl font-display font-bold mb-3">Последние черновики</h2>
+    <div class="overflow-x-auto bg-surface rounded-card border border-text/10">
+        <table class="w-full text-sm">
+            <thead class="text-left text-muted border-b border-text/10">
+                <tr>
+                    <th class="px-4 py-3">Файл</th>
+                    <th class="px-4 py-3">Игра</th>
+                    <th class="px-4 py-3">Версия</th>
+                    <th class="px-4 py-3">Статус</th>
+                    <th class="px-4 py-3"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for draft in recent_drafts %}
+                    <tr class="border-b border-text/5 last:border-0" data-testid="crm-wizard-recent-draft">
+                        <td class="px-4 py-3">{{ draft.original_filename|default:"—" }}</td>
+                        <td class="px-4 py-3">{{ draft.game.technical_id|default:"—" }}</td>
+                        <td class="px-4 py-3">{% if draft.version %}v{{ draft.version.semver }}{% else %}—{% endif %}</td>
+                        <td class="px-4 py-3">{{ draft.get_status_display }}</td>
+                        <td class="px-4 py-3">
+                            <a class="text-accent hover:underline" href="{% url 'crm:wizard_analysis' draft.id %}" data-testid="crm-wizard-open-draft">Открыть</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

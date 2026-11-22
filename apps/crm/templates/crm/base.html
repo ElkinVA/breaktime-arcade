@@ -20,6 +20,16 @@
     </div>
 </div>
 
+{% if messages %}
+<div class="max-w-7xl mx-auto px-4 pt-4" data-testid="crm-messages">
+    <ul class="space-y-2">
+        {% for message in messages %}
+            <li class="px-4 py-3 rounded border border-text/10 bg-surface text-sm" data-testid="crm-message">{{ message }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 <div class="max-w-7xl mx-auto px-4 py-8">
     {% block crm_content %}{% endblock %}
 </div>

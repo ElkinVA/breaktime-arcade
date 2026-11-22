@@ -1,0 +1,74 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Проверка · CRM{% endblock %}
+
+{% block crm_content %}
+{% include "crm/wizard/stepper.html" with current_step=current_step %}
+
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold">Проверка версии</h1>
+        <p class="text-sm text-muted">Автотест и инъекция SDK выполняются на рабочем бандле, а не на исходном ZIP.</p>
+    </div>
+    <a class="text-sm text-muted hover:text-accent" href="{% url 'crm:wizard_card' draft.id %}">← К карточке</a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <section class="p-5 bg-surface rounded-card border border-text/10" data-testid="crm-wizard-autotest">
+        <h2 class="text-lg font-display font-bold mb-2">Автотест</h2>
+        <p class="text-sm mb-3">
+            {% if autotest.passed %}
+                <span class="text-accent font-semibold" data-testid="crm-wizard-autotest-status">Пройден</span>
+            {% else %}
+                <span class="text-red-300 font-semibold" data-testid="crm-wizard-autotest-status">Не пройден</span>
+            {% endif %}
+            {% if autotest.kind %}<span class="text-muted">· {{ autotest.kind }}</span>{% endif %}
+        </p>
+        {% if checks %}
+            <ul class="text-sm space-y-2">
+                {% for check in checks %}
+                    <li class="flex items-start justify-between gap-3" data-testid="crm-wizard-autotest-check">
+                        <span>{{ check.name }}</span>
+                        <span class="{% if check.passed %}text-accent{% else %}text-red-300{% endif %}">
+                            {% if check.passed %}OK{% else %}FAIL{% endif %}
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-muted text-sm">Отчёт автотеста отсутствует.</p>
+        {% endif %}
+    </section>
+
+    <section class="p-5 bg-surface rounded-card border border-text/10" data-testid="crm-wizard-injection">
+        <h2 class="text-lg font-display font-bold mb-2">Инъекция SDK</h2>
+        <dl class="text-sm space-y-2">
+            <div class="flex justify-between gap-4"><dt class="text-muted">Файл</dt><dd class="font-mono">{{ injection.path|default:"—" }}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-muted">Версия SDK</dt><dd>{{ injection.sdk_version|default:"—" }}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-muted">Размер до</dt><dd>{{ injection.before_bytes|default:"—" }} B</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-muted">Размер после</dt><dd>{{ injection.after_bytes|default:"—" }} B</dd></div>
+        </dl>
+    </section>
+</div>
+
+<section class="p-5 bg-surface rounded-card border border-text/10 mb-6" data-testid="crm-wizard-readiness">
+    <h2 class="text-lg font-display font-bold mb-2">Готовность к публикации</h2>
+    {% if readiness.ready %}
+        <p class="text-accent font-semibold" data-testid="crm-wizard-ready">Версия готова к публикации.</p>
+    {% else %}
+        <ul class="text-sm space-y-1 text-red-300" data-testid="crm-wizard-not-ready">
+            {% for reason in readiness.reasons %}
+                <li>{{ reason }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</section>
+
+<div class="flex flex-wrap items-center gap-3">
+    {% if readiness.ready %}
+        <a class="px-4 py-2 rounded bg-accent text-bg font-semibold" href="{% url 'crm:wizard_publish' draft.id %}" data-testid="crm-wizard-next-publish">К публикации</a>
+    {% else %}
+        <span class="px-4 py-2 rounded bg-text/10 text-muted" aria-disabled="true">Публикация недоступна</span>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Подтверждение · CRM{% endblock %}
+
+{% block crm_content %}
+<div class="max-w-xl">
+    <h1 class="text-3xl font-display font-bold mb-2">Подтверждение действия</h1>
+    <p class="text-sm text-muted mb-6">
+        Для публикации, отката и других чувствительных операций требуется
+        повторно ввести пароль и одноразовый код TOTP.
+    </p>
+
+    {% if error %}
+        <div class="mb-4 p-4 rounded-card border border-red-500/30 bg-red-500/10 text-sm" role="alert" data-testid="crm-step-up-error">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'crm:step_up' %}"
+          class="p-5 bg-surface rounded-card border border-text/10 space-y-4"
+          data-testid="crm-step-up-form">
+        {% csrf_token %}
+        {{ form.next }}
+        <label class="flex flex-col gap-1 text-sm">
+            <span class="text-muted">{{ form.password.label }}</span>
+            {{ form.password }}
+            {% if form.password.errors %}<span class="text-red-300">{{ form.password.errors|join:" " }}</span>{% endif %}
+        </label>
+        <label class="flex flex-col gap-1 text-sm">
+            <span class="text-muted">{{ form.totp_code.label }}</span>
+            {{ form.totp_code }}
+            {% if form.totp_code.errors %}<span class="text-red-300">{{ form.totp_code.errors|join:" " }}</span>{% endif %}
+        </label>
+        <button type="submit" class="px-4 py-2 rounded bg-accent text-bg font-semibold" data-testid="crm-step-up-submit">
+            Подтвердить
+        </button>
+    </form>
+</div>
+{% endblock %}

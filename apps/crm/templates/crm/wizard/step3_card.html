@@ -1,0 +1,115 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Карточка · CRM{% endblock %}
+
+{% block crm_content %}
+{% include "crm/wizard/stepper.html" with current_step=current_step %}
+
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold">Карточка из пакета</h1>
+        <p class="text-sm text-muted">Все импортируемые поля заполнены автоматически; ручной повторный ввод запрещён.</p>
+    </div>
+    <a class="text-sm text-muted hover:text-accent" href="{% url 'crm:wizard_analysis' draft.id %}">← К анализу</a>
+</div>
+
+{% if game and version %}
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="p-4 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Название</p>
+        <p class="text-xl font-display font-bold" data-testid="crm-wizard-card-name">{{ manifest.name|default:game.technical_id }}</p>
+    </div>
+    <div class="p-4 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">technical_id</p>
+        <p class="text-xl font-display font-bold font-mono" data-testid="crm-wizard-card-id">{{ manifest.id|default:game.technical_id }}</p>
+    </div>
+    <div class="p-4 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Версия</p>
+        <p class="text-xl font-display font-bold" data-testid="crm-wizard-card-version">v{{ version.semver }}</p>
+    </div>
+    <div class="p-4 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Жанр</p>
+        <p class="text-xl font-display font-bold" data-testid="crm-wizard-card-genre">{{ game.primary_genre.code }}</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+    <section class="p-5 bg-surface rounded-card border border-text/10">
+        <h2 class="text-lg font-display font-bold mb-3">Характеристики</h2>
+        <dl class="text-sm space-y-2">
+            <div class="flex justify-between gap-4"><dt class="text-muted">Языки пакета</dt><dd data-testid="crm-wizard-card-languages">{{ version.supported_languages|join:", "|default:"—" }}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-muted">Язык по умолчанию</dt><dd>{{ manifest.defaultLanguage|default:"—" }}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-muted">SDK</dt><dd>{{ version.sdk_version }}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-muted">Ориентация</dt><dd>{{ game.orientation }}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-muted">Мобильная поддержка</dt><dd>{% if game.mobile_support %}Да{% else %}Нет{% endif %}</dd></div>
+        </dl>
+    </section>
+    <section class="p-5 bg-surface rounded-card border border-text/10">
+        <h2 class="text-lg font-display font-bold mb-3">Правила счёта</h2>
+        <dl class="text-sm space-y-2">
+            <div class="flex justify-between gap-4"><dt class="text-muted">Тип</dt><dd>{{ game.score_type }}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-muted">Единица</dt><dd>{{ game.score_unit }}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-muted">Направление</dt><dd>{{ game.score_direction }}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-muted">Диапазон</dt><dd>{{ game.score_min_value }}…{{ game.score_max_value }}</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-muted">Версия схемы</dt><dd>{{ game.score_schema_version }}</dd></div>
+        </dl>
+    </section>
+</div>
+
+<section class="p-5 bg-surface rounded-card border border-text/10 mb-6" data-testid="crm-wizard-import-report">
+    <h2 class="text-lg font-display font-bold mb-2">Отчёт импорта</h2>
+    <div class="flex flex-wrap gap-6 text-sm">
+        <p data-testid="crm-wizard-import-status">Статус: <span class="font-semibold">{{ draft.import_report.status|default:"—" }}</span></p>
+        <p data-testid="crm-wizard-import-updated">Обновлено полей: <span class="font-semibold">{{ applied_fields|length }}</span></p>
+        <p data-testid="crm-wizard-import-conflicts">Конфликтов: <span class="font-semibold">{{ diff_rows|length }}</span></p>
+    </div>
+</section>
+
+<section class="bg-surface rounded-card border border-text/10 p-5 mb-6" data-testid="crm-wizard-diff">
+    <h2 class="text-xl font-display font-bold mb-1">Дифф импорта</h2>
+    <p class="text-sm text-muted mb-3">
+        Поля с флагом <code>overridden</code> сохраняют значение CRM; значение из пакета показано как конфликт.
+    </p>
+    {% if diff_rows %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-left text-muted border-b border-text/10">
+                    <tr>
+                        <th class="px-3 py-2">Scope</th>
+                        <th class="px-3 py-2">Поле</th>
+                        <th class="px-3 py-2">В CRM</th>
+                        <th class="px-3 py-2">В пакете</th>
+                        <th class="px-3 py-2">Решение</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in diff_rows %}
+                        {% include "crm/wizard/diff_row.html" with row=row %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="text-muted" data-testid="crm-wizard-diff-empty">Конфликтов с переопределениями CRM нет.</p>
+    {% endif %}
+    {% if applied_fields %}
+        <p class="text-xs text-muted mt-3" data-testid="crm-wizard-applied-fields">
+            Обновлено из пакета: {{ applied_fields|join:", " }}
+        </p>
+    {% endif %}
+</section>
+
+<div class="flex flex-wrap items-center gap-3">
+    {% if can_continue %}
+        <a class="px-4 py-2 rounded bg-accent text-bg font-semibold" href="{% url 'crm:wizard_check' draft.id %}" data-testid="crm-wizard-next-check">К проверке</a>
+    {% else %}
+        <span class="px-4 py-2 rounded bg-text/10 text-muted" aria-disabled="true">Импорт не создал версию</span>
+    {% endif %}
+</div>
+{% else %}
+<div class="p-5 rounded-card border border-red-500/30 bg-red-500/10" data-testid="crm-wizard-card-blocked">
+    <p class="font-semibold">Карточка недоступна: пакет отклонён или версия не создана.</p>
+    <a class="text-accent hover:underline text-sm" href="{% url 'crm:wizard_analysis' draft.id %}">Открыть диагностику</a>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Анализ пакета · CRM{% endblock %}
+
+{% block crm_content %}
+{% include "crm/wizard/stepper.html" with current_step=current_step %}
+
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold">Анализ пакета</h1>
+        <p class="text-sm text-muted">{{ draft.original_filename|default:"ZIP-пакет" }} · {{ draft.size_bytes|default:0 }} B</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a class="px-3 py-2 rounded border border-text/20 hover:border-accent text-sm"
+           href="{% url 'crm:wizard_report' draft.id %}?format=json"
+           data-testid="crm-wizard-report-json">Скачать JSON</a>
+        <a class="px-3 py-2 rounded border border-text/20 hover:border-accent text-sm"
+           href="{% url 'crm:wizard_report' draft.id %}?format=csv"
+           data-testid="crm-wizard-report-csv">Скачать CSV</a>
+    </div>
+</div>
+
+{% if not report_ok %}
+<div class="mb-6 p-4 rounded-card border border-red-500/30 bg-red-500/10 text-sm" role="alert" data-testid="crm-wizard-rejected">
+    Пакет отклонён: перейдите к диагностике ниже и исправьте блокирующие ошибки.
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+    <div class="p-4 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Статус</p>
+        <p class="text-xl font-display font-bold" data-testid="crm-wizard-status">{{ draft.get_status_display }}</p>
+    </div>
+    <div class="p-4 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Blocker</p>
+        <p class="text-xl font-display font-bold" data-testid="crm-wizard-blockers">{{ summary.blocker|default:0 }}</p>
+    </div>
+    <div class="p-4 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Warning</p>
+        <p class="text-xl font-display font-bold" data-testid="crm-wizard-warnings">{{ summary.warning|default:0 }}</p>
+    </div>
+    <div class="p-4 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Info</p>
+        <p class="text-xl font-display font-bold" data-testid="crm-wizard-info">{{ summary.info|default:0 }}</p>
+    </div>
+</div>
+
+<section class="bg-surface rounded-card border border-text/10 p-5" data-testid="crm-wizard-diagnostics">
+    <h2 class="text-xl font-display font-bold mb-3">Построчная диагностика</h2>
+    {% if diagnostics %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-left text-muted border-b border-text/10">
+                    <tr>
+                        <th class="px-3 py-2">Severity</th>
+                        <th class="px-3 py-2">Код</th>
+                        <th class="px-3 py-2">Файл</th>
+                        <th class="px-3 py-2">Сообщение и подсказка</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for diagnostic in diagnostics %}
+                        {% include "crm/wizard/validation_row.html" with diagnostic=diagnostic %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="text-muted" data-testid="crm-wizard-diagnostics-empty">Замечаний нет.</p>
+    {% endif %}
+</section>
+
+<div class="flex flex-wrap items-center gap-3 mt-6">
+    <a class="px-3 py-2 rounded border border-text/20 hover:border-accent text-sm" href="{% url 'crm:wizard_upload' %}">← Загрузить другой пакет</a>
+    {% if can_continue %}
+        <a class="px-4 py-2 rounded bg-accent text-bg font-semibold" href="{% url 'crm:wizard_card' draft.id %}" data-testid="crm-wizard-next-card">К карточке</a>
+    {% else %}
+        <span class="px-4 py-2 rounded bg-text/10 text-muted" data-testid="crm-wizard-blocked-next" aria-disabled="true">
+            Переход заблокирован: устраните blocker-ошибки
+        </span>
+    {% endif %}
+</div>
+{% endblock %}

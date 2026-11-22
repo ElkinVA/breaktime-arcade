@@ -373,6 +373,11 @@ CRITICAL_PATH_WARN_BYTES = env_int("CRITICAL_PATH_WARN_BYTES", 2_097_152)
 CRITICAL_PATH_MAX_BYTES = env_int("CRITICAL_PATH_MAX_BYTES", 4_194_304)
 ADMIN_URL_PREFIX = env("ADMIN_URL_PREFIX", "crm/")
 
+# --- CRM step-up (§2.16.1, ADR-APPF-001 D11) ----------------------------
+# Template window for password + TOTP elevation; a technical parameter until
+# the product setting is approved.
+CRM_STEP_UP_TTL_SECONDS = env_int("CRM_STEP_UP_TTL_SECONDS", 15 * 60)
+
 # --- Резервное копирование (§2.5) --------------------------------------
 BACKUP_DIR = env("BACKUP_DIR", "/app/var/backups")
 
