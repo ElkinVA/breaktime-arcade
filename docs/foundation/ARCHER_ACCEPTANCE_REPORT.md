@@ -48,10 +48,10 @@ spawn bounds.
 - zip-worker completed; runtime published.
 - Detail: cover + 2 screenshots render 200.
 - Play page creates session and iframe; no page/iframe console errors.
-- Full 60 s user run: **321 points**, 13 hits / 22 shots (59%), best combo 5,
+- Full 60 s user runs: **321 points**, 13 hits / 22 shots (59%), best combo 5 (v1.3.0) and **156 points**, 9 hits / 22 shots (41%), best combo 4, rank 3 (v1.3.3),
   result API `200 {"status":"saved","rank":1,"is_record":true,
   "trust_level":"heuristic_validated"}`; `credited_ms=60122`; heartbeat set.
-- Leaderboard: 321 (#1), 214 (#2).
+- Leaderboard: 321 (#1), 214 (#2), 156 (#3) after the final v1.3.3 run.
 - Rollback to v1.2.1 and republish v1.3.3 successful.
 - Invalid ZIP path already covered by P4 (`V_MANIFEST_SCHEMA`); package tests
   run `preflight_zip` and import rejection paths.
