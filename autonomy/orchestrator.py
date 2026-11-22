@@ -202,9 +202,13 @@ def _safe_file(name: str, root: Path | None = None) -> Path:
     normalized = path.relative_to(root.resolve()).as_posix()
     # The actual staging config is protected; its non-secret Jinja template is
     # allowed so worker/proxy timeout changes can be reviewed and committed.
-    protected = normalized.startswith(PROTECTED_PARTS) and normalized != (
-        "infra/nginx/staging.conf.j2"
-    )
+    # Example env files contain no secrets and are valid documentation.
+    allowed_non_secret = {
+        "infra/nginx/staging.conf.j2",
+        ".env.example",
+        ".env.staging.example",
+    }
+    protected = normalized.startswith(PROTECTED_PARTS) and normalized not in allowed_non_secret
     if normalized == ".env" or protected:
         raise RuntimeError(f"developer reported a protected path: {name}")
     return path
