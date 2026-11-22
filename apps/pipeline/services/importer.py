@@ -902,7 +902,7 @@ def _make_public_media(asset: GameAsset) -> None:
     """Covers/screenshots are public; the upload default is private (0600/0640)."""
     try:
         Path(asset.file.path).chmod(0o644)
-    except OSError, ValueError:
+    except OSError, ValueError, NotImplementedError:
         return
 
 
