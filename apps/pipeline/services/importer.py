@@ -17,6 +17,7 @@ from typing import Any
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.catalog.models import (
@@ -29,7 +30,7 @@ from apps.catalog.models import (
     Tag,
 )
 from apps.i18n.models import Language
-from apps.pipeline.models import GameImportDraft
+from apps.pipeline.models import GameImportDraft, ZipExtractionJob
 from apps.pipeline.services.artifacts import (
     ArtifactError,
     ensure_root,
@@ -43,9 +44,15 @@ from apps.pipeline.services.diff import (
     split_updates,
     translation_values,
 )
+from apps.pipeline.services.extraction import (
+    ExtractionResult,
+    WorkerClientError,
+    extract_package,
+    materialize_result,
+    remove_source,
+)
 from apps.pipeline.services.injection import available_sdks, resolve_sdk
 from apps.pipeline.services.intake import intake_zip
-from apps.pipeline.services.unpack import ExtractionError, extract_zip
 from apps.pipeline.validation.assets import AssetsResult, validate_assets
 from apps.pipeline.validation.budgets import budget_diagnostics
 from apps.pipeline.validation.catalog import validate_catalog
@@ -110,12 +117,18 @@ def import_package(
     storage_root: Path | None = None,
     runtime_root: Path | None = None,
     sdk_root: Path | None = None,
+    uploads_root: Path | None = None,
+    artifacts_root: Path | None = None,
+    worker_wait_seconds: float | None = None,
+    worker_poll_interval: float | None = None,
     created_by: User | None = None,
     target_game: Game | None = None,
 ) -> ImportResult:
     storage = ensure_root(Path(storage_root or settings.ZIP_PIPELINE_STORAGE_ROOT))
     runtimes = ensure_root(Path(runtime_root or settings.ZIP_PUBLIC_RUNTIME_ROOT))
     sdk_dir = Path(sdk_root or settings.SDK_SOURCE_ROOT)
+    uploads = Path(uploads_root or settings.ZIP_UPLOADS_ROOT)
+    artifacts = Path(artifacts_root or settings.ZIP_ARTIFACTS_ROOT)
 
     intake = intake_zip(data, storage_root=storage)
     report = ValidationReport(package_hash=intake.package_hash)
@@ -140,14 +153,66 @@ def import_package(
         )
         return _finish_duplicate(draft, duplicate, report, intake.stored_path)
 
+    job = ZipExtractionJob.objects.create(
+        draft=draft,
+        package_hash=intake.package_hash,
+        status=ZipExtractionJob.STATUS_RUNNING,
+        started_at=timezone.now(),
+    )
+    job.source_path = str(Path(uploads) / str(job.id) / "source.zip")
+    job.save(update_fields=["source_path", "updated_at"])
+    try:
+        extraction = extract_package(
+            job_id=str(job.id),
+            data=data,
+            package_hash=intake.package_hash,
+            uploads_root=uploads,
+            artifacts_root=artifacts,
+            wait_seconds=worker_wait_seconds,
+            poll_interval=worker_poll_interval,
+        )
+    except WorkerClientError as exc:
+        report.add(
+            exc.code,
+            exc.message,
+            meta=_worker_meta(job, exc.diagnostics),
+        )
+        _finish_job(
+            job,
+            status=_job_status_for(exc.code, exc.diagnostics),
+            error_code=exc.code,
+            task_id=str(exc.diagnostics.get("task_id") or ""),
+            diagnostics=_worker_diagnostics(job, None, exc.diagnostics),
+        )
+        return _reject(draft, report)
+
     work = make_staging_dir(storage / "work")
     try:
         package_dir = work / "package"
         try:
-            extract_zip(data, package_dir)
-        except ExtractionError as exc:
-            report.add(exc.code, exc.message)
+            materialize_result(extraction, package_dir)
+        except WorkerClientError as exc:
+            report.add(exc.code, exc.message, meta=_worker_meta(job, exc.diagnostics))
+            _finish_job(
+                job,
+                status=ZipExtractionJob.STATUS_FAILED,
+                error_code=exc.code,
+                attempts=extraction.attempts,
+                task_id=extraction.task_id,
+                diagnostics=_worker_diagnostics(job, extraction, exc.diagnostics),
+            )
             return _reject(draft, report)
+
+        _finish_job(
+            job,
+            status=ZipExtractionJob.STATUS_COMPLETED,
+            attempts=extraction.attempts,
+            task_id=extraction.task_id,
+            diagnostics=_worker_diagnostics(job, extraction),
+        )
+        job.result_path = str(extraction.result_root)
+        job.save(update_fields=["result_path", "updated_at"])
+        remove_source(str(job.id), uploads)
 
         package_root = locate_package_root(package_dir)
         if package_root is None:
@@ -776,6 +841,67 @@ def _semver_lt(candidate: str, current: str) -> bool:
         return Version(candidate) < Version(current)
     except InvalidVersion:
         return False
+
+
+def _job_status_for(code: str, diagnostics: dict[str, Any]) -> str:
+    worker_status = diagnostics.get("worker_status")
+    if code == "X_WORKER_TIMEOUT" or worker_status == "timeout":
+        return ZipExtractionJob.STATUS_TIMEOUT
+    if code == "X_CANCELLED" or worker_status == "cancelled":
+        return ZipExtractionJob.STATUS_CANCELLED
+    if code == "X_WORKER_UNAVAILABLE":
+        return ZipExtractionJob.STATUS_FAILED
+    return ZipExtractionJob.STATUS_REJECTED
+
+
+def _worker_meta(job: ZipExtractionJob, diagnostics: dict[str, Any]) -> dict[str, Any]:
+    meta: dict[str, Any] = {"job_id": str(job.id)}
+    worker_status = diagnostics.get("worker_status")
+    if isinstance(worker_status, str):
+        meta["worker_status"] = worker_status
+    exception = diagnostics.get("exception")
+    if isinstance(exception, str):
+        meta["exception"] = exception
+    return meta
+
+
+def _worker_diagnostics(
+    job: ZipExtractionJob,
+    extraction: ExtractionResult | None,
+    error: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {"job_id": str(job.id)}
+    if extraction is not None:
+        payload.update(
+            {
+                "status": extraction.status,
+                "package_hash": extraction.package_hash,
+                "total_bytes": extraction.total_bytes,
+                "file_count": extraction.file_count,
+                "attempts": extraction.attempts,
+            }
+        )
+    if error:
+        payload["error"] = dict(error)
+    return payload
+
+
+def _finish_job(
+    job: ZipExtractionJob,
+    *,
+    status: str,
+    error_code: str = "",
+    attempts: int = 0,
+    task_id: str = "",
+    diagnostics: dict[str, Any] | None = None,
+) -> None:
+    job.status = status
+    job.error_code = error_code
+    job.attempts = attempts
+    job.task_id = task_id
+    job.diagnostics = diagnostics or {}
+    job.finished_at = timezone.now()
+    job.save()
 
 
 __all__ = ["ImportResult", "import_package"]

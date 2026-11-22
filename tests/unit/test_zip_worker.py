@@ -11,6 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings
 
 from apps.pipeline.services import worker
@@ -80,6 +81,10 @@ def test_extract_job_completes(roots: tuple[Path, Path]) -> None:
     assert outcome.total_bytes == 15
     assert outcome.file_count == 2
     assert (artifacts / job_id / "COMPLETED.json").is_file()
+    status = json.loads((artifacts / job_id / "STATUS.json").read_text())
+    assert status["status"] == "completed"
+    assert status["error_code"] is None
+    assert status["attempts"] == 1
     assert (artifacts / job_id / "result" / "index.html").read_bytes() == b"hello"
     events = [
         json.loads(line)["event"]
@@ -353,3 +358,35 @@ def test_queue_routing_and_limits(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_timeout_code_maps_to_timeout_status() -> None:
     assert worker._status_for(X_TIMEOUT) == "timeout"
+
+
+def test_status_marker_records_rejection(roots: tuple[Path, Path]) -> None:
+    uploads, artifacts = roots
+    job_id = _job_id()
+    _put_source(uploads, job_id, b"x" * 32)
+
+    outcome = _run(uploads, artifacts, job_id, max_zip_bytes=16)
+
+    assert outcome.error_code == X_SOURCE_TOO_LARGE
+    status = json.loads((artifacts / job_id / "STATUS.json").read_text())
+    assert status["status"] == "rejected"
+    assert status["error_code"] == X_SOURCE_TOO_LARGE
+
+
+def test_status_marker_records_soft_timeout(
+    roots: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    uploads, artifacts = roots
+    job_id = _job_id()
+    _put_source(uploads, job_id, _zip({"index.html": b"hello"}))
+
+    def timeout(*_args: object, **_kwargs: object) -> None:
+        raise SoftTimeLimitExceeded()
+
+    monkeypatch.setattr(worker, "extract_zip", timeout)
+    with pytest.raises(SoftTimeLimitExceeded):
+        _run(uploads, artifacts, job_id)
+
+    status = json.loads((artifacts / job_id / "STATUS.json").read_text())
+    assert status["status"] == "timeout"
+    assert status["error_code"] == X_TIMEOUT

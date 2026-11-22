@@ -19,6 +19,7 @@ x-app: &app
     - app_var:/app/var
   networks: [internal, edge]
   depends_on:
+    zip-volume-init: { condition: service_completed_successfully }
     db: { condition: service_healthy }
     redis-cache: { condition: service_healthy }
     redis-broker: { condition: service_healthy }
@@ -28,6 +29,28 @@ x-app: &app
     options: { max-size: "10m", max-file: "3" }
 
 services:
+  # P3: web writes zip_uploads and reads zip_artifacts; zip-worker needs the
+  # inverse. Named volumes are root-owned on first creation, so a short-lived
+  # init step hands both roots to the shared non-root UID before either starts.
+  zip-volume-init:
+    image: ba/app:${IMAGE_TAG:-dev}
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        mkdir -p /var/ba/zip/uploads /var/ba/zip/artifacts &&
+        chown 10001:10001 /var/ba/zip/uploads /var/ba/zip/artifacts &&
+        chmod 700 /var/ba/zip/uploads /var/ba/zip/artifacts
+    volumes:
+      - zip_uploads:/var/ba/zip/uploads
+      - zip_artifacts:/var/ba/zip/artifacts
+    network_mode: "none"
+    read_only: true
+    cap_drop: ["ALL"]
+    cap_add: ["CHOWN", "DAC_OVERRIDE", "FOWNER"]
+    security_opt: ["no-new-privileges:true"]
+    restart: "no"
+
   web:
     <<: *app
     environment:
@@ -96,6 +119,7 @@ services:
       - zip_artifacts:/var/ba/zip/artifacts
     networks: [zipnet]
     depends_on:
+      zip-volume-init: { condition: service_completed_successfully }
       redis-broker: { condition: service_healthy }
     read_only: true
     tmpfs:

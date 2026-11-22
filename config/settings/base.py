@@ -393,6 +393,10 @@ ZIP_STAGING_TTL_SECONDS = env_int("ZIP_STAGING_TTL_SECONDS", 60 * 60)
 ZIP_COMPLETED_TTL_SECONDS = env_int("ZIP_COMPLETED_TTL_SECONDS", 60 * 60 * 24)
 ZIP_DISK_RESERVE_BYTES = env_int("ZIP_DISK_RESERVE_BYTES", 150 * 1024 * 1024)
 ZIP_JOB_MAX_BYTES = env_int("ZIP_JOB_MAX_BYTES", 120 * 1024 * 1024)
+# Web-side poll budget for one import. It exceeds the worker's soft limit so
+# worker timeouts surface as their own stable code instead of a client timeout.
+ZIP_IMPORT_WAIT_SECONDS = env_int("ZIP_IMPORT_WAIT_SECONDS", 75)
+ZIP_IMPORT_POLL_INTERVAL_SECONDS = env_float("ZIP_IMPORT_POLL_INTERVAL_SECONDS", 0.5)
 BACKUP_RETENTION_DAYS = env_int("BACKUP_RETENTION_DAYS", 30)
 BA_BACKUP_CHECK_ENABLED = env_bool("BA_BACKUP_CHECK_ENABLED", True)
 BA_BACKUP_STALE_HOURS = env_int("BA_BACKUP_STALE_HOURS", 48)

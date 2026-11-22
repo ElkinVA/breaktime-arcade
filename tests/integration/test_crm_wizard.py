@@ -21,17 +21,19 @@ from apps.accounts.models import StaffRole, User
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.crm.services.reports import csv_cell
 from apps.i18n.models import Language
-from apps.pipeline.models import GameImportDraft
+from apps.pipeline.models import GameImportDraft, ZipExtractionJob
 
 PASSWORD = "correct horse battery staple"
 
 
 @pytest.fixture
-def wizard_env(db, tmp_path, settings):
+def wizard_env(db, tmp_path, settings, inline_zip_worker):
     settings.MEDIA_ROOT = str(tmp_path / "media")
     settings.ZIP_PIPELINE_STORAGE_ROOT = str(tmp_path / "store")
     settings.ZIP_PUBLIC_RUNTIME_ROOT = str(tmp_path / "runtime")
     settings.SDK_SOURCE_ROOT = str(tmp_path / "sdk")
+    settings.ZIP_UPLOADS_ROOT = str(tmp_path / "zip-uploads")
+    settings.ZIP_ARTIFACTS_ROOT = str(tmp_path / "zip-artifacts")
     default_storage._wrapped = empty
     sdk = tmp_path / "sdk" / "1.1.0" / "ba-sdk.js"
     sdk.parent.mkdir(parents=True, exist_ok=True)
@@ -225,6 +227,9 @@ def test_wizard_upload_accepts_valid_package_and_persists_reports(wizard_env: Pa
     assert draft.package_hash
     assert Game.objects.count() == 1
     assert GameVersion.objects.count() == 1
+    job = ZipExtractionJob.objects.get(draft=draft)
+    assert job.status == ZipExtractionJob.STATUS_COMPLETED
+    assert job.queue == "zip"
 
     analysis = client.get(reverse("crm:wizard_analysis", args=[draft.id]))
     assert analysis.status_code == 200

@@ -15,15 +15,17 @@ from PIL import Image
 
 from apps.catalog.models import Game, GameVersion, Genre, Tag
 from apps.i18n.models import Language
-from apps.pipeline.models import GameImportDraft
+from apps.pipeline.models import GameImportDraft, ZipExtractionJob
 from apps.pipeline.services.importer import import_package
 from apps.pipeline.services.publishing import publish_version
 from apps.pipeline.services.rollback import rollback_version
 
 
 @pytest.fixture
-def pipeline_env(db, tmp_path, settings):
+def pipeline_env(db, tmp_path, settings, inline_zip_worker):
     settings.MEDIA_ROOT = str(tmp_path / "media")
+    settings.ZIP_UPLOADS_ROOT = str(tmp_path / "zip-uploads")
+    settings.ZIP_ARTIFACTS_ROOT = str(tmp_path / "zip-artifacts")
     default_storage._wrapped = empty
     Genre.objects.get_or_create(code="arcade")
     Language.objects.get_or_create(code="en", defaults={"name": "English"})
@@ -214,6 +216,12 @@ def test_valid_package_creates_card_version_and_runtime(pipeline_env: Path) -> N
     assert game.assets.count() == 3
     assert Tag.objects.filter(code="reflex").exists()
     assert result.draft.status == GameImportDraft.STATUS_IMPORTED
+
+    job = ZipExtractionJob.objects.get(draft=result.draft)
+    assert job.status == ZipExtractionJob.STATUS_COMPLETED
+    assert job.queue == "zip"
+    assert job.attempts == 1
+    assert not (pipeline_env / "zip-uploads" / str(job.id)).exists()
 
 
 @pytest.mark.django_db

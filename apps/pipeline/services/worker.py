@@ -45,6 +45,7 @@ X_INTERNAL = "X_INTERNAL"
 MAX_ATTEMPTS = 2
 AUDIT_FILE = "audit.jsonl"
 COMPLETED_FILE = "COMPLETED.json"
+STATUS_FILE = "STATUS.json"
 ATTEMPTS_FILE = "ATTEMPTS"
 LOCK_FILE = ".lock"
 RESULT_DIR = "result"
@@ -86,6 +87,10 @@ class JobPaths:
     @property
     def completed(self) -> Path:
         return self.job_dir / COMPLETED_FILE
+
+    @property
+    def status(self) -> Path:
+        return self.job_dir / STATUS_FILE
 
     @property
     def attempts(self) -> Path:
@@ -237,6 +242,36 @@ def _write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
     _write_text_atomic(path, json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
 
 
+def _status_payload(outcome: JobOutcome) -> dict[str, Any]:
+    return {
+        "job_id": outcome.job_id,
+        "status": outcome.status,
+        "package_hash": outcome.package_hash,
+        "total_bytes": outcome.total_bytes,
+        "file_count": outcome.file_count,
+        "error_code": outcome.error_code,
+        "attempts": outcome.attempts,
+        "finished_at": datetime.now(UTC).isoformat(),
+    }
+
+
+def _write_status(paths: JobPaths, outcome: JobOutcome) -> None:
+    """Publish the terminal job state for the web-side poller.
+
+    The web process never trusts the result tree without this marker (or the
+    legacy ``COMPLETED.json``); status writes are atomic and best-effort so a
+    read-only/full artifacts volume cannot turn a completed extraction into a
+    task failure by itself.
+    """
+    try:
+        _write_json_atomic(paths.status, _status_payload(outcome))
+    except OSError:
+        logger.warning(
+            "zip.status_write_failed",
+            extra={"event": "zip.status_write_failed", "job_id": paths.job_id},
+        )
+
+
 def _read_json(path: Path) -> dict[str, Any] | None:
     try:
         with path.open("r", encoding="utf-8") as handle:
@@ -362,6 +397,59 @@ def _tree_size(path: Path) -> int:
 
 
 def run_extraction(
+    job_id: str,
+    *,
+    uploads_root: Path | None = None,
+    artifacts_root: Path | None = None,
+    deadline_seconds: int | None = None,
+    max_zip_bytes: int = MAX_ZIP_BYTES,
+    reserve_bytes: int | None = None,
+    job_max_bytes: int | None = None,
+) -> JobOutcome:
+    """Run one extraction job and publish a terminal status marker.
+
+    Product code lives in the isolated ``zip-worker``; the wrapper only makes
+    the outcome observable through ``STATUS.json`` for the web poller. It
+    never falls back to extracting in the caller's process.
+    """
+    paths = job_paths(
+        job_id,
+        uploads_root=uploads_root,
+        artifacts_root=artifacts_root,
+    )
+    try:
+        outcome = _run_extraction(
+            job_id,
+            uploads_root=uploads_root,
+            artifacts_root=artifacts_root,
+            deadline_seconds=deadline_seconds,
+            max_zip_bytes=max_zip_bytes,
+            reserve_bytes=reserve_bytes,
+            job_max_bytes=job_max_bytes,
+        )
+    except SoftTimeLimitExceeded:
+        _write_status(
+            paths,
+            JobOutcome(job_id=paths.job_id, status="timeout", error_code=X_TIMEOUT),
+        )
+        raise
+    except WorkerError as exc:
+        _write_status(
+            paths,
+            JobOutcome(job_id=paths.job_id, status="rejected", error_code=exc.code),
+        )
+        raise
+    except Exception:
+        _write_status(
+            paths,
+            JobOutcome(job_id=paths.job_id, status="failed", error_code=X_INTERNAL),
+        )
+        raise
+    _write_status(paths, outcome)
+    return outcome
+
+
+def _run_extraction(
     job_id: str,
     *,
     uploads_root: Path | None = None,

@@ -8,6 +8,15 @@ import pytest
 yaml = pytest.importorskip("yaml")
 
 ROOT = Path(__file__).resolve().parents[2]
+COMPOSE_FILES = ("compose.yml", "compose.dev-lite.yml", "compose.staging.yml")
+
+# The secret-free sandbox runner copies only application/test roots, so these
+# infrastructure files are absent there. CI/`make test` run from the repository
+# root and must execute every assertion below.
+pytestmark = pytest.mark.skipif(
+    not all((ROOT / name).is_file() for name in COMPOSE_FILES),
+    reason="compose files are not present in the sandbox copy",
+)
 
 
 def _load(name: str) -> dict[str, Any]:
@@ -36,7 +45,10 @@ def test_zip_worker_isolation() -> None:
         "zip_uploads:/var/ba/zip/uploads:ro",
         "zip_artifacts:/var/ba/zip/artifacts",
     ]
-    assert service["depends_on"] == {"redis-broker": {"condition": "service_healthy"}}
+    assert service["depends_on"] == {
+        "zip-volume-init": {"condition": "service_completed_successfully"},
+        "redis-broker": {"condition": "service_healthy"},
+    }
 
 
 def test_regular_worker_does_not_consume_zip() -> None:
@@ -53,6 +65,26 @@ def test_web_volume_access() -> None:
 
     assert "zip_uploads:/var/ba/zip/uploads" in service["volumes"]
     assert "zip_artifacts:/var/ba/zip/artifacts:ro" in service["volumes"]
+
+
+def test_zip_volume_init_hands_roots_to_shared_uid() -> None:
+    data = _load("compose.yml")
+    service = data["services"]["zip-volume-init"]
+    command = " ".join(service["command"])
+
+    assert service["user"] == "0:0"
+    assert "10001:10001" in command
+    assert "chmod 700" in command
+    assert service["cap_drop"] == ["ALL"]
+    assert set(service["cap_add"]) == {"CHOWN", "DAC_OVERRIDE", "FOWNER"}
+    assert service["network_mode"] == "none"
+    assert service["volumes"] == [
+        "zip_uploads:/var/ba/zip/uploads",
+        "zip_artifacts:/var/ba/zip/artifacts",
+    ]
+    assert data["services"]["web"]["depends_on"]["zip-volume-init"] == {
+        "condition": "service_completed_successfully"
+    }
 
 
 def test_dev_lite_and_staging_overlays() -> None:
