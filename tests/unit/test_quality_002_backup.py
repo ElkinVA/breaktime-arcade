@@ -240,6 +240,11 @@ def test_crm_views(monkeypatch) -> None:
         ),
     )
     staff = RequestFactory().get("/crm/")
-    staff.user = SimpleNamespace(is_authenticated=True, is_staff=True)
+    staff.user = SimpleNamespace(
+        is_authenticated=True,
+        is_staff=True,
+        crm_role="owner",
+    )
+    staff.session = {"ba_2fa_verified": True}
     response = dashboard(staff)
     assert response.template_name == "crm/dashboard.html"

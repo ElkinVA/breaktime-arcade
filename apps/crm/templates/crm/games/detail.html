@@ -14,9 +14,11 @@
             {{ card.game.technical_id }} · {{ card.game.host_label }}
         </p>
     </div>
-    <a class="px-3 py-2 rounded border border-text/20 hover:border-accent text-sm"
-       href="{% url 'crm:wizard_upload' %}?game_id={{ card.game.id }}"
-       data-testid="crm-upload-new-version">Загрузить новую версию</a>
+    {% if 'games.import' in crm_caps %}
+        <a class="px-3 py-2 rounded border border-text/20 hover:border-accent text-sm"
+           href="{% url 'crm:wizard_upload' %}?game_id={{ card.game.id }}"
+           data-testid="crm-upload-new-version">Загрузить новую версию</a>
+    {% endif %}
 </div>
 
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

@@ -7,11 +7,27 @@
     <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
         <nav class="flex items-center gap-4" aria-label="CRM">
             <span class="font-display font-bold text-accent">CRM</span>
-            <a href="{% url 'crm:dashboard' %}" class="text-sm hover:text-accent" data-testid="crm-nav-dashboard">Дашборд</a>
-            <a href="{% url 'crm:games' %}" class="text-sm hover:text-accent" data-testid="crm-nav-games">Игры</a>
+            {% if 'analytics.view' in crm_caps %}
+                <a href="{% url 'crm:dashboard' %}" class="text-sm hover:text-accent" data-testid="crm-nav-dashboard">Дашборд</a>
+            {% endif %}
+            {% if 'games.view' in crm_caps %}
+                <a href="{% url 'crm:games' %}" class="text-sm hover:text-accent" data-testid="crm-nav-games">Игры</a>
+            {% endif %}
+            {% if 'content.manage' in crm_caps %}
+                <a href="{% url 'crm:content' %}" class="text-sm hover:text-accent" data-testid="crm-nav-content">Контент</a>
+            {% endif %}
+            {% if 'moderation.manage' in crm_caps %}
+                <a href="{% url 'crm:moderation' %}" class="text-sm hover:text-accent" data-testid="crm-nav-moderation">Модерация</a>
+            {% endif %}
+            {% if 'users.manage' in crm_caps %}
+                <a href="{% url 'crm:staff' %}" class="text-sm hover:text-accent" data-testid="crm-nav-staff">Сотрудники</a>
+            {% endif %}
+            {% if 'audit.view' in crm_caps %}
+                <a href="{% url 'crm:audit' %}" class="text-sm hover:text-accent" data-testid="crm-nav-audit">Журнал</a>
+            {% endif %}
         </nav>
         <div class="flex items-center gap-3">
-            <span class="text-sm text-muted" data-testid="crm-current-user">{{ user.login }}</span>
+            <span class="text-sm text-muted" data-testid="crm-current-user">{{ user.login }}{% if crm_role %} · {{ crm_role }}{% endif %}</span>
             <form method="post" action="{% url 'crm:logout' %}">
                 {% csrf_token %}
                 <button type="submit" class="text-sm text-muted hover:text-accent" data-testid="crm-logout">Выйти</button>

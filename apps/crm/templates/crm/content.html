@@ -1,0 +1,36 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Контент · CRM{% endblock %}
+
+{% block crm_content %}
+<h1 class="text-3xl font-display font-bold mb-6">Контент</h1>
+
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <h2 class="text-xl font-display font-bold mb-3">Жанры</h2>
+        <ul class="space-y-2 text-sm">
+            {% for genre in genres %}
+                <li class="flex justify-between gap-3" data-testid="crm-content-genre">
+                    <span>{{ genre.code }}</span>
+                    <span class="text-muted">#{{ genre.sort_order }}</span>
+                </li>
+            {% empty %}
+                <li class="text-muted" data-testid="crm-content-genres-empty">Жанры не заданы.</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <h2 class="text-xl font-display font-bold mb-3">Теги</h2>
+        <ul class="space-y-2 text-sm">
+            {% for tag in tags %}
+                <li class="flex justify-between gap-3" data-testid="crm-content-tag">
+                    <span>{{ tag.code }}</span>
+                    <span class="text-muted">{% if tag.needs_translation %}требует перевода{% endif %}</span>
+                </li>
+            {% empty %}
+                <li class="text-muted" data-testid="crm-content-tags-empty">Теги не заданы.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</section>
+{% endblock %}

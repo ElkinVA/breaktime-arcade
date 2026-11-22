@@ -99,6 +99,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "django.template.context_processors.i18n",
                 "apps.core.context_processors.platform",
+                "apps.crm.context_processors.crm",
                 "apps.i18n.context_processors.i18n",
                 "apps.theme.context_processors.theme",
             ],

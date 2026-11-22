@@ -17,7 +17,7 @@ from django.utils import timezone
 from django.utils.functional import empty
 from PIL import Image
 
-from apps.accounts.models import User
+from apps.accounts.models import StaffRole, User
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.crm.services.reports import csv_cell
 from apps.i18n.models import Language
@@ -157,8 +157,17 @@ def _package(
     return buffer.getvalue()
 
 
-def _staff_client(secret: str = "") -> tuple[User, Client]:
-    staff = User.objects.create_user(login="staff", password=PASSWORD, is_staff=True)
+def _staff_client(
+    secret: str = "",
+    *,
+    role: str = StaffRole.OWNER,
+) -> tuple[User, Client]:
+    staff = User.objects.create_user(
+        login="staff",
+        password=PASSWORD,
+        is_staff=True,
+        crm_role=role,
+    )
     User.objects.filter(pk=staff.pk).update(
         totp_confirmed_at=timezone.now(),
         totp_secret=secret,

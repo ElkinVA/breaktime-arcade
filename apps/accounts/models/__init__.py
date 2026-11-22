@@ -5,7 +5,7 @@ from .nickname import NicknameHistory, NicknameReservation
 from .profile import UserProfile
 from .recovery import AccountToken
 from .security import LoginEvent, OwnerRecoveryCode, RecoveryCode
-from .user import User, UserManager
+from .user import StaffRole, User, UserManager
 
 __all__ = [
     "AccountToken",
@@ -16,6 +16,7 @@ __all__ = [
     "NicknameReservation",
     "OwnerRecoveryCode",
     "RecoveryCode",
+    "StaffRole",
     "User",
     "UserLegalAcceptance",
     "UserManager",

@@ -8,7 +8,7 @@ from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.accounts.models import User
+from apps.accounts.models import StaffRole, User
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.crm.models.backup import BackupRun
 from apps.crm.services.dashboard import (
@@ -53,12 +53,19 @@ def _game(
     return game
 
 
-def _user(login: str, *, is_staff: bool = False, is_active: bool = True) -> User:
+def _user(
+    login: str,
+    *,
+    is_staff: bool = False,
+    is_active: bool = True,
+    role: str = "",
+) -> User:
     return User.objects.create_user(
         login=login,
         password=PASSWORD,
         is_staff=is_staff,
         is_active=is_active,
+        crm_role=role,
     )
 
 
@@ -82,8 +89,8 @@ def _vote(game: Game, user: User, value: int) -> GameRatingVote:
     return GameRatingVote.objects.create(game=game, user=user, value=value)
 
 
-def _staff_client(login: str = "staff") -> Client:
-    staff = _user(login, is_staff=True)
+def _staff_client(login: str = "staff", role: str = StaffRole.OWNER) -> Client:
+    staff = _user(login, is_staff=True, role=role)
     User.objects.filter(pk=staff.pk).update(totp_confirmed_at=timezone.now())
     staff.refresh_from_db()
     client = Client()

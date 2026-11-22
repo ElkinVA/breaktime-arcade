@@ -8,9 +8,11 @@
         <h1 class="text-3xl font-display font-bold">Игры</h1>
         <p class="text-sm text-muted">Инвентарь игр, версии и покрытие локализации.</p>
     </div>
-    <a class="px-4 py-2 rounded bg-accent text-bg font-semibold" href="{% url 'crm:wizard_upload' %}" data-testid="crm-add-game">
-        Добавить игру
-    </a>
+    {% if 'games.import' in crm_caps %}
+        <a class="px-4 py-2 rounded bg-accent text-bg font-semibold" href="{% url 'crm:wizard_upload' %}" data-testid="crm-add-game">
+            Добавить игру
+        </a>
+    {% endif %}
 </div>
 
 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">

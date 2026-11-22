@@ -17,6 +17,7 @@ from uuid import UUID
 from django.contrib import messages
 from django.contrib.auth import logout as auth_logout
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.http import (
     Http404,
     HttpRequest,
@@ -29,11 +30,24 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from apps.accounts.models import User
-from apps.catalog.models import Game, GameVersion
-from apps.crm.decorators import staff_required
+from apps.accounts.models import StaffRole, User
+from apps.catalog.models import Game, GameVersion, Genre, Tag
+from apps.crm.decorators import role_required, staff_required
 from apps.crm.forms import StepUpForm, ZipUploadForm
+from apps.crm.models import AdminAuditLog
+from apps.crm.permissions import (
+    ANALYTICS_VIEW,
+    AUDIT_VIEW,
+    CONTENT_MANAGE,
+    GAMES_IMPORT,
+    GAMES_PUBLISH,
+    GAMES_VIEW,
+    MODERATION_MANAGE,
+    USERS_MANAGE,
+    role_home_name,
+)
 from apps.crm.services.access import safe_next_path
+from apps.crm.services.audit import record_audit
 from apps.crm.services.dashboard import dashboard_stats
 from apps.crm.services.exports import ReportFormatError, report_response
 from apps.crm.services.games import (
@@ -50,6 +64,7 @@ from apps.crm.services.imports import (
     upload_package,
 )
 from apps.crm.services.reports import diagnostic_rows
+from apps.crm.services.staff import change_staff_role, set_staff_active
 from apps.crm.services.step_up import (
     confirm_step_up,
     is_step_up_valid,
@@ -60,6 +75,7 @@ from apps.pipeline.models import GameImportDraft
 from apps.pipeline.services.artifacts import ArtifactError
 from apps.pipeline.services.publishing import publish_version
 from apps.pipeline.services.rollback import rollback_version
+from apps.ratings.models import GameRatingVote
 
 _ACTION_ERRORS = {
     "V_VERSION_NOT_IN_GAME": "Версия не принадлежит этой игре.",
@@ -90,11 +106,19 @@ def _safe_crm_next(request: HttpRequest) -> str:
     return safe_next_path(str(request.GET.get("next") or ""))
 
 
-def login_view(request: HttpRequest) -> HttpResponseRedirect:
+def login_view(request: HttpRequest) -> HttpResponse | HttpResponseRedirect:
     """Send visitors to the existing staff login/2FA flow (§2.16.1)."""
     user = request.user
     if user.is_authenticated and getattr(user, "is_staff", False):
-        return HttpResponseRedirect(reverse("crm:dashboard"))
+        home = role_home_name(user)
+        if home is None:
+            return TemplateResponse(
+                request,
+                "crm/forbidden.html",
+                {"title": "Недостаточно прав · CRM"},
+                status=403,
+            )
+        return HttpResponseRedirect(reverse(home))
     query = urlencode({"next": _safe_crm_next(request)})
     return HttpResponseRedirect(f"{reverse('accounts:login')}?{query}")
 
@@ -106,7 +130,7 @@ def logout_view(request: HttpRequest) -> HttpResponseRedirect:
     return HttpResponseRedirect(reverse("crm:login"))
 
 
-@staff_required
+@role_required(ANALYTICS_VIEW)
 def dashboard(request: HttpRequest) -> TemplateResponse:
     return TemplateResponse(
         request,
@@ -118,7 +142,7 @@ def dashboard(request: HttpRequest) -> TemplateResponse:
     )
 
 
-@staff_required
+@role_required(GAMES_VIEW)
 def games_list(request: HttpRequest) -> TemplateResponse:
     """Staff inventory list with counters and status/genre filters (§2.16.2)."""
     filters = parse_filters(request.GET)
@@ -134,7 +158,7 @@ def games_list(request: HttpRequest) -> TemplateResponse:
     )
 
 
-@staff_required
+@role_required(GAMES_VIEW)
 def game_detail(request: HttpRequest, game_id: UUID) -> TemplateResponse:
     """Game card with status, current version and immutable version history."""
     card: GameCard | None = load_game_card(
@@ -190,7 +214,7 @@ def _step_up_redirect(next_url: str) -> HttpResponseRedirect:
     return redirect(f"{reverse('crm:step_up')}?{query}")
 
 
-@staff_required
+@role_required(GAMES_PUBLISH)
 @require_POST
 def game_publish(request: HttpRequest, game_id: UUID) -> HttpResponseRedirect:
     """Safe publish entry point: POST + CSRF + step-up; the service validates."""
@@ -207,7 +231,26 @@ def game_publish(request: HttpRequest, game_id: UUID) -> HttpResponseRedirect:
             return _step_up_redirect(reverse("crm:game_detail", args=[game.id]))
         return redirect("crm:game_detail", game_id=game.id)
 
-    result = publish_version(game, version)
+    before = {
+        "status": game.status,
+        "current_version_id": str(game.current_version_id) if game.current_version_id else None,
+    }
+    with transaction.atomic():
+        result = publish_version(game, version)
+        if result.ok:
+            record_audit(
+                actor=_staff_user(request),
+                action=AdminAuditLog.ACTION_GAME_PUBLISHED,
+                object_type="game",
+                object_id=game.id,
+                before=before,
+                after={
+                    "status": game.status,
+                    "current_version_id": str(version.id),
+                    "semver": version.semver,
+                },
+                ip=request.META.get("REMOTE_ADDR"),
+            )
     if result.ok:
         messages.success(request, f"Версия {version.semver} опубликована.")
     else:
@@ -218,7 +261,7 @@ def game_publish(request: HttpRequest, game_id: UUID) -> HttpResponseRedirect:
     return redirect("crm:game_detail", game_id=game.id)
 
 
-@staff_required
+@role_required(GAMES_PUBLISH)
 @require_POST
 def game_rollback(request: HttpRequest, game_id: UUID) -> HttpResponseRedirect:
     """Safe rollback entry point: POST + CSRF + step-up, atomic in the service."""
@@ -235,7 +278,26 @@ def game_rollback(request: HttpRequest, game_id: UUID) -> HttpResponseRedirect:
             return _step_up_redirect(reverse("crm:game_detail", args=[game.id]))
         return redirect("crm:game_detail", game_id=game.id)
 
-    result = rollback_version(game, version)
+    before = {
+        "status": game.status,
+        "current_version_id": str(game.current_version_id) if game.current_version_id else None,
+    }
+    with transaction.atomic():
+        result = rollback_version(game, version)
+        if result.ok:
+            record_audit(
+                actor=_staff_user(request),
+                action=AdminAuditLog.ACTION_GAME_ROLLED_BACK,
+                object_type="game",
+                object_id=game.id,
+                before=before,
+                after={
+                    "status": game.status,
+                    "current_version_id": str(version.id),
+                    "semver": version.semver,
+                },
+                ip=request.META.get("REMOTE_ADDR"),
+            )
     if result.ok:
         messages.success(request, f"Выполнен откат к версии {version.semver}.")
     else:
@@ -295,7 +357,7 @@ def _render_upload(
     )
 
 
-@staff_required
+@role_required(GAMES_IMPORT)
 @require_http_methods(["GET", "POST"])
 def wizard_upload(request: HttpRequest) -> TemplateResponse | HttpResponseRedirect:
     """Step 1: accept a ZIP and persist the shared pipeline draft."""
@@ -335,7 +397,7 @@ def wizard_upload(request: HttpRequest) -> TemplateResponse | HttpResponseRedire
     return redirect("crm:wizard_analysis", draft_id=result.draft.id)
 
 
-@staff_required
+@role_required(GAMES_VIEW)
 def wizard_analysis(request: HttpRequest, draft_id: UUID) -> TemplateResponse:
     """Step 2: structured validation analysis for the persisted draft."""
     draft = _draft_or_404(draft_id)
@@ -356,7 +418,7 @@ def wizard_analysis(request: HttpRequest, draft_id: UUID) -> TemplateResponse:
     )
 
 
-@staff_required
+@role_required(GAMES_VIEW)
 def wizard_card(request: HttpRequest, draft_id: UUID) -> TemplateResponse:
     """Step 3: imported card fields and the CRM/package diff."""
     draft = _draft_or_404(draft_id)
@@ -378,7 +440,7 @@ def wizard_card(request: HttpRequest, draft_id: UUID) -> TemplateResponse:
     )
 
 
-@staff_required
+@role_required(GAMES_VIEW)
 def wizard_check(request: HttpRequest, draft_id: UUID) -> TemplateResponse:
     """Step 4: autotest/injection reports and publish readiness."""
     draft = _draft_or_404(draft_id)
@@ -411,7 +473,7 @@ def _draft_version(request: HttpRequest, draft: GameImportDraft) -> GameVersion 
     return draft.version
 
 
-@staff_required
+@role_required(GAMES_PUBLISH)
 @require_http_methods(["GET", "POST"])
 def wizard_publish(request: HttpRequest, draft_id: UUID) -> TemplateResponse | HttpResponseRedirect:
     """Step 5: explicit step-up confirmation, then atomic publication."""
@@ -426,12 +488,34 @@ def wizard_publish(request: HttpRequest, draft_id: UUID) -> TemplateResponse | H
             if version is None or draft.game is None:
                 error = _ACTION_ERRORS["VERSION_NOT_FOUND"]
             else:
-                result = publish_version(draft.game, version)
+                game = draft.game
+                before = {
+                    "status": game.status,
+                    "current_version_id": (
+                        str(game.current_version_id) if game.current_version_id else None
+                    ),
+                }
+                with transaction.atomic():
+                    result = publish_version(game, version)
+                    if result.ok:
+                        draft.status = GameImportDraft.STATUS_PUBLISHED
+                        draft.save(update_fields=["status", "updated_at"])
+                        record_audit(
+                            actor=_staff_user(request),
+                            action=AdminAuditLog.ACTION_GAME_PUBLISHED,
+                            object_type="game",
+                            object_id=game.id,
+                            before=before,
+                            after={
+                                "status": game.status,
+                                "current_version_id": str(version.id),
+                                "semver": version.semver,
+                            },
+                            ip=request.META.get("REMOTE_ADDR"),
+                        )
                 if result.ok:
-                    draft.status = GameImportDraft.STATUS_PUBLISHED
-                    draft.save(update_fields=["status", "updated_at"])
                     messages.success(request, f"Версия {version.semver} опубликована.")
-                    return redirect("crm:game_detail", game_id=draft.game.id)
+                    return redirect("crm:game_detail", game_id=game.id)
                 error = _ACTION_ERRORS.get(result.reason, "Не удалось опубликовать версию.")
     return TemplateResponse(
         request,
@@ -488,7 +572,7 @@ def step_up(request: HttpRequest) -> TemplateResponse | HttpResponseRedirect:
     )
 
 
-@staff_required
+@role_required(GAMES_VIEW)
 @require_GET
 def wizard_report(request: HttpRequest, draft_id: UUID) -> HttpResponse:
     """Staff-only JSON/CSV report download with a fixed safe filename."""
@@ -500,7 +584,132 @@ def wizard_report(request: HttpRequest, draft_id: UUID) -> HttpResponse:
         return HttpResponseBadRequest("Unsupported report format")
 
 
+_STAFF_ERRORS = {
+    "not_found": "Сотрудник не найден.",
+    "not_staff": "Целевой аккаунт не является сотрудником.",
+    "invalid_role": "Неизвестная роль.",
+    "self_lockout": "Нельзя изменить собственную роль или статус.",
+    "last_owner": "Нельзя оставить CRM без активного владельца.",
+    "no_change": "Изменений нет.",
+    "forbidden": "Недостаточно прав для изменения сотрудников.",
+}
+
+
+@role_required(USERS_MANAGE)
+@require_http_methods(["GET", "POST"])
+def staff_management(request: HttpRequest) -> TemplateResponse | HttpResponseRedirect:
+    """List staff and assign/deactivate roles with mandatory step-up (§2.16)."""
+    if request.method == "POST":
+        allowed, reason = _authorize_step_up(request)
+        if not allowed:
+            messages.error(request, reason)
+            if reason == _STEP_UP_REQUIRED:
+                return _step_up_redirect(reverse("crm:staff"))
+            return redirect("crm:staff")
+
+        actor = _staff_user(request)
+        if actor is None:
+            messages.error(request, _STEP_UP_ERRORS["not_staff"])
+            return redirect("crm:staff")
+
+        target_id = _posted_user_id(request)
+        if target_id is None:
+            messages.error(request, _STAFF_ERRORS["not_found"])
+            return redirect("crm:staff")
+
+        action = str(request.POST.get("action") or "")
+        ip = request.META.get("REMOTE_ADDR")
+        if action == "role":
+            result = change_staff_role(
+                actor=actor,
+                target_id=target_id,
+                role=str(request.POST.get("role") or ""),
+                ip=ip,
+            )
+        elif action == "active":
+            raw_active = str(request.POST.get("active") or "").strip().lower()
+            if raw_active not in {"0", "1", "false", "true"}:
+                messages.error(request, "Некорректный статус сотрудника.")
+                return redirect("crm:staff")
+            result = set_staff_active(
+                actor=actor,
+                target_id=target_id,
+                is_active=raw_active in {"1", "true"},
+                ip=ip,
+            )
+        else:
+            messages.error(request, "Неизвестное действие.")
+            return redirect("crm:staff")
+
+        if result.ok:
+            messages.success(request, "Изменения сохранены и записаны в журнал аудита.")
+        else:
+            messages.error(request, _STAFF_ERRORS.get(result.reason, "Изменение отклонено."))
+        return redirect("crm:staff")
+
+    staff_users = User.objects.filter(is_staff=True).order_by("login")
+    return TemplateResponse(
+        request,
+        "crm/staff/list.html",
+        {
+            "title": "Сотрудники · CRM",
+            "staff_users": staff_users,
+            "roles": StaffRole.choices,
+        },
+    )
+
+
+def _posted_user_id(request: HttpRequest) -> UUID | None:
+    raw = str(request.POST.get("user_id") or "").strip()
+    if not raw:
+        return None
+    try:
+        return UUID(raw)
+    except ValueError:
+        return None
+
+
+@role_required(CONTENT_MANAGE)
+def content_overview(request: HttpRequest) -> TemplateResponse:
+    """Read-only content overview for editors/owners (genres and tags)."""
+    return TemplateResponse(
+        request,
+        "crm/content.html",
+        {
+            "title": "Контент · CRM",
+            "genres": Genre.objects.all()[:100],
+            "tags": Tag.objects.all()[:100],
+        },
+    )
+
+
+@role_required(MODERATION_MANAGE)
+def moderation_queue(request: HttpRequest) -> TemplateResponse:
+    """Moderation queue over real rating votes for moderators/owners."""
+    votes = (
+        GameRatingVote.objects.select_related("game", "user").order_by("-created_at").all()[:100]
+    )
+    return TemplateResponse(
+        request,
+        "crm/moderation.html",
+        {"title": "Модерация · CRM", "votes": votes},
+    )
+
+
+@role_required(AUDIT_VIEW)
+def audit_log(request: HttpRequest) -> TemplateResponse:
+    """Read-only privileged-action journal for owners/observers."""
+    rows = AdminAuditLog.objects.select_related("actor")[:200]
+    return TemplateResponse(
+        request,
+        "crm/audit.html",
+        {"title": "Журнал аудита · CRM", "rows": rows},
+    )
+
+
 __all__ = [
+    "audit_log",
+    "content_overview",
     "dashboard",
     "game_detail",
     "game_publish",
@@ -508,6 +717,8 @@ __all__ = [
     "games_list",
     "login_view",
     "logout_view",
+    "moderation_queue",
+    "staff_management",
     "step_up",
     "wizard_analysis",
     "wizard_card",

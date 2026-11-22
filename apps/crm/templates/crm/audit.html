@@ -1,0 +1,42 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Журнал аудита · CRM{% endblock %}
+
+{% block crm_content %}
+<h1 class="text-3xl font-display font-bold mb-6">Журнал аудита</h1>
+<p class="text-sm text-muted mb-4">
+    Привилегированные действия CRM: смена ролей/статусов, публикация и откат.
+    Записи неизменяемы.
+</p>
+
+<div class="overflow-x-auto bg-surface rounded-card border border-text/10">
+    <table class="w-full text-sm">
+        <thead class="text-left text-muted border-b border-text/10">
+            <tr>
+                <th class="px-4 py-3">Время</th>
+                <th class="px-4 py-3">Действие</th>
+                <th class="px-4 py-3">Сотрудник</th>
+                <th class="px-4 py-3">Объект</th>
+                <th class="px-4 py-3">Было</th>
+                <th class="px-4 py-3">Стало</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+                <tr class="border-b border-text/5 last:border-0 align-top" data-testid="crm-audit-row">
+                    <td class="px-4 py-3 text-muted">{{ row.created_at|date:"Y-m-d H:i:s" }}</td>
+                    <td class="px-4 py-3 font-semibold">{{ row.get_action_display }}</td>
+                    <td class="px-4 py-3">{% if row.actor %}{{ row.actor.login }}{% else %}—{% endif %}</td>
+                    <td class="px-4 py-3">{{ row.object_type }}<br><span class="text-xs text-muted">{{ row.object_id|default:"—" }}</span></td>
+                    <td class="px-4 py-3 text-xs text-muted">{{ row.before_data|default_if_none:"—" }}</td>
+                    <td class="px-4 py-3 text-xs text-muted">{{ row.after_data|default_if_none:"—" }}</td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6" class="px-4 py-6 text-muted" data-testid="crm-audit-empty">Записей нет.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

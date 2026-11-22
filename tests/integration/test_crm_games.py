@@ -6,7 +6,7 @@ from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.accounts.models import User
+from apps.accounts.models import StaffRole, User
 from apps.catalog.models import Game, GameTranslation, GameVersion, Genre
 from apps.crm.services.games import (
     GameFilters,
@@ -79,15 +79,20 @@ def _set_current(game: Game, version: GameVersion) -> Game:
     return game
 
 
-def _staff() -> User:
-    staff = User.objects.create_user(login="staff", password=PASSWORD, is_staff=True)
+def _staff(role: str = StaffRole.OWNER) -> User:
+    staff = User.objects.create_user(
+        login="staff",
+        password=PASSWORD,
+        is_staff=True,
+        crm_role=role,
+    )
     User.objects.filter(pk=staff.pk).update(totp_confirmed_at=timezone.now())
     staff.refresh_from_db()
     return staff
 
 
-def _staff_client(*, verified_2fa: bool = True) -> Client:
-    staff = _staff()
+def _staff_client(*, verified_2fa: bool = True, role: str = StaffRole.OWNER) -> Client:
+    staff = _staff(role)
     client = Client()
     client.force_login(staff)
     if verified_2fa:
