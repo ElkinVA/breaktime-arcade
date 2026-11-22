@@ -9,6 +9,17 @@
 
 ## 1. Записи работ
 
+### ARCADE-P5-ARCHER-001 — Archer game
+
+- **ID:** ARCADE-P5-ARCHER-001.
+- **Назначение:** полноценная 60-секундная аркада «Лучник» и публикация.
+- **Результат:** `games-src/archer` v1.3.3; fixed timestep, 4 цели, combo,
+  6 языков, SDK, assets, pack.py; live CRM/worker/publish/iframe/result/
+  leaderboard/update/rollback; Neon регрессия.
+- **Статус:** **IMPLEMENTED / PRO REVIEW ACCEPT**; product/staging/prod —
+  owner. Исходный `index4(1).html` отсутствовал.
+- **Дата:** 2026-11-23.
+- **Отчёт:** `ARCHER_ACCEPTANCE_REPORT.md`, `ARCHER_PROGRESS.md`.
 ### ARCADE-P4 — operational hardening + Neon Snake
 
 - **ID:** ARCADE-P4 (A1–A6, B).

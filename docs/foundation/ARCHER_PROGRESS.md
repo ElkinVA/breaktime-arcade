@@ -3,7 +3,8 @@
 **Date:** 2026-11-23
 **Base:** `b4fd9f4` (P4).
 **Worktree:** `.worktrees/archer`, branch `archer-p5`.
-**Status:** IMPLEMENTED, live dev E2E PASS, independent review pending.
+**Status:** IMPLEMENTED, live dev E2E PASS, independent Pro review
+**ACCEPT** (major end-event fixed).
 
 ## 1. Research
 
@@ -79,4 +80,5 @@ Python package/import tests; live CRM E2E.
 - 60 FPS proof on real mid-range devices: not benchmarked; fixed-step and
   capped particles are implemented.
 - Cross-browser: Chromium only.
-- Independent review: pending at this journal point.
+- Independent review: initial **ACCEPT** with major (end event dropped)
+  and minors; fixed; delta **ACCEPT, major CLOSED**.

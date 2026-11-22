@@ -56,6 +56,21 @@ game; product acceptance remains owner-level).
 определяются только утверждёнными ТЗ и решениями владельца; отчёты агентов,
 аудиты и реестры не заменяют приёмку.
 
+## 0.2. P5 — Archer (2026-11-23)
+
+- **Game:** `games-src/archer` v1.3.3; 60 s ballistic archery, four target
+  types, combo ×5, fixed timestep, six locales/catalogs, generated assets,
+  official SDK byte-identical.
+- **Live dev:** CRM upload 0 blockers → isolated `zip-worker` → publish;
+  public detail/play/iframe; full 60 s result **156** rank 3, result
+  `200 saved`; leaderboard 321/214/156; update/rollback/republish tested.
+- **Tests:** Node 11, Archer package 14, import 1, full fresh **981/12**,
+  E2E 18; Neon regression package 13/import 1 and live pages 200.
+- **Review:** independent Pro **ACCEPT**, major end-event fixed/delta
+  closed.
+- **Not tested:** original prototype (file absent), staging/production,
+  non-Chromium devices, real network-fault injection.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

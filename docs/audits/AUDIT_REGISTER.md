@@ -23,6 +23,18 @@ BA-AUDIT-003 и BA-DOC-AUDIT-001 отдельные постоянные фай�
 | Остаётся | staging `.env.staging` NOT TESTED; hard FS quota/load NOT TESTED; original P3 reviewer JSON not persisted |
 | Документы | `docs/foundation/ARCADE_P4_ACCEPTANCE_REPORT.md`, `docs/foundation/ARCADE_P4_PROGRESS.md`, `docs/audits/ZIP_WORKER_REVIEW_EVIDENCE.md`, `docs/audits/R-041_SYNC_WAIT_ANALYSIS.md` |
 
+## ARCADE-P5 — Archer
+
+| Поле | Значение |
+|---|---|
+| Цель | проверить полноценную игру Archer и интеграцию |
+| Область | physics/combo/SDK/package/locales/assets/live CRM/runtime |
+| Итоговый статус | **IMPLEMENTED / LIVE DEV E2E PASS / PRO REVIEW ACCEPT**; product/staging/prod owner |
+| Доказательства | Node 11, package 14, import 1, fresh 981/12, E2E 18; live result 156 rank 3; 321/214/156 leaderboard; rollback/republish |
+| Найдено/исправлено | HUD behind start, pause label, stage aspect, bow arc, end-event drop, RNG identity/range, idle-gap threshold, offline handling |
+| Остаётся | source prototype absent; staging/production; non-Chromium; real network fault injection |
+| Документы | `docs/foundation/ARCHER_ACCEPTANCE_REPORT.md`, `ARCHER_GAME_SPEC.md`, `ARCHER_PROGRESS.md` |
+
 ## BA-AUDIT-002
 
 | Поле | Значение |

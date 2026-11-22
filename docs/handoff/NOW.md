@@ -1,6 +1,16 @@
 # NOW — Breaktime Arcade
 
-**Дата:** 2026-11-22
+**Дата:** 2026-11-23
+
+**Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
+PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**
+Archer v1.3.3 опубликован на dev (`/en/games/archer/`), 60-секундный
+результат 156 сохранён (rank 3), leaderboard 321/214/156; update/rollback
+проверены. Fresh gate **981 passed, 12 skipped**, Browser E2E **18 passed**.
+Отчёты — `ARCHER_GAME_SPEC.md`, `ARCHER_PROGRESS.md`,
+`ARCHER_ACCEPTANCE_REPORT.md`, `ARCHER_OWNER_ACTION_LIST.md`.
+Исходный `index4(1).html` отсутствует в рабочей среде — порт не
+подтверждён. Staging/production **NOT TESTED**.
 
 **Текущий этап: P4 OPERATIONAL HARDENING + FIRST REAL GAME — IMPLEMENTED /
 PRO REVIEW ACCEPT; PRODUCT ACCEPTANCE OWNER.** Neon Snake v1.0.0 собран,

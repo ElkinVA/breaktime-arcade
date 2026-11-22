@@ -3,8 +3,8 @@
 **Date:** 2026-11-23
 **Base:** `b4fd9f4`
 **Game:** Archer v1.3.3, package id `archer`
-**Status:** **IMPLEMENTED; AUTOMATED + LIVE DEV E2E PASS; INDEPENDENT REVIEW
-PENDING; PRODUCT/STAGING/PRODUCTION NOT ACCEPTED.**
+**Status:** **IMPLEMENTED; AUTOMATED + LIVE DEV E2E PASS; INDEPENDENT
+PRO REVIEW ACCEPT; PRODUCT/STAGING/PRODUCTION NOT ACCEPTED.**
 
 ## 1. Status matrix
 
@@ -22,7 +22,7 @@ PENDING; PRODUCT/STAGING/PRODUCTION NOT ACCEPTED.**
 | Update/rollback/republish | TESTED LIVE | v1.3.0 → v1.2.1 → v1.3.3 |
 | Responsive matrix | TESTED LIVE | 360×640, 390×844, 640×360, 1280×800, 1920×1080 |
 | Neon Snake regression | TESTED | package 13, import 1, live pages 200 |
-| Independent Pro review | PENDING | requested after commit |
+| Independent Pro review | ACCEPT; major closed | initial major end-event fixed; delta review accept |
 | Staging/production | NOT TESTED | owner-gated |
 | Missing original prototype | NOT PORTED | `index4(1).html` absent |
 
@@ -95,4 +95,6 @@ for a behaviour-diff review. This is a NOT TESTED item, not a PASS.
 - Package: `games-src/archer`
 - Tests: `tests/js/archer.test.mjs`, `tests/unit/test_archer_package.py`,
   `tests/integration/test_archer_import.py`
-- Review: independent reviewer result appended before final handoff.
+- Review: initial Pro review ACCEPT with one major (end event never emitted)
+  and minors; fixed in 7ae216b/8ebfb0c; delta review **ACCEPT, major
+  CLOSED**. Reviewer did not execute the live/browser checks itself.
