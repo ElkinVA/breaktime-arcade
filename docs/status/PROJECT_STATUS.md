@@ -1,6 +1,7 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-21 (R-036 Phase 1; DB-001 session tombstone).
+**Дата актуализации:** 2026-11-22 (ADR-APPF-001: внутренняя приёмка
+контрактов; внешние действия не выполнялись).
 Документ — краткая панель текущего состояния. Нормативные требования
 определяются только утверждёнными ТЗ и решениями владельца; отчёты агентов,
 аудиты и реестры не заменяют приёмку.
@@ -14,10 +15,11 @@
 
 Принятие **Documentation Block 1** (BA-DOC-001 + FIX-01/02/03) не означает
 принятия технического этапа 0, этапа 1 или `BA-STAGE-1.1`. App F в целом не
-готов к приёмке: реализованы отдельные серверные срезы, клиентский runtime
-отсутствует; серверный session/ticket срез
+готов к продуктовой приёмке: реализованы серверные срезы и runtime A+B
+(**IMPLEMENTED / TECHNICAL REVIEW**); серверный session/ticket срез
 **APPF-SESSION-001** **ACCEPTED** владельцем 2026-11-20; `BA-APPF-002`
-**запущена частично** (DB-001 session tombstone; DB-005/006/007 остаются).
+**запущена частично** (DB-001/004/005/006/007 реализованы, DB-002/003/008 —
+в App F-срезах), контракты закрыты внутренне в `ADR-APPF-001`.
 
 Технические пакеты **BA-I18N-002** и **BA-STAGE-1.2-E2E** выполнены и не
 требуют решения владельца: языковой реестр переживает отказ Redis,
@@ -392,10 +394,16 @@ Full **456 passed, 4 skipped**; JS `node --check` clean. Независимый 
 | BA-CATALOG-005 | **IMPLEMENTED / AWAITING INDEPENDENT REVIEW** | unaccent, SearchRank, bulk refresh; 8 tests; нет benchmark |
 | BA-STAGE-1.1 | **NOT_ACCEPTED** | Ограниченный срез этапа 1; не самостоятельный нормативный этап |
 | BA-FOUNDATION-001 | **COMPLETED**; не принят | Отчёт Partial/Blocked; независимая проверка выявила ограничения; этап 0 не закрыт |
-| BA-FOUNDATION-002 | **PARTIAL / BLOCKED** | DRAFT-контракты и design-схема есть; оригиналы SDK/ENV и утверждение отсутствуют |
+| BA-FOUNDATION-002 | **PARTIAL — внутренние контракты приняты (ADR-APPF-001)** | SDK/ENV v1.1.0 внутренне приняты; design-схема/App J остаются; внешние оригиналы/публикация не требуются для внутренней разработки |
 | Предыдущий аудит App F | **COMPLETED** | Отчёт существует; вывод: runtime App F отсутствует, проверены только схемы/валидатор |
 | BA-APPF-001 | **COMPLETED**; не принят | Подготовлены 45 проектных решений; 29 Blocker, 17 вопросов владельцу |
-| BA-APPF-002 | **NOT_STARTED** | Не запускалась; не отражать как выполненную |
+| BA-APPF-002 | **PARTIAL / IN_PROGRESS** — DB-001/004/005/006/007 и runtime A+B реализованы; контракты закрыты внутренне (ADR-APPF-001); product acceptance открыта | Не приёмка App F |
+| APPF-CONTRACT-CLOSURE-001 | **TECHNICALLY ACCEPTED (Architect/internal)** | ADR-APPF-001: BA-GAME A, BA-SDK/ENV, 64 КиБ/unknown/`sessionId`, DB-001…008, trust/EventLog/storage/leaderboard, retention, roles/2FA/step-up, email adapter, production requirements; внешние действия не выполнялись |
+| BA-SDK-1.1 / BA-ENV-1.1 | **INTERNALLY ACCEPTED (Architect)** | v1.1.0 — внутренние контракты; `ba-sdk.js`/JSON Schema и production-конфигурация остаются реализацией/внешним deploy |
+| BA-GAME-2.2 | **DECIDED (Architect): A** | A — canonical; B — историческое подмножество; ТЗ не изменялось |
+| APPF-RETENTION | **DECIDED (technical/internal)** | Сроки Приложения D обязательны; `[PROP]`-сроки — временные внутренние значения; юридическая проверка ПДн/бэкапов остаётся |
+| BA-DB-SCHEMA-002 | **PARTIAL — DB-001…008 закрыты на уровне моделей/миграций** | DB-002/003/008 реализованы в App F-срезах; DB-004/005/006/007 — в catalog/gameplay; документационная синхронизация `DB_SCHEMA.md` — остаток |
+| BA-PROD-001 | **REQUIREMENTS RECORDED; external actions pending** | Production baseline в ADR D13; домены/TLS/S3/CDN/Sentry/deploy/credentials — внешние действия владельца |
 | BA-AUTONOMY-003 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Pro text-only plan done; guards; NOW; docs pointers; 185 tests; security review **accept**; owner acceptance pending |
 | APPF-SESSION-001 | **ACCEPTED** (владелец, 2026-11-20) | GameSession/ticket/activate/heartbeat §2.12.1–2.12.4; 24 tests (3 конкурентных); полный suite 209; code/security review **accept**; evidence в AUDIT_REGISTER |
 | APPF-SESSION-002 | **IMPLEMENTED / AWAITING OWNER ACCEPTANCE** | Throttle Прил. E: subject 30/ч + IP 600/ч, heartbeat 3/мин, redis-throttle, реальный IP; блокеры review сняты |
@@ -472,12 +480,18 @@ Full **456 passed, 4 skipped**; JS `node --check` clean. Независимый 
 - App F runtime: серверные срезы session/ticket, result, leaderboard,
   storage, playtime, ratings и popularity реализованы (частично принят
   только SESSION-001); `sdk/1.1.0/ba-sdk.js`,
-  `static/src/js/host_protocol.js` и `static/src/js/player.js`
-  по-прежнему отсутствуют/пусты.
-- SDK 1.1 и BA-ENV-1.1: оригиналы отсутствуют; DRAFT не утверждены.
-- App F client/runtime: postMessage, origin/source, sessionId/requestId
-  runtime, states, SDK injection, EventLog/verifier и replay не
-  реализованы. Наличие серверных API не является сквозной системой.
+  `static/src/js/host_protocol.js` и `static/src/js/player.js` реализованы
+  как runtime A+B, но остаются **IMPLEMENTED / TECHNICAL REVIEW**, не
+  продуктовая приёмка.
+- BA-SDK-1.1/BA-ENV-1.1 v1.1.0 **внутренне приняты Architect** (ADR-APPF-001);
+  внешние оригиналы/публикация не требуются для внутренней разработки, но
+  JSON Schema/`ba-sdk.js`-актуализация, production-конфигурация и внешние
+  действия остаются.
+- App F client/runtime: runtime A+B реализует postMessage, origin/source,
+  sessionId/requestId, SDK injection и play view, но остаётся
+  **IMPLEMENTED / TECHNICAL REVIEW**. Полный EventLog/verifier/replay и
+  сквозная продуктовая приёмка не завершены; наличие серверных API само по
+  себе не является сквозной системой.
 - ZIP pipeline: preflight и потоковая safe-extraction реализованы; OS-level
   sandbox worker, manifest/catalog/locales, SDK injection, runtime bundle и
   публикация — не реализованы.
@@ -504,52 +518,58 @@ Full **456 passed, 4 skipped**; JS `node --check` clean. Независимый 
 
 ## 5. Блокирующие вопросы
 
-Сводный пакет вопросов и рекомендаций —
-`docs/decisions/APPF-OWNER-DECISION-PACKAGE.md` (AWAITING OWNER DECISIONS).
+После `ADR-APPF-001` внутренние контрактные блокеры сняты. Остались только
+внешние и product-acceptance пункты; сводка — `OWNER_DECISIONS.md` D.1.
 
-1. **BA-SDK-1.1 и BA-ENV-1.1** отсутствуют; DRAFT не являются нормой.
-2. **BA-GAME-2.2**: два варианта, канонический не выбран.
-3. **App F contract gaps**: `myBest`, `autotest:finish`, `ba.fail`,
-   pre-session `ba:error`, paused/failed, payload-схемы и лимиты.
-4. **SQL/App J**: удаление пользователя/XOR, result↔session,
-   leaderboard↔result, mode↔subject, фактический размер storage, immutable
-   GameVersion, длина названия.
-5. **Production infrastructure**: compose.prod, production Nginx,
-   monitoring, WAL/PITR/S3, backup target.
-6. **Docker base images** Python/Node не digest-pinned.
-7. **Git remote** создан: приватный `ElkinVA/breaktime-arcade` (SSH),
-   `main` запушен. Локальный backup существует; production backup/WAL/PITR
-   не готовы.
-8. **Legal texts/versions** для Terms/Privacy отсутствуют; в настройках
-   используется `draft`. Утверждать текст и версии должен владелец/юрист.
-9. **Email provider/bounce policy** не заданы; без них нельзя завершить
-   §2.10.3 и подтвердить недоставляемые адреса.
-10. **2FA персонала** реализована частично; остаются роли и CRM step-up,
-    уведомления о смене ролей, шифрование TOTP-секрета и retention cleanup
-    (`LoginEvent`/`AnonymousIdentity`/токены); глобальные сроки
-  `SecurityEvent`/`GameStorage`/`GameSession`/mail-логов/бэкапов/согласий.
+**Внутренние (решены Architect, ADR-APPF-001):**
+
+1. BA-SDK-1.1/BA-ENV-1.1 v1.1.0 внутренне приняты; `sessionId`/64 КиБ/
+   unknown-поля/EventLog/trust/storage/leaderboard закрыты.
+2. BA-GAME-2.2: canonical = A; B — историческое подмножество.
+3. DB-001…DB-008 закрыты; реализованные constraints не переписываются.
+4. Retention: сроки Приложения D обязательны; `[PROP]`-сроки — временные
+   внутренние значения до юридической проверки.
+5. Роли §2.16, staff TOTP 2FA, recovery, step-up, журнал/уведомления.
+6. Email: единый адаптер поверх Django SMTP; dev/staging Mailpit.
+7. Production requirements зафиксированы письменно (ADR D13).
+
+**Внешние (не решены и не выполнялись):**
+
+8. Legal texts/versions Terms/Privacy, DSA/EN 301 549, GDPR-основания и
+   согласия — владелец/юрист.
+9. Email/S3/CDN/Sentry/платные провайдеры, домены/DNS/TLS, hosting,
+   credentials и production deploy — владелец/провайдер.
+10. Реальный игровой ZIP, лицензии и приёмка полного пути — игровая
+    команда/владелец.
+11. Продуктовая приёмка срезов App F/Browser Arcade — владелец.
+12. Формальное закрытие этапов 0/1/3 — не решено; внутренняя приёмка
+    контрактов его не заменяет.
 
 ## 6. Решения, необходимые от владельца
 
-1. Утвердить BA-SDK-1.1/BA-ENV-1.1 либо официально ограничить контрактный
-   baseline; решить legacy `session_id`.
-2. Выбрать/утвердить канонический BA-GAME-2.2. Не выбирать его исполнителем.
-3. Утвердить или отклонить решения `BA-APPF-001` (45 предложений; особенно
-   paused/failed, `myBest`, `autotest:finish`, `ba.fail`, лимиты сообщений,
-   EventLog transport, SQL-исправления, preview subject).
-4. Утвердить порядок SQL-исправлений DB-001…DB-008 до App F-миграций.
-5. Определить production-домены/TLS, S3/CDN, monitoring, backup и WAL/PITR.
+**Делегировано и закрыто Architect (ADR-APPF-001):** BA-SDK-1.1,
+BA-ENV-1.1, BA-GAME-2.2, DB-001…DB-008, App F trust/EventLog/storage/
+leaderboard, retention, роли/2FA/step-up, email adapter, production
+requirements. Эти пункты не требуют отдельного ответа владельца для
+внутренней разработки; владелец может пересмотреть их через новый ADR.
+
+**Требует внешнего действия/решения владельца:**
+
+1. Утвердить юридические тексты Terms/Privacy/cookies и их версии для
+   `TERMS_VERSION`/`PRIVACY_VERSION`; решить публикацию `/legal/*`, DSA/
+   EN 301 549 и GDPR-основания.
+2. Выбрать и подключить транзакционного email-провайдера (ЕС), настроить
+   SPF/DKIM/DMARC и bounce-webhooks.
+3. Определить production-домены/TLS, хостинг, S3/CDN, Sentry, monitoring,
+   backup и WAL/PITR; выдать credentials и окно deploy.
+4. Принять реальный игровой ZIP и лицензии/права; провести приёмку полного
+   пути ZIP→CRM→игра→рекорд→обновление.
+5. Провести продуктовую приёмку App F и Browser Arcade.
 6. Решить судьбу остаточных R-003/R-004/R-005; AUD3-001/AUD3-002 и
    R-006/R-007 закрыты технически в BA-I18N-002.
-7. Определить, когда формально закрывать этап 0/этап 1; самостоятельно не
-   назначать следующий этап.
+7. Определить, когда формально закрывать этап 0/этап 1.
 8. Принять или вернуть BA-DOC-002 и обновлённые реестры.
-9. Утвердить юридические тексты Terms/Privacy и их версии для
-   `TERMS_VERSION`/`PRIVACY_VERSION`; решить, публиковать ли `/legal/*`.
-10. Утвердить транзакционного email-провайдера и политику bounce.
-11. Утвердить роли и CRM step-up (включая уведомления о смене ролей);
-    owner recovery и `LoginEvent` реализованы в dev, retention/шифрование
-    остаются.
+9. Решить, где хранится канонический экземпляр ТЗ в Git.
 
 ## 7. Следующий согласованный шаг
 
@@ -570,12 +590,15 @@ App F и решениями владельца.
 **Сверка 2026-11-22:** этот раздел — историческая запись нормативного плана,
 а не текущая карта. Код Browser Arcade/App F уже содержит server slices,
 runtime A+B, каталог, SEO/i18n, аккаунты, ZIP preflight/extract/worker и CRM
-dashboard; нормативные контракты и product acceptance остаются открытыми.
-Актуальная дорожная карта и три категории — `docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md`.
+dashboard. Внутренние контракты закрыты в `ADR-APPF-001`; внешние
+юридические/платные/инфраструктурные действия и product acceptance остаются
+открытыми. Актуальная дорожная карта и три категории —
+`docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md`.
 
 ## 8. Ссылки
 
 - [TASK_HISTORY](../tasks/TASK_HISTORY.md)
+- [ADR-APPF-001](../decisions/ADR-APPF-001.md)
 - [OWNER_DECISIONS](../decisions/OWNER_DECISIONS.md)
 - [AUDIT_REGISTER](../audits/AUDIT_REGISTER.md)
 - [RISK_REGISTER](../risks/RISK_REGISTER.md)
@@ -628,9 +651,10 @@ Remote: отсутствует
   не доказательство приёмки.
 - Тесты BA-FIX-003 в документационных задачах не перезапускались; их
   результаты остаются заявленными исполнителем.
-- Этап 0 не закрыт; App F реализован частично (серверные срезы), клиентский
-  runtime отсутствует; BA-APPF-002 запущена частично (DB-001 tombstone;
-  DB-005/006/007 остаются).
+- Этап 0 не закрыт; App F реализован частично (серверные срезы + runtime
+  A+B в technical review); BA-APPF-002 запущена частично (DB-001/004/005/
+  006/007 реализованы, DB-002/003/008 — в App F-срезах); контракты закрыты
+  внутренне в ADR-APPF-001, product acceptance остаётся.
 - BA-STAGE-2.1: результаты тестов/lint/mypy/check и HTTP-проверок
   зафиксированы в `docs/foundation/BA-STAGE-2.1_REPORT.md`; это self-check
   исполнителя, не независимый аудит и не приёмка §2.10.
@@ -701,3 +725,33 @@ BA-PLAT-4.2/BA-GAME-2.2. Фактический код опережает ист
 и C (реализовано, нужна продуктовая приёмка). Актуальная карта —
 `docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md`. STOP установлен; новых задач
 автоматически не запускается. Свежий quality gate: **792 passed, 11 skipped**.
+
+## 1.26. Contract/ADR closure — ARCADE-P0-CONTRACT-CLOSURE-001
+
+`ADR-APPF-001` (`docs/decisions/ADR-APPF-001.md`) фиксирует внутренние
+технические решения Architect по делегированию `OD-AUTONOMY-006`:
+
+- canonical BA-GAME-2.2 = **A** (B — историческое подмножество; ТЗ не
+  переписывалось);
+- BA-SDK-1.1/BA-ENV-1.1 v1.1.0 — **внутренне принятые контракты**; 64 КиБ,
+  strict unknown-поля, `sessionId`/`session_id`, EventLog, trust,
+  storage/If-Match, leaderboard/`myBest`;
+- DB-001…DB-008 закрыты; реализованные constraints не переписываются;
+- retention: сроки Приложения D обязательны, `[PROP]`-сроки — временные
+  внутренние значения до юридической проверки;
+- роли §2.16, staff TOTP 2FA, recovery, step-up, журнал/уведомления;
+- email — единый адаптер поверх Django SMTP; production-провайдер не
+  подключён;
+- production requirements зафиксированы письменно; deploy, домены/TLS,
+  S3/CDN/Sentry, paid services и реальный игровой ZIP **не выполнялись**.
+
+Это **не** продуктовая приёмка App F и не закрытие этапов 0/1. Внешние
+юридические, платные и инфраструктурные действия остаются за владельцем и
+явно отделены в `OWNER_DECISIONS.md` (раздел D.1) и `NOW.md`.
+
+Проверки: `ruff check`/`ruff format --check`/`mypy` — clean; sandbox
+integration suite — passed; `test_contract_schemas` — 10 passed. Полная
+pytest-коллекция в sandbox ограничена pre-existing copy allowlist
+(`scripts/`, `sdk/`, `docs/` не копируются), поэтому часть тестов падает
+только на отсутствующих файлах; это ограничение sandbox, не регрессия
+документационной задачи.

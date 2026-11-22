@@ -228,18 +228,21 @@
 
 ## 10. Источники
 
-`PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`, `RISK_REGISTER.md`, `TASK_HISTORY.md`, `BACKLOG.md`, `CLAUDE.md`, нормативные ТЗ и AI Dev provenance README.
+`PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `docs/decisions/ADR-APPF-001.md`, `AUDIT_REGISTER.md`, `RISK_REGISTER.md`, `TASK_HISTORY.md`, `BACKLOG.md`, `CLAUDE.md`, нормативные ТЗ и AI Dev provenance README.
 
 ## 11. BA-FOUNDATION-002 — что читать дополнительно
 
-- `docs/contracts/BA-SDK-1.1_DRAFT.md` — DRAFT, не нормативный.
-- `docs/contracts/BA-ENV-1.1_DRAFT.md` — DRAFT, не нормативный.
+- `docs/contracts/BA-SDK-1.1_v1.1.0.md` — внутренне принятый контракт SDK
+  (ADR-APPF-001); `BA-SDK-1.1_DRAFT.md` — исторический DRAFT.
+- `docs/contracts/BA-ENV-1.1_v1.1.0.md` — внутренне принятый контракт
+  окружения (ADR-APPF-001); `BA-ENV-1.1_DRAFT.md` — исторический DRAFT.
 - `docs/contracts/SESSION_ID_PROTOCOL.md` — внешний `sessionId`, внутренний
   `session_id`.
 - `docs/contracts/MESSAGE_PROTOCOL.md` и `schemas/messages/*.json` — draft
-  протокол App F.
+  протокол App F (JSON Schema — deliverable этапа 3).
 - `docs/contracts/CONTRADICTIONS.md` — расхождения, включая `session_id`.
-- `docs/audits/BA-GAME-2.2_COMPARISON.md` — два варианта; канонический не выбран.
+- `docs/audits/BA-GAME-2.2_COMPARISON.md` — A выбран canonical, B —
+  историческое подмножество (ADR-APPF-001).
 - `docs/foundation/DB_SCHEMA.md`, `ERD.md`, `ba_schema.sql` — проектная
   схема БД, не миграция.
 - `docs/contracts/APP_J_FIELD_MAPPING.md` — mapping App J.
@@ -247,10 +250,12 @@
   блокеры. Запрошенный `reports/BA-FOUNDATION-002_REPORT.md` заблокирован
   guard-хуком; файл сохранён в `docs/foundation/` до решения владельца.
 
-**Текущий статус BA-FOUNDATION-002:** Partial/Blocked. Этап 0 не закрыт.
-DRAFT-документы не являются нормативными и не должны подключаться как
-окончательные контракты. BA-SDK-1.1/BA-ENV-1.1 оригиналы по-прежнему
-отсутствуют.
+**Текущий статус BA-FOUNDATION-002:** Partial — внутренние контракты
+BA-SDK-1.1/BA-ENV-1.1 v1.1.0 приняты Architect в `ADR-APPF-001`; canonical
+BA-GAME-2.2 = A. Это не закрывает этап 0 и не является продуктовой приёмкой.
+DRAFT-документы остаются историей; внешние оригиналы/публикация не требуются
+для внутренней разработки. Внешние юридические/платные/инфраструктурные
+действия остаются за владельцем (`OWNER_DECISIONS.md` D.1).
 
 ## 12. App F — что читать и чего не делать
 

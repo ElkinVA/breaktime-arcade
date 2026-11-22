@@ -297,7 +297,7 @@ def test_drafts_and_mappings_are_present_and_marked() -> None:
         "docs/contracts/MESSAGE_PROTOCOL.md": "ba:leaderboard:data",
         "docs/contracts/APP_J_FIELD_MAPPING.md": "GameVersion.manifest",
         "docs/contracts/CONTRADICTIONS.md": "C-001",
-        "docs/audits/BA-GAME-2.2_COMPARISON.md": "Канонический вариант не выбран",
+        "docs/audits/BA-GAME-2.2_COMPARISON.md": "каноническим выбран **вариант A**",
         "docs/foundation/DB_SCHEMA.md": "GameStorage",
         "docs/foundation/ERD.md": "erDiagram",
     }

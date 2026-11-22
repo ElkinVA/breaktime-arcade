@@ -3,11 +3,17 @@
 **Дата:** 2026-11-22
 
 **Сверка фактического состояния:** код Browser Arcade/App F опережает
-исторические формулировки ниже; нормативные BA-SDK-1.1/BA-ENV-1.1/BA-GAME-2.2
-и product acceptance не закрыты. Актуальная карта и три категории работ —
+исторические формулировки ниже. Внутренние контракты BA-SDK-1.1/
+BA-ENV-1.1/BA-GAME-2.2 закрыты Architect в `ADR-APPF-001` (2026-11-22);
+product acceptance и внешние юридические/платные/инфраструктурные действия
+не закрыты. Актуальная карта и три категории работ —
 `docs/foundation/BA_PRODUCT_ROADMAP_AUDIT.md`. STOP установлен; новые задачи
 автоматически не запускаются.
-**Текущий пакет:** R-036 Phase 1 (delivery observability, non-behavioral),
+**Текущий пакет:** ARCADE-P0-CONTRACT-CLOSURE-001 — ADR-APPF-001:
+canonical BA-GAME A, внутренняя приёмка BA-SDK/ENV v1.1.0, 64 КиБ/
+unknown/`sessionId`, DB-001…008, App F trust/EventLog/storage/leaderboard,
+retention, roles/2FA/step-up, email adapter, production requirements.
+R-036 Phase 1 (delivery observability, non-behavioral),
 BA-APPF-002 / DB-001 (tombstone-анонимизация сессий при удалении),
 BA-APPF-002 / DB-006 (immutable GameVersion),
 BA-APPF-002 / DB-005+007 (name 60, mode↔subject),
@@ -34,6 +40,14 @@ DB-005/007 — **TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT).
 DB-004 + residuals — **TECHNICALLY ACCEPTED** (agent; code/security review ACCEPT) (Game identity/delete,
 GamePlayCredit cleanup, mode immutable). Runtime A+B — **IMPLEMENTED /
 TECHNICAL REVIEW** (SDK/host/player/play view; review incomplete).
+
+**ARCADE-P0-CONTRACT-CLOSURE-001** — **TECHNICALLY ACCEPTED (Architect/
+internal)**: `ADR-APPF-001` фиксирует BA-GAME A, внутреннюю приёмку
+BA-SDK-1.1/BA-ENV-1.1 v1.1.0, 64 КиБ/strict unknown/`sessionId`, DB-001…008,
+App F trust/EventLog/storage/leaderboard, retention, roles/2FA/step-up,
+email adapter и production requirements. Это не product acceptance и не
+закрытие этапов; внешние юридические/платные/инфраструктурные действия не
+выполнялись (см. `OWNER_DECISIONS.md` D.1).
 
 ## Активная задача
 
@@ -139,29 +153,45 @@ Code/security review — **INCOMPLETE** (diff evidence, JSON-Schema, parentOrigi
    `docs/foundation/R-036_PHASE1_REPORT.md`).
 6. R-037/R-038: retention `zip_uploads`; live Telegram/Dev Control.
 7. DB-001/004/005/006/007 + runtime A+B реализованы; probe/E2E handshake
-   passed. Следующий шаг — повторный code/security review с diff-evidence;
-   BA-SDK-1.1/ENV/BA-GAME всё ещё не утверждены.
+   passed. Следующий шаг — повторный code/security review с diff-evidence.
+   Внутренние контракты закрыты `ADR-APPF-001`; product acceptance и
+   внешние действия остаются.
    BA-DOC-README-001 требует разрешения на защищённые файлы. Phase 2 R-036
    не начинать до решения владельца.
-8. manifest/catalog/locales — после BA-GAME-2.2; EventLog/verifier — после
-   схем сообщений.
+8. manifest/catalog/locales — после внутреннего принятия BA-GAME A
+   (ADR-APPF-001); EventLog/verifier — после схем сообщений и реализации
+   verifier/replay.
 
 ## Блокеры продукта
 
-- `BA-SDK-1.1`/`BA-ENV-1.1`: финальные версии подготовлены, не утверждены.
-- Канонический `BA-GAME-2.2` не выбран; анализ и рекомендация — A.
-- Retention GameSession/GameResult/Storage — сроки не утверждены.
-- Challenge после IP-порога не реализован (до O4 — 429).
-- Legal texts/versions, email provider/bounce, CRM roles/step-up.
+**Внутренние контракты — закрыты Architect (ADR-APPF-001):**
+- BA-SDK-1.1/BA-ENV-1.1 v1.1.0 — внутренне приняты; 64 КиБ/strict
+  unknown/`sessionId`/EventLog/trust/storage/leaderboard закрыты.
+- BA-GAME-2.2 canonical = A; B — историческое подмножество.
+- Retention: сроки Приложения D обязательны; `[PROP]`-сроки — временные
+  внутренние значения; юридическая проверка ПДн/бэкапов остаётся.
+- Roles/2FA/step-up и email adapter решены технически.
+
+**Внешние блокеры (не выполнялись):**
+- Legal texts/versions Terms/Privacy, DSA/EN 301 549, GDPR/consent.
+- Email/S3/CDN/Sentry/платные провайдеры, домены/TLS, hosting, deploy.
+- Реальный игровой ZIP/лицензии; продуктовая приёмка App F.
 - Container E2E: Playwright driver без `libatomic.so.1`; host E2E — 13 passed;
   локально нужны `LD_LIBRARY_PATH` (libasound) и Liberation Sans.
 
 ## Решения владельца, ожидающие
 
-- Утверждение BA-SDK-1.1/BA-ENV-1.1 v1.1.0.
-- Выбор канонического BA-GAME-2.2 (рекомендация — A).
-- Retention-сроки (`docs/decisions/RETENTION_PROPOSAL.md`).
-- Challenge mechanism (PoW/CAPTCHA, ЕС) и узкий `TRUSTED_PROXY_IPS`.
+**Закрыто внутренне (Architect, ADR-APPF-001; не требует ответа для
+внутренней разработки):** BA-SDK-1.1, BA-ENV-1.1, BA-GAME-2.2, DB-001…008,
+retention, roles/2FA/step-up, email adapter, production requirements.
+
+**Требует владельца/внешнего действия:**
+- Юридические тексты/версии Terms/Privacy/cookies, DSA/EN 301 549, GDPR.
+- Транзакционный email-провайдер (ЕС), SPF/DKIM/DMARC, bounce-webhooks.
+- Домены/TLS, хостинг, S3/CDN, Sentry, monitoring, WAL/PITR, credentials,
+  production deploy.
+- Реальный игровой ZIP и лицензии; продуктовая приёмка App F.
+- Узкий `TRUSTED_PROXY_IPS`; challenge PoW — реализация (временно 429).
 - Приёмка APPF-SESSION-002, APPF-RESULT-001, ZIP PREFLIGHT/EXTRACT/WORKER.
 - R-036 Phase 2: менять ли глобальный `acks_late`/`reject_on_worker_lost`
   после аудита идемпотентности; приемлемая задержка redelivery и отдельный
@@ -170,6 +200,11 @@ Code/security review — **INCOMPLETE** (diff evidence, JSON-Schema, parentOrigi
 ## Последние фактические проверки
 
 ```text
+2026-11-22 ADR gate (sandbox) -> integration suite passed; test_contract_schemas
+                              10 passed; ruff/format/mypy clean; full pytest
+                              collection in sandbox blocked by pre-existing copy
+                              allowlist (scripts/sdk/docs not copied), not by this
+                              documentation change
 pytest tests/unit/test_zip_worker.py + compose + extract + preflight -> 49 passed
 pytest (full)              -> 456 passed, 4 skipped, 1 warning
 coverage                   -> 90.88 %, no module < 70 %
@@ -243,7 +278,8 @@ host E2E (13 сценариев, после локальной настройк�
 ## Ссылки
 
 `PROJECT_STATUS.md`, `BACKLOG.md`, `CONTEXT_RECOVERY.md`, `TASK_HISTORY.md`,
-`OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`, `RISK_REGISTER.md`,
+`docs/decisions/ADR-APPF-001.md`, `OWNER_DECISIONS.md`,
+`AUDIT_REGISTER.md`, `RISK_REGISTER.md`,
 `docs/tasks/BA-ZIP-WORKER-001_PLAN.md`,
 `docs/foundation/BA-ZIP-WORKER-001_REPORT.md`,
 `docs/foundation/BA-DEVCONTROL-001_REPORT.md`, `devcontrol/README.md`,

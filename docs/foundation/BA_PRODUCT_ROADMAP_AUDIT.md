@@ -100,7 +100,8 @@
   PLAYTIME-001, RATINGS-001, POPULARITY-001 — технически реализованы, часть
   review принята; owner/product acceptance остаётся.
 - Runtime A+B: SDK/host/player/play view — **IMPLEMENTED / TECHNICAL REVIEW**;
-  review incomplete, BA-SDK/ENV/GAME ещё не были норм. утверждены.
+  review incomplete; BA-SDK/ENV/GAME внутренне приняты в ADR-APPF-001, но
+  product acceptance и внешние действия остаются.
 - Catalog/SEO/i18n/account/CRM-dashboard UI-срезы — текущие тесты зелёные,
   требуют продуктовой выборочной приёмки на реальных данных.
 - ZIP PREFLIGHT/EXTRACT/WORKER — техническая приёмка агента; продуктовая
@@ -130,7 +131,7 @@
 
 | Приоритет | Крупный пакет | Результат |
 |---|---|---|
-| P0 | Contract/ADR closure | Канонические BA-SDK/ENV/GAME/DB/App F decisions recorded; больше не блокируют implementation |
+| P0 | Contract/ADR closure | Канонические BA-SDK/ENV/GAME/DB/App F decisions recorded; больше не блокируют implementation — **DONE**: [ADR-APPF-001](../decisions/ADR-APPF-001.md) |
 | P1 | Public product completion | Rating UI, TOP-100 leaderboard, SEO structured/redirects, i18n plural, accessibility/perf |
 | P2 | CRM + package pipeline | Owner can run game list/wizard/import/validation/autotest/publish/rollback without code |
 | P3 | Accounts/legal/email | Full §2.10 E2E after external legal/provider confirmation |

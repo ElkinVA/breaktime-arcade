@@ -1,11 +1,14 @@
 # BA-ENV-1.1 — окружение и эксплуатация (v1.1.0)
 
-**Статус:** **НА УТВЕРЖДЕНИИ ВЛАДЕЛЬЦА.** До утверждения документ не является
-нормативным; DRAFT `BA-ENV-1.1_DRAFT.md` сохраняется как история.
-**Дата версии:** 2026-11-20.  
+**Статус:** **INTERNALLY ACCEPTED (Architect, 2026-11-22; ADR-APPF-001).**
+Внутренний технический контракт окружения в пределах ТЗ; это не публикация,
+не внешнее/юридическое утверждение и не production deploy. DRAFT
+`BA-ENV-1.1_DRAFT.md` сохраняется как история.
+**Дата версии:** 2026-11-20.
 **Основание:** BA-PLAT-4.2 (ред. 12.11.2026) §2.3–§2.5, §2.20, Приложения
 A/B/D/G; DRAFT BA-ENV-1.1; независимый Pro-review 2026-11-20
-(conforms-with-fixes). Приоритет — ТЗ.
+(conforms-with-fixes); OD-AUTONOMY-006; `docs/decisions/ADR-APPF-001.md`.
+Приоритет — ТЗ.
 
 ## История изменений
 
@@ -83,7 +86,7 @@ Digest-политика: получение digest базовых Python/Node о
 | Dev games | `<host_label>.games.test:8443` | `[TZ]` §2.4 |
 | Production | реальные домены, Let's Encrypt DNS-01 wildcard | `[TZ]` §2.4/§2.5 |
 | Staging | Basic Auth + IP allowlist + `noindex`, отдельные секреты, mail sandbox | `[TZ]` §2.4/§2.5 |
-| HSTS | dev выключен; prod `max-age=63072000`; `includeSubDomains`/preload — не в v1.1.0 (квазинеобратимо, отдельное решение) | `[TZ]` Прил. B; `[PROP]` |
+| HSTS | dev выключен; prod `max-age=63072000` + `includeSubDomains` + `preload` по Приложению B; preload активируется только после реальных доменов/TLS (временное ограничение, ADR-APPF-001 D3) | `[TZ]` Прил. B |
 | Game host | отдельный origin; cookies запрещены; `X-Frame-Options` отсутствует; изоляция только CSP `frame-ancestors` | `[TZ]` §2.4.2 |
 | Game headers | `X-Robots-Tag: noindex, nofollow`; `Referrer-Policy: no-referrer`; CSP по capabilities | `[TZ]` §2.4.2/§2.20 |
 | Version path | `/v/<runtime_hash[:12]>/`, неизменяем; `index.html` — `no-cache`; ассеты — `immutable` | `[TZ]` §2.4.2 |
@@ -188,10 +191,12 @@ read-only и не изменяет production-данные.
 
 ## 11. Вопросы, утверждаемые вместе с документом
 
-1. Механизм прогрессивного challenge после IP-порога (proof-of-work или
-   CAPTCHA у провайдера в ЕС) — продуктовое/приватностное решение (O4).
-2. HSTS `includeSubDomains`/preload — не включать в v1.1.0; отдельное решение
-   позже (preload квазинеобратим).
+1. Механизм прогрессивного challenge после IP-порога: выбран **proof-of-work
+   платформы** без внешнего платного провайдера (ADR-APPF-001 D3); до
+   реализации действует временный `429`.
+2. HSTS: production-значения — по Приложению B (`includeSubDomains`,
+   `preload`); preload активируется после реальных доменов/TLS (временное
+   ограничение, ADR-APPF-001 D3).
 3. Конкретные провайдеры S3/CDN/Sentry/mail и их версии/образы — технические
    задачи внедрения, не контракт.
 4. `REDIS_THROTTLE_URL` и отдельный инстанс — техническое решение

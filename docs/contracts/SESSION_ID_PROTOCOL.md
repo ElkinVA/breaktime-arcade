@@ -1,19 +1,21 @@
 # Session ID: внешний и внутренний контракт
 
-**Статус:** проект для BA-FOUNDATION-002. Нормативные ТЗ не изменялись.
-Дата: 2026-11-19.
+**Статус:** внутренне закрыто `ADR-APPF-001` (D4) / BA-SDK-1.1 v1.1.0.
+Нормативные ТЗ не изменялись. Дата: 2026-11-19 (актуализация 2026-11-22).
 
 ## 1. Утверждённое решение
 
 | Контур | Имя | Правило |
 |---|---|---|
-| Внешний JSON (postMessage и API) | `sessionId` | camelCase, UUID-строка |
+| postMessage JSON (App F) | `sessionId` | camelCase, UUID-строка |
+| REST API §2.23 | `session_id` | snake_case, UUID-строка |
 | Python | `session_id` | snake_case |
 | PostgreSQL | `session_id` | snake_case, UUID |
 
-Преобразование выполняется на границе слоя: внешний JSON → Python/БД и
-обратно. Внутреннее имя `session_id` не должно протекать в postMessage/API
-payload.
+Преобразование выполняется на границе слоя: postMessage `sessionId` →
+Python/БД `session_id` и обратно; REST использует `session_id` по §2.23.
+Внутреннее имя `session_id` не должно протекать в postMessage payload.
+Это применение уже зарегистрированного `OD-FOUND-001`, а не новое решение.
 
 ## 2. Аудит нормативных упоминаний
 
