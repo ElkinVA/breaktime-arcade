@@ -257,8 +257,19 @@ def import_package(
             meta={"runtime_hash": bundle.runtime_hash},
         )
 
+        runtime_game = existing_game or target_game
+        runtime_label = (
+            runtime_game.host_label
+            if runtime_game is not None
+            else _host_label(str(manifest.get("id", "")))
+        )
         try:
-            runtime_dir = store_runtime(runtimes, bundle.runtime_hash, bundle.staging)
+            runtime_dir = store_runtime(
+                runtimes,
+                bundle.runtime_hash,
+                bundle.staging,
+                host_label=runtime_label,
+            )
         except ArtifactError as exc:
             report.add(exc.code, exc.message)
             return _reject(draft, report)

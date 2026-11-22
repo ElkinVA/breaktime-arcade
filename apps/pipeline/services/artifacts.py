@@ -42,8 +42,9 @@ def package_path(root: Path, package_hash: str) -> Path:
     return Path(root) / PACKAGES_DIR / f"{package_hash}.zip"
 
 
-def runtime_path(root: Path, runtime_hash: str) -> Path:
-    return Path(root) / runtime_hash
+def runtime_path(root: Path, runtime_hash: str, host_label: str | None = None) -> Path:
+    base = Path(root) / host_label if host_label else Path(root)
+    return base / runtime_hash
 
 
 def read_immutable(path: Path) -> bytes:
@@ -124,43 +125,70 @@ def copy_tree(source: Path, destination: Path) -> None:
             raise ArtifactError("X_ARTIFACT_IO", "Не удалось выставить права") from None
 
 
-def store_runtime(root: Path, runtime_hash: str, staging: Path) -> Path:
-    """Publish ``staging`` as ``<root>/<hash>`` atomically."""
+def _make_runtime_public(root: Path) -> None:
+    """Give nginx (UID 101) read/traverse access to the published runtime.
+
+    The runtime bundle is public by definition; the original package remains
+    private. Directory/file modes are set explicitly because the extraction
+    staging tree is created with private modes (``700``/``600``).
+    """
+    try:
+        root.chmod(0o755)
+        for path in root.rglob("*"):
+            if path.is_symlink():
+                raise ArtifactError("X_ARTIFACT_UNSAFE", "Symlink в runtime")
+            if path.is_dir():
+                path.chmod(0o755)
+            elif path.is_file():
+                path.chmod(0o644)
+    except OSError as exc:
+        raise ArtifactError("X_ARTIFACT_IO", f"Не удалось выставить права runtime: {exc}") from None
+
+
+def store_runtime(
+    root: Path,
+    runtime_hash: str,
+    staging: Path,
+    *,
+    host_label: str | None = None,
+) -> Path:
+    """Publish ``staging`` as ``<root>/[host]/<hash>`` atomically."""
     root = ensure_root(Path(root))
-    target = runtime_path(root, runtime_hash)
+    target = runtime_path(root, runtime_hash, host_label)
+    if host_label:
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True, mode=0o755)
+            target.parent.chmod(0o755)
+        except OSError:
+            raise ArtifactError("X_ARTIFACT_IO", "Не удалось подготовить runtime-хост") from None
     if target.exists():
         if target.is_symlink() or not target.is_dir():
             raise ArtifactError("X_ARTIFACT_UNSAFE", "Путь runtime занят")
         if runtime_hash_for(tree_hashes(target)) != runtime_hash:
             raise ArtifactError("X_ARTIFACT_CONFLICT", "Runtime с тем же хешем различается")
+        _make_runtime_public(target)
         with contextlib.suppress(OSError):
             shutil.rmtree(staging, ignore_errors=True)
         return target
-    publish = staging
+    # Always copy into a staging directory next to the target. Artifact stores
+    # live on different volumes in Compose, where rename(2) would fail with
+    # EXDEV even when the bundle is otherwise valid.
     try:
-        same_device = staging.stat().st_dev == target.parent.stat().st_dev
+        local = Path(tempfile.mkdtemp(prefix=".ba-runtime-", dir=target.parent))
     except OSError:
-        same_device = False
-    if not same_device:
-        # Artifact stores may live on different filesystems; copy into a
-        # staging directory next to the target so the final rename is atomic.
-        try:
-            local = Path(tempfile.mkdtemp(prefix=".ba-runtime-", dir=target.parent))
-        except OSError:
-            raise ArtifactError("X_ARTIFACT_IO", "Не удалось создать staging-каталог") from None
-        try:
-            copy_tree(staging, local)
-        except ArtifactError:
-            shutil.rmtree(local, ignore_errors=True)
-            raise
-        publish = local
+        raise ArtifactError("X_ARTIFACT_IO", "Не удалось создать staging-каталог") from None
     try:
-        publish.rename(target)
-    except OSError:
-        shutil.rmtree(publish, ignore_errors=True)
-        raise ArtifactError("X_ARTIFACT_IO", "Не удалось опубликовать runtime") from None
-    if publish != staging:
-        shutil.rmtree(staging, ignore_errors=True)
+        copy_tree(staging, local)
+    except ArtifactError:
+        shutil.rmtree(local, ignore_errors=True)
+        raise
+    try:
+        local.rename(target)
+    except OSError as exc:
+        shutil.rmtree(local, ignore_errors=True)
+        raise ArtifactError("X_ARTIFACT_IO", f"Не удалось опубликовать runtime: {exc}") from None
+    shutil.rmtree(staging, ignore_errors=True)
+    _make_runtime_public(target)
     _fsync_dir(target.parent)
     return target
 

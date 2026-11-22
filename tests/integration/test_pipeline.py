@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import stat
 import zipfile
 from pathlib import Path
 
@@ -195,12 +196,17 @@ def test_valid_package_creates_card_version_and_runtime(pipeline_env: Path) -> N
     assert original.read_bytes() == data
     assert original.name == f"{version.package_hash}.zip"
 
-    runtime_dir = pipeline_env / "runtime" / version.runtime_hash
+    runtime_dir = pipeline_env / "runtime" / "test-game" / version.runtime_hash
     assert runtime_dir.is_dir()
     assert (runtime_dir / "index.html").is_file()
     official_sdk = _official_sdk(pipeline_env)
     assert (runtime_dir / "js" / "ba-sdk.js").read_bytes() == official_sdk.read_bytes()
     assert result.draft.runtime_path == str(runtime_dir)
+
+    assert stat.S_IMODE(runtime_dir.stat().st_mode) == 0o755
+    for path in runtime_dir.rglob("*"):
+        expected = 0o755 if path.is_dir() else 0o644
+        assert stat.S_IMODE(path.stat().st_mode) == expected, path
 
     assert game.translations.count() == 1
     translation = game.translations.get()

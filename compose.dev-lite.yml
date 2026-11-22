@@ -7,13 +7,27 @@ x-dev-build: &dev-build
       INSTALL_DEV: "true"
 
 services:
+  runtime-init:
+    image: ba/app:dev
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["chown -R 10001:10001 /app/runtime && chmod 755 /app/runtime"]
+    volumes:
+      - runtime_data:/app/runtime
+    restart: "no"
+
   web:
     <<: *dev-build
+    depends_on:
+      runtime-init:
+        condition: service_completed_successfully
     command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       RUN_MIGRATIONS: "1"
       RUN_COLLECTSTATIC: "1"
+      # nginx serves this shared volume; keep the pipeline publisher aligned.
+      ZIP_PUBLIC_RUNTIME_ROOT: /app/runtime
     volumes:
       - .:/app
       - static_data:/app/staticfiles
