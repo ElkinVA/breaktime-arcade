@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from urllib.parse import quote, urlparse
 
 from django.conf import settings
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import Http404, HttpRequest
 from django.middleware.csrf import get_token
@@ -49,10 +50,31 @@ from apps.gameplay.services.sessions import (
 from apps.i18n.services.language_registry import get_active_language_codes_safely
 from apps.leaderboards.services.queries import get_leaderboard, get_personal_section
 from apps.ratings.services.aggregates import summary as rating_summary
+from apps.ratings.services.voting import vote_eligibility
+
+LEADERBOARD_PAGE_SIZE = 10
 
 
 def _language(request: HttpRequest) -> str:
     return str(getattr(request, "LANGUAGE_CODE", "en"))
+
+
+def _page_number(request: HttpRequest) -> int:
+    """Blank/non-integer/non-positive input maps to the first page.
+
+    ``Paginator.get_page`` clamps values beyond the last page itself.
+    """
+    raw = request.GET.get("page")
+    if raw is None:
+        return 1
+    value = raw.strip()
+    if not value:
+        return 1
+    try:
+        number = int(value)
+    except ValueError:
+        return 1
+    return number if number >= 1 else 1
 
 
 def home(request: HttpRequest) -> TemplateResponse:
@@ -127,7 +149,7 @@ def game_detail(request: HttpRequest, slug: str) -> TemplateResponse:
         raise Http404("game not found")
     translation = localized_translation(game, _language(request))
     active_language_codes = get_active_language_codes_safely()
-    ratings = rating_summary(game)
+    ratings = rating_summary(game, request.user)
     seo = game_seo(game, translation, _language(request), active_language_codes)
     return TemplateResponse(
         request,
@@ -138,6 +160,9 @@ def game_detail(request: HttpRequest, slug: str) -> TemplateResponse:
             "translation": translation,
             "rating_average": ratings["average"],
             "rating_count": ratings["count"],
+            "rating_my_vote": ratings["my_vote"],
+            "rating_eligibility": vote_eligibility(game, request.user),
+            "rating_values": [1, 2, 3, 4, 5],
             "popularity": popularity(game.pk),
             "localization": localization_coverage(game, active_language_codes),
             "seo": seo,
@@ -256,7 +281,18 @@ def game_leaderboard(request: HttpRequest, slug: str) -> TemplateResponse:
     if game is None or not game.leaderboard_enabled:
         raise Http404("leaderboard is not available")
     translation = localized_translation(game, _language(request))
-    payload = get_leaderboard(game, limit=10, user=request.user)
+    payload = get_leaderboard(game, limit=100, user=request.user)
+    my_entry = payload["me"]
+    entries = [
+        {
+            **entry,
+            "is_me": my_entry is not None and entry["rank"] == my_entry["rank"],
+        }
+        for entry in payload["entries"]
+    ]
+    page_obj = Paginator(entries, LEADERBOARD_PAGE_SIZE).get_page(_page_number(request))
+    page_entries = list(page_obj.object_list)
+    my_entry_on_page = any(entry["is_me"] for entry in page_entries)
     personal = get_personal_section(game, request.user)
     return TemplateResponse(
         request,
@@ -265,8 +301,12 @@ def game_leaderboard(request: HttpRequest, slug: str) -> TemplateResponse:
             "title": translation.name if translation else game.technical_id,
             "game": game,
             "translation": translation,
-            "entries": payload["entries"],
-            "my_rank": payload["me"]["rank"] if payload["me"] else None,
+            "entries": entries,
+            "page_obj": page_obj,
+            "page_entries": page_entries,
+            "my_entry": my_entry,
+            "my_entry_on_page": my_entry_on_page,
+            "my_rank": my_entry["rank"] if my_entry else None,
             "score_direction": payload["direction"],
             "personal": personal,
         },

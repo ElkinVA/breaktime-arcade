@@ -46,6 +46,53 @@
         {% else %}
             <p class="text-muted" data-testid="rating-empty">{% ba_t "catalog.rating_empty" %}</p>
         {% endif %}
+
+        {% if rating_eligibility.authenticated %}
+            {% if rating_eligibility.can_vote %}
+                <form class="mt-4"
+                      method="post"
+                      action="{% url 'rating-vote' game_id=game.technical_id %}"
+                      data-rating-form
+                      data-testid="rating-form"
+                      data-success-message="{% ba_t 'catalog.rating_vote_saved' %}"
+                      data-error-message="{% ba_t 'catalog.rating_vote_error' %}"
+                      data-playtime-message="{% ba_t 'catalog.rating_vote_playtime_error' %}"
+                      data-limit-message="{% ba_t 'catalog.rating_vote_limit_error' %}">
+                    {% csrf_token %}
+                    <fieldset>
+                        <legend class="font-semibold mb-2">{% ba_t "catalog.rating_vote_title" %}</legend>
+                        <div class="flex items-center gap-1" role="radiogroup">
+                            {% for value in rating_values %}
+                                <label class="cursor-pointer text-2xl text-muted hover:text-accent has-[:checked]:text-accent">
+                                    <input class="sr-only"
+                                           type="radio"
+                                           name="value"
+                                           value="{{ value }}"
+                                           data-testid="rating-vote-{{ value }}"
+                                           {% if rating_my_vote == value %}checked{% endif %}
+                                           required>
+                                    <span aria-hidden="true">★</span>
+                                    <span class="sr-only">{{ value }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </fieldset>
+                    <button class="btn mt-3 px-4 py-1" type="submit" data-testid="rating-submit">
+                        {% ba_t "catalog.rating_vote_submit" %}
+                    </button>
+                    <p class="text-sm mt-2" role="status" aria-live="polite" data-testid="rating-vote-status"></p>
+                </form>
+            {% else %}
+                <p class="text-muted mt-4" data-testid="rating-playtime-required">
+                    {% ba_t "catalog.rating_playtime_required" min=rating_eligibility.min_seconds verified=rating_eligibility.verified_seconds %}
+                </p>
+            {% endif %}
+        {% else %}
+            <p class="text-muted mt-4" data-testid="rating-guest-invitation">
+                {% ba_t "catalog.rating_guest_invitation" %}
+                <a class="text-accent" href="{% url 'accounts:register' %}">{% ba_t "catalog.rating_guest_cta" %}</a>
+            </p>
+        {% endif %}
     </section>
     {% if game.current_version %}
         <a class="btn px-6 py-2" href="{% url 'catalog:game_play' slug=game.slug %}">Play</a>
@@ -58,4 +105,7 @@
         </span>
     {% endif %}
 </section>
+{% endblock %}
+{% block extra_js %}
+<script type="module" src="/static/src/js/rating.js" nonce="{{ csp_nonce }}"></script>
 {% endblock %}

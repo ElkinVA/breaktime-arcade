@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import timedelta
+from typing import TypedDict
 from uuid import UUID
 
 from django.db import connection, transaction
@@ -20,6 +21,41 @@ CHANGE_COOLDOWN = timedelta(hours=24)
 CHANGE_WINDOW = timedelta(days=30)
 MAX_CHANGES_PER_WINDOW = 5
 MAX_VOTES_PER_DAY = 20
+
+
+class VoteEligibility(TypedDict):
+    """Server-side inputs the game detail page needs for the rating widget."""
+
+    authenticated: bool
+    can_vote: bool
+    verified_seconds: int
+    min_seconds: int
+
+
+def vote_eligibility(game: Game, user) -> VoteEligibility:
+    """Whether the subject may vote on ``game`` (§2.9 item 2).
+
+    Guests and inactive accounts get ``can_vote=False`` without a playtime
+    query. The remaining antifraud checks stay enforced by :func:`vote`; this
+    helper only decides which UI state to render.
+    """
+    authenticated = bool(user is not None and getattr(user, "is_authenticated", False))
+    active = bool(getattr(user, "is_active", False))
+    verified_seconds = 0
+    if authenticated and active:
+        verified_seconds = int(
+            UserGamePlaytime.objects.filter(user=user, game=game)
+            .values_list("verified_seconds", flat=True)
+            .first()
+            or 0
+        )
+    min_seconds = int(game.rating_min_playtime_seconds)
+    return {
+        "authenticated": authenticated,
+        "can_vote": authenticated and active and verified_seconds >= min_seconds,
+        "verified_seconds": verified_seconds,
+        "min_seconds": min_seconds,
+    }
 
 
 def _lock_vote(game_id: UUID, user_id: UUID) -> None:
