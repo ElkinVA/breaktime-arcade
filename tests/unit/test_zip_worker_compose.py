@@ -61,10 +61,14 @@ def test_regular_worker_does_not_consume_zip() -> None:
 
 
 def test_web_volume_access() -> None:
-    service = _load("compose.yml")["services"]["web"]
+    data = _load("compose.yml")
+    service = data["services"]["web"]
 
     assert "zip_uploads:/var/ba/zip/uploads" in service["volumes"]
     assert "zip_artifacts:/var/ba/zip/artifacts:ro" in service["volumes"]
+    assert "runtime_data:/app/runtime" in service["volumes"]
+    assert service["environment"]["ZIP_PUBLIC_RUNTIME_ROOT"] == "/app/runtime"
+    assert "runtime_data:/app/runtime:ro" in data["services"]["nginx"]["volumes"]
 
 
 def test_zip_volume_init_hands_roots_to_shared_uid() -> None:
@@ -81,6 +85,7 @@ def test_zip_volume_init_hands_roots_to_shared_uid() -> None:
     assert service["volumes"] == [
         "zip_uploads:/var/ba/zip/uploads",
         "zip_artifacts:/var/ba/zip/artifacts",
+        "runtime_data:/app/runtime",
     ]
     assert data["services"]["web"]["depends_on"]["zip-volume-init"] == {
         "condition": "service_completed_successfully"

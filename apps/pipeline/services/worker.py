@@ -689,17 +689,47 @@ def _status_for(code: str) -> str:
     return "rejected"
 
 
+def _cleanup_upload_jobs(
+    uploads: Path,
+    *,
+    cutoff: float,
+) -> int:
+    """Remove abandoned source ZIPs left by failed/timed-out web handoffs."""
+    if not uploads.is_dir():
+        return 0
+    removed = 0
+    try:
+        entries = list(os.scandir(uploads))
+    except OSError:
+        return 0
+    for entry in entries:
+        if not entry.is_dir(follow_symlinks=False):
+            continue
+        try:
+            uuid.UUID(entry.name)
+        except ValueError:
+            continue
+        job_dir = Path(entry.path)
+        try:
+            if job_dir.stat().st_mtime >= cutoff:
+                continue
+            _remove_tree(job_dir)
+            removed += 1
+        except OSError:
+            continue
+    return removed
+
+
 def cleanup_expired_jobs(
     *,
+    uploads_root: Path | None = None,
     artifacts_root: Path | None = None,
     staging_ttl: int | None = None,
     completed_ttl: int | None = None,
     now: float | None = None,
 ) -> dict[str, int]:
     """Remove expired job directories; active locks are skipped."""
-    _, artifacts = _roots(None, artifacts_root)
-    if not artifacts.is_dir():
-        return {"removed": 0, "skipped": 0}
+    uploads, artifacts = _roots(uploads_root, artifacts_root)
     current = time.time() if now is None else now
     incomplete_cutoff = current - (
         settings.ZIP_STAGING_TTL_SECONDS if staging_ttl is None else staging_ttl
@@ -707,12 +737,14 @@ def cleanup_expired_jobs(
     completed_cutoff = current - (
         settings.ZIP_COMPLETED_TTL_SECONDS if completed_ttl is None else completed_ttl
     )
-    removed = 0
+    removed = _cleanup_upload_jobs(uploads, cutoff=incomplete_cutoff)
     skipped = 0
+    if not artifacts.is_dir():
+        return {"removed": removed, "skipped": skipped}
     try:
         entries = list(os.scandir(artifacts))
     except OSError:
-        return {"removed": 0, "skipped": 0}
+        return {"removed": removed, "skipped": 0}
     for entry in entries:
         if not entry.is_dir(follow_symlinks=False):
             continue

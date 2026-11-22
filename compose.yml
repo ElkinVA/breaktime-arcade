@@ -38,12 +38,14 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >-
-        mkdir -p /var/ba/zip/uploads /var/ba/zip/artifacts &&
-        chown 10001:10001 /var/ba/zip/uploads /var/ba/zip/artifacts &&
-        chmod 700 /var/ba/zip/uploads /var/ba/zip/artifacts
+        mkdir -p /var/ba/zip/uploads /var/ba/zip/artifacts /app/runtime &&
+        chown 10001:10001 /var/ba/zip/uploads /var/ba/zip/artifacts /app/runtime &&
+        chmod 700 /var/ba/zip/uploads /var/ba/zip/artifacts &&
+        chmod 755 /app/runtime
     volumes:
       - zip_uploads:/var/ba/zip/uploads
       - zip_artifacts:/var/ba/zip/artifacts
+      - runtime_data:/app/runtime
     network_mode: "none"
     read_only: true
     cap_drop: ["ALL"]
@@ -56,10 +58,12 @@ services:
     environment:
       RUN_MIGRATIONS: "1"
       RUN_COLLECTSTATIC: "1"
+      ZIP_PUBLIC_RUNTIME_ROOT: /app/runtime
     volumes:
       - static_data:/app/staticfiles
       - media_data:/app/media
       - app_var:/app/var
+      - runtime_data:/app/runtime
       - zip_uploads:/var/ba/zip/uploads
       - zip_artifacts:/var/ba/zip/artifacts:ro
     healthcheck:
@@ -234,6 +238,7 @@ services:
     depends_on:
       web: { condition: service_healthy }
     volumes:
+      - runtime_data:/app/runtime:ro
       - static_data:/app/staticfiles:ro
       - media_data:/app/media:ro
     healthcheck:

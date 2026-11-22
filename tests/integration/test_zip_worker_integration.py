@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import io
 import json
+import os
 import stat
 import uuid
 import zipfile
@@ -16,7 +17,7 @@ from apps.pipeline.models import GameImportDraft, ZipExtractionJob
 from apps.pipeline.services import extraction, importer
 from apps.pipeline.services.extraction import WorkerClientError
 from apps.pipeline.services.importer import import_package
-from apps.pipeline.services.worker import X_SOURCE_UNSAFE
+from apps.pipeline.services.worker import X_SOURCE_UNSAFE, cleanup_expired_jobs
 
 
 def _zip(entries: dict[str, bytes]) -> bytes:
@@ -93,6 +94,8 @@ def test_worker_timeout_is_reported(db, tmp_path: Path, monkeypatch: pytest.Monk
     assert job.status == ZipExtractionJob.STATUS_TIMEOUT
     assert job.error_code == "X_WORKER_TIMEOUT"
     assert job.task_id == "task-id"
+    # Cooperative cancel is requested; source stays until cleanup TTL.
+    assert (tmp_path / "uploads" / str(job.id) / "CANCEL").is_file()
 
 
 def test_worker_status_failure_is_reported(
@@ -126,6 +129,7 @@ def test_worker_status_failure_is_reported(
     job = ZipExtractionJob.objects.get()
     assert job.status == ZipExtractionJob.STATUS_REJECTED
     assert job.error_code == X_SOURCE_UNSAFE
+    assert not (tmp_path / "uploads" / str(job.id)).exists()
 
 
 def test_traversal_package_is_rejected_before_enqueue(
@@ -207,3 +211,21 @@ def test_cancel_marker_is_created(tmp_path: Path) -> None:
 
     assert extraction.cancel_job(job_id, uploads) is True
     assert (uploads / job_id / "CANCEL").is_file()
+
+
+def test_cleanup_removes_abandoned_upload_jobs(tmp_path: Path) -> None:
+    uploads = tmp_path / "uploads"
+    job_id = str(uuid.uuid4())
+    extraction.write_source(job_id, b"data", uploads)
+    old = 1_000_000.0
+    os.utime(uploads / job_id, (old, old))
+
+    result = cleanup_expired_jobs(
+        uploads_root=uploads,
+        artifacts_root=tmp_path / "artifacts",
+        staging_ttl=60,
+        now=old + 61,
+    )
+
+    assert result["removed"] >= 1
+    assert not (uploads / job_id).exists()

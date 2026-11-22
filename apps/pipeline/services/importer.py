@@ -47,6 +47,7 @@ from apps.pipeline.services.diff import (
 from apps.pipeline.services.extraction import (
     ExtractionResult,
     WorkerClientError,
+    cancel_job,
     extract_package,
     materialize_result,
     remove_source,
@@ -184,6 +185,13 @@ def import_package(
             task_id=str(exc.diagnostics.get("task_id") or ""),
             diagnostics=_worker_diagnostics(job, None, exc.diagnostics),
         )
+        if exc.code == "X_WORKER_TIMEOUT":
+            # Tell a still-running worker to stop; the uploads TTL in the
+            # worker cleanup task removes the source after it exits.
+            cancel_job(str(job.id), uploads)
+        elif exc.code != "X_WORKER_UNAVAILABLE":
+            # Terminal worker failure/rejection: the source is no longer needed.
+            remove_source(str(job.id), uploads)
         return _reject(draft, report)
 
     work = make_staging_dir(storage / "work")
@@ -201,6 +209,7 @@ def import_package(
                 task_id=extraction.task_id,
                 diagnostics=_worker_diagnostics(job, extraction, exc.diagnostics),
             )
+            remove_source(str(job.id), uploads)
             return _reject(draft, report)
 
         _finish_job(
