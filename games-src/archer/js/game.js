@@ -542,13 +542,13 @@
         }
         round.arrows = [];
         round.targets.forEach(function (target) { target.alive = false; });
+        logEvent("end", { score: round.score.score, reason: reason || "time" });
         round.finished = true;
         round.running = false;
         round.paused = false;
         state.aim.drawing = false;
         state.pointer.active = false;
         stageAim(false);
-        logEvent("end", { score: round.score.score, reason: reason || "time" });
         if (state.rafId) {
             globalThis.cancelAnimationFrame(state.rafId);
             state.rafId = 0;
