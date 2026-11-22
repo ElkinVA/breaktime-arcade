@@ -123,6 +123,8 @@ def test_neon_snake_imports_persists_and_publishes(neon_env: Path) -> None:
         stored = neon_env / "media" / asset.file.name
         assert stored.is_file()
         assert stored.stat().st_mode & 0o777 == 0o644
+        assert stored.parent.stat().st_mode & 0o777 == 0o755
+        assert stored.parent.parent.stat().st_mode & 0o777 == 0o755
 
     # Runtime bundle persists with the official SDK injected, not the packaged copy.
     runtime_dir = Path(result.draft.runtime_path)

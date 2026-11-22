@@ -165,6 +165,7 @@ def game_detail(request: HttpRequest, slug: str) -> TemplateResponse:
     ratings = rating_summary(game, request.user)
     seo = game_seo(game, translation, _language(request), active_language_codes)
     language = _language(request)
+    fallback_alt = translation.name if translation is not None else game.technical_id
     cover = game.assets.filter(type=GameAsset.TYPE_COVER).order_by("sort_order").first()
     screenshots = list(
         game.assets.filter(type=GameAsset.TYPE_SCREENSHOT).order_by("sort_order")[:3]
@@ -177,9 +178,10 @@ def game_detail(request: HttpRequest, slug: str) -> TemplateResponse:
             "game": game,
             "translation": translation,
             "cover": cover,
-            "cover_alt": _asset_alt(cover, language),
+            "cover_alt": _asset_alt(cover, language) or fallback_alt,
             "screenshots": [
-                {"asset": asset, "alt": _asset_alt(asset, language)} for asset in screenshots
+                {"asset": asset, "alt": _asset_alt(asset, language) or fallback_alt}
+                for asset in screenshots
             ],
             "rating_average": ratings["average"],
             "rating_count": ratings["count"],

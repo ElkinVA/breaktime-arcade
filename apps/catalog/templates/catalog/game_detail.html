@@ -16,7 +16,7 @@
     {% endif %}
     {% if cover %}
         <figure class="mb-6">
-            <img src="{{ cover.file.url }}" alt="{{ cover_alt }}" width="{{ cover.width }}" height="{{ cover.height }}"
+            <img src="{{ cover.file.url }}" alt="{{ cover_alt }}"{% if cover.width %} width="{{ cover.width }}" height="{{ cover.height }}"{% endif %}
                  class="w-full rounded-card border border-text/10 object-cover" loading="eager"
                  data-testid="game-cover">
         </figure>
@@ -24,7 +24,7 @@
     {% if screenshots %}
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6" data-testid="game-screenshots">
             {% for item in screenshots %}
-                <img src="{{ item.asset.file.url }}" alt="{{ item.alt }}" width="{{ item.asset.width }}" height="{{ item.asset.height }}"
+                <img src="{{ item.asset.file.url }}" alt="{{ item.alt }}"{% if item.asset.width %} width="{{ item.asset.width }}" height="{{ item.asset.height }}"{% endif %}
                      class="w-full rounded-card border border-text/10 object-cover" loading="lazy"
                      data-testid="game-screenshot">
             {% endfor %}

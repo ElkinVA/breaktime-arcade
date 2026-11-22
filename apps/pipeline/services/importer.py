@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -899,11 +900,17 @@ def _import_assets(
 
 
 def _make_public_media(asset: GameAsset) -> None:
-    """Covers/screenshots are public; the upload default is private (0600/0640)."""
-    try:
-        Path(asset.file.path).chmod(0o644)
-    except OSError, ValueError, NotImplementedError:
-        return
+    """Covers/screenshots are public; upload defaults are private (0750/0640)."""
+    with suppress(OSError, ValueError, NotImplementedError):
+        stored = Path(asset.file.path)
+        stored.chmod(0o644)
+        media_root = Path(settings.MEDIA_ROOT).resolve()
+        directory = stored.parent.resolve()
+        while directory == media_root or media_root in directory.parents:
+            directory.chmod(0o755)
+            if directory == media_root:
+                break
+            directory = directory.parent
 
 
 def _catalog_alts(package_root: Path, languages: dict[str, Language]) -> dict[str, dict[str, Any]]:
