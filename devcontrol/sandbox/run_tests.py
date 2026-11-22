@@ -34,6 +34,7 @@ ALLOWED_ROOTS = (
     "autonomy",
     "config",
     "devcontrol",
+    "games-src",
     "infra/scripts",
     "scripts",
     "sdk",

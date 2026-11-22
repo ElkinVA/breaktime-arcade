@@ -1,0 +1,14 @@
+{
+  "name": "Neon Snake",
+  "shortDescription": "Classic snake in a neon grid: eat orbs, grow, survive.",
+  "description": "Neon Snake brings the arcade classic into a glowing retro grid. Guide a bright green serpent with arrow keys, WASD or a swipe, collect pulsing energy orbs and watch your tail grow with every bite. The pace rises in steps: each five orbs unlock a faster level, so the safe routes close in and every turn matters. A seeded generator makes each run reproducible for platform verification while keeping the layout fresh for players. The HUD shows your score, level and progress toward the next speed-up, and the game-over board confirms your place, personal best and the top ten. Short rounds, crisp neon feedback, full keyboard and touch controls, six interface languages and a guest-friendly flow make it an easy break-time challenge. The game never asks for registration and never sends you away from the play field.",
+  "instructions": "Eat the glowing orb to score and grow. Each five orbs raises the level and speed. Avoid the walls and your own tail. Press pause whenever you need a break.",
+  "controls": "Desktop: arrow keys or W A S D, P or Escape to pause. Mobile: swipe on the field or use the on-screen pad.",
+  "seoTitle": "Neon Snake — free neon arcade game",
+  "seoDescription": "Play Neon Snake online: eat glowing orbs, grow your neon tail and beat the high score. Free, no download.",
+  "coverAlt": "Glowing green snake on a dark neon grid beside a bright energy orb.",
+  "screenshotAlts": [
+    "Neon Snake gameplay with score, level and next-level progress.",
+    "Neon Snake game-over screen with score, place and top players."
+  ]
+}

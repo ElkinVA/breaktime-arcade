@@ -1,0 +1,14 @@
+{
+  "name": "Neon Snake",
+  "shortDescription": "La serpiente clásica en una cuadrícula neón: come, crece y sobrevive.",
+  "description": "Neon Snake trae el clásico arcade a una cuadrícula retro luminosa. Guía a la serpiente verde con las flechas, W A S D o un deslizamiento, recoge orbes de energía pulsantes y mira cómo crece tu cola con cada bocado. Cada cinco orbes suben el nivel y la velocidad: las rutas seguras se estrechan y cada giro importa. Un generador basado en semilla hace que cada partida sea reproducible para la verificación de la plataforma y mantiene el tablero variado. El HUD muestra puntuación, nivel y progreso hacia la siguiente aceleración; la pantalla final confirma tu puesto, récord personal y el top diez. Partidas cortas, respuesta neón clara, controles completos de teclado y táctil, seis idiomas y un flujo amable para invitados lo convierten en un reto perfecto para una pausa. No hace falta registrarse para jugar.",
+  "instructions": "Come el orbe brillante para sumar puntos y crecer. Cada cinco orbes aumentan el nivel y la velocidad. Evita las paredes y tu propia cola.",
+  "controls": "Ordenador: flechas o W A S D, P o Escape para pausar. Móvil: desliza sobre el campo o usa el panel.",
+  "seoTitle": "Neon Snake — juego arcade neón gratis",
+  "seoDescription": "Juega a Neon Snake online: come orbes brillantes, haz crecer tu cola neón y bate el récord. Gratis, sin descargas.",
+  "coverAlt": "Serpiente verde luminosa en una cuadrícula neón oscura junto a un orbe de energía.",
+  "screenshotAlts": [
+    "Partida de Neon Snake con puntuación, nivel y progreso.",
+    "Pantalla final de Neon Snake con puntuación, puesto y mejores jugadores."
+  ]
+}

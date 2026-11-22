@@ -1,0 +1,14 @@
+{
+  "name": "Neon Snake",
+  "shortDescription": "Le serpent classique dans une grille néon : mangez, grandissez, survivez.",
+  "description": "Neon Snake ramène le classique de l'arcade dans une grille rétro lumineuse. Dirigez le serpent vert avec les flèches, W A S D ou un balayage, collectionnez les orbes d'énergie pulsants et regardez votre queue grandir à chaque bouchée. Tous les cinq orbes, le niveau et la vitesse augmentent : les trajectoires sûres se resserrent et chaque virage compte. Un générateur basé sur une graine rend chaque partie reproductible pour la vérification de la plateforme tout en gardant le terrain varié. L'interface affiche score, niveau et progression vers la prochaine accélération ; l'écran final confirme votre place, votre record personnel et le top dix. Des parties courtes, un retour néon net, des commandes clavier et tactiles complètes, six langues et un parcours invité font de ce jeu une pause idéale. Aucune inscription n'est nécessaire pour jouer.",
+  "instructions": "Mangez l'orbe lumineux pour marquer des points et grandir. Tous les cinq orbes, le niveau et la vitesse augmentent. Évitez les murs et votre propre queue.",
+  "controls": "Ordinateur : flèches ou W A S D, P ou Échap pour la pause. Mobile : balayez le terrain ou utilisez le pad.",
+  "seoTitle": "Neon Snake — jeu d'arcade néon gratuit",
+  "seoDescription": "Jouez à Neon Snake en ligne : mangez les orbes, faites grandir votre queue néon et battez le record. Gratuit, sans téléchargement.",
+  "coverAlt": "Serpent vert lumineux sur une grille néon sombre à côté d'un orbe d'énergie.",
+  "screenshotAlts": [
+    "Partie de Neon Snake avec score, niveau et progression.",
+    "Écran de fin de Neon Snake avec score, place et meilleurs joueurs."
+  ]
+}

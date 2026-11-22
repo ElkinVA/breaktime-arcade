@@ -1,0 +1,14 @@
+{
+  "name": "Neon Snake",
+  "shortDescription": "Klassische Schlange im Neonraster: Orbs fressen, wachsen, überleben.",
+  "description": "Neon Snake holt den Arcade-Klassiker in ein leuchtendes Retro-Raster. Steuere die grüne Schlange mit Pfeiltasten, W A S D oder Wischgesten, sammle pulsierende Energie-Orbs und sieh zu, wie dein Schweif mit jedem Bissen wächst. Alle fünf Orbs steigt das Tempo, sichere Wege werden enger und jede Kurve zählt. Ein seedbasierter Zufallsgenerator macht jeden Lauf für die Plattformprüfung reproduzierbar und hält das Spielfeld trotzdem abwechslungsreich. Die Anzeige zeigt Punkte, Level und den Fortschritt bis zur nächsten Beschleunigung; die Endanzeige bestätigt Platz, Bestleistung und die Top Ten. Kurze Runden, klares Neon-Feedback, vollständige Tastatur- und Touchsteuerung, sechs Sprachen und ein gastfreundlicher Ablauf machen daraus eine ideale Pause. Für das Spielen ist keine Anmeldung nötig.",
+  "instructions": "Fresse den leuchtenden Orb, um Punkte zu sammeln und zu wachsen. Alle fünf Orbs steigen Level und Tempo. Weiche den Wänden und deinem eigenen Schweif aus.",
+  "controls": "Desktop: Pfeiltasten oder W A S D, P oder Escape für Pause. Mobil: über das Feld wischen oder das Steuerkreuz nutzen.",
+  "seoTitle": "Neon Snake — kostenloses Neon-Arcade-Spiel",
+  "seoDescription": "Spiele Neon Snake online: leuchtende Orbs fressen, den Neon-Schweif verlängern und den Rekord brechen. Kostenlos, ohne Download.",
+  "coverAlt": "Leuchtend grüne Schlange auf dunklem Neonraster neben einem hellen Energie-Orb.",
+  "screenshotAlts": [
+    "Neon-Snake-Spielszene mit Punkten, Level und Fortschritt.",
+    "Neon-Snake-Endanzeige mit Ergebnis, Platz und Bestenliste."
+  ]
+}

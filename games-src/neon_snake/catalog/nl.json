@@ -1,0 +1,14 @@
+{
+  "name": "Neon Snake",
+  "shortDescription": "Klassieke slang in een neonraster: eet bollen, groei, overleef.",
+  "description": "Neon Snake brengt de arcadeklassieker naar een gloeiend retro-raster. Stuur de groene slang met pijltjes, W A S D of een veeg, verzamel pulserende energiebollen en zie je staart bij elke hap groeien. Elke vijf bollen gaat het tempo omhoog, worden veilige routes smaller en telt elke bocht. Een op seed gebaseerde generator maakt elke ronde reproduceerbaar voor platformcontrole en houdt het speelveld toch gevarieerd. De HUD toont score, niveau en voortgang naar de volgende versnelling; het eindscherm bevestigt je plaats, persoonlijk record en de top tien. Korte rondes, heldere neonfeedback, volledige toetsenbord- en touchbediening, zes talen en een gastvrije flow maken er een ideale pauzepuzzel van. Je hoeft je nooit aan te melden om te spelen.",
+  "instructions": "Eet de gloeiende bol om punten te scoren en te groeien. Elke vijf bollen stijgen niveau en snelheid. Blijf weg van de muren en je eigen staart.",
+  "controls": "Desktop: pijltjes of W A S D, P of Escape voor pauze. Mobiel: veeg over het veld of gebruik het pad.",
+  "seoTitle": "Neon Snake — gratis neon arcadespel",
+  "seoDescription": "Speel Neon Snake online: eet gloeiende bollen, laat je neonstaart groeien en verbreek het record. Gratis, zonder download.",
+  "coverAlt": "Gloeiend groene slang op een donker neonraster naast een heldere energiebol.",
+  "screenshotAlts": [
+    "Neon Snake-spelbeeld met score, niveau en voortgang.",
+    "Neon Snake-eindscherm met score, plaats en topscores."
+  ]
+}

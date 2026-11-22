@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#05060a">
+  <title>Neon Snake</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main id="app" class="app" data-state="boot">
+    <div class="stage" id="stage">
+      <canvas id="game-canvas" class="game-canvas" width="960" height="640" tabindex="0"
+              aria-label="Neon Snake playfield" role="img"></canvas>
+      <div class="scanlines" aria-hidden="true"></div>
+      <div class="vignette" aria-hidden="true"></div>
+
+      <header id="hud" class="hud" hidden>
+        <div class="hud-block">
+          <span id="hud-score-label" class="hud-label"></span>
+          <strong id="hud-score" class="hud-value">0</strong>
+        </div>
+        <div class="hud-block hud-center">
+          <span id="hud-level-label" class="hud-label"></span>
+          <strong id="hud-level" class="hud-value">1</strong>
+        </div>
+        <div class="hud-block hud-right">
+          <span id="hud-target-label" class="hud-label"></span>
+          <strong id="hud-target" class="hud-value">0</strong>
+          <button id="pause-button" class="icon-button" type="button" aria-pressed="false"></button>
+        </div>
+      </header>
+
+      <div id="boot-screen" class="overlay overlay-boot" role="status" aria-live="polite">
+        <div class="panel boot-panel">
+          <div class="brand-mark" aria-hidden="true">
+            <span class="brand-dot"></span><span class="brand-dot"></span><span class="brand-dot"></span>
+          </div>
+          <p id="boot-message" class="muted"></p>
+          <button id="boot-retry" class="cta" type="button" hidden></button>
+        </div>
+      </div>
+
+      <section id="start-screen" class="overlay" hidden>
+        <div class="panel start-panel">
+          <p id="start-kicker" class="kicker"></p>
+          <h1 id="start-title" class="game-title"></h1>
+          <p id="start-rule" class="rule"></p>
+          <button id="start-button" class="cta cta-large" type="button"></button>
+          <div class="start-columns">
+            <div class="start-column">
+              <h2 id="controls-title" class="section-title"></h2>
+              <p id="controls-hint" class="muted"></p>
+              <p id="orientation-hint" class="muted small"></p>
+            </div>
+            <div class="start-column sound-column">
+              <span id="sound-label" class="section-title"></span>
+              <button id="sound-toggle" class="toggle" type="button" aria-pressed="true">
+                <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+                <span id="sound-toggle-text" class="toggle-text"></span>
+              </button>
+            </div>
+          </div>
+          <p id="start-guest-notice" class="notice" hidden></p>
+        </div>
+      </section>
+
+      <section id="pause-screen" class="overlay" hidden>
+        <div class="panel pause-panel">
+          <h2 id="pause-title" class="screen-title"></h2>
+          <p id="pause-reason" class="muted"></p>
+          <div class="button-stack">
+            <button id="resume-button" class="cta" type="button"></button>
+            <button id="restart-button" class="cta cta-secondary" type="button"></button>
+            <button id="pause-exit-button" class="cta cta-ghost" type="button"></button>
+          </div>
+        </div>
+      </section>
+
+      <section id="result-screen" class="overlay" hidden>
+        <div class="panel result-panel">
+          <p id="result-kicker" class="kicker"></p>
+          <h2 id="result-title" class="screen-title game-over-title"></h2>
+          <p id="new-record" class="record-banner" hidden></p>
+          <div class="result-grid">
+            <div class="score-card">
+              <span id="your-score-label" class="hud-label"></span>
+              <strong id="your-score" class="giant-score">0</strong>
+            </div>
+            <div class="result-meta">
+              <div class="meta-row"><span id="best-score-label" class="hud-label"></span><strong id="best-score">—</strong></div>
+              <div class="meta-row"><span id="rank-label" class="hud-label"></span><strong id="rank-value">—</strong></div>
+              <div class="meta-row"><span id="level-label" class="hud-label"></span><strong id="result-level">1</strong></div>
+            </div>
+          </div>
+          <p id="result-status" class="status-line" role="status" aria-live="polite"></p>
+          <p id="guest-notice" class="notice" hidden></p>
+          <div class="leaderboard-block">
+            <h3 id="top-scores-label" class="section-title"></h3>
+            <ol id="top-scores" class="leaderboard"></ol>
+          </div>
+          <div class="button-row">
+            <button id="play-again-button" class="cta cta-large" type="button"></button>
+            <button id="retry-submit-button" class="cta cta-secondary" type="button" hidden></button>
+            <button id="result-exit-button" class="cta cta-ghost" type="button"></button>
+          </div>
+          <p id="register-cta" class="muted small" hidden></p>
+        </div>
+      </section>
+
+      <div id="network-banner" class="network-banner" role="status" aria-live="polite" hidden></div>
+      <div id="focus-hint" class="focus-hint" hidden></div>
+
+      <div id="touch-controls" class="touch-controls" hidden>
+        <button class="dpad dpad-up" type="button" data-direction="up"></button>
+        <button class="dpad dpad-left" type="button" data-direction="left"></button>
+        <button class="dpad dpad-right" type="button" data-direction="right"></button>
+        <button class="dpad dpad-down" type="button" data-direction="down"></button>
+      </div>
+    </div>
+    <div id="live-region" class="sr-only" aria-live="polite"></div>
+  </main>
+
+  <script defer src="js/ba-sdk.js"></script>
+  <script defer src="js/rng.js"></script>
+  <script defer src="js/game.js"></script>
+</body>
+</html>
