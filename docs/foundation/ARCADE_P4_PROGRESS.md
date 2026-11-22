@@ -1,0 +1,50 @@
+# ARCADE-P4 — Operational Hardening & First Real Game
+
+**Started:** 2026-11-22
+**Base:** `99ea95a` (P3 isolated worker accepted; Product Acceptance Report).
+**Status:** IN PROGRESS. This file is the live journal; final report is
+`ARCADE_P4_ACCEPTANCE_REPORT.md`.
+
+## 1. Audit baseline
+
+- P3 worker: durable `ZipExtractionJob`, isolated `zip-worker`, no in-process
+  extraction, source/hash verification, cleanup split (default worker).
+- ZIP storage today: per-archive limits, worker disk reserve, TTL cleanup;
+  **no system-wide quota** (R-033).
+- Upload retention today: uploads cleaned after successful import, abandoned
+  uploads via `cleanup_zip_uploads` TTL; policy not fully documented (R-037).
+- Import waits synchronously up to 75 s in the CRM request (R-041).
+- Staging runtime: base compose has runtime volume/env/init; **no `.env.staging`
+  in environment**, so live staging remains NOT TESTED (R-042).
+- Approved game concept exists in `technical_specification/ts_game.txt`:
+  **Neon Snake** (`neon_snake`), arcade, six languages, seeded RNG, SDK
+  result/leaderboard/storage, mobile support. `games-src/neon_snake` is an
+  empty scaffold.
+- Real game E2E and first publication are not done.
+
+## 2. Work plan
+
+| ID | Scope | Status |
+|---|---|---|
+| P4-A1 | R-033 system-wide ZIP quota/reservation/free-space behavior | PLANNED |
+| P4-A2 | R-037 retention policy + active/completed/failed/abandoned cleanup, restart/retry tests | PLANNED |
+| P4-A3 | R-041 synchronous-wait analysis; async only if justified | PLANNED |
+| P4-A4 | staging template/instructions/ownership/runtime/backup/ZIP checks; live only when `.env.staging` exists | PLANNED |
+| P4-A5 | resilience: concurrent imports, worker/broker failure, redelivery, duplicate, cleanup failure, disk pressure, recovery | PLANNED |
+| P4-A6 | preserve full Pro Review JSON/findings/fixes/confirmation/not-tested | PLANNED |
+| P4-B1 | implement Neon Snake as a real game package with full assets/locales/SDK behavior | PLANNED |
+| P4-B2 | full E2E: build → validate → worker → CRM → publish → public/iframe → SDK result → leaderboard; update/rollback/mobile/console | PLANNED |
+
+## 3. Decisions
+
+- **Game concept:** use the approved `neon_snake` concept from
+  `technical_specification/ts_game.txt`; do not invent a random new game.
+- **No AI HQ changes.**
+- **No production deploy, no paid providers, no fabricated staging
+  credentials.**
+- **P4 completion gate:** quota, retention, resilience evidence, real game
+  import/publish/runtime, and honest remaining limitations.
+
+## 4. Journal
+
+- 2026-11-22: baseline audited; P4 plan recorded. No code changes yet.
