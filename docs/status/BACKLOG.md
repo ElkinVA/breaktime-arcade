@@ -10,6 +10,8 @@
 
 | ID | Пакет | Приоритет | Статус | Зависимости / границы |
 |---|---|---|---|---|
+| ARCADE-PRODUCT-ACCEPTANCE-001 | E2E/product acceptance P0–P2 | Critical | **PASS WITH BLOCKER**; report `PRODUCT_ACCEPTANCE_REPORT.md` | 18 E2E; ZIP isolation blocker; external actions owner |
+| ARCADE-P3-ZIP-WORKER-INTEGRATION-001 | Route ZIP extraction through isolated zip-worker | Blocker | **READY** | Production security requirement; internal task |
 | ARCADE-P0-CONTRACT-CLOSURE-001 | ADR-APPF-001 / контракты App F | Blocker | **TECHNICALLY ACCEPTED** (Architect; `7c56f93`) | Внутренние решения; external/legal/paid actions owner |
 | ARCADE-P1-RATINGS-LEADERBOARD-001 | Rating UI + TOP-100 leaderboard | Major | **TECHNICALLY ACCEPTED** (`51a08d0`) | Product acceptance owner |
 | ARCADE-P1-SEO-I18N-A11Y-001 | JSON-LD, CLDR plural, accessibility | Major | **TECHNICALLY ACCEPTED** (`a167a47`) | Product acceptance owner |

@@ -20,6 +20,14 @@ P0 — `ADR-APPF-001` (`7c56f93`); P1 — рейтинги/TOP-100 (`51a08d0`) �
 SEO/CLDR/a11y (`a167a47`). Полный fresh gate: **917 passed, 12 skipped**.
 Модели: Developer/QA — `deepseek-flash[1m]`; Architect/Reviewer —
 `deepseek-v4-pro`; каждый пакет имеет evidence и независимый review.
+
+**Product acceptance 2026-11-22:** E2E 18 passed; live ZIP→publish,
+public runtime, App F session/result/leaderboard/storage, rating,
+rollback, CRM pages, SEO/a11y проверены. Отчёт —
+`docs/foundation/PRODUCT_ACCEPTANCE_REPORT.md`; действия владельца —
+`docs/foundation/OWNER_ACTION_LIST.md`. **Production blocker:** ZIP
+extraction всё ещё выполняется в web-процессе, не в изолированном
+`zip-worker`; нужен `ARCADE-P3-ZIP-WORKER-INTEGRATION-001`.
 R-036 Phase 1 (delivery observability, non-behavioral),
 BA-APPF-002 / DB-001 (tombstone-анонимизация сессий при удалении),
 BA-APPF-002 / DB-006 (immutable GameVersion),

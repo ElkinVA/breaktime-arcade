@@ -21,6 +21,11 @@ acceptance remains owner-level).
   `deepseek-v4-pro`; evidence in `.autonomy/evidence/`.
 - Остаются: продуктовая приёмка владельца, App F runtime product review,
   legal/email/domains/TLS/S3/hosting/real game/deploy; STOP снят.
+- **Product acceptance 2026-11-22:** E2E 18 passed; live ZIP→publish,
+  public runtime, App F session/result/leaderboard/storage, rating/rollback,
+  CRM pages, SEO/a11y; отчёт `docs/foundation/PRODUCT_ACCEPTANCE_REPORT.md`.
+  **Production blocker:** ZIP extraction в web-процессе, не в
+  `zip-worker`; нужен `ARCADE-P3-ZIP-WORKER-INTEGRATION-001`.
 
 **Дата предыдущей актуализации:** 2026-11-22 (ADR-APPF-001: внутренняя
 приёмка контрактов; внешние действия не выполнялись).
