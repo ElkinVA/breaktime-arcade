@@ -863,7 +863,7 @@ def _import_assets(
     if assets.cover is not None:
         data = (package_root / assets.cover.path).read_bytes()
         cover_alt = {code: alts.get("coverAlt", "") for code, alts in catalog_alts.items()}
-        GameAsset.objects.create(
+        asset = GameAsset.objects.create(
             game=game,
             version=version,
             type=GameAsset.TYPE_COVER,
@@ -876,12 +876,13 @@ def _import_assets(
             height=assets.cover.height,
             bytes=assets.cover.bytes,
         )
+        _make_public_media(asset)
     for index, screenshot in enumerate(assets.screenshots):
         data = (package_root / screenshot.path).read_bytes()
         alt = {
             code: _alt_at(alts.get("screenshotAlts"), index) for code, alts in catalog_alts.items()
         }
-        GameAsset.objects.create(
+        asset = GameAsset.objects.create(
             game=game,
             version=version,
             type=GameAsset.TYPE_SCREENSHOT,
@@ -894,6 +895,15 @@ def _import_assets(
             height=screenshot.height,
             bytes=screenshot.bytes,
         )
+        _make_public_media(asset)
+
+
+def _make_public_media(asset: GameAsset) -> None:
+    """Covers/screenshots are public; the upload default is private (0600/0640)."""
+    try:
+        Path(asset.file.path).chmod(0o644)
+    except OSError, ValueError:
+        return
 
 
 def _catalog_alts(package_root: Path, languages: dict[str, Language]) -> dict[str, dict[str, Any]]:

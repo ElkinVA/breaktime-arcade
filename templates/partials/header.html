@@ -1,6 +1,6 @@
 {% load ba_i18n %}
 <header class="bg-surface border-b border-text/10">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 py-4 flex items-center justify-between gap-2">
         <div class="flex items-center gap-6">
             <a href="/{{ current_language_code }}/" class="text-xl font-display font-bold text-accent">
                 Breaktime Arcade
@@ -12,9 +12,9 @@
             </nav>
         </div>
 
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 sm:gap-4 min-w-0">
             {% if user.is_authenticated %}
-                <a href="{% url 'account:profile' %}" class="text-sm hover:text-accent">
+                <a href="{% url 'account:profile' %}" class="hidden sm:inline text-sm hover:text-accent">
                     {% if user.profile %}{{ user.profile.nickname }}{% else %}{{ user.login }}{% endif %}
                 </a>
                 <form method="post" action="{% url 'accounts:logout' %}">

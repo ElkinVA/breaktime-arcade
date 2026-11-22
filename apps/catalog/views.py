@@ -16,7 +16,7 @@ from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 
 from apps.accounts.services.anonymous import COOKIE_NAME
-from apps.catalog.models import Genre, GenreTranslation
+from apps.catalog.models import GameAsset, Genre, GenreTranslation
 from apps.catalog.services.catalog import (
     card_items,
     filter_games,
@@ -57,6 +57,12 @@ LEADERBOARD_PAGE_SIZE = 10
 
 def _language(request: HttpRequest) -> str:
     return str(getattr(request, "LANGUAGE_CODE", "en"))
+
+
+def _asset_alt(asset: GameAsset | None, language: str) -> str:
+    if asset is None or not isinstance(asset.alt, dict):
+        return ""
+    return str(asset.alt.get(language) or asset.alt.get("en") or "")
 
 
 def _page_number(request: HttpRequest) -> int:
@@ -158,6 +164,11 @@ def game_detail(request: HttpRequest, slug: str) -> TemplateResponse:
     active_language_codes = get_active_language_codes_safely()
     ratings = rating_summary(game, request.user)
     seo = game_seo(game, translation, _language(request), active_language_codes)
+    language = _language(request)
+    cover = game.assets.filter(type=GameAsset.TYPE_COVER).order_by("sort_order").first()
+    screenshots = list(
+        game.assets.filter(type=GameAsset.TYPE_SCREENSHOT).order_by("sort_order")[:3]
+    )
     return TemplateResponse(
         request,
         "catalog/game_detail.html",
@@ -165,6 +176,11 @@ def game_detail(request: HttpRequest, slug: str) -> TemplateResponse:
             "title": seo.title,
             "game": game,
             "translation": translation,
+            "cover": cover,
+            "cover_alt": _asset_alt(cover, language),
+            "screenshots": [
+                {"asset": asset, "alt": _asset_alt(asset, language)} for asset in screenshots
+            ],
             "rating_average": ratings["average"],
             "rating_count": ratings["count"],
             "rating_my_vote": ratings["my_vote"],

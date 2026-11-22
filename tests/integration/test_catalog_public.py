@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from apps.catalog.models import (
     Game,
+    GameAsset,
     GameTranslation,
     Genre,
     GenreTranslation,
@@ -279,3 +280,31 @@ def test_game_leaderboard_disabled_is_not_available() -> None:
     response = Client().get("/en/games/leaderboard-disabled/leaderboard/")
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_game_detail_renders_cover_and_localized_screenshot_alts() -> None:
+    genre = _genre("visual", "Visual", "visual")
+    game = _game(technical_id="visual_game", slug="visual-game", genre=genre)
+    GameAsset.objects.create(
+        game=game,
+        type=GameAsset.TYPE_COVER,
+        file="games/assets/visual-cover.webp",
+        alt={"en": "Neon cover", "de": "Neon-Cover"},
+    )
+    GameAsset.objects.create(
+        game=game,
+        type=GameAsset.TYPE_SCREENSHOT,
+        file="games/assets/visual-screen.webp",
+        alt={"en": "Neon screenshot", "de": "Neon-Screenshot"},
+        sort_order=1,
+    )
+
+    response = Client().get("/en/games/visual-game/")
+    content = response.content.decode()
+
+    assert response.status_code == 200
+    assert "visual-cover.webp" in content
+    assert "Neon cover" in content
+    assert "visual-screen.webp" in content
+    assert "Neon screenshot" in content
