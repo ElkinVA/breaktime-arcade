@@ -5,6 +5,21 @@
 {% block crm_content %}
 <h1 class="text-3xl font-display font-bold mb-6">Контент</h1>
 
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <a href="{% url 'crm:content_translations' %}"
+       class="p-5 bg-surface rounded-card border border-text/10 hover:border-accent"
+       data-testid="crm-content-translations-link">
+        <h2 class="text-xl font-display font-bold mb-2">Переводы интерфейса</h2>
+        <p class="text-sm text-muted">Строк: {{ translation_count }}. Редактирование, статусы и публикация с шагом подтверждения.</p>
+    </a>
+    <a href="{% url 'crm:content_pages' %}"
+       class="p-5 bg-surface rounded-card border border-text/10 hover:border-accent"
+       data-testid="crm-content-pages-link">
+        <h2 class="text-xl font-display font-bold mb-2">Контентные страницы</h2>
+        <p class="text-sm text-muted">Страниц: {{ page_count }}. Санитизированный текст по allowlist, публикация с шагом подтверждения.</p>
+    </a>
+</section>
+
 <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <div class="p-5 bg-surface rounded-card border border-text/10">
         <h2 class="text-xl font-display font-bold mb-3">Жанры</h2>

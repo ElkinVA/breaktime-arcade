@@ -1,0 +1,52 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Страницы · CRM{% endblock %}
+
+{% block crm_content %}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold">Контентные страницы</h1>
+        <p class="text-sm text-muted mt-1">Слаг неизменяем после создания; тело сохраняется после allowlist-санитизации.</p>
+    </div>
+    <a href="{% url 'crm:content_page_new' %}"
+       class="px-4 py-2 rounded bg-accent text-bg font-semibold"
+       data-testid="crm-page-new">Новая страница</a>
+</div>
+
+<div class="overflow-x-auto">
+    <table class="w-full text-sm" data-testid="crm-pages-table">
+        <thead>
+            <tr class="text-left border-b border-text/10">
+                <th class="py-2 pr-3">Адрес</th>
+                <th class="py-2 pr-3">Статус</th>
+                <th class="py-2 pr-3">Переводы</th>
+                <th class="py-2"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for page in pages %}
+                <tr class="border-b border-text/5" data-testid="crm-page-row">
+                    <td class="py-2 pr-3 font-mono">{{ page.slug }}</td>
+                    <td class="py-2 pr-3" data-testid="crm-page-status">
+                        {% if page.is_published %}Опубликована{% else %}Черновик{% endif %}
+                    </td>
+                    <td class="py-2 pr-3">
+                        {% for translation in page.translations.all %}
+                            <span class="mr-2">{{ translation.language.code }}</span>
+                        {% empty %}
+                            <span class="text-muted">нет</span>
+                        {% endfor %}
+                    </td>
+                    <td class="py-2 text-right">
+                        <a href="{% url 'crm:content_page' page.id %}" class="text-accent">Открыть</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="4" class="py-4 text-muted" data-testid="crm-pages-empty">Страниц пока нет.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

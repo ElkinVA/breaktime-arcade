@@ -1,0 +1,72 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Переводы · CRM{% endblock %}
+
+{% block crm_content %}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold">Переводы интерфейса</h1>
+        <p class="text-sm text-muted mt-1">Значения рендерятся как текст; HTML и сломанные плейсхолдеры отклоняются.</p>
+    </div>
+    <a href="{% url 'crm:content_translation_new' %}"
+       class="px-4 py-2 rounded bg-accent text-bg font-semibold"
+       data-testid="crm-translation-new">Новая строка</a>
+</div>
+
+<form method="get" class="flex flex-wrap items-end gap-3 mb-6" data-testid="crm-translation-filters">
+    <label class="text-sm">
+        <span class="block text-muted mb-1">Язык</span>
+        <select name="language" class="bg-bg border border-text/20 rounded px-3 py-2">
+            <option value="">Все</option>
+            {% for language in languages %}
+                <option value="{{ language.code }}" {% if filters.language == language.code %}selected{% endif %}>{{ language.code }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label class="text-sm">
+        <span class="block text-muted mb-1">Статус</span>
+        <select name="status" class="bg-bg border border-text/20 rounded px-3 py-2">
+            <option value="">Все</option>
+            {% for value, label in statuses %}
+                <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label class="text-sm grow">
+        <span class="block text-muted mb-1">Поиск</span>
+        <input type="search" name="q" value="{{ filters.q }}" class="w-full bg-bg border border-text/20 rounded px-3 py-2">
+    </label>
+    <button type="submit" class="px-4 py-2 rounded border border-text/20">Фильтровать</button>
+</form>
+
+<div class="overflow-x-auto">
+    <table class="w-full text-sm" data-testid="crm-translations-table">
+        <thead>
+            <tr class="text-left border-b border-text/10">
+                <th class="py-2 pr-3">Язык</th>
+                <th class="py-2 pr-3">Ключ</th>
+                <th class="py-2 pr-3">Статус</th>
+                <th class="py-2 pr-3">Значение</th>
+                <th class="py-2"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+                <tr class="border-b border-text/5" data-testid="crm-translation-row">
+                    <td class="py-2 pr-3" data-testid="crm-translation-language">{{ entry.language.code }}</td>
+                    <td class="py-2 pr-3 font-mono">{{ entry.namespace }}.{{ entry.key }}</td>
+                    <td class="py-2 pr-3" data-testid="crm-translation-status">{{ entry.get_status_display }}</td>
+                    <td class="py-2 pr-3" data-testid="crm-translation-value">{{ entry.value }}</td>
+                    <td class="py-2 text-right">
+                        <a href="{% url 'crm:content_translation' entry.id %}" class="text-accent">Изменить</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="5" class="py-4 text-muted" data-testid="crm-translations-empty">Строк не найдено.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

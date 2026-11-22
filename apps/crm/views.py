@@ -18,6 +18,7 @@ from django.contrib import messages
 from django.contrib.auth import logout as auth_logout
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Q
 from django.http import (
     Http404,
     HttpRequest,
@@ -31,9 +32,31 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.accounts.models import StaffRole, User
+from apps.analytics.services.aggregates import (
+    AnalyticsRangeError,
+    build_snapshot,
+    parse_date_range,
+)
+from apps.analytics.services.exports import AnalyticsExportError, render_export
 from apps.catalog.models import Game, GameVersion, Genre, Tag
+from apps.content.models import ContentPage
+from apps.content.services.localization import create_translation, update_translation
+from apps.content.services.pages import (
+    PageValidationError,
+    create_page,
+    publish_page,
+    save_page_translation,
+    unpublish_page,
+)
 from apps.crm.decorators import role_required, staff_required
-from apps.crm.forms import StepUpForm, ZipUploadForm
+from apps.crm.forms import (
+    ContentPageForm,
+    ContentPageTranslationForm,
+    StepUpForm,
+    TranslationEntryCreateForm,
+    TranslationEntryEditForm,
+    ZipUploadForm,
+)
 from apps.crm.models import AdminAuditLog
 from apps.crm.permissions import (
     ANALYTICS_VIEW,
@@ -70,6 +93,7 @@ from apps.crm.services.step_up import (
     is_step_up_valid,
     mark_step_up,
 )
+from apps.i18n.models import Language, TranslationEntry
 from apps.i18n.services.language_registry import get_active_language_codes_safely
 from apps.moderation.models import Complaint
 from apps.moderation.services.complaints import (
@@ -147,6 +171,48 @@ def dashboard(request: HttpRequest) -> TemplateResponse:
             "stats": dashboard_stats(),
         },
     )
+
+
+@role_required(ANALYTICS_VIEW)
+@require_GET
+def analytics_dashboard(request: HttpRequest) -> HttpResponse:
+    """Date-filtered local analytics built from existing platform records."""
+    try:
+        date_range = parse_date_range(request.GET)
+    except AnalyticsRangeError as exc:
+        return HttpResponseBadRequest(exc.message)
+    snapshot = build_snapshot(date_range)
+    return TemplateResponse(
+        request,
+        "crm/analytics.html",
+        {
+            "title": "Аналитика · CRM",
+            "snapshot": snapshot,
+            "date_from": date_range.start.isoformat(),
+            "date_to": date_range.end.isoformat(),
+        },
+    )
+
+
+@role_required(ANALYTICS_VIEW)
+@require_GET
+def analytics_export(request: HttpRequest) -> HttpResponse:
+    """Safe CSV/JSON download of the same local snapshot (no PII/hashes)."""
+    try:
+        date_range = parse_date_range(request.GET)
+    except AnalyticsRangeError as exc:
+        return HttpResponseBadRequest(exc.message)
+    snapshot = build_snapshot(date_range)
+    report_format = str(request.GET.get("format") or "csv")
+    try:
+        content, content_type, filename = render_export(snapshot, report_format)
+    except AnalyticsExportError:
+        return HttpResponseBadRequest("Unsupported export format")
+    response = HttpResponse(content, content_type=content_type)
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 
 @role_required(GAMES_VIEW)
@@ -678,7 +744,7 @@ def _posted_user_id(request: HttpRequest) -> UUID | None:
 
 @role_required(CONTENT_MANAGE)
 def content_overview(request: HttpRequest) -> TemplateResponse:
-    """Read-only content overview for editors/owners (genres and tags)."""
+    """Content hub for editors/owners: genres, tags, translations and pages."""
     return TemplateResponse(
         request,
         "crm/content.html",
@@ -686,6 +752,313 @@ def content_overview(request: HttpRequest) -> TemplateResponse:
             "title": "Контент · CRM",
             "genres": Genre.objects.all()[:100],
             "tags": Tag.objects.all()[:100],
+            "translation_count": TranslationEntry.objects.count(),
+            "page_count": ContentPage.objects.count(),
+        },
+    )
+
+
+def _content_write_guard(request: HttpRequest) -> HttpResponseRedirect | None:
+    """Every content write requires the capability plus password + TOTP."""
+    allowed, reason = _authorize_step_up(request)
+    if allowed:
+        return None
+    messages.error(request, reason)
+    if reason == _STEP_UP_REQUIRED:
+        return _step_up_redirect(request.get_full_path())
+    return redirect("crm:content")
+
+
+def _active_languages() -> list[Language]:
+    return list(Language.objects.filter(is_active=True).order_by("sort_order", "code"))
+
+
+def _translation_form_initial(entry: TranslationEntry | None) -> dict[str, object]:
+    if entry is None:
+        return {}
+    return {
+        "value": entry.value,
+        "status": entry.status,
+        "is_machine_translated": entry.is_machine_translated,
+    }
+
+
+@role_required(CONTENT_MANAGE)
+@require_GET
+def content_translations(request: HttpRequest) -> TemplateResponse:
+    """Filterable list of localization entries."""
+    language_code = str(request.GET.get("language") or "").strip()
+    status = str(request.GET.get("status") or "").strip()
+    query = str(request.GET.get("q") or "").strip()
+
+    entries = TranslationEntry.objects.select_related("language").order_by(
+        "language__sort_order", "namespace", "key"
+    )
+    if language_code:
+        entries = entries.filter(language__code=language_code)
+    if status in {choice for choice, _label in TranslationEntry.STATUS_CHOICES}:
+        entries = entries.filter(status=status)
+    if query:
+        entries = entries.filter(
+            Q(namespace__icontains=query) | Q(key__icontains=query) | Q(value__icontains=query)
+        )
+    return TemplateResponse(
+        request,
+        "crm/content_translations.html",
+        {
+            "title": "Переводы · CRM",
+            "entries": entries[:200],
+            "languages": _active_languages(),
+            "statuses": TranslationEntry.STATUS_CHOICES,
+            "filters": {
+                "language": language_code,
+                "status": status,
+                "q": query,
+            },
+        },
+    )
+
+
+@role_required(CONTENT_MANAGE)
+@require_http_methods(["GET", "POST"])
+def content_translation_new(request: HttpRequest) -> TemplateResponse | HttpResponseRedirect:
+    """Create a localization entry; publishing still needs step-up."""
+    form = TranslationEntryCreateForm(request.POST if request.method == "POST" else None)
+    if request.method == "POST":
+        refused = _content_write_guard(request)
+        if refused is not None:
+            return refused
+        if form.is_valid():
+            result = create_translation(
+                namespace=str(form.cleaned_data["namespace"]),
+                key=str(form.cleaned_data["key"]),
+                language=form.cleaned_data["language"],
+                value=str(form.cleaned_data["value"]),
+                status=str(form.cleaned_data["status"]),
+                is_machine_translated=bool(form.cleaned_data.get("is_machine_translated", False)),
+                actor=_staff_user(request),
+            )
+            if result.ok and result.entry is not None:
+                if result.entry.status == TranslationEntry.STATUS_PUBLISHED:
+                    record_audit(
+                        actor=_staff_user(request),
+                        action=AdminAuditLog.ACTION_TRANSLATION_PUBLISHED,
+                        object_type="translation_entry",
+                        object_id=result.entry.id,
+                        after={"status": result.entry.status},
+                        ip=request.META.get("REMOTE_ADDR"),
+                    )
+                messages.success(request, "Строка перевода сохранена.")
+                return redirect("crm:content_translation", entry_id=result.entry.id)
+            messages.error(request, result.message)
+    return TemplateResponse(
+        request,
+        "crm/content_translation_edit.html",
+        {
+            "title": "Новая строка перевода · CRM",
+            "form": form,
+            "entry": None,
+            "is_new": True,
+        },
+    )
+
+
+@role_required(CONTENT_MANAGE)
+@require_http_methods(["GET", "POST"])
+def content_translation(
+    request: HttpRequest, entry_id: UUID
+) -> TemplateResponse | HttpResponseRedirect:
+    """Edit/publish one localization entry; invalid values never replace copy."""
+    entry = get_object_or_404(
+        TranslationEntry.objects.select_related("language"),
+        pk=entry_id,
+    )
+    form = TranslationEntryEditForm(
+        request.POST if request.method == "POST" else None,
+        initial=_translation_form_initial(entry),
+    )
+    if request.method == "POST":
+        refused = _content_write_guard(request)
+        if refused is not None:
+            return refused
+        if form.is_valid():
+            previous_status = entry.status
+            result = update_translation(
+                entry,
+                value=str(form.cleaned_data["value"]),
+                status=str(form.cleaned_data["status"]),
+                is_machine_translated=bool(form.cleaned_data.get("is_machine_translated", False)),
+                actor=_staff_user(request),
+            )
+            if result.ok and result.entry is not None:
+                if result.entry.status == TranslationEntry.STATUS_PUBLISHED:
+                    record_audit(
+                        actor=_staff_user(request),
+                        action=AdminAuditLog.ACTION_TRANSLATION_PUBLISHED,
+                        object_type="translation_entry",
+                        object_id=result.entry.id,
+                        before={"status": previous_status},
+                        after={"status": result.entry.status},
+                        ip=request.META.get("REMOTE_ADDR"),
+                    )
+                messages.success(request, "Строка перевода сохранена.")
+                return redirect("crm:content_translation", entry_id=entry.id)
+            messages.error(request, result.message)
+    return TemplateResponse(
+        request,
+        "crm/content_translation_edit.html",
+        {
+            "title": "Строка перевода · CRM",
+            "form": form,
+            "entry": entry,
+            "is_new": False,
+        },
+    )
+
+
+@role_required(CONTENT_MANAGE)
+@require_GET
+def content_pages(request: HttpRequest) -> TemplateResponse:
+    """List language-neutral content pages and their translations."""
+    pages = ContentPage.objects.prefetch_related("translations__language").order_by("slug")
+    return TemplateResponse(
+        request,
+        "crm/content_pages.html",
+        {"title": "Страницы · CRM", "pages": pages},
+    )
+
+
+@role_required(CONTENT_MANAGE)
+@require_http_methods(["GET", "POST"])
+def content_page_new(request: HttpRequest) -> TemplateResponse | HttpResponseRedirect:
+    """Create an empty content page and continue to its translations."""
+    form = ContentPageForm(request.POST if request.method == "POST" else None)
+    error = ""
+    if request.method == "POST":
+        refused = _content_write_guard(request)
+        if refused is not None:
+            return refused
+        if form.is_valid():
+            try:
+                page = create_page(slug=str(form.cleaned_data["slug"]))
+            except PageValidationError as exc:
+                error = exc.message
+            else:
+                messages.success(request, "Страница создана. Добавьте перевод.")
+                return redirect("crm:content_page", page_id=page.id)
+        else:
+            error = "Проверьте адрес страницы."
+    return TemplateResponse(
+        request,
+        "crm/content_page_edit.html",
+        {
+            "title": "Новая страница · CRM",
+            "form": form,
+            "page": None,
+            "translation": None,
+            "translations": [],
+            "languages": _active_languages(),
+            "selected_language": "",
+            "error": error,
+            "is_new": True,
+        },
+    )
+
+
+@role_required(CONTENT_MANAGE)
+@require_http_methods(["GET", "POST"])
+def content_page(request: HttpRequest, page_id: UUID) -> TemplateResponse | HttpResponseRedirect:
+    """Edit translations and publish/unpublish a content page."""
+    page = get_object_or_404(ContentPage, pk=page_id)
+    languages = _active_languages()
+    selected_code = str(request.POST.get("language") or request.GET.get("language") or "")
+    translation = None
+    if selected_code:
+        translation = (
+            page.translations.select_related("language")
+            .filter(language__code=selected_code)
+            .first()
+        )
+    elif page.translations.exists():
+        translation = page.translations.select_related("language").first()
+
+    form = ContentPageTranslationForm(
+        request.POST if request.method == "POST" else None,
+        initial={
+            "language": translation.language_id if translation else None,
+            "title": translation.title if translation else "",
+            "body": translation.body if translation else "",
+            "seo_title": translation.seo_title if translation else "",
+            "seo_description": translation.seo_description if translation else "",
+        },
+    )
+    error = ""
+    if request.method == "POST":
+        refused = _content_write_guard(request)
+        if refused is not None:
+            return refused
+        action = str(request.POST.get("action") or "save_translation")
+        if action in {"publish", "unpublish"}:
+            try:
+                if action == "publish":
+                    publish_page(page)
+                    record_audit(
+                        actor=_staff_user(request),
+                        action=AdminAuditLog.ACTION_PAGE_PUBLISHED,
+                        object_type="content_page",
+                        object_id=page.id,
+                        after={"is_published": True},
+                        ip=request.META.get("REMOTE_ADDR"),
+                    )
+                    messages.success(request, "Страница опубликована.")
+                else:
+                    unpublish_page(page)
+                    messages.success(request, "Публикация страницы снята.")
+            except PageValidationError as exc:
+                error = exc.message
+                messages.error(request, error)
+            return redirect("crm:content_page", page_id=page.id)
+
+        if form.is_valid():
+            language = form.cleaned_data["language"]
+            result = save_page_translation(
+                page,
+                language=language,
+                title=str(form.cleaned_data["title"]),
+                body=str(form.cleaned_data.get("body") or ""),
+                seo_title=str(form.cleaned_data.get("seo_title") or ""),
+                seo_description=str(form.cleaned_data.get("seo_description") or ""),
+            )
+            if result.ok and result.translation is not None:
+                messages.success(request, "Перевод страницы сохранён.")
+                return redirect(
+                    f"{reverse('crm:content_page', args=[page.id])}"
+                    f"?language={result.translation.language.code}"
+                )
+            error = result.message
+            messages.error(request, error)
+        else:
+            error = "Проверьте поля перевода."
+            messages.error(request, error)
+
+    selected_code = (
+        translation.language.code
+        if translation is not None
+        else (languages[0].code if languages else "")
+    )
+    return TemplateResponse(
+        request,
+        "crm/content_page_edit.html",
+        {
+            "title": f"{page.slug} · CRM",
+            "form": form,
+            "page": page,
+            "translation": translation,
+            "translations": list(page.translations.select_related("language")),
+            "languages": languages,
+            "selected_language": selected_code,
+            "error": error,
+            "is_new": False,
         },
     )
 
@@ -873,11 +1246,19 @@ def audit_log(request: HttpRequest) -> TemplateResponse:
 
 
 __all__ = [
+    "analytics_dashboard",
+    "analytics_export",
     "audit_log",
     "complaint_assign",
     "complaint_reject",
     "complaint_resolve",
     "content_overview",
+    "content_page",
+    "content_page_new",
+    "content_pages",
+    "content_translation",
+    "content_translation_new",
+    "content_translations",
     "dashboard",
     "game_detail",
     "game_publish",

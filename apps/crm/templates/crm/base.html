@@ -9,6 +9,7 @@
             <span class="font-display font-bold text-accent">CRM</span>
             {% if 'analytics.view' in crm_caps %}
                 <a href="{% url 'crm:dashboard' %}" class="text-sm hover:text-accent" data-testid="crm-nav-dashboard">Дашборд</a>
+                <a href="{% url 'crm:analytics' %}" class="text-sm hover:text-accent" data-testid="crm-nav-analytics">Аналитика</a>
             {% endif %}
             {% if 'games.view' in crm_caps %}
                 <a href="{% url 'crm:games' %}" class="text-sm hover:text-accent" data-testid="crm-nav-games">Игры</a>

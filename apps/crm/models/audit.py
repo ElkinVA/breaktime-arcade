@@ -28,6 +28,8 @@ class AdminAuditLog(models.Model):
     ACTION_COMPLAINT_ASSIGNED = "complaint.assigned"
     ACTION_COMPLAINT_RESOLVED = "complaint.resolved"
     ACTION_COMPLAINT_REJECTED = "complaint.rejected"
+    ACTION_TRANSLATION_PUBLISHED = "content.translation_published"
+    ACTION_PAGE_PUBLISHED = "content.page_published"
 
     ACTION_CHOICES = [
         (ACTION_STAFF_ROLE_CHANGED, "Смена роли сотрудника"),
@@ -40,6 +42,8 @@ class AdminAuditLog(models.Model):
         (ACTION_COMPLAINT_ASSIGNED, "Назначение жалобы"),
         (ACTION_COMPLAINT_RESOLVED, "Решение по жалобе"),
         (ACTION_COMPLAINT_REJECTED, "Отклонение жалобы"),
+        (ACTION_TRANSLATION_PUBLISHED, "Публикация перевода"),
+        (ACTION_PAGE_PUBLISHED, "Публикация контентной страницы"),
     ]
 
     id = models.BigAutoField(primary_key=True)

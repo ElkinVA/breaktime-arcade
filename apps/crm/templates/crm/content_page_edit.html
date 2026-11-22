@@ -1,0 +1,70 @@
+{% extends "crm/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block crm_content %}
+{% if is_new %}
+<h1 class="text-3xl font-display font-bold mb-6">Новая страница</h1>
+<form method="post" class="p-5 bg-surface rounded-card border border-text/10 max-w-2xl"
+      data-testid="crm-page-create-form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <p class="text-sm text-muted mt-3">Создание страницы требует подтверждения паролем и TOTP (step-up).</p>
+    <button type="submit" class="mt-4 px-4 py-2 rounded bg-accent text-bg font-semibold">Создать</button>
+    <a href="{% url 'crm:content_pages' %}" class="ml-3 text-sm text-muted">Назад</a>
+</form>
+{% else %}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold font-mono">{{ page.slug }}</h1>
+        <p class="text-sm text-muted mt-1" data-testid="crm-page-published">
+            {% if page.is_published %}Опубликована{% else %}Черновик{% endif %}
+        </p>
+    </div>
+    <div class="flex items-center gap-3">
+        <form method="post" data-testid="crm-page-publish-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="{% if page.is_published %}unpublish{% else %}publish{% endif %}">
+            <button type="submit" class="px-4 py-2 rounded border border-text/20">
+                {% if page.is_published %}Снять с публикации{% else %}Опубликовать{% endif %}
+            </button>
+        </form>
+        <a href="{% url 'crm:content_pages' %}" class="text-sm text-muted">Назад к списку</a>
+    </div>
+</div>
+
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <h2 class="text-lg font-display font-bold mb-2">Языки страницы</h2>
+        <ul class="space-y-2 text-sm">
+            {% for item in translations %}
+                <li class="flex justify-between gap-3" data-testid="crm-page-translation-row">
+                    <a class="text-accent" href="{% url 'crm:content_page' page.id %}?language={{ item.language.code }}">{{ item.language.code }}</a>
+                    <span class="text-muted">{{ item.title }}</span>
+                </li>
+            {% empty %}
+                <li class="text-muted" data-testid="crm-page-translations-empty">Переводов пока нет.</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <h2 class="text-lg font-display font-bold mb-2">Сохранённый текст (экранирован)</h2>
+        {% if translation %}
+            <pre class="text-sm whitespace-pre-wrap break-words" data-testid="crm-page-preview">{{ translation.body }}</pre>
+        {% else %}
+            <p class="text-sm text-muted" data-testid="crm-page-preview-empty">Для выбранного языка перевода нет.</p>
+        {% endif %}
+    </div>
+</section>
+
+<form method="post" class="p-5 bg-surface rounded-card border border-text/10 max-w-3xl"
+      data-testid="crm-page-translation-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save_translation">
+    {{ form.as_p }}
+    <p class="text-sm text-muted mt-3">Тело проходит allowlist-санитизацию; сохранение требует step-up.</p>
+    <button type="submit" class="mt-4 px-4 py-2 rounded bg-accent text-bg font-semibold"
+            data-testid="crm-page-translation-submit">Сохранить перевод</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -7,6 +7,8 @@ from typing import Any, cast
 from django import forms
 from django.core.files.uploadedfile import UploadedFile
 
+from apps.i18n.models import Language, TranslationEntry
+
 
 class ZipUploadForm(forms.Form):
     """Accept a single ZIP; archive safety is decided by the pipeline."""
@@ -66,3 +68,119 @@ class StepUpForm(forms.Form):
         if not value.isdigit() or len(value) != 6:
             raise forms.ValidationError("Введите шестизначный код TOTP.")
         return value
+
+
+class _ActiveLanguageField(forms.ModelChoiceField):  # type: ignore[type-arg]
+    def __init__(self) -> None:
+        super().__init__(queryset=Language.objects.none(), label="Язык")
+
+    def clean(self, value: Any) -> Language:
+        language = cast("Language", super().clean(value))
+        if not language.is_active:
+            raise forms.ValidationError("Язык отключён.")
+        return language
+
+
+_INPUT_CLASS = "w-full bg-bg border border-text/20 rounded px-3 py-2"
+
+
+class TranslationEntryCreateForm(forms.Form):
+    """Create a localization entry; value safety is checked by the service."""
+
+    namespace = forms.CharField(
+        max_length=64,
+        label="Namespace",
+        widget=forms.TextInput(attrs={"class": _INPUT_CLASS}),
+    )
+    key = forms.CharField(
+        max_length=128,
+        label="Ключ",
+        widget=forms.TextInput(attrs={"class": _INPUT_CLASS}),
+    )
+    language = _ActiveLanguageField()
+    value = forms.CharField(
+        label="Значение",
+        strip=False,
+        widget=forms.Textarea(attrs={"rows": 4, "class": _INPUT_CLASS}),
+    )
+    status = forms.ChoiceField(choices=TranslationEntry.STATUS_CHOICES, label="Статус")
+    is_machine_translated = forms.BooleanField(
+        required=False,
+        label="Машинный черновой перевод",
+    )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        language = self.fields["language"]
+        assert isinstance(language, _ActiveLanguageField)
+        language.queryset = Language.objects.filter(is_active=True).order_by("sort_order", "code")
+
+
+class TranslationEntryEditForm(forms.Form):
+    """Edit value/status of an existing entry (identity is immutable here)."""
+
+    value = forms.CharField(
+        label="Значение",
+        strip=False,
+        widget=forms.Textarea(attrs={"rows": 6, "class": _INPUT_CLASS}),
+    )
+    status = forms.ChoiceField(choices=TranslationEntry.STATUS_CHOICES, label="Статус")
+    is_machine_translated = forms.BooleanField(
+        required=False,
+        label="Машинный черновой перевод",
+    )
+
+
+class ContentPageForm(forms.Form):
+    """Create a language-neutral content page."""
+
+    slug = forms.CharField(
+        max_length=128,
+        label="Адрес",
+        widget=forms.TextInput(attrs={"class": _INPUT_CLASS}),
+    )
+
+
+class ContentPageTranslationForm(forms.Form):
+    """Edit one language version of a content page."""
+
+    language = _ActiveLanguageField()
+    title = forms.CharField(
+        max_length=200,
+        label="Заголовок",
+        widget=forms.TextInput(attrs={"class": _INPUT_CLASS}),
+    )
+    body = forms.CharField(
+        label="Текст (allowlist HTML)",
+        required=False,
+        strip=False,
+        widget=forms.Textarea(attrs={"rows": 12, "class": _INPUT_CLASS}),
+    )
+    seo_title = forms.CharField(
+        max_length=60,
+        required=False,
+        label="SEO Title",
+        widget=forms.TextInput(attrs={"class": _INPUT_CLASS}),
+    )
+    seo_description = forms.CharField(
+        max_length=160,
+        required=False,
+        label="SEO Description",
+        widget=forms.Textarea(attrs={"rows": 2, "class": _INPUT_CLASS}),
+    )
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        language = self.fields["language"]
+        assert isinstance(language, _ActiveLanguageField)
+        language.queryset = Language.objects.filter(is_active=True).order_by("sort_order", "code")
+
+
+__all__ = [
+    "ContentPageForm",
+    "ContentPageTranslationForm",
+    "StepUpForm",
+    "TranslationEntryCreateForm",
+    "TranslationEntryEditForm",
+    "ZipUploadForm",
+]

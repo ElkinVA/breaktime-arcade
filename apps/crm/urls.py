@@ -14,7 +14,23 @@ urlpatterns = [
     path("logout/", views.logout_view, name="logout"),
     path("step-up/", views.step_up, name="step_up"),
     path("staff/", views.staff_management, name="staff"),
+    path("analytics/", views.analytics_dashboard, name="analytics"),
+    path("analytics/export/", views.analytics_export, name="analytics_export"),
     path("content/", views.content_overview, name="content"),
+    path("content/translations/", views.content_translations, name="content_translations"),
+    path(
+        "content/translations/new/",
+        views.content_translation_new,
+        name="content_translation_new",
+    ),
+    path(
+        "content/translations/<uuid:entry_id>/",
+        views.content_translation,
+        name="content_translation",
+    ),
+    path("content/pages/", views.content_pages, name="content_pages"),
+    path("content/pages/new/", views.content_page_new, name="content_page_new"),
+    path("content/pages/<uuid:page_id>/", views.content_page, name="content_page"),
     path("moderation/", views.moderation_queue, name="moderation"),
     path("moderation/complaints/", views.moderation_queue, name="complaints"),
     path(

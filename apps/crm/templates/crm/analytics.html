@@ -1,0 +1,118 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Аналитика · CRM{% endblock %}
+
+{% block crm_content %}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold">Аналитика</h1>
+        <p class="text-sm text-muted mt-1">
+            Локальные данные платформы за {{ snapshot.date_from }} — {{ snapshot.date_to }}.
+            Внешние счётчики не используются; preview/autotest исключены.
+        </p>
+    </div>
+    <div class="flex items-center gap-2">
+        <a class="px-4 py-2 rounded border border-text/20"
+           href="{% url 'crm:analytics_export' %}?format=csv&date_from={{ date_from }}&date_to={{ date_to }}"
+           data-testid="analytics-export-csv">CSV</a>
+        <a class="px-4 py-2 rounded border border-text/20"
+           href="{% url 'crm:analytics_export' %}?format=json&date_from={{ date_from }}&date_to={{ date_to }}"
+           data-testid="analytics-export-json">JSON</a>
+    </div>
+</div>
+
+<form method="get" class="flex flex-wrap items-end gap-3 mb-8" data-testid="analytics-date-form">
+    <label class="text-sm">
+        <span class="block text-muted mb-1">С даты</span>
+        <input type="date" name="date_from" value="{{ date_from }}" class="bg-bg border border-text/20 rounded px-3 py-2">
+    </label>
+    <label class="text-sm">
+        <span class="block text-muted mb-1">По дату</span>
+        <input type="date" name="date_to" value="{{ date_to }}" class="bg-bg border border-text/20 rounded px-3 py-2">
+    </label>
+    <button type="submit" class="px-4 py-2 rounded bg-accent text-bg font-semibold">Показать</button>
+</form>
+
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Опубликованные игры</p>
+        <p class="text-3xl font-display font-bold" data-testid="analytics-published-games">{{ snapshot.published_games }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Новые за период</p>
+        <p class="text-3xl font-display font-bold" data-testid="analytics-new-games">{{ snapshot.new_games }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Сессии</p>
+        <p class="text-3xl font-display font-bold" data-testid="analytics-sessions">{{ snapshot.sessions }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Завершено</p>
+        <p class="text-3xl font-display font-bold" data-testid="analytics-finished">{{ snapshot.finished_sessions }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Сессии пользователей</p>
+        <p class="text-2xl font-display font-bold" data-testid="analytics-user-sessions">{{ snapshot.user_sessions }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Гостевые сессии</p>
+        <p class="text-2xl font-display font-bold" data-testid="analytics-guest-sessions">{{ snapshot.guest_sessions }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Доля завершений, %</p>
+        <p class="text-2xl font-display font-bold" data-testid="analytics-completion-rate">{{ snapshot.completion_rate }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Запуски (агрегат)</p>
+        <p class="text-2xl font-display font-bold" data-testid="analytics-plays">{{ snapshot.plays }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Оценки</p>
+        <p class="text-2xl font-display font-bold" data-testid="analytics-rating-votes">{{ snapshot.rating_votes }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Средняя оценка</p>
+        <p class="text-2xl font-display font-bold" data-testid="analytics-average-rating">{{ snapshot.average_rating }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Жалобы</p>
+        <p class="text-2xl font-display font-bold" data-testid="analytics-complaints">{{ snapshot.complaints }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Открытые жалобы</p>
+        <p class="text-2xl font-display font-bold" data-testid="analytics-open-complaints">{{ snapshot.open_complaints }}</p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <p class="text-sm text-muted">Решённые жалобы</p>
+        <p class="text-2xl font-display font-bold" data-testid="analytics-resolved-complaints">{{ snapshot.resolved_complaints }}</p>
+    </div>
+</section>
+
+<div class="p-5 bg-surface rounded-card border border-text/10">
+    <h2 class="text-xl font-display font-bold mb-4">Топ игр по запускам</h2>
+    {% if snapshot.top_games %}
+        <table class="w-full text-sm" data-testid="analytics-top-games">
+            <thead>
+                <tr class="text-left border-b border-text/10">
+                    <th class="py-2 pr-3">Игра</th>
+                    <th class="py-2 pr-3">Запуски</th>
+                    <th class="py-2 pr-3">Уникальные</th>
+                    <th class="py-2">Завершения</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for game in snapshot.top_games %}
+                    <tr class="border-b border-text/5" data-testid="analytics-top-game">
+                        <td class="py-2 pr-3">{{ game.technical_id }}</td>
+                        <td class="py-2 pr-3" data-testid="analytics-top-game-sessions">{{ game.sessions }}</td>
+                        <td class="py-2 pr-3">{{ game.unique_sessions }}</td>
+                        <td class="py-2">{{ game.completions }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="text-muted" data-testid="analytics-top-games-empty">Нет данных о запусках за период.</p>
+    {% endif %}
+</div>
+{% endblock %}

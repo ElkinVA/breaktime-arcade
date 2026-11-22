@@ -1,0 +1,34 @@
+{% extends "crm/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block crm_content %}
+<h1 class="text-3xl font-display font-bold mb-6">
+    {% if is_new %}Новая строка перевода{% else %}Строка перевода{% endif %}
+</h1>
+
+{% if entry %}
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <h2 class="text-lg font-display font-bold mb-2">Идентификатор</h2>
+        <p class="font-mono text-sm" data-testid="crm-translation-identity">{{ entry.namespace }}.{{ entry.key }}</p>
+        <p class="text-sm text-muted mt-1">Язык: <span data-testid="crm-translation-language">{{ entry.language.code }}</span></p>
+    </div>
+    <div class="p-5 bg-surface rounded-card border border-text/10">
+        <h2 class="text-lg font-display font-bold mb-2">Текущее сохранённое значение</h2>
+        <p class="text-sm whitespace-pre-wrap" data-testid="crm-translation-published">{{ entry.value }}</p>
+        <p class="text-sm text-muted mt-2" data-testid="crm-translation-current-status">{{ entry.get_status_display }}</p>
+    </div>
+</section>
+{% endif %}
+
+<form method="post" class="p-5 bg-surface rounded-card border border-text/10 max-w-3xl"
+      data-testid="crm-translation-form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <p class="text-sm text-muted mt-3">Сохранение и публикация требуют подтверждения паролем и TOTP (step-up).</p>
+    <button type="submit" class="mt-4 px-4 py-2 rounded bg-accent text-bg font-semibold"
+            data-testid="crm-translation-submit">Сохранить</button>
+    <a href="{% url 'crm:content_translations' %}" class="ml-3 text-sm text-muted">Назад к списку</a>
+</form>
+{% endblock %}
