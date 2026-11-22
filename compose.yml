@@ -38,13 +38,14 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >-
-        mkdir -p /var/ba/zip/uploads /var/ba/zip/artifacts /app/runtime &&
-        chown 10001:10001 /var/ba/zip/uploads /var/ba/zip/artifacts /app/runtime &&
-        chmod 700 /var/ba/zip/uploads /var/ba/zip/artifacts &&
+        mkdir -p /var/ba/zip/uploads /var/ba/zip/artifacts /var/ba/zip/quota /app/runtime &&
+        chown 10001:10001 /var/ba/zip/uploads /var/ba/zip/artifacts /var/ba/zip/quota /app/runtime &&
+        chmod 700 /var/ba/zip/uploads /var/ba/zip/artifacts /var/ba/zip/quota &&
         chmod 755 /app/runtime
     volumes:
       - zip_uploads:/var/ba/zip/uploads
       - zip_artifacts:/var/ba/zip/artifacts
+      - zip_quota:/var/ba/zip/quota
       - runtime_data:/app/runtime
     network_mode: "none"
     read_only: true
@@ -59,6 +60,11 @@ services:
       RUN_MIGRATIONS: "1"
       RUN_COLLECTSTATIC: "1"
       ZIP_PUBLIC_RUNTIME_ROOT: /app/runtime
+      # ARCADE-P4-STORAGE-001: non-secret system-wide ZIP quota defaults.
+      ZIP_QUOTA_STATE_ROOT: "${ZIP_QUOTA_STATE_ROOT:-/var/ba/zip/quota}"
+      ZIP_STORAGE_QUOTA_BYTES: "${ZIP_STORAGE_QUOTA_BYTES:-2147483648}"
+      ZIP_STORAGE_MIN_FREE_BYTES: "${ZIP_STORAGE_MIN_FREE_BYTES:-157286400}"
+      ZIP_QUOTA_RESERVATION_TTL_SECONDS: "${ZIP_QUOTA_RESERVATION_TTL_SECONDS:-3600}"
     volumes:
       - static_data:/app/staticfiles
       - media_data:/app/media
@@ -66,6 +72,7 @@ services:
       - runtime_data:/app/runtime
       - zip_uploads:/var/ba/zip/uploads
       - zip_artifacts:/var/ba/zip/artifacts:ro
+      - zip_quota:/var/ba/zip/quota
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
       interval: 15s
@@ -123,9 +130,15 @@ services:
     environment:
       RUN_MIGRATIONS: "0"
       RUN_COLLECTSTATIC: "0"
+      # Shared quota state/lock; must be writable here for artifact admission.
+      ZIP_QUOTA_STATE_ROOT: "${ZIP_QUOTA_STATE_ROOT:-/var/ba/zip/quota}"
+      ZIP_STORAGE_QUOTA_BYTES: "${ZIP_STORAGE_QUOTA_BYTES:-2147483648}"
+      ZIP_STORAGE_MIN_FREE_BYTES: "${ZIP_STORAGE_MIN_FREE_BYTES:-157286400}"
+      ZIP_QUOTA_RESERVATION_TTL_SECONDS: "${ZIP_QUOTA_RESERVATION_TTL_SECONDS:-3600}"
     volumes:
       - zip_uploads:/var/ba/zip/uploads:ro
       - zip_artifacts:/var/ba/zip/artifacts
+      - zip_quota:/var/ba/zip/quota
     networks: [zipnet]
     depends_on:
       zip-volume-init: { condition: service_completed_successfully }
@@ -289,3 +302,4 @@ volumes:
   runtime_data:
   zip_uploads:
   zip_artifacts:
+  zip_quota:

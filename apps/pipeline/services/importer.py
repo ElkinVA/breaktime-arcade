@@ -54,6 +54,7 @@ from apps.pipeline.services.extraction import (
 )
 from apps.pipeline.services.injection import available_sdks, resolve_sdk
 from apps.pipeline.services.intake import intake_zip
+from apps.pipeline.services.quota import StorageQuota, StorageQuotaError
 from apps.pipeline.validation.assets import AssetsResult, validate_assets
 from apps.pipeline.validation.budgets import budget_diagnostics
 from apps.pipeline.validation.catalog import validate_catalog
@@ -86,6 +87,7 @@ from apps.pipeline.validation.manifest import (
 )
 from apps.pipeline.validation.report import ValidationReport
 from apps.pipeline.validation.security_scan import scan_root
+from apps.pipeline.validation.structure import preflight_zip
 from apps.pipeline.validation.text import (
     has_bom,
     has_crlf,
@@ -125,12 +127,67 @@ def import_package(
     created_by: User | None = None,
     target_game: Game | None = None,
 ) -> ImportResult:
-    storage = ensure_root(Path(storage_root or settings.ZIP_PIPELINE_STORAGE_ROOT))
-    runtimes = ensure_root(Path(runtime_root or settings.ZIP_PUBLIC_RUNTIME_ROOT))
+    """Admit one package against the system-wide quota, then import it.
+
+    The reservation is acquired before any write (including the immutable
+    original-ZIP store) and released after the import finishes.  A quota
+    rejection is non-destructive: it only records a rejected draft/report and
+    never touches published runtimes or existing versions.
+    """
+    # Resolve paths without creating roots: a quota rejection must not touch
+    # the runtime or package stores at all.
+    storage = Path(storage_root or settings.ZIP_PIPELINE_STORAGE_ROOT)
+    runtimes = Path(runtime_root or settings.ZIP_PUBLIC_RUNTIME_ROOT)
     sdk_dir = Path(sdk_root or settings.SDK_SOURCE_ROOT)
     uploads = Path(uploads_root or settings.ZIP_UPLOADS_ROOT)
     artifacts = Path(artifacts_root or settings.ZIP_ARTIFACTS_ROOT)
 
+    quota = StorageQuota.from_settings(
+        storage_root=storage,
+        uploads_root=uploads,
+        artifacts_root=artifacts,
+    )
+    try:
+        reservation = quota.reserve(len(data), reason="package-import")
+    except StorageQuotaError as exc:
+        return _reject_quota(
+            data,
+            exc,
+            original_filename=original_filename,
+            created_by=created_by,
+        )
+    try:
+        return _import_package(
+            data,
+            original_filename=original_filename,
+            storage=ensure_root(storage),
+            runtimes=ensure_root(runtimes),
+            sdk_dir=sdk_dir,
+            uploads=uploads,
+            artifacts=artifacts,
+            worker_wait_seconds=worker_wait_seconds,
+            worker_poll_interval=worker_poll_interval,
+            created_by=created_by,
+            target_game=target_game,
+        )
+    finally:
+        quota.release(reservation)
+
+
+def _import_package(
+    data: bytes,
+    *,
+    original_filename: str,
+    storage: Path,
+    runtimes: Path,
+    sdk_dir: Path,
+    uploads: Path,
+    artifacts: Path,
+    worker_wait_seconds: float | None,
+    worker_poll_interval: float | None,
+    created_by: User | None,
+    target_game: Game | None,
+) -> ImportResult:
     intake = intake_zip(data, storage_root=storage)
     report = ValidationReport(package_hash=intake.package_hash)
     report.extend(intake.diagnostics)
@@ -403,6 +460,28 @@ def import_package(
         )
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def _reject_quota(
+    data: bytes,
+    error: StorageQuotaError,
+    *,
+    original_filename: str,
+    created_by: User | None,
+) -> ImportResult:
+    """Record a non-destructive quota rejection without storing the package."""
+    preflight = preflight_zip(data)
+    report = ValidationReport(package_hash=preflight.package_hash)
+    report.extend(preflight.diagnostics)
+    report.add(error.code, error.message, meta=error.diagnostics)
+    draft = GameImportDraft.objects.create(
+        package_hash=preflight.package_hash,
+        original_filename=original_filename[:255],
+        size_bytes=len(data),
+        created_by=created_by,
+        diagnostics=[item.as_dict() for item in report.diagnostics],
+    )
+    return _reject(draft, report)
 
 
 def _sdk_versions(sdk_dir: Path) -> list[str]:

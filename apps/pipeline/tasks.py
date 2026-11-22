@@ -39,10 +39,26 @@ def cleanup_zip_staging() -> dict[str, int]:
     return cleanup_expired_jobs()
 
 
+def _active_extraction_job_ids() -> set[str]:
+    """Queued/running job ids that cleanup must never remove."""
+    from apps.pipeline.models import ZipExtractionJob
+
+    return {
+        str(job_id)
+        for job_id in ZipExtractionJob.objects.filter(
+            status__in=[ZipExtractionJob.STATUS_QUEUED, ZipExtractionJob.STATUS_RUNNING]
+        ).values_list("id", flat=True)
+    }
+
+
 @shared_task(name="apps.pipeline.tasks.cleanup_zip_uploads")
 def cleanup_zip_uploads() -> dict[str, int]:
-    """Remove abandoned source ZIPs on the writable default-worker mount."""
-    return cleanup_upload_jobs()
+    """Remove abandoned source ZIPs on the writable default-worker mount.
+
+    Active (queued/running) jobs are protected by DB state; the filesystem
+    cleanup is idempotent and safe to rerun after a restart.
+    """
+    return cleanup_upload_jobs(active_job_ids=_active_extraction_job_ids())
 
 
 def enqueue_extraction(job_id: str) -> str:

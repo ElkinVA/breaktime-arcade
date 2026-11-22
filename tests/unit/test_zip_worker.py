@@ -26,9 +26,11 @@ from apps.pipeline.services.worker import (
     X_SOURCE_UNSAFE,
     WorkerError,
     cleanup_expired_jobs,
+    cleanup_upload_jobs,
     normalize_job_id,
     run_extraction,
 )
+from apps.pipeline.validation.codes import X_STORAGE_FREE_SPACE, X_STORAGE_QUOTA
 
 
 def _zip(entries: dict[str, bytes]) -> bytes:
@@ -319,6 +321,80 @@ def test_cleanup_removes_expired_and_skips_active(roots: tuple[Path, Path]) -> N
     assert not expired_completed.exists()
     assert not expired_incomplete.exists()
     assert active.exists()
+
+
+def test_worker_rejects_when_system_quota_is_exhausted(
+    roots: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    uploads, artifacts = roots
+    job_id = _job_id()
+    _put_source(uploads, job_id, _zip({"index.html": b"hello"}))
+    published = artifacts / "published" / "index.html"
+    published.parent.mkdir()
+    published.write_bytes(b"runtime" * 10)
+    monkeypatch.setattr(settings, "ZIP_STORAGE_QUOTA_BYTES", 10, raising=False)
+    monkeypatch.setattr(settings, "ZIP_STORAGE_MIN_FREE_BYTES", 0, raising=False)
+    monkeypatch.setattr(settings, "ZIP_QUOTA_STATE_ROOT", uploads / ".quota", raising=False)
+
+    outcome = _run(uploads, artifacts, job_id)
+
+    assert outcome.status == "rejected"
+    assert outcome.error_code == X_STORAGE_QUOTA
+    assert published.read_bytes() == b"runtime" * 10
+    assert not (artifacts / job_id / "result").exists()
+
+
+def test_worker_rejects_on_free_space_pressure(
+    roots: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    uploads, artifacts = roots
+    job_id = _job_id()
+    _put_source(uploads, job_id, _zip({"index.html": b"hello"}))
+    monkeypatch.setattr(settings, "ZIP_STORAGE_QUOTA_BYTES", 1_000_000_000, raising=False)
+    monkeypatch.setattr(settings, "ZIP_STORAGE_MIN_FREE_BYTES", 1, raising=False)
+    monkeypatch.setattr(settings, "ZIP_QUOTA_STATE_ROOT", uploads / ".quota", raising=False)
+    monkeypatch.setattr(
+        worker.os,
+        "statvfs",
+        lambda _path: SimpleNamespace(f_bavail=0, f_frsize=1),
+    )
+
+    outcome = _run(uploads, artifacts, job_id, reserve_bytes=0)
+
+    assert outcome.status == "rejected"
+    assert outcome.error_code == X_STORAGE_FREE_SPACE
+    assert not (artifacts / job_id / "result").exists()
+
+
+def test_cleanup_never_removes_active_upload_jobs_and_is_idempotent(
+    roots: tuple[Path, Path],
+) -> None:
+    uploads, artifacts = roots
+    now = time.time()
+    active = _job_id()
+    _put_source(uploads, active, b"active")
+    abandoned = _job_id()
+    _put_source(uploads, abandoned, b"abandoned")
+    _age(uploads / active, now - 100)
+    _age(uploads / abandoned, now - 100)
+
+    first = cleanup_upload_jobs(
+        uploads_root=uploads,
+        staging_ttl=10,
+        now=now,
+        active_job_ids={active},
+    )
+    second = cleanup_upload_jobs(
+        uploads_root=uploads,
+        staging_ttl=10,
+        now=now,
+        active_job_ids={active},
+    )
+
+    assert first == {"removed": 1}
+    assert second == {"removed": 0}
+    assert (uploads / active / "source.zip").is_file()
+    assert not (uploads / abandoned).exists()
 
 
 def _age(path: Path, timestamp: float) -> None:

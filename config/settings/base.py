@@ -404,6 +404,16 @@ ZIP_STAGING_TTL_SECONDS = env_int("ZIP_STAGING_TTL_SECONDS", 60 * 60)
 ZIP_COMPLETED_TTL_SECONDS = env_int("ZIP_COMPLETED_TTL_SECONDS", 60 * 60 * 24)
 ZIP_DISK_RESERVE_BYTES = env_int("ZIP_DISK_RESERVE_BYTES", 150 * 1024 * 1024)
 ZIP_JOB_MAX_BYTES = env_int("ZIP_JOB_MAX_BYTES", 120 * 1024 * 1024)
+# System-wide ZIP quota (ARCADE-P4-STORAGE-001, R-033/R-043). The quota covers
+# uploads + artifacts + the private original-package store; published runtimes
+# are explicitly excluded. State lives on a volume shared by web and
+# zip-worker (compose.dev/staging/prod). Empty value = state under uploads
+# (tests/dev single-container fallback).
+_zip_quota_state = env("ZIP_QUOTA_STATE_ROOT", "")
+ZIP_QUOTA_STATE_ROOT: Path | None = Path(_zip_quota_state) if _zip_quota_state else None
+ZIP_STORAGE_QUOTA_BYTES = env_int("ZIP_STORAGE_QUOTA_BYTES", 2 * 1024 * 1024 * 1024)
+ZIP_STORAGE_MIN_FREE_BYTES = env_int("ZIP_STORAGE_MIN_FREE_BYTES", ZIP_DISK_RESERVE_BYTES)
+ZIP_QUOTA_RESERVATION_TTL_SECONDS = env_int("ZIP_QUOTA_RESERVATION_TTL_SECONDS", 60 * 60)
 # Web-side poll budget for one import. It exceeds the worker's soft limit so
 # worker timeouts surface as their own stable code instead of a client timeout.
 ZIP_IMPORT_WAIT_SECONDS = env_int("ZIP_IMPORT_WAIT_SECONDS", 75)

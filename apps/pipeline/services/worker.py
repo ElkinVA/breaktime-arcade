@@ -27,6 +27,7 @@ from typing import Any
 from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings
 
+from apps.pipeline.services.quota import StorageQuota, StorageQuotaError
 from apps.pipeline.services.unpack import X_CANCELLED, X_TIMEOUT, ExtractionError, extract_zip
 from apps.pipeline.validation.codes import MAX_ZIP_BYTES
 
@@ -563,6 +564,24 @@ def _run_extraction(
             settings.ZIP_JOB_DEADLINE_SECONDS if deadline_seconds is None else deadline_seconds
         )
         deadline = time.monotonic() + deadline_s
+        max_job = settings.ZIP_JOB_MAX_BYTES if job_max_bytes is None else job_max_bytes
+        # Reserve the worst-case artifact size across the shared ZIP roots.
+        # The reservation is released as soon as extraction finishes; actual
+        # bytes are then counted by the post-write guard below.
+        quota = StorageQuota.from_settings(
+            uploads_root=paths.uploads_root, artifacts_root=paths.artifacts_root
+        )
+        try:
+            quota_reservation = quota.reserve(max_job, reason=f"extract:{paths.job_id}")
+        except StorageQuotaError as exc:
+            _audit(paths, "rejected", error_code=exc.code, attempts=attempts)
+            return JobOutcome(
+                job_id=paths.job_id,
+                status="rejected",
+                package_hash=package_hash,
+                error_code=exc.code,
+                attempts=attempts,
+            )
         # Persist the attempt before the long extraction so a hard kill/OOM
         # still advances ATTEMPTS and the redelivery loop can quarantine.
         attempts = _increment_attempts(paths)
@@ -576,55 +595,69 @@ def _run_extraction(
             limits={"max_zip_bytes": max_zip_bytes, "deadline_s": deadline_s},
         )
         try:
-            result = extract_zip(
-                data,
-                paths.result,
-                deadline=deadline,
-                cancel_check=paths.cancel.exists,
-            )
-        except ExtractionError as exc:
-            status = _status_for(exc.code)
-            _audit(
-                paths,
-                status,
-                package_hash=package_hash,
-                error_code=exc.code,
-                attempts=attempts,
-                duration_ms=int((time.monotonic() - started) * 1000),
-            )
-            _remove_partial(paths)
-            return JobOutcome(
-                job_id=paths.job_id,
-                status=status,
-                package_hash=package_hash,
-                error_code=exc.code,
-                attempts=attempts,
-            )
-        except SoftTimeLimitExceeded:
-            _audit(
-                paths,
-                "timeout",
-                package_hash=package_hash,
-                error_code=X_TIMEOUT,
-                attempts=attempts,
-                duration_ms=int((time.monotonic() - started) * 1000),
-            )
-            _remove_partial(paths)
-            raise
-        except Exception:
-            _audit(
-                paths,
-                "error",
-                package_hash=package_hash,
-                error_code=X_INTERNAL,
-                attempts=attempts,
-                duration_ms=int((time.monotonic() - started) * 1000),
-            )
-            _remove_partial(paths)
-            raise
+            try:
+                result = extract_zip(
+                    data,
+                    paths.result,
+                    deadline=deadline,
+                    cancel_check=paths.cancel.exists,
+                )
+            except ExtractionError as exc:
+                status = _status_for(exc.code)
+                _audit(
+                    paths,
+                    status,
+                    package_hash=package_hash,
+                    error_code=exc.code,
+                    attempts=attempts,
+                    duration_ms=int((time.monotonic() - started) * 1000),
+                )
+                _remove_partial(paths)
+                return JobOutcome(
+                    job_id=paths.job_id,
+                    status=status,
+                    package_hash=package_hash,
+                    error_code=exc.code,
+                    attempts=attempts,
+                )
+            except SoftTimeLimitExceeded:
+                _audit(
+                    paths,
+                    "timeout",
+                    package_hash=package_hash,
+                    error_code=X_TIMEOUT,
+                    attempts=attempts,
+                    duration_ms=int((time.monotonic() - started) * 1000),
+                )
+                _remove_partial(paths)
+                raise
+            except Exception:
+                _audit(
+                    paths,
+                    "error",
+                    package_hash=package_hash,
+                    error_code=X_INTERNAL,
+                    attempts=attempts,
+                    duration_ms=int((time.monotonic() - started) * 1000),
+                )
+                _remove_partial(paths)
+                raise
+        finally:
+            quota.release(quota_reservation)
 
         job_size = _tree_size(paths.result)
-        max_job = settings.ZIP_JOB_MAX_BYTES if job_max_bytes is None else job_max_bytes
+        try:
+            quota.assert_within_limit()
+        except StorageQuotaError as exc:
+            _remove_partial(paths)
+            _audit(paths, "rejected", error_code=exc.code, attempts=attempts)
+            return JobOutcome(
+                job_id=paths.job_id,
+                status="rejected",
+                package_hash=package_hash,
+                error_code=exc.code,
+                attempts=attempts,
+            )
         if job_size > max_job:
             _remove_partial(paths)
             _audit(paths, "rejected", error_code=X_JOB_TOO_LARGE, attempts=attempts)
@@ -694,15 +727,19 @@ def cleanup_upload_jobs(
     uploads_root: Path | None = None,
     staging_ttl: int | None = None,
     now: float | None = None,
+    active_job_ids: set[str] | frozenset[str] | None = None,
 ) -> dict[str, int]:
     """Remove abandoned source ZIPs; must run on a writable uploads mount.
 
     This task belongs to the ordinary application worker, not the read-only
-    zip-worker: the zip-worker cannot delete from ``zip_uploads``.
+    zip-worker: the zip-worker cannot delete from ``zip_uploads``.  Job ids in
+    ``active_job_ids`` (queued/running DB rows) are never removed regardless of
+    age.  The operation is filesystem-only and idempotent across restarts.
     """
     uploads, _ = _roots(uploads_root, None)
     current = time.time() if now is None else now
     cutoff = current - (settings.ZIP_STAGING_TTL_SECONDS if staging_ttl is None else staging_ttl)
+    active = {str(job_id) for job_id in (active_job_ids or ())}
     if not uploads.is_dir():
         return {"removed": 0}
     removed = 0
@@ -712,6 +749,8 @@ def cleanup_upload_jobs(
         return {"removed": 0}
     for entry in entries:
         if not entry.is_dir(follow_symlinks=False):
+            continue
+        if entry.name in active:
             continue
         try:
             uuid.UUID(entry.name)

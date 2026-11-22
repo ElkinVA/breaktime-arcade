@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import stat
 import zipfile
 from pathlib import Path
 
 import pytest
+from django.conf import settings
 from django.core.files.storage import default_storage
 from django.utils.functional import empty
 from PIL import Image
@@ -19,6 +21,7 @@ from apps.pipeline.models import GameImportDraft, ZipExtractionJob
 from apps.pipeline.services.importer import import_package
 from apps.pipeline.services.publishing import publish_version
 from apps.pipeline.services.rollback import rollback_version
+from apps.pipeline.services.worker import cleanup_expired_jobs, cleanup_upload_jobs
 
 
 @pytest.fixture
@@ -246,6 +249,133 @@ def test_duplicate_package_is_idempotent(pipeline_env: Path) -> None:
     assert Game.objects.count() == 1
     assert GameVersion.objects.count() == 1
     assert any(item.code == "I_DUPLICATE_PACKAGE" for item in second.report.diagnostics)
+
+
+@pytest.mark.django_db
+def test_quota_exhaustion_is_non_destructive_for_published_version(
+    pipeline_env: Path, settings
+) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    version = first.version
+    assert publish_version(game, version).ok
+    runtime_dir = Path(first.draft.runtime_path)
+    runtime_files = {
+        path.relative_to(runtime_dir).as_posix(): path.read_bytes()
+        for path in runtime_dir.rglob("*")
+        if path.is_file()
+    }
+    package_path = Path(first.draft.package_path)
+    package_bytes = package_path.read_bytes()
+    packages_before = sorted((pipeline_env / "store" / "packages").iterdir())
+
+    settings.ZIP_STORAGE_QUOTA_BYTES = 1
+    settings.ZIP_STORAGE_MIN_FREE_BYTES = 0
+    settings.ZIP_QUOTA_STATE_ROOT = pipeline_env / "quota-state"
+
+    second = _run(pipeline_env, _package(version="1.1.0"))
+
+    assert second.status == "rejected"
+    assert any(item.code == "X_STORAGE_QUOTA" for item in second.report.diagnostics)
+    assert GameVersion.objects.filter(game=game).count() == 1
+    game.refresh_from_db()
+    assert game.current_version_id == version.id
+    assert game.status == Game.STATUS_PUBLISHED
+    assert package_path.read_bytes() == package_bytes
+    assert sorted((pipeline_env / "store" / "packages").iterdir()) == packages_before
+    assert {
+        path.relative_to(runtime_dir).as_posix(): path.read_bytes()
+        for path in runtime_dir.rglob("*")
+        if path.is_file()
+    } == runtime_files
+
+
+@pytest.mark.django_db
+def test_broker_failure_does_not_damage_published_version(pipeline_env: Path, monkeypatch) -> None:
+    from apps.pipeline.services import extraction
+
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    version = first.version
+    assert publish_version(game, version).ok
+    runtime_dir = Path(first.draft.runtime_path)
+    runtime_before = {
+        path.relative_to(runtime_dir).as_posix(): path.read_bytes()
+        for path in runtime_dir.rglob("*")
+        if path.is_file()
+    }
+
+    def unavailable(_job_id: str) -> str:
+        raise RuntimeError("broker down")
+
+    monkeypatch.setattr(extraction, "enqueue_extraction", unavailable)
+    second = _run(pipeline_env, _package(version="1.1.0"))
+
+    assert second.status == "rejected"
+    assert any(item.code == "X_WORKER_UNAVAILABLE" for item in second.report.diagnostics)
+    assert GameVersion.objects.filter(game=game).count() == 1
+    game.refresh_from_db()
+    assert game.current_version_id == version.id
+    assert {
+        path.relative_to(runtime_dir).as_posix(): path.read_bytes()
+        for path in runtime_dir.rglob("*")
+        if path.is_file()
+    } == runtime_before
+
+
+@pytest.mark.django_db
+def test_duplicate_import_creates_no_additional_storage(pipeline_env: Path) -> None:
+    data = _package()
+    first = _run(pipeline_env, data)
+    assert first.version is not None
+    packages_before = sorted((pipeline_env / "store" / "packages").iterdir())
+    runtimes_before = sorted((pipeline_env / "runtime").rglob("*"))
+
+    second = _run(pipeline_env, data)
+
+    assert second.status == "duplicate"
+    assert second.version is not None and second.version.pk == first.version.pk
+    assert GameVersion.objects.count() == 1
+    assert sorted((pipeline_env / "store" / "packages").iterdir()) == packages_before
+    assert sorted((pipeline_env / "runtime").rglob("*")) == runtimes_before
+
+
+def test_cleanup_rerun_never_touches_published_artifacts(pipeline_env: Path) -> None:
+    store = pipeline_env / "store"
+    runtime = pipeline_env / "runtime"
+    uploads = Path(settings.ZIP_UPLOADS_ROOT)
+    artifacts = Path(settings.ZIP_ARTIFACTS_ROOT)
+    (store / "packages").mkdir(parents=True, exist_ok=True)
+    (runtime / "published").mkdir(parents=True, exist_ok=True)
+    package = store / "packages" / "abc.zip"
+    package.write_bytes(b"original")
+    runtime_file = runtime / "published" / "index.html"
+    runtime_file.write_bytes(b"published")
+    abandoned = uploads / "00000000-0000-0000-0000-000000000001"
+    abandoned.mkdir(parents=True)
+    (abandoned / "source.zip").write_bytes(b"abandoned")
+    os.utime(abandoned, (1_000_000, 1_000_000))
+    expired = artifacts / "00000000-0000-0000-0000-000000000002"
+    expired.mkdir(parents=True)
+    os.utime(expired, (1_000_000, 1_000_000))
+
+    first_uploads = cleanup_upload_jobs(uploads_root=uploads, staging_ttl=60, now=1_000_061)
+    second_uploads = cleanup_upload_jobs(uploads_root=uploads, staging_ttl=60, now=1_000_061)
+    first_artifacts = cleanup_expired_jobs(
+        artifacts_root=artifacts, staging_ttl=60, completed_ttl=60, now=1_000_061
+    )
+    second_artifacts = cleanup_expired_jobs(
+        artifacts_root=artifacts, staging_ttl=60, completed_ttl=60, now=1_000_061
+    )
+
+    assert first_uploads == {"removed": 1}
+    assert second_uploads == {"removed": 0}
+    assert first_artifacts["removed"] == 1
+    assert second_artifacts["removed"] == 0
+    assert package.read_bytes() == b"original"
+    assert runtime_file.read_bytes() == b"published"
 
 
 @pytest.mark.django_db
