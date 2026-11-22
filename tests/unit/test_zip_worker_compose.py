@@ -58,6 +58,8 @@ def test_regular_worker_does_not_consume_zip() -> None:
     assert "-Q" in command
     assert "default,celery" in command
     assert "zip" not in command
+    # The default worker, not the read-only zip-worker, owns upload cleanup.
+    assert "zip_uploads:/var/ba/zip/uploads" in service["volumes"]
 
 
 def test_web_volume_access() -> None:

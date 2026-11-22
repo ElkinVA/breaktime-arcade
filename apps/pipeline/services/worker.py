@@ -689,19 +689,27 @@ def _status_for(code: str) -> str:
     return "rejected"
 
 
-def _cleanup_upload_jobs(
-    uploads: Path,
+def cleanup_upload_jobs(
     *,
-    cutoff: float,
-) -> int:
-    """Remove abandoned source ZIPs left by failed/timed-out web handoffs."""
+    uploads_root: Path | None = None,
+    staging_ttl: int | None = None,
+    now: float | None = None,
+) -> dict[str, int]:
+    """Remove abandoned source ZIPs; must run on a writable uploads mount.
+
+    This task belongs to the ordinary application worker, not the read-only
+    zip-worker: the zip-worker cannot delete from ``zip_uploads``.
+    """
+    uploads, _ = _roots(uploads_root, None)
+    current = time.time() if now is None else now
+    cutoff = current - (settings.ZIP_STAGING_TTL_SECONDS if staging_ttl is None else staging_ttl)
     if not uploads.is_dir():
-        return 0
+        return {"removed": 0}
     removed = 0
     try:
         entries = list(os.scandir(uploads))
     except OSError:
-        return 0
+        return {"removed": 0}
     for entry in entries:
         if not entry.is_dir(follow_symlinks=False):
             continue
@@ -711,25 +719,27 @@ def _cleanup_upload_jobs(
             continue
         job_dir = Path(entry.path)
         try:
-            if job_dir.stat().st_mtime >= cutoff:
+            if job_dir.is_symlink() or job_dir.stat().st_mtime >= cutoff:
                 continue
             _remove_tree(job_dir)
-            removed += 1
+            # _remove_tree uses ignore_errors; only count actual deletions so a
+            # read-only/wrong mount cannot report a false success.
+            if not job_dir.exists():
+                removed += 1
         except OSError:
             continue
-    return removed
+    return {"removed": removed}
 
 
 def cleanup_expired_jobs(
     *,
-    uploads_root: Path | None = None,
     artifacts_root: Path | None = None,
     staging_ttl: int | None = None,
     completed_ttl: int | None = None,
     now: float | None = None,
 ) -> dict[str, int]:
-    """Remove expired job directories; active locks are skipped."""
-    uploads, artifacts = _roots(uploads_root, artifacts_root)
+    """Remove expired artifact directories; active locks are skipped."""
+    _, artifacts = _roots(None, artifacts_root)
     current = time.time() if now is None else now
     incomplete_cutoff = current - (
         settings.ZIP_STAGING_TTL_SECONDS if staging_ttl is None else staging_ttl
@@ -737,14 +747,14 @@ def cleanup_expired_jobs(
     completed_cutoff = current - (
         settings.ZIP_COMPLETED_TTL_SECONDS if completed_ttl is None else completed_ttl
     )
-    removed = _cleanup_upload_jobs(uploads, cutoff=incomplete_cutoff)
+    removed = 0
     skipped = 0
     if not artifacts.is_dir():
-        return {"removed": removed, "skipped": skipped}
+        return {"removed": 0, "skipped": 0}
     try:
         entries = list(os.scandir(artifacts))
     except OSError:
-        return {"removed": removed, "skipped": 0}
+        return {"removed": 0, "skipped": 0}
     for entry in entries:
         if not entry.is_dir(follow_symlinks=False):
             continue

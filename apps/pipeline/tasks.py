@@ -10,6 +10,7 @@ from celery.exceptions import SoftTimeLimitExceeded
 from apps.pipeline.services.worker import (
     WorkerError,
     cleanup_expired_jobs,
+    cleanup_upload_jobs,
     run_extraction,
 )
 from celery import shared_task
@@ -36,6 +37,12 @@ def cleanup_zip_staging() -> dict[str, int]:
     R-036: acks_late + reject_on_worker_lost; idempotent cleanup.
     """
     return cleanup_expired_jobs()
+
+
+@shared_task(name="apps.pipeline.tasks.cleanup_zip_uploads")
+def cleanup_zip_uploads() -> dict[str, int]:
+    """Remove abandoned source ZIPs on the writable default-worker mount."""
+    return cleanup_upload_jobs()
 
 
 def enqueue_extraction(job_id: str) -> str:

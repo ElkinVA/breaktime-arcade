@@ -293,6 +293,12 @@ CELERY_TASK_ANNOTATIONS = {
         "soft_time_limit": 240,
         "time_limit": 300,
     },
+    "apps.pipeline.tasks.cleanup_zip_uploads": {
+        "acks_late": True,
+        "reject_on_worker_lost": True,
+        "soft_time_limit": 240,
+        "time_limit": 300,
+    },
 }
 CELERY_BEAT_SCHEDULE: dict[str, dict[str, object]] = {
     "backup-full-daily": {
@@ -329,6 +335,11 @@ CELERY_BEAT_SCHEDULE: dict[str, dict[str, object]] = {
         "task": "apps.pipeline.tasks.cleanup_zip_staging",
         "schedule": 60 * 60,
         "options": {"queue": "zip", "expires": 60 * 10},
+    },
+    "pipeline-cleanup-zip-uploads": {
+        "task": "apps.pipeline.tasks.cleanup_zip_uploads",
+        "schedule": 60 * 60,
+        "options": {"expires": 60 * 10},
     },
 }
 

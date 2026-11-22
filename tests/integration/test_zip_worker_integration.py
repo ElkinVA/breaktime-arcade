@@ -17,7 +17,7 @@ from apps.pipeline.models import GameImportDraft, ZipExtractionJob
 from apps.pipeline.services import extraction, importer
 from apps.pipeline.services.extraction import WorkerClientError
 from apps.pipeline.services.importer import import_package
-from apps.pipeline.services.worker import X_SOURCE_UNSAFE, cleanup_expired_jobs
+from apps.pipeline.services.worker import X_SOURCE_UNSAFE, cleanup_upload_jobs
 
 
 def _zip(entries: dict[str, bytes]) -> bytes:
@@ -220,12 +220,11 @@ def test_cleanup_removes_abandoned_upload_jobs(tmp_path: Path) -> None:
     old = 1_000_000.0
     os.utime(uploads / job_id, (old, old))
 
-    result = cleanup_expired_jobs(
+    result = cleanup_upload_jobs(
         uploads_root=uploads,
-        artifacts_root=tmp_path / "artifacts",
         staging_ttl=60,
         now=old + 61,
     )
 
-    assert result["removed"] >= 1
+    assert result["removed"] == 1
     assert not (uploads / job_id).exists()
