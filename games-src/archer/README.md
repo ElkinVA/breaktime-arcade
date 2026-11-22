@@ -35,7 +35,7 @@ publish time. Game code never touches cookies, localStorage or the portal.
 ## Build
 
 ```bash
-python3 pack.py --output dist/archer-1.3.1.zip
+python3 pack.py --output dist/archer-1.3.2.zip
 ```
 
 The ZIP is deterministic: sorted entries, fixed timestamps, normalized modes,

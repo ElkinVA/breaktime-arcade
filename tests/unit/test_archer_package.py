@@ -86,7 +86,7 @@ def test_manifest_matches_contract_and_is_fully_declared() -> None:
     manifest = result.manifest
     assert manifest is not None
     assert manifest["id"] == "archer"
-    assert manifest["version"] == "1.3.1"
+    assert manifest["version"] == "1.3.2"
     assert manifest["sdkVersion"] == "^1.0"
     assert manifest["protocol"] == 1
     assert manifest["defaultLanguage"] == "en"
