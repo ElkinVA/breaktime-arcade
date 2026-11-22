@@ -24,14 +24,14 @@
                 {% if card.rating_count %}
                     <span class="font-semibold" data-testid="card-rating-average">{{ card.rating_average|floatformat:2 }}</span>
                     <span class="text-muted">{% ba_t "catalog.rating_out_of" %}</span>
-                    <span class="text-muted" data-testid="card-rating-count">{% if card.rating_count == 1 %}{% ba_t "catalog.rating_votes_one" count=card.rating_count %}{% else %}{% ba_t "catalog.rating_votes_other" count=card.rating_count %}{% endif %}</span>
+                    <span class="text-muted" data-testid="card-rating-count">{% ba_plural "catalog.rating_votes" count=card.rating_count %}</span>
                 {% else %}
                     <span class="text-muted" data-testid="card-rating-empty">{% ba_t "catalog.rating_empty" %}</span>
                 {% endif %}
             </div>
             <div class="mt-1 text-sm text-muted" data-testid="card-popularity">
                 <span class="font-semibold" data-testid="card-popularity-count">{{ card.popularity }}</span>
-                {% if card.popularity == 1 %}{% ba_t "catalog.popularity_card_one" %}{% else %}{% ba_t "catalog.popularity_card_other" %}{% endif %}
+                {% ba_plural "catalog.popularity_card" count=card.popularity %}
             </div>
         </article>
     {% endfor %}

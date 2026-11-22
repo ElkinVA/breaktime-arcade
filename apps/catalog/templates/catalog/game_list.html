@@ -7,29 +7,33 @@
 
 {% block content %}
 <section class="max-w-7xl mx-auto px-4 py-8">
-    <h1 class="text-3xl font-display font-bold mb-6">{% ba_t "catalog.title" %}</h1>
+    <h1 id="catalog-heading" class="text-3xl font-display font-bold mb-6">{% ba_t "catalog.title" %}</h1>
     <form method="get" action="{% url 'catalog:game_list' %}"
+          role="search" aria-labelledby="catalog-heading"
           hx-get="{% url 'catalog:game_list' %}" hx-target="#game-results"
           hx-push-url="true" hx-trigger="change, keyup changed delay:400ms, submit"
           class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-8">
-        <label class="lg:col-span-2">
+        <label class="lg:col-span-2 min-w-0" for="catalog-search">
             <span class="block text-xs text-muted mb-1">Search</span>
             <input class="w-full rounded-lg border border-text/10 bg-surface px-3 py-2"
+                   id="catalog-search"
                    type="search" name="q" value="{{ filters.q }}" minlength="2"
                    placeholder="{% ba_t "catalog.title" %}">
         </label>
-        <label>
+        <label class="min-w-0" for="catalog-genre">
             <span class="block text-xs text-muted mb-1">Genre</span>
-            <select class="w-full rounded-lg border border-text/10 bg-surface px-3 py-2" name="genre">
+            <select class="w-full rounded-lg border border-text/10 bg-surface px-3 py-2"
+                    id="catalog-genre" name="genre">
                 <option value="">All</option>
                 {% for genre in genres %}
                     <option value="{{ genre.code }}" {% if filters.genre == genre.code %}selected{% endif %}>{{ genre.name }}</option>
                 {% endfor %}
             </select>
         </label>
-        <label>
+        <label class="min-w-0" for="catalog-duration">
             <span class="block text-xs text-muted mb-1">Duration</span>
-            <select class="w-full rounded-lg border border-text/10 bg-surface px-3 py-2" name="duration">
+            <select class="w-full rounded-lg border border-text/10 bg-surface px-3 py-2"
+                    id="catalog-duration" name="duration">
                 <option value="">Any</option>
                 <option value="short" {% if filters.duration == "short" %}selected{% endif %}>≤5 min</option>
                 <option value="medium" {% if filters.duration == "medium" %}selected{% endif %}>5–15 min</option>
@@ -37,9 +41,10 @@
                 <option value="epic" {% if filters.duration == "epic" %}selected{% endif %}>30+ min</option>
             </select>
         </label>
-        <label>
+        <label class="min-w-0" for="catalog-sort">
             <span class="block text-xs text-muted mb-1">{% ba_t "catalog.sort_label" %}</span>
-            <select class="w-full rounded-lg border border-text/10 bg-surface px-3 py-2" name="sort">
+            <select class="w-full rounded-lg border border-text/10 bg-surface px-3 py-2"
+                    id="catalog-sort" name="sort">
                 <option value="new" {% if filters.sort == "new" %}selected{% endif %}>{% ba_t "catalog.sort_new" %}</option>
                 <option value="rating" {% if filters.sort == "rating" %}selected{% endif %}>{% ba_t "catalog.sort_rating" %}</option>
                 <option value="votes" {% if filters.sort == "votes" %}selected{% endif %}>{% ba_t "catalog.sort_votes" %}</option>
@@ -47,17 +52,17 @@
                 <option value="old" {% if filters.sort == "old" %}selected{% endif %}>{% ba_t "catalog.sort_old" %}</option>
             </select>
         </label>
-        <label class="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="mobile" value="1" {% if filters.mobile %}checked{% endif %}>
+        <label class="flex items-center gap-2 text-sm min-w-0" for="catalog-mobile">
+            <input type="checkbox" id="catalog-mobile" name="mobile" value="1" {% if filters.mobile %}checked{% endif %}>
             Mobile support
         </label>
         {% if tags %}
-            <fieldset class="lg:col-span-4">
-                <legend class="block text-xs text-muted mb-1">Tags</legend>
+            <fieldset class="lg:col-span-4 min-w-0" aria-labelledby="catalog-tags-legend">
+                <legend id="catalog-tags-legend" class="block text-xs text-muted mb-1">Tags</legend>
                 <div class="flex flex-wrap gap-3">
                     {% for tag in tags %}
-                        <label class="flex items-center gap-1 text-sm">
-                            <input type="checkbox" name="tag" value="{{ tag.code }}"
+                        <label class="flex items-center gap-1 text-sm" for="catalog-tag-{{ tag.code }}">
+                            <input type="checkbox" id="catalog-tag-{{ tag.code }}" name="tag" value="{{ tag.code }}"
                                    {% if tag.code in filters.tags %}checked{% endif %}>
                             {{ tag.name }}
                         </label>
@@ -67,7 +72,7 @@
         {% endif %}
         <button type="submit" class="btn btn-primary px-4 py-2">Apply</button>
     </form>
-    <div id="game-results">
+    <div id="game-results" role="region" aria-live="polite" aria-labelledby="catalog-heading">
         {% include "catalog/_game_cards.html" %}
     </div>
 </section>

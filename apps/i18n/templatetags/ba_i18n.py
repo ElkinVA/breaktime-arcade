@@ -2,15 +2,32 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django import template
 from django.http import HttpRequest
 
 from apps.i18n.middleware import get_active_languages
-from apps.i18n.services import translate
+from apps.i18n.services import plural_translation, translate
+
+if TYPE_CHECKING:
+    from apps.i18n.models import Language
 
 register = template.Library()
+
+
+def _languages_for(request: HttpRequest) -> tuple[Language | None, Language | None]:
+    """Return ``(current, fallback)`` and memoise the active-language query."""
+    current_code = getattr(request, "LANGUAGE_CODE", "en")
+    # Memoise per request: the tag runs once per card and must not issue a
+    # language query for every rendered card.
+    languages: list[Language] | None = getattr(request, "_ba_active_languages", None)
+    if languages is None:
+        languages = get_active_languages()
+        request._ba_active_languages = languages  # type: ignore[attr-defined]
+    current = next((lang for lang in languages if lang.code == current_code), None)
+    fallback = next((lang for lang in languages if lang.code == "en"), None)
+    return current, fallback
 
 
 @register.simple_tag(takes_context=True)
@@ -25,20 +42,42 @@ def ba_t(context: dict[str, Any], full_key: str, **params: Any) -> str:
         return ""
     namespace, key = parts
 
-    current_code = getattr(request, "LANGUAGE_CODE", "en")
-    # Memoise per request: the tag runs once per card and must not issue a
-    # language query for every rendered card.
-    languages = getattr(request, "_ba_active_languages", None)
-    if languages is None:
-        languages = get_active_languages()
-        request._ba_active_languages = languages  # type: ignore[attr-defined]
-    current = next((lang for lang in languages if lang.code == current_code), None)
-    fallback = next((lang for lang in languages if lang.code == "en"), None)
-
+    current, fallback = _languages_for(request)
     if current is None:
         return ""
 
     return translate(namespace, key, current, params=params, fallback=fallback)
+
+
+@register.simple_tag(takes_context=True)
+def ba_plural(context: dict[str, Any], full_key: str, count: Any, **params: Any) -> str:
+    """CLDR-плюрализация ``<base>_one/_few/_many/_other`` для ``count``."""
+    request: HttpRequest | None = context.get("request")
+    if request is None:
+        return ""
+
+    parts = full_key.split(".", 1)
+    if len(parts) != 2:
+        return ""
+    namespace, base_key = parts
+
+    current, fallback = _languages_for(request)
+    if current is None:
+        return ""
+
+    try:
+        numeric_count = int(count)
+    except TypeError, ValueError:
+        numeric_count = 0
+
+    return plural_translation(
+        namespace,
+        base_key,
+        numeric_count,
+        current,
+        fallback=fallback,
+        params=params,
+    )
 
 
 @register.simple_tag(takes_context=True)

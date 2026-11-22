@@ -29,7 +29,7 @@
         <div><dt class="text-muted">Published</dt><dd>{{ game.published_at|date:"Y-m-d"|default:"—" }}</dd></div>
         <div>
             <dt class="text-muted">{% ba_t "catalog.popularity_label" %}</dt>
-            <dd><span data-testid="game-popularity">{{ popularity }}</span> {% if popularity == 1 %}{% ba_t "catalog.credit_one" %}{% else %}{% ba_t "catalog.credit_other" %}{% endif %}</dd>
+            <dd><span data-testid="game-popularity">{{ popularity }}</span> {% ba_plural "catalog.credit" count=popularity %}</dd>
         </div>
     </dl>
     <section class="mb-8" aria-labelledby="rating-summary-heading">
@@ -41,7 +41,7 @@
             </p>
             <p class="text-sm text-muted">
                 <span data-testid="rating-count">{{ rating_count }}</span>
-                {% if rating_count == 1 %}{% ba_t "catalog.vote_one" %}{% else %}{% ba_t "catalog.vote_other" %}{% endif %}
+                {% ba_plural "catalog.vote" count=rating_count %}
             </p>
         {% else %}
             <p class="text-muted" data-testid="rating-empty">{% ba_t "catalog.rating_empty" %}</p>
@@ -60,14 +60,18 @@
                       data-limit-message="{% ba_t 'catalog.rating_vote_limit_error' %}">
                     {% csrf_token %}
                     <fieldset>
-                        <legend class="font-semibold mb-2">{% ba_t "catalog.rating_vote_title" %}</legend>
-                        <div class="flex items-center gap-1" role="radiogroup">
+                        <legend id="rating-vote-legend" class="font-semibold mb-2">{% ba_t "catalog.rating_vote_title" %}</legend>
+                        <div class="flex flex-wrap items-center gap-1" role="radiogroup"
+                             aria-labelledby="rating-vote-legend">
                             {% for value in rating_values %}
-                                <label class="cursor-pointer text-2xl text-muted hover:text-accent has-[:checked]:text-accent">
+                                <label class="cursor-pointer rounded-sm text-2xl text-muted hover:text-accent has-[:checked]:text-accent focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent"
+                                       for="rating-vote-radio-{{ value }}">
                                     <input class="sr-only"
+                                           id="rating-vote-radio-{{ value }}"
                                            type="radio"
                                            name="value"
                                            value="{{ value }}"
+                                           aria-label="{{ value }} {% ba_t "catalog.rating_out_of" %}"
                                            data-testid="rating-vote-{{ value }}"
                                            {% if rating_my_vote == value %}checked{% endif %}
                                            required>
@@ -80,7 +84,8 @@
                     <button class="btn mt-3 px-4 py-1" type="submit" data-testid="rating-submit">
                         {% ba_t "catalog.rating_vote_submit" %}
                     </button>
-                    <p class="text-sm mt-2" role="status" aria-live="polite" data-testid="rating-vote-status"></p>
+                    <p class="text-sm mt-2" role="status" aria-live="polite" aria-atomic="true"
+                       data-testid="rating-vote-status"></p>
                 </form>
             {% else %}
                 <p class="text-muted mt-4" data-testid="rating-playtime-required">

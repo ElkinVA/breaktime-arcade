@@ -9,8 +9,11 @@ fallback language, matching the language sitemap (§2.15/§2.19).
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+import json
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
 
 from django.conf import settings
 
@@ -19,6 +22,7 @@ from apps.i18n.models import Language
 from apps.i18n.services import translate
 
 FALLBACK_LANGUAGE_CODE = "en"
+SITE_NAME = "Breaktime Arcade"
 OG_LOCALES = {
     "en": "en_US",
     "de": "de_DE",
@@ -39,7 +43,11 @@ class SeoAlternate:
 
 @dataclass(frozen=True)
 class SeoMeta:
-    """Rendered by ``templates/partials/seo_meta.html``."""
+    """Rendered by ``templates/partials/seo_meta.html``.
+
+    ``json_ld`` holds pre-serialized, HTML-safe JSON-LD documents emitted as
+    ``<script type="application/ld+json">`` blocks.
+    """
 
     title: str
     description: str
@@ -48,6 +56,7 @@ class SeoMeta:
     og_type: str = "website"
     og_locale: str = FALLBACK_LANGUAGE_CODE
     noindex: bool = False
+    json_ld: tuple[str, ...] = field(default_factory=tuple)
 
 
 def _og_locale(language_code: str) -> str:
@@ -134,6 +143,73 @@ def _game_description(translation: GameTranslation | None) -> str:
     return translation.short_description.strip()
 
 
+def _localized_genre(game: Game, language_code: str) -> str:
+    """Genre name in ``language_code``; falls back to English, then the code."""
+    translations = list(game.primary_genre.translations.all())
+    for translation in translations:
+        if translation.language.code == language_code and translation.name.strip():
+            return translation.name.strip()
+    for translation in translations:
+        if translation.language.code == FALLBACK_LANGUAGE_CODE and translation.name.strip():
+            return translation.name.strip()
+    return game.primary_genre.code
+
+
+def _video_game_payload(
+    *,
+    name: str,
+    description: str,
+    url: str,
+    language_code: str,
+    genre: str = "",
+    published_at: datetime | None = None,
+    play_minutes: int | None = None,
+) -> dict[str, Any]:
+    """A schema.org ``VideoGame``/``Game`` document from localized values."""
+    payload: dict[str, Any] = {
+        "@context": "https://schema.org",
+        "@type": ["VideoGame", "Game"],
+        "name": name,
+        "url": url,
+        "inLanguage": language_code,
+        "applicationCategory": "Game",
+        "gamePlatform": "Web browser",
+        "publisher": {
+            "@type": "Organization",
+            "name": SITE_NAME,
+            "url": f"{_origin()}/",
+        },
+    }
+    if description:
+        payload["description"] = description
+    if genre:
+        payload["genre"] = genre
+    if published_at is not None:
+        payload["datePublished"] = published_at.date().isoformat()
+    if play_minutes:
+        # ISO 8601 duration, e.g. PT5M.
+        payload["timeRequired"] = f"PT{int(play_minutes)}M"
+    return payload
+
+
+def _breadcrumb_payload(items: Iterable[tuple[str, str]]) -> dict[str, Any]:
+    """A schema.org ``BreadcrumbList`` from ``(localized name, absolute URL)``."""
+    return {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": position, "name": name, "item": url}
+            for position, (name, url) in enumerate(items, start=1)
+        ],
+    }
+
+
+def _json_ld(payload: dict[str, Any]) -> str:
+    """Serialize JSON-LD and make it safe to embed inside ``<script>``."""
+    serialized = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    return serialized.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+
+
 def game_seo(
     game: Game,
     translation: GameTranslation | None,
@@ -153,13 +229,35 @@ def game_seo(
         return f"/{code}/games/{slug}/"
 
     current_slug = _slug_for(slugs, language_code, game.slug)
+    canonical_url = _absolute(f"/{language_code}/games/{current_slug}/")
+    title = _game_title(translation, game)
+    description = _game_description(translation)
+    catalog_title = _ui_string(language_code, "title") or "Game catalog"
+
+    video_game = _video_game_payload(
+        name=title,
+        description=description,
+        url=canonical_url,
+        language_code=language_code,
+        genre=_localized_genre(game, language_code),
+        published_at=game.published_at,
+        play_minutes=game.estimated_play_minutes,
+    )
+    breadcrumbs = _breadcrumb_payload(
+        (
+            (SITE_NAME, _absolute(f"/{language_code}/")),
+            (catalog_title, _absolute(f"/{language_code}/games/")),
+            (title, canonical_url),
+        )
+    )
     return SeoMeta(
-        title=_game_title(translation, game),
-        description=_game_description(translation),
-        canonical_url=_absolute(f"/{language_code}/games/{current_slug}/"),
+        title=title,
+        description=description,
+        canonical_url=canonical_url,
         alternates=_alternates(codes, path_for),
         og_type="website",
         og_locale=_og_locale(language_code),
+        json_ld=(_json_ld(video_game), _json_ld(breadcrumbs)),
     )
 
 
@@ -169,8 +267,15 @@ def catalog_seo(
     *,
     canonical_url: str,
     noindex: bool = False,
+    cards: Iterable[dict[str, Any]] | None = None,
+    genre_names: Mapping[str, str] | None = None,
 ) -> SeoMeta:
-    """SEO metadata for the public catalog list in ``language_code``."""
+    """SEO metadata for the public catalog list in ``language_code``.
+
+    When ``cards`` (the visible localized cards) are supplied, the page also
+    emits an ``ItemList`` of ``VideoGame``/``Game`` entries. ``genre_names``
+    maps canonical genre codes to their localized names.
+    """
     language_code = str(language_code).lower()
     codes = _normalize_codes(active_language_codes)
     if not codes:
@@ -178,9 +283,66 @@ def catalog_seo(
 
     title = _ui_string(language_code, "title") or "Game catalog"
     description = _ui_string(language_code, "meta_description") or title
+    catalog_url = _absolute(f"/{language_code}/games/")
 
     def path_for(code: str) -> str:
         return f"/{code}/games/"
+
+    blocks = [
+        _json_ld(
+            _breadcrumb_payload(
+                (
+                    (SITE_NAME, _absolute(f"/{language_code}/")),
+                    (title, catalog_url),
+                )
+            )
+        )
+    ]
+    if cards is not None:
+        items: list[dict[str, Any]] = []
+        for position, card in enumerate(cards, start=1):
+            game = card["game"]
+            translation = card.get("translation")
+            card_slug = (
+                translation.slug if translation is not None and translation.slug else game.slug
+            )
+            card_name = (
+                translation.name.strip()
+                if translation is not None and translation.name.strip()
+                else game.technical_id
+            )
+            card_description = (
+                translation.short_description.strip() if translation is not None else ""
+            )
+            genre_code = game.primary_genre.code
+            card_genre = (
+                genre_names.get(genre_code, genre_code) if genre_names is not None else genre_code
+            )
+            items.append(
+                {
+                    "@type": "ListItem",
+                    "position": position,
+                    "item": _video_game_payload(
+                        name=card_name,
+                        description=card_description,
+                        url=_absolute(f"/{language_code}/games/{card_slug}/"),
+                        language_code=language_code,
+                        genre=card_genre,
+                        published_at=game.published_at,
+                        play_minutes=game.estimated_play_minutes,
+                    ),
+                }
+            )
+        if items:
+            blocks.append(
+                _json_ld(
+                    {
+                        "@context": "https://schema.org",
+                        "@type": "ItemList",
+                        "itemListElement": items,
+                    }
+                )
+            )
 
     return SeoMeta(
         title=title,
@@ -190,4 +352,5 @@ def catalog_seo(
         og_type="website",
         og_locale=_og_locale(language_code),
         noindex=noindex,
+        json_ld=tuple(blocks),
     )

@@ -13,4 +13,6 @@
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="{{ seo.title }}">
     {% if seo.description %}<meta name="twitter:description" content="{{ seo.description }}">{% endif %}
+    {% for block in seo.json_ld %}<script type="application/ld+json" nonce="{{ csp_nonce }}" data-testid="seo-json-ld">{{ block|safe }}</script>
+    {% endfor %}
 {% endif %}

@@ -24,14 +24,22 @@ RU_TRANSLATIONS = {
     "rating_title": "Оценки",
     "rating_out_of": "из 5",
     "rating_votes_one": "{count} голос",
+    "rating_votes_few": "{count} голоса",
+    "rating_votes_many": "{count} голосов",
     "rating_votes_other": "{count} голосов",
     "vote_one": "голос",
+    "vote_few": "голоса",
+    "vote_many": "голосов",
     "vote_other": "голосов",
     "rating_empty": "Оценок пока нет.",
     "popularity_label": "Популярность (30 дней)",
     "credit_one": "кредит",
+    "credit_few": "кредита",
+    "credit_many": "кредитов",
     "credit_other": "кредитов",
     "popularity_card_one": "кредит за 30 дней",
+    "popularity_card_few": "кредита за 30 дней",
+    "popularity_card_many": "кредитов за 30 дней",
     "popularity_card_other": "кредитов за 30 дней",
     "sort_label": "Сортировка",
     "sort_new": "Сначала новые",
@@ -139,6 +147,7 @@ def test_non_default_language_renders_published_catalog_translations() -> None:
     assert ">По голосам<" in content
     assert ">По популярности<" in content
     assert ">Сначала старые<" in content
+    assert "кредита за 30 дней" in content
     assert "кредитов за 30 дней" in content
     assert "Оценок пока нет." in content
     assert "Most voted" not in content
@@ -151,8 +160,9 @@ def test_non_default_language_renders_published_catalog_translations() -> None:
     assert "Оценки" in detail_content
     assert "из 5" in detail_content
     assert "Популярность (30 дней)" in detail_content
-    assert "голосов" in detail_content
-    assert "кредитов" in detail_content
+    # 2 votes → CLDR "few", 3 popularity credits → CLDR "few".
+    assert "голоса" in detail_content
+    assert "кредита" in detail_content
     assert "Popularity (30 days)" not in detail_content
 
 

@@ -105,12 +105,7 @@ def game_list(request: HttpRequest) -> TemplateResponse:
     active_language_codes = get_active_language_codes_safely()
     page_canonical_url = canonical_url(request, params, page_obj.number)
     robots_noindex = should_noindex(page_obj.number)
-    seo = catalog_seo(
-        language_code,
-        active_language_codes,
-        canonical_url=page_canonical_url,
-        noindex=robots_noindex,
-    )
+    cards = card_items(page_obj.object_list, language_code, active_language_codes)
     search_fallback = search_fallback_required(filters, page_obj.paginator.count)
     search_fallback_cards = (
         card_items(popular_games(filters=filters), language_code, active_language_codes)
@@ -121,14 +116,26 @@ def game_list(request: HttpRequest) -> TemplateResponse:
         # Keep the suggestive block useful even when no popular game matches
         # the other active filters.
         search_fallback_cards = card_items(popular_games(), language_code, active_language_codes)
+    # Structured data must describe the games actually visible on the page,
+    # including the popular suggestions shown for an empty search.
+    structured_cards = cards or (search_fallback_cards if search_fallback else [])
+    genres = genre_options(language_code)
+    seo = catalog_seo(
+        language_code,
+        active_language_codes,
+        canonical_url=page_canonical_url,
+        noindex=robots_noindex,
+        cards=structured_cards,
+        genre_names={genre["code"]: genre["name"] for genre in genres},
+    )
     context = {
         "title": seo.title,
         "games": page_obj.object_list,
-        "cards": card_items(page_obj.object_list, language_code, active_language_codes),
+        "cards": cards,
         "search_fallback": search_fallback,
         "search_fallback_cards": search_fallback_cards,
         "filters": filters,
-        "genres": genre_options(language_code),
+        "genres": genres,
         "tags": tag_options(language_code),
         "language_code": language_code,
         "page_obj": page_obj,
