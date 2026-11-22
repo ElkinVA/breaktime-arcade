@@ -34,6 +34,7 @@ services:
       - .:/app
       - media_data:/app/media
       - app_var:/app/var
+      - zip_uploads:/var/ba/zip/uploads
     deploy:
       resources:
         limits: { cpus: "0.5", memory: 512M }

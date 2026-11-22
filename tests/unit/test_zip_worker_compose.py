@@ -58,8 +58,14 @@ def test_regular_worker_does_not_consume_zip() -> None:
     assert "-Q" in command
     assert "default,celery" in command
     assert "zip" not in command
-    # The default worker, not the read-only zip-worker, owns upload cleanup.
-    assert "zip_uploads:/var/ba/zip/uploads" in service["volumes"]
+    # The default worker, not the read-only zip-worker, owns upload cleanup;
+    # its inherited media/app_var/static mounts must survive the override.
+    assert service["volumes"] == [
+        "static_data:/app/staticfiles",
+        "media_data:/app/media",
+        "app_var:/app/var",
+        "zip_uploads:/var/ba/zip/uploads",
+    ]
 
 
 def test_web_volume_access() -> None:
