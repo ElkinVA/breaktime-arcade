@@ -27,18 +27,6 @@
         pause: "Pause", resume: "Resume", game_over: "Round complete",
         best_unknown: "—", retry: "Retry",
     });
-    const REQUIRED_KEYS = Object.freeze([
-        "page_title", "game_title", "kicker", "rule", "start", "controls_title",
-        "controls_hint", "orientation_hint", "sound_label", "sound_on", "sound_off",
-        "guest_notice", "register_cta", "score_label", "combo_label", "time_label",
-        "pause", "pause_title", "pause_reason", "resume", "restart", "exit",
-        "session_kicker", "game_over", "your_score", "best_score", "rank",
-        "hits_label", "shots_label", "accuracy_label", "best_combo_label",
-        "top_scores", "play_again", "result_retry", "loading", "error_sdk",
-        "error_network", "result_saving", "result_saved", "result_rejected",
-        "session_expired", "best_unknown", "retry",
-    ]);
-
     const dom = {};
     const state = {
         ba: null,
@@ -651,6 +639,9 @@
                 if (result.rank !== null && result.rank !== undefined) {
                     dom["rank-value"].textContent = String(result.rank);
                 }
+                if (result.isRecord === true || result.isPersonalBest === true) {
+                    dom["best-score"].textContent = String(state.round.score.score);
+                }
             }
         }
         if (!guest) {
@@ -935,6 +926,20 @@
         }
     }
 
+    function onOffline() {
+        state.networkLost = true;
+        setNode(dom["network-banner"], "network_lost");
+        setHidden(dom["network-banner"], false);
+        if (state.round && state.round.running && !state.round.paused) {
+            pauseRound("network", true);
+        }
+    }
+
+    function onOnline() {
+        state.networkLost = false;
+        setHidden(dom["network-banner"], true);
+    }
+
     // ------------------------------------------------------------------- loop
     function startLoop() {
         if (state.rafId) {
@@ -1074,7 +1079,6 @@
         if (!ctx || !state.canvas) {
             return;
         }
-        const dpr = state.view.dpr;
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, state.canvas.width, state.canvas.height);
         ctx.setTransform(
@@ -1682,6 +1686,8 @@
         document.addEventListener("visibilitychange", onVisibilityChange);
         globalThis.addEventListener("blur", onWindowBlur);
         globalThis.addEventListener("focus", onWindowFocus);
+        globalThis.addEventListener("offline", onOffline);
+        globalThis.addEventListener("online", onOnline);
         globalThis.addEventListener("resize", resizeCanvas);
         globalThis.addEventListener("orientationchange", resizeCanvas);
         if (globalThis.ResizeObserver) {
@@ -1738,7 +1744,7 @@
                 ? state.context.mode : state.mode;
             state.seed = state.context && typeof state.context.seed === "string"
                 ? state.context.seed : state.seed;
-            state.rng = globalThis.NeonRng.create(state.seed);
+            state.rng = globalThis.ArcherRng.create(state.seed);
             state.strings = await loadStrings(state.context);
             if (state.ba.context) state.ba.context.strings = state.strings;
             applyLocaleMetadata();
@@ -1777,7 +1783,7 @@
         state.context = sdk.context || {};
         state.mode = typeof state.context.mode === "string" ? state.context.mode : "guest";
         state.seed = typeof state.context.seed === "string" ? state.context.seed : "";
-        state.rng = globalThis.NeonRng.create(state.seed);
+        state.rng = globalThis.ArcherRng.create(state.seed);
         sdk.ready();
         try {
             state.strings = await loadStrings(state.context);

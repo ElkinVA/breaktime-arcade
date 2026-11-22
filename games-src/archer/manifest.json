@@ -1,7 +1,7 @@
 {
   "cartridge": 1,
   "id": "archer",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "sdkVersion": "^1.0",
   "protocol": 1,
   "name": "Archer",
@@ -38,7 +38,7 @@
     "claimedVerification": "heuristic_validated"
   },
   "verification": {
-    "profile": {"maxPointsPerSecond": 700, "maxIdleGapMs": 5000},
+    "profile": {"maxPointsPerSecond": 700, "maxIdleGapMs": 30000},
     "eventKinds": ["start", "shoot", "hit", "miss", "combo", "end"],
     "eventSchema": {
       "type": "object",

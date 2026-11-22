@@ -1,6 +1,6 @@
 # Archer — game specification (ARCADE-P5)
 
-**Version:** 1.3.1
+**Version:** 1.3.3
 **Date:** 2026-11-23
 **Package id:** `archer`
 **Genre:** arcade / skill / aim & shoot

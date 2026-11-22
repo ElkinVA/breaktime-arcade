@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-23
 **Base:** `b4fd9f4`
-**Game:** Archer v1.3.1, package id `archer`
+**Game:** Archer v1.3.3, package id `archer`
 **Status:** **IMPLEMENTED; AUTOMATED + LIVE DEV E2E PASS; INDEPENDENT REVIEW
 PENDING; PRODUCT/STAGING/PRODUCTION NOT ACCEPTED.**
 
@@ -15,11 +15,11 @@ PENDING; PRODUCT/STAGING/PRODUCTION NOT ACCEPTED.**
 | Physics/score/combo core | TESTED | 11 Node tests |
 | ZIP reproducibility/preflight | TESTED | package test + pack.py |
 | Isolated-worker import/publish | TESTED | 1 integration test; live worker 137 ms |
-| CRM upload → analysis → publish | TESTED LIVE | v1.0…v1.3.1 |
+| CRM upload → analysis → publish | TESTED LIVE | v1.0…v1.3.3 |
 | Public detail/iframe/runtime | TESTED LIVE | 200; no console errors |
 | SDK handshake/heartbeat/result | TESTED LIVE | result 200, credited 60122 ms |
 | Leaderboard | TESTED LIVE | 200; #1 321, #2 214 |
-| Update/rollback/republish | TESTED LIVE | v1.3.0 → v1.2.1 → v1.3.1 |
+| Update/rollback/republish | TESTED LIVE | v1.3.0 → v1.2.1 → v1.3.3 |
 | Responsive matrix | TESTED LIVE | 360×640, 390×844, 640×360, 1280×800, 1920×1080 |
 | Neon Snake regression | TESTED | package 13, import 1, live pages 200 |
 | Independent Pro review | PENDING | requested after commit |
@@ -43,7 +43,7 @@ spawn bounds.
 
 ## 3. Live dev E2E
 
-- ZIP `archer-1.3.1.zip`, deterministic, 24 entries.
+- ZIP `archer-1.3.3.zip`, deterministic, 24 entries.
 - CRM upload → analysis: **0 blockers**.
 - zip-worker completed; runtime published.
 - Detail: cover + 2 screenshots render 200.
@@ -52,7 +52,7 @@ spawn bounds.
   result API `200 {"status":"saved","rank":1,"is_record":true,
   "trust_level":"heuristic_validated"}`; `credited_ms=60122`; heartbeat set.
 - Leaderboard: 321 (#1), 214 (#2).
-- Rollback to v1.2.1 and republish v1.3.1 successful.
+- Rollback to v1.2.1 and republish v1.3.3 successful.
 - Invalid ZIP path already covered by P4 (`V_MANIFEST_SCHEMA`); package tests
   run `preflight_zip` and import rejection paths.
 - Responsive: no horizontal overflow; start screen visible at all five

@@ -1,4 +1,4 @@
-/* Neon Snake — deterministic seeded random number generator (BA-GAME-2.2 §8).
+/* Archer — deterministic seeded random number generator (BA-GAME-2.2 §8).
  *
  * Every value that can influence the result is derived from the session seed
  * supplied by the platform through `ba.context.seed`. The generator uses an
@@ -61,7 +61,7 @@
         }
 
         function range(min, maxExclusive) {
-            return Math.floor(Number(min) || 0) + int(Math.floor(Number(maxExclusive) || 0));
+            return Math.floor(Number(min) || 0) + int(Math.max(0, Math.floor(Number(maxExclusive) || 0) - Math.floor(Number(min) || 0)));
         }
 
         function pick(list) {
@@ -94,7 +94,7 @@
         });
     }
 
-    global.NeonRng = Object.freeze({
+    global.ArcherRng = Object.freeze({
         version: VERSION,
         hashSeed,
         mulberry32,

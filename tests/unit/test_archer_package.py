@@ -86,7 +86,7 @@ def test_manifest_matches_contract_and_is_fully_declared() -> None:
     manifest = result.manifest
     assert manifest is not None
     assert manifest["id"] == "archer"
-    assert manifest["version"] == "1.3.2"
+    assert manifest["version"] == "1.3.3"
     assert manifest["sdkVersion"] == "^1.0"
     assert manifest["protocol"] == 1
     assert manifest["defaultLanguage"] == "en"
@@ -269,6 +269,14 @@ def test_critical_path_budget_and_declared_size() -> None:
     )
 
 
+def test_terminal_event_is_emitted_before_round_closes() -> None:
+    game = (PACKAGE / "js" / "game.js").read_text(encoding="utf-8")
+    end_at = game.index('logEvent("end"')
+    closed_at = game.index("round.finished = true", end_at)
+    assert end_at < closed_at
+    assert 'logEvent("combo"' in game
+
+
 def test_event_log_bounds_and_seed_contract() -> None:
     manifest = _json(PACKAGE / "manifest.json")
     kinds = manifest["verification"]["eventKinds"]
@@ -291,7 +299,7 @@ def test_seed_determinism_is_wired_to_the_platform_seed() -> None:
     assert "mulberry32" in rng
     assert "Math.imul" in rng
     assert "hashSeed" in rng
-    assert "NeonRng.create(state.seed)" in game
+    assert "ArcherRng.create(state.seed)" in game
     assert "state.seed = typeof state.context.seed" in game
     assert "state.seed = context.seed" in game
     assert "eventLog: { v: 1, seed: state.seed, events: [] }" in game

@@ -62,7 +62,7 @@ def test_archer_imports_persists_and_publishes(neon_env: Path) -> None:
 
     result = import_package(
         data,
-        original_filename="archer-1.3.2.zip",
+        original_filename="archer-1.3.3.zip",
         storage_root=neon_env / "store",
         runtime_root=neon_env / "runtime",
         sdk_root=ROOT / "sdk",
@@ -85,7 +85,7 @@ def test_archer_imports_persists_and_publishes(neon_env: Path) -> None:
     assert game.capabilities["storage"] == "sdk"
     assert game.capabilities["externalOrigins"] == []
 
-    assert version.semver == "1.3.2"
+    assert version.semver == "1.3.3"
     assert version.package_hash != version.runtime_hash
     assert version.sdk_version == "1.1.0"
     assert version.entry_path == "index.html"
