@@ -270,10 +270,16 @@ def _unstage(files: list[str], root: Path = ROOT) -> None:
 def _commit_staged(task: Task, files: list[str], root: Path = ROOT) -> str:
     subject = f"autonomy({task.id}): {task.title}"
     body = "Co-Authored-By: Claude Code <noreply@anthropic.com>"
-    commit = _git(["commit", "-m", subject, "-m", body], cwd=root, check=False)
-    if commit.returncode != 0:
-        raise RuntimeError(f"git commit failed: {commit.stderr[-500:]}")
-    return commit.stdout.strip().splitlines()[0] if commit.stdout.strip() else "committed"
+    last = None
+    for _attempt in range(2):
+        commit = _git(["commit", "-m", subject, "-m", body], cwd=root, check=False)
+        if commit.returncode == 0:
+            return commit.stdout.strip().splitlines()[0] if commit.stdout.strip() else "committed"
+        last = commit
+        # Pre-commit hooks may auto-fix whitespace/format and leave the hook
+        # run non-zero. Restage the task files once, then retry.
+        _git(["add", "--", *files], cwd=root, check=False)
+    raise RuntimeError(f"git commit failed: {last.stderr[-500:] if last else 'unknown'}")
 
 
 def _commit_candidate(task: Task, files: list[str], worktree: Path) -> str:
