@@ -10,6 +10,7 @@
                     <th class="px-3 py-2">Языки пакета</th>
                     <th class="px-3 py-2">Валидация</th>
                     <th class="px-3 py-2">Автотест</th>
+                    <th class="px-3 py-2">Скачивание</th>
                     <th class="px-3 py-2">Действия</th>
                 </tr>
             </thead>
@@ -31,6 +32,18 @@
                         </td>
                         <td class="px-3 py-2" data-testid="crm-version-autotest">
                             {% if row.autotest_passed %}Пройден{% else %}Не пройден{% endif %}
+                        </td>
+                        <td class="px-3 py-2">
+                            <div class="flex flex-wrap gap-2" data-testid="crm-version-downloads">
+                                <a class="text-accent hover:underline" href="{% url 'crm:version_package' row.version.game_id row.version.id %}" data-testid="crm-version-package">ZIP</a>
+                                <a class="text-accent hover:underline" href="{% url 'crm:version_runtime' row.version.game_id row.version.id %}" data-testid="crm-version-runtime">Runtime</a>
+                                <a class="text-accent hover:underline" href="{% url 'crm:version_report' row.version.game_id row.version.id 'validation' 'json' %}">Валидация JSON</a>
+                                <a class="text-accent hover:underline" href="{% url 'crm:version_report' row.version.game_id row.version.id 'validation' 'md' %}">MD</a>
+                                <a class="text-accent hover:underline" href="{% url 'crm:version_report' row.version.game_id row.version.id 'autotest' 'json' %}">Автотест JSON</a>
+                                <a class="text-accent hover:underline" href="{% url 'crm:version_report' row.version.game_id row.version.id 'autotest' 'md' %}">MD</a>
+                                <a class="text-accent hover:underline" href="{% url 'crm:version_report' row.version.game_id row.version.id 'import' 'json' %}">Импорт JSON</a>
+                                <a class="text-accent hover:underline" href="{% url 'crm:version_report' row.version.game_id row.version.id 'import' 'md' %}">MD</a>
+                            </div>
                         </td>
                         <td class="px-3 py-2">
                             {% if row.is_current %}

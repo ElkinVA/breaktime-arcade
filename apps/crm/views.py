@@ -121,6 +121,17 @@ from apps.crm.services.users import (
     search_users,
     toggle_user_active,
 )
+from apps.crm.services.version_downloads import (
+    REPORT_FORMATS,
+    REPORT_KINDS,
+    ArtifactUnavailable,
+    UnknownReport,
+    package_response,
+    runtime_response,
+)
+from apps.crm.services.version_downloads import (
+    report_response as version_report_response,
+)
 from apps.i18n.models import Language, TranslationEntry
 from apps.i18n.services.language_registry import get_active_language_codes_safely
 from apps.moderation.models import Complaint
@@ -425,6 +436,75 @@ def game_rollback(request: HttpRequest, game_id: UUID) -> HttpResponseRedirect:
     else:
         messages.error(request, _ACTION_ERRORS.get(result.reason, "Не удалось выполнить откат."))
     return redirect("crm:game_detail", game_id=game.id)
+
+
+def _version_or_404(game_id: UUID, version_id: UUID) -> GameVersion:
+    version = (
+        GameVersion.objects.select_related("game").filter(pk=version_id, game_id=game_id).first()
+    )
+    if version is None:
+        raise Http404("Version not found")
+    return version
+
+
+def _download_step_up_guard(request: HttpRequest) -> HttpResponseRedirect | None:
+    """Artifact downloads are sensitive: require a fresh elevation."""
+    allowed, reason = _authorize_step_up(request)
+    if allowed:
+        return None
+    messages.error(request, reason)
+    return _step_up_redirect(request.get_full_path())
+
+
+@role_required(GAMES_VIEW)
+@require_GET
+def version_package_download(request: HttpRequest, game_id: UUID, version_id: UUID) -> HttpResponse:
+    """Download the byte-for-byte original ZIP; staff role plus step-up."""
+    version = _version_or_404(game_id, version_id)
+    refused = _download_step_up_guard(request)
+    if refused is not None:
+        return refused
+    try:
+        return package_response(version)
+    except ArtifactUnavailable:
+        raise Http404("Package artifact not found") from None
+
+
+@role_required(GAMES_VIEW)
+@require_GET
+def version_runtime_download(request: HttpRequest, game_id: UUID, version_id: UUID) -> HttpResponse:
+    """Download the published runtime tree as a zip; staff role plus step-up."""
+    version = _version_or_404(game_id, version_id)
+    refused = _download_step_up_guard(request)
+    if refused is not None:
+        return refused
+    try:
+        return runtime_response(version)
+    except ArtifactUnavailable:
+        raise Http404("Runtime artifact not found") from None
+
+
+@role_required(GAMES_VIEW)
+@require_GET
+def version_report_download(
+    request: HttpRequest,
+    game_id: UUID,
+    version_id: UUID,
+    report_kind: str,
+    report_format: str,
+) -> HttpResponse:
+    """Download a persisted per-version report as JSON or Markdown (§2.14.7)."""
+    version = _version_or_404(game_id, version_id)
+    kind = report_kind.strip().lower()
+    token = report_format.strip().lower()
+    if kind not in REPORT_KINDS:
+        raise Http404("Report not found")
+    if token not in REPORT_FORMATS:
+        return HttpResponseBadRequest("Unsupported report format")
+    try:
+        return version_report_response(version, kind, token)
+    except UnknownReport:
+        raise Http404("Report not found") from None
 
 
 # --- Мастер добавления игры (§2.14.5) -----------------------------------
@@ -1857,6 +1937,9 @@ __all__ = [
     "tag_edit",
     "tag_new",
     "tags_list",
+    "version_package_download",
+    "version_report_download",
+    "version_runtime_download",
     "wizard_analysis",
     "wizard_card",
     "wizard_check",

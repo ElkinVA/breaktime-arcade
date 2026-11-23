@@ -84,6 +84,23 @@ urlpatterns = [
     path("games/<uuid:game_id>/", views.game_detail, name="game_detail"),
     path("games/<uuid:game_id>/publish/", views.game_publish, name="game_publish"),
     path("games/<uuid:game_id>/rollback/", views.game_rollback, name="game_rollback"),
+    # Скачивание артефактов версии и отчётов (§2.14.1, §2.14.7, §2.16.3).
+    path(
+        "games/<uuid:game_id>/versions/<uuid:version_id>/package/",
+        views.version_package_download,
+        name="version_package",
+    ),
+    path(
+        "games/<uuid:game_id>/versions/<uuid:version_id>/runtime/",
+        views.version_runtime_download,
+        name="version_runtime",
+    ),
+    path(
+        "games/<uuid:game_id>/versions/<uuid:version_id>/reports/"
+        "<str:report_kind>.<str:report_format>",
+        views.version_report_download,
+        name="version_report",
+    ),
     # Мастер добавления/обновления игры (§2.14.5).
     path("wizard/", views.wizard_upload, name="wizard_upload"),
     path("wizard/upload/", views.wizard_upload, name="wizard_step1"),

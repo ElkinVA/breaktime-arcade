@@ -1,0 +1,317 @@
+"""Staff-only downloads of immutable package artifacts and version reports.
+
+The original ZIP is served from the private package store and the runtime
+bundle is re-zipped from the published tree (§2.14.1, §2.16.3). Every path is
+derived from the stored ``package_hash`` / ``runtime_hash`` through the
+pipeline artifact helpers, then checked to stay inside its configured root, so
+no request parameter can influence a filesystem path. Report downloads render
+the persisted ``validation_report`` / ``e2e_report`` / ``import_report``
+(§2.14.7).
+
+Responses are always attachments with a fixed name derived from UUIDs only and
+carry ``nosniff`` plus a private, non-cacheable policy.
+"""
+
+from __future__ import annotations
+
+import io
+import json
+import re
+import zipfile
+from pathlib import Path
+from typing import Any
+
+from django.conf import settings
+from django.http import HttpResponse
+
+from apps.catalog.models import GameVersion
+from apps.pipeline.services.artifacts import (
+    ArtifactError,
+    ensure_root,
+    package_path,
+    runtime_path,
+)
+
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+REPORT_KINDS = frozenset({"validation", "autotest", "import"})
+REPORT_FORMATS = frozenset({"json", "md"})
+
+_REPORT_FIELDS = {
+    "validation": "validation_report",
+    "autotest": "e2e_report",
+    "import": "import_report",
+}
+_REPORT_TITLES = {
+    "validation": "Отчёт валидации пакета",
+    "autotest": "Отчёт автотеста версии",
+    "import": "Отчёт импорта версии",
+}
+_JSON_CONTENT_TYPE = "application/json; charset=utf-8"
+_MARKDOWN_CONTENT_TYPE = "text/markdown; charset=utf-8"
+
+
+class ArtifactUnavailable(Exception):
+    """The stored artifact is missing or its resolved path is unsafe."""
+
+
+class UnknownReport(Exception):
+    """The requested report kind or format is not supported."""
+
+
+def _safe_root(value: Path) -> Path:
+    try:
+        return ensure_root(Path(value))
+    except ArtifactError:
+        raise ArtifactUnavailable("Artifact root is unavailable") from None
+
+
+def _is_within(candidate: Path, root: Path) -> bool:
+    try:
+        candidate.resolve(strict=False).relative_to(root.resolve(strict=False))
+    except OSError, ValueError:
+        return False
+    return True
+
+
+def _has_valid_hash(value: str) -> bool:
+    return bool(value) and _SHA256_RE.fullmatch(value) is not None
+
+
+def _safe_host_label(value: str) -> bool:
+    return bool(value) and "/" not in value and "\\" not in value and value not in {".", ".."}
+
+
+def package_file(version: GameVersion) -> Path:
+    """Resolve the immutable original ZIP for ``version`` inside its root."""
+    if not _has_valid_hash(version.package_hash):
+        raise ArtifactUnavailable("Invalid package hash")
+    root = _safe_root(settings.ZIP_PIPELINE_STORAGE_ROOT)
+    target = package_path(root, version.package_hash)
+    if not _is_within(target, root):
+        raise ArtifactUnavailable("Package path escapes the artifact root")
+    if target.is_symlink() or not target.is_file():
+        raise ArtifactUnavailable("Package artifact is missing")
+    return target
+
+
+def runtime_directory(version: GameVersion) -> Path:
+    """Resolve the published runtime tree for ``version`` inside its root."""
+    if not _has_valid_hash(version.runtime_hash):
+        raise ArtifactUnavailable("Invalid runtime hash")
+    host_label = str(version.game.host_label or "")
+    if not _safe_host_label(host_label):
+        raise ArtifactUnavailable("Invalid runtime host label")
+    root = _safe_root(settings.ZIP_PUBLIC_RUNTIME_ROOT)
+    target = runtime_path(root, version.runtime_hash, host_label)
+    if not _is_within(target, root):
+        raise ArtifactUnavailable("Runtime path escapes the artifact root")
+    if target.is_symlink() or not target.is_dir():
+        raise ArtifactUnavailable("Runtime artifact is missing")
+    return target
+
+
+def runtime_zip_bytes(directory: Path) -> bytes:
+    """Zip the published runtime tree deterministically, rejecting symlinks."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for path in sorted(Path(directory).rglob("*")):
+            if path.is_symlink():
+                raise ArtifactUnavailable("Runtime tree contains a symlink")
+            if not path.is_file():
+                continue
+            archive.write(path, arcname=path.relative_to(directory).as_posix())
+    return buffer.getvalue()
+
+
+def _attachment(content: bytes | str, *, filename: str, content_type: str) -> HttpResponse:
+    response = HttpResponse(content, content_type=content_type)
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
+def _artifact_name(version: GameVersion, suffix: str) -> str:
+    return f"game-{version.game_id}-version-{version.id}-{suffix}"
+
+
+def package_response(version: GameVersion) -> HttpResponse:
+    path = package_file(version)
+    return _attachment(
+        path.read_bytes(),
+        filename=_artifact_name(version, "package.zip"),
+        content_type="application/zip",
+    )
+
+
+def runtime_response(version: GameVersion) -> HttpResponse:
+    payload = runtime_zip_bytes(runtime_directory(version))
+    return _attachment(
+        payload,
+        filename=_artifact_name(version, "runtime.zip"),
+        content_type="application/zip",
+    )
+
+
+def _stored_report(version: GameVersion, report_kind: str) -> Any:
+    return getattr(version, _REPORT_FIELDS[report_kind]) or {}
+
+
+def _md(value: Any) -> str:
+    if value is None:
+        return ""
+    return str(value).replace("|", "\\|").replace("\r", " ").replace("\n", " ")
+
+
+def _markdown_header(version: GameVersion, report_kind: str) -> list[str]:
+    return [
+        f"# {_REPORT_TITLES[report_kind]}",
+        "",
+        f"- Игра: `{version.game.technical_id}`",
+        f"- Версия: `{version.semver}`",
+        f"- package_hash: `{version.package_hash}`",
+        f"- runtime_hash: `{version.runtime_hash}`",
+        "",
+    ]
+
+
+def _validation_markdown(version: GameVersion, report: Any) -> str:
+    lines = _markdown_header(version, "validation")
+    data = report if isinstance(report, dict) else {}
+    raw_summary = data.get("summary")
+    summary = raw_summary if isinstance(raw_summary, dict) else {}
+    lines.extend(
+        [
+            f"- blocker: {summary.get('blocker', 0)}",
+            f"- warning: {summary.get('warning', 0)}",
+            f"- info: {summary.get('info', 0)}",
+            f"- итог: {'OK' if data.get('ok', True) else 'REJECTED'}",
+            "",
+        ]
+    )
+    diagnostics = data.get("diagnostics")
+    entries = (
+        [item for item in diagnostics if isinstance(item, dict)]
+        if isinstance(diagnostics, list)
+        else []
+    )
+    if not entries:
+        lines.append("Замечаний нет.")
+        return "\n".join(lines) + "\n"
+    lines.extend(["| severity | code | file | message | hint |", "|---|---|---|---|---|"])
+    for item in entries:
+        lines.append(
+            "| {severity} | {code} | {file} | {message} | {hint} |".format(
+                severity=_md(item.get("severity")),
+                code=_md(item.get("code")),
+                file=_md(item.get("file")) or "—",
+                message=_md(item.get("message")),
+                hint=_md(item.get("hint")) or "—",
+            )
+        )
+    return "\n".join(lines) + "\n"
+
+
+def _autotest_markdown(version: GameVersion, report: Any) -> str:
+    lines = _markdown_header(version, "autotest")
+    data = report if isinstance(report, dict) else {}
+    lines.append(f"- итог: {'Пройден' if data.get('passed') else 'Не пройден'}")
+    lines.append("")
+    checks = data.get("checks")
+    entries = (
+        [item for item in checks if isinstance(item, dict)] if isinstance(checks, list) else []
+    )
+    if entries:
+        lines.extend(["| проверка | результат | детали |", "|---|---|---|"])
+        for item in entries:
+            lines.append(
+                "| {name} | {passed} | {detail} |".format(
+                    name=_md(item.get("name")),
+                    passed="OK" if item.get("passed") else "FAIL",
+                    detail=_md(item.get("detail")) or "—",
+                )
+            )
+        lines.append("")
+    notes = data.get("notes")
+    if isinstance(notes, list) and notes:
+        lines.extend(["> Примечания:", ">"])
+        for note in notes:
+            lines.append(f"> - {_md(note)}")
+        lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def _import_markdown(version: GameVersion, report: Any) -> str:
+    lines = _markdown_header(version, "import")
+    data = report if isinstance(report, dict) else {}
+    lines.append(f"- статус: {_md(data.get('status')) or '—'}")
+    lines.append("")
+    updated = data.get("updated_fields")
+    fields = [str(item) for item in updated] if isinstance(updated, list) else []
+    if fields:
+        lines.extend(["Изменённые поля: " + ", ".join(f"`{_md(item)}`" for item in fields), ""])
+    conflicts = data.get("conflicts")
+    entries = (
+        [item for item in conflicts if isinstance(item, dict)]
+        if isinstance(conflicts, list)
+        else []
+    )
+    if entries:
+        lines.extend(["| scope | field | resolution |", "|---|---|---|"])
+        for item in entries:
+            lines.append(
+                "| {scope} | {field} | {resolution} |".format(
+                    scope=_md(item.get("scope")) or "—",
+                    field=_md(item.get("field")) or "—",
+                    resolution=_md(item.get("resolution")) or "keep",
+                )
+            )
+        lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def _render_markdown(version: GameVersion, report_kind: str, report: Any) -> str:
+    if report_kind == "validation":
+        return _validation_markdown(version, report)
+    if report_kind == "autotest":
+        return _autotest_markdown(version, report)
+    return _import_markdown(version, report)
+
+
+def report_response(
+    version: GameVersion,
+    report_kind: str,
+    report_format: str,
+) -> HttpResponse:
+    """Render a persisted per-version report as a JSON or Markdown attachment."""
+    if report_kind not in REPORT_KINDS:
+        raise UnknownReport(report_kind)
+    if report_format not in REPORT_FORMATS:
+        raise UnknownReport(report_format)
+    report = _stored_report(version, report_kind)
+    if report_format == "json":
+        content = json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True)
+        content_type = _JSON_CONTENT_TYPE
+    else:
+        content = _render_markdown(version, report_kind, report)
+        content_type = _MARKDOWN_CONTENT_TYPE
+    return _attachment(
+        content,
+        filename=_artifact_name(version, f"{report_kind}.{report_format}"),
+        content_type=content_type,
+    )
+
+
+__all__ = [
+    "ArtifactUnavailable",
+    "REPORT_FORMATS",
+    "REPORT_KINDS",
+    "UnknownReport",
+    "package_file",
+    "package_response",
+    "report_response",
+    "runtime_directory",
+    "runtime_response",
+    "runtime_zip_bytes",
+]
