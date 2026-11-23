@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import zipfile
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from django.utils import timezone
 
 from apps.accounts.models import StaffRole, User
 from apps.catalog.models import Game, GameVersion, Genre
+from apps.crm.services import version_downloads as downloads
 from apps.crm.services.step_up import SESSION_KEY
 from apps.i18n.models import Language
 from apps.pipeline.services.artifacts import ensure_root, package_path, runtime_path
@@ -314,6 +316,106 @@ def test_traversal_and_symlinks_cannot_escape_artifact_roots(artifact_env: Path)
         reverse("crm:version_runtime", args=[symlink_game.id, symlink_version.id])
     )
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_package_symlink_swap_between_check_and_read_is_rejected(
+    artifact_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A symlink swapped in after resolution must not be read as the package."""
+    game = _game(technical_id="toctou_package_link", host_label="toctou-package-link.test")
+    version = _version(game)
+    _store_package(version)
+    root = ensure_root(Path(settings.ZIP_PIPELINE_STORAGE_ROOT))
+    target = package_path(root, version.package_hash)
+    secret = artifact_env / "secret.txt"
+    secret.write_bytes(b"attacker-controlled")
+    real_open = os.open
+    swapped = False
+
+    def swapping_open(path, flags, *args, **kwargs):
+        nonlocal swapped
+        if not swapped and Path(path) == target:
+            swapped = True
+            target.unlink()
+            target.symlink_to(secret)
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(downloads.os, "open", swapping_open)
+
+    with pytest.raises(downloads.ArtifactUnavailable):
+        downloads.package_response(version)
+    assert swapped
+
+
+@pytest.mark.django_db
+def test_package_file_swap_between_check_and_read_is_rejected(
+    artifact_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Replacing the package with another regular file is caught by fstat."""
+    game = _game(technical_id="toctou_package_swap", host_label="toctou-package-swap.test")
+    version = _version(game)
+    _store_package(version)
+    root = ensure_root(Path(settings.ZIP_PIPELINE_STORAGE_ROOT))
+    target = package_path(root, version.package_hash)
+    replacement = target.with_name(f"{target.stem}-replacement.zip")
+    real_open = os.open
+    swapped = False
+
+    def swapping_open(path, flags, *args, **kwargs):
+        nonlocal swapped
+        if not swapped and Path(path) == target:
+            swapped = True
+            replacement.write_bytes(b"replacement package")
+            replacement.replace(target)
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(downloads.os, "open", swapping_open)
+
+    with pytest.raises(downloads.ArtifactUnavailable):
+        downloads.package_response(version)
+    assert swapped
+
+
+@pytest.mark.django_db
+def test_runtime_directory_symlink_swap_between_check_and_read_is_rejected(
+    artifact_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A runtime root swapped for a symlink after resolution is rejected."""
+    game = _game(technical_id="toctou_runtime_link", host_label="toctou-runtime-link.test")
+    version = _version(game)
+    directory = _store_runtime(version)
+    outside = artifact_env / "outside-runtime"
+    outside.mkdir()
+    (outside / "index.html").write_bytes(b"outside")
+    real_open = os.open
+    swapped = False
+
+    def swapping_open(path, flags, *args, **kwargs):
+        nonlocal swapped
+        if not swapped and Path(path) == directory:
+            swapped = True
+            directory.rename(directory.with_name(f"{directory.name}-moved"))
+            directory.symlink_to(outside, target_is_directory=True)
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(downloads.os, "open", swapping_open)
+
+    with pytest.raises(downloads.ArtifactUnavailable):
+        downloads.runtime_response(version)
+    assert swapped
+
+
+@pytest.mark.django_db
+def test_runtime_tree_internal_symlink_is_rejected(artifact_env: Path) -> None:
+    """Symlinks inside the published runtime tree still cannot be served."""
+    game = _game(technical_id="toctou_runtime_tree", host_label="toctou-runtime-tree.test")
+    version = _version(game)
+    directory = _store_runtime(version)
+    (directory / "leak.js").symlink_to(artifact_env / "secret.txt")
+
+    with pytest.raises(downloads.ArtifactUnavailable):
+        downloads.runtime_response(version)
 
 
 @pytest.mark.django_db

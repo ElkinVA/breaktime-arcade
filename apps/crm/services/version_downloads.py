@@ -16,7 +16,10 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import re
+import stat
+import time
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -82,6 +85,101 @@ def _safe_host_label(value: str) -> bool:
     return bool(value) and "/" not in value and "\\" not in value and value not in {".", ".."}
 
 
+def _open_flags(*, directory: bool) -> int:
+    flags = os.O_RDONLY
+    if hasattr(os, "O_CLOEXEC"):
+        flags |= os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    if directory and hasattr(os, "O_DIRECTORY"):
+        flags |= os.O_DIRECTORY
+    return flags
+
+
+def _open_verified(path: Path, *, directory: bool) -> tuple[int, os.stat_result]:
+    """Open ``path`` once and verify the handle against the resolved path.
+
+    ``O_NOFOLLOW`` rejects a final symlink and ``fstat`` on the opened handle
+    is compared with the path identity captured immediately before the open.
+    A path swap between resolution and open therefore raises instead of
+    returning a different inode; callers read only from the verified handle.
+    """
+    kind = "directory" if directory else "file"
+    try:
+        expected = path.stat(follow_symlinks=False)
+    except OSError:
+        raise ArtifactUnavailable(f"Artifact {kind} is missing") from None
+    if stat.S_ISLNK(expected.st_mode):
+        raise ArtifactUnavailable("Artifact path is a symlink")
+    if directory:
+        if not stat.S_ISDIR(expected.st_mode):
+            raise ArtifactUnavailable("Artifact directory is missing")
+    elif not stat.S_ISREG(expected.st_mode):
+        raise ArtifactUnavailable("Artifact file is missing")
+    try:
+        fd = os.open(path, _open_flags(directory=directory))
+    except OSError:
+        raise ArtifactUnavailable(f"Artifact {kind} is unavailable") from None
+    try:
+        opened = os.fstat(fd)
+    except OSError:
+        os.close(fd)
+        raise ArtifactUnavailable(f"Artifact {kind} is unavailable") from None
+    expected_kind = stat.S_ISDIR(opened.st_mode) if directory else stat.S_ISREG(opened.st_mode)
+    if not expected_kind or (opened.st_dev, opened.st_ino) != (expected.st_dev, expected.st_ino):
+        os.close(fd)
+        raise ArtifactUnavailable("Artifact changed between resolution and read")
+    return fd, opened
+
+
+def _read_handle(fd: int) -> bytes:
+    try:
+        handle = os.fdopen(fd, "rb")
+    except OSError:
+        os.close(fd)
+        raise ArtifactUnavailable("Artifact file is unavailable") from None
+    try:
+        with handle:
+            return handle.read()
+    except OSError:
+        raise ArtifactUnavailable("Artifact file is unavailable") from None
+
+
+def _open_child(
+    parent_fd: int,
+    name: str,
+    *,
+    directory: bool,
+) -> tuple[int, os.stat_result]:
+    """Open ``name`` relative to ``parent_fd`` and verify the opened inode."""
+    kind = "directory" if directory else "file"
+    try:
+        expected = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+    except OSError:
+        raise ArtifactUnavailable(f"Artifact {kind} is missing") from None
+    if stat.S_ISLNK(expected.st_mode):
+        raise ArtifactUnavailable("Runtime tree contains a symlink")
+    if directory:
+        if not stat.S_ISDIR(expected.st_mode):
+            raise ArtifactUnavailable("Runtime artifact is not a directory")
+    elif not stat.S_ISREG(expected.st_mode):
+        raise ArtifactUnavailable("Runtime artifact is not a regular file")
+    try:
+        fd = os.open(name, _open_flags(directory=directory), dir_fd=parent_fd)
+    except OSError:
+        raise ArtifactUnavailable(f"Artifact {kind} is unavailable") from None
+    try:
+        opened = os.fstat(fd)
+    except OSError:
+        os.close(fd)
+        raise ArtifactUnavailable(f"Artifact {kind} is unavailable") from None
+    expected_kind = stat.S_ISDIR(opened.st_mode) if directory else stat.S_ISREG(opened.st_mode)
+    if not expected_kind or (opened.st_dev, opened.st_ino) != (expected.st_dev, expected.st_ino):
+        os.close(fd)
+        raise ArtifactUnavailable("Runtime artifact changed between resolution and read")
+    return fd, opened
+
+
 def package_file(version: GameVersion) -> Path:
     """Resolve the immutable original ZIP for ``version`` inside its root."""
     if not _has_valid_hash(version.package_hash):
@@ -111,20 +209,62 @@ def runtime_directory(version: GameVersion) -> Path:
     return target
 
 
+def _zip_date_time(timestamp: float) -> tuple[int, int, int, int, int, int]:
+    local = time.localtime(timestamp)
+    return (local.tm_year, local.tm_mon, local.tm_mday, local.tm_hour, local.tm_min, local.tm_sec)
+
+
+def _zip_tree(archive: zipfile.ZipFile, directory_fd: int, prefix: str) -> None:
+    """Archive a directory tree read through verified descriptors.
+
+    Every entry is opened relative to the already verified parent descriptor
+    with ``O_NOFOLLOW``; the opened handle is compared with the entry identity
+    before any bytes are read, so a symlink or swap cannot substitute content.
+    """
+    try:
+        names = os.listdir(directory_fd)
+    except OSError:
+        raise ArtifactUnavailable("Runtime artifact is unavailable") from None
+    for name in sorted(names):
+        arcname = f"{prefix}{name}"
+        try:
+            entry = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        except OSError:
+            raise ArtifactUnavailable("Runtime artifact is unavailable") from None
+        if stat.S_ISLNK(entry.st_mode):
+            raise ArtifactUnavailable("Runtime tree contains a symlink")
+        if stat.S_ISDIR(entry.st_mode):
+            child_fd, _child_stat = _open_child(directory_fd, name, directory=True)
+            try:
+                _zip_tree(archive, child_fd, f"{arcname}/")
+            finally:
+                os.close(child_fd)
+        elif stat.S_ISREG(entry.st_mode):
+            file_fd, opened = _open_child(directory_fd, name, directory=False)
+            data = _read_handle(file_fd)
+            info = zipfile.ZipInfo(arcname, date_time=_zip_date_time(opened.st_mtime))
+            info.external_attr = (opened.st_mode & 0xFFFF) << 16
+            info.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(info, data)
+        # Special files stay excluded, matching the regular-files-only contract.
+
+
 def runtime_zip_bytes(directory: Path) -> bytes:
     """Zip the published runtime tree, rejecting symlinks.
 
-    File mtimes are preserved, so bytes are stable only while the tree is
-    unchanged; the archive is a convenience copy, not a hash-verified artifact.
+    The tree is walked through verified directory descriptors opened relative
+    to the resolved root; a symlink or path swap anywhere in the tree raises
+    ``ArtifactUnavailable``. File mtimes are preserved, so bytes are stable
+    only while the tree is unchanged; the archive is a convenience copy, not a
+    hash-verified artifact.
     """
+    root_fd, _root_stat = _open_verified(directory, directory=True)
     buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for path in sorted(Path(directory).rglob("*")):
-            if path.is_symlink():
-                raise ArtifactUnavailable("Runtime tree contains a symlink")
-            if not path.is_file():
-                continue
-            archive.write(path, arcname=path.relative_to(directory).as_posix())
+    try:
+        with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            _zip_tree(archive, root_fd, "")
+    finally:
+        os.close(root_fd)
     return buffer.getvalue()
 
 
@@ -142,8 +282,9 @@ def _artifact_name(version: GameVersion, suffix: str) -> str:
 
 def package_response(version: GameVersion) -> HttpResponse:
     path = package_file(version)
+    fd, _path_stat = _open_verified(path, directory=False)
     return _attachment(
-        path.read_bytes(),
+        _read_handle(fd),
         filename=_artifact_name(version, "package.zip"),
         content_type="application/zip",
     )
