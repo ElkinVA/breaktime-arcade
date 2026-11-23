@@ -13,7 +13,7 @@ from apps.accounts.models import AnonymousIdentity, User
 from apps.accounts.services.anonymous import get_anonymous_identity
 from apps.catalog.models import Game
 from apps.gameplay.models import GameSession, GameStorage
-from apps.gameplay.services.sessions import SessionError, _now
+from apps.gameplay.services.sessions import SessionError, _lock_account, _now
 
 MAX_BYTES = 65_536
 MAX_KEYS = 256
@@ -175,6 +175,19 @@ def put_storage(
     session = _active_session(subject_type, user, identity, game)
 
     with transaction.atomic():
+        # R-056: take the account row lock before the storage advisory lock
+        # and the GameStorage row. ``anonymize_user`` and block hold the User
+        # row first and afterwards delete/revoke the subject's storage; a
+        # user storage write that locked storage first could deadlock on the
+        # ``FOR KEY SHARE`` needed by the FK insert, or create data after the
+        # cleanup pass has run. Re-checking ``is_active`` under the lock makes
+        # a blocked/anonymised account unable to write storage.
+        if subject_type == GameStorage.SUBJECT_USER:
+            if user is None:  # defensive: _subject guarantees a user here
+                raise SessionError("E_AUTH_REQUIRED", "Authentication required", 403)
+            account = _lock_account(GameSession.SUBJECT_USER, user.id)
+            if account is None or not account.is_active:
+                raise SessionError("E_SESSION_INVALID", "Account is not available", 403)
         _lock_storage(subject_type, session.subject_id, game.id)
         if subject_type == GameStorage.SUBJECT_USER:
             row = (

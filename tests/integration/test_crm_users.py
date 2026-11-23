@@ -29,11 +29,13 @@ from apps.crm.services import users as crm_users
 from apps.gameplay.models import (
     GameResult,
     GameSession,
+    GameStorage,
     LeaderboardEntry,
     UserGamePlaytime,
 )
 from apps.gameplay.services import results as results_service
 from apps.gameplay.services import sessions as sessions_service
+from apps.gameplay.services import storage as storage_service
 from apps.gameplay.services.results import submit_result
 from apps.gameplay.services.sessions import (
     SessionError,
@@ -41,6 +43,7 @@ from apps.gameplay.services.sessions import (
     create_session,
     heartbeat,
 )
+from apps.gameplay.services.storage import put_storage
 
 PASSWORD = "correct horse battery staple"
 
@@ -675,6 +678,183 @@ def test_concurrent_submit_result_racing_block_revoke_cannot_deadlock(monkeypatc
     assert session.state == GameSession.STATE_ABORTED
     target.refresh_from_db()
     assert target.is_active is False
+
+
+def _storage_row(game: Game, user: User) -> None:
+    GameStorage.objects.create(
+        game=game,
+        subject_type=GameStorage.SUBJECT_USER,
+        user=user,
+        data={"before": True},
+        revision=1,
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("existing", [False, True])
+def test_concurrent_put_storage_racing_anonymise_does_not_restore_data(
+    monkeypatch, existing: bool
+) -> None:
+    """R-056: put_storage waits for anonymise's account lock before writing."""
+    target = _customer("target", "Target")
+    game = _game("storage_anonymise_race_game")
+    _session(game, target, GameSession.STATE_ACTIVE, seed="race", credited_ms=30_000)
+    if existing:
+        _storage_row(game, target)
+    request = RequestFactory().post("/")
+    request.user = target
+
+    reached_user_lock = threading.Event()
+    release_anonymise = threading.Event()
+    reached_account_lock = threading.Event()
+    outcomes: list[str] = []
+    outcomes_lock = threading.Lock()
+    real_reserve_nickname = profile_service.reserve_nickname
+    real_lock_account = storage_service._lock_account
+
+    def blocking_reserve_nickname(*args: object, **kwargs: object) -> object:
+        reached_user_lock.set()
+        assert release_anonymise.wait(timeout=10)
+        return real_reserve_nickname(*args, **kwargs)
+
+    def signalling_lock_account(subject_type: str, subject_id):  # type: ignore[no-untyped-def]
+        reached_account_lock.set()
+        return real_lock_account(subject_type, subject_id)
+
+    monkeypatch.setattr(profile_service, "reserve_nickname", blocking_reserve_nickname)
+    monkeypatch.setattr(storage_service, "_lock_account", signalling_lock_account)
+
+    def anonymise_worker() -> None:
+        try:
+            anonymize_user(target)
+        finally:
+            connections.close_all()
+
+    def storage_worker() -> None:
+        try:
+            put_storage(
+                request,
+                game.technical_id,
+                data={"after": True},
+                if_match='"1"' if existing else "*",
+            )
+        except SessionError as exc:
+            with outcomes_lock:
+                outcomes.append(exc.code)
+        except Exception as exc:  # noqa: BLE001 - surface unexpected race failures
+            with outcomes_lock:
+                outcomes.append(type(exc).__name__)
+        else:
+            with outcomes_lock:
+                outcomes.append("ok")
+        finally:
+            connections.close_all()
+
+    anonymise_thread = threading.Thread(target=anonymise_worker)
+    anonymise_thread.start()
+    assert reached_user_lock.wait(timeout=10), "anonymise never locked the account"
+
+    storage_thread = threading.Thread(target=storage_worker)
+    storage_thread.start()
+    # put_storage must park on the User row, never touching storage while the
+    # cleanup pass still owns the account.
+    assert reached_account_lock.wait(timeout=10), "put_storage never took the account lock"
+    release_anonymise.set()
+
+    anonymise_thread.join(timeout=30)
+    storage_thread.join(timeout=30)
+    assert not anonymise_thread.is_alive()
+    assert not storage_thread.is_alive()
+
+    assert outcomes == ["E_SESSION_INVALID"]
+    assert not GameStorage.objects.filter(user=target).exists()
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("existing", [False, True])
+def test_concurrent_put_storage_racing_block_cannot_write(monkeypatch, existing: bool) -> None:
+    """R-056: a blocked account cannot create or update storage concurrently."""
+    owner = _staff("owner", StaffRole.OWNER)
+    target = _customer("target", "Target")
+    game = _game("storage_block_race_game")
+    _session(game, target, GameSession.STATE_ACTIVE, seed="race", credited_ms=30_000)
+    if existing:
+        _storage_row(game, target)
+    request = RequestFactory().post("/")
+    request.user = target
+
+    reached_block = threading.Event()
+    release_block = threading.Event()
+    reached_account_lock = threading.Event()
+    outcomes: list[str] = []
+    outcomes_lock = threading.Lock()
+    real_revoke = crm_users._revoke_open_sessions
+    real_lock_account = storage_service._lock_account
+
+    def blocking_revoke(user: User) -> int:
+        reached_block.set()
+        assert release_block.wait(timeout=10)
+        return real_revoke(user)
+
+    def signalling_lock_account(subject_type: str, subject_id):  # type: ignore[no-untyped-def]
+        reached_account_lock.set()
+        return real_lock_account(subject_type, subject_id)
+
+    monkeypatch.setattr(crm_users, "_revoke_open_sessions", blocking_revoke)
+    monkeypatch.setattr(storage_service, "_lock_account", signalling_lock_account)
+
+    def block_worker() -> None:
+        try:
+            result = crm_users.toggle_user_active(actor=owner, target_id=target.id)
+            assert result.ok
+        finally:
+            connections.close_all()
+
+    def storage_worker() -> None:
+        try:
+            put_storage(
+                request,
+                game.technical_id,
+                data={"after": True},
+                if_match='"1"' if existing else "*",
+            )
+        except SessionError as exc:
+            with outcomes_lock:
+                outcomes.append(exc.code)
+        except Exception as exc:  # noqa: BLE001 - surface unexpected race failures
+            with outcomes_lock:
+                outcomes.append(type(exc).__name__)
+        else:
+            with outcomes_lock:
+                outcomes.append("ok")
+        finally:
+            connections.close_all()
+
+    block_thread = threading.Thread(target=block_worker)
+    block_thread.start()
+    assert reached_block.wait(timeout=10), "block never reached its session revoke step"
+
+    storage_thread = threading.Thread(target=storage_worker)
+    storage_thread.start()
+    assert reached_account_lock.wait(timeout=10), "put_storage never took the account lock"
+    release_block.set()
+
+    block_thread.join(timeout=30)
+    storage_thread.join(timeout=30)
+    assert not block_thread.is_alive()
+    assert not storage_thread.is_alive()
+
+    assert outcomes == ["E_SESSION_INVALID"]
+    target.refresh_from_db()
+    assert target.is_active is False
+    rows = GameStorage.objects.filter(user=target)
+    if existing:
+        # Blocking keeps storage, but the racing write must not bump it.
+        row = rows.get()
+        assert row.revision == 1
+        assert row.data == {"before": True}
+    else:
+        assert not rows.exists()
 
 
 @pytest.mark.django_db(transaction=True)
