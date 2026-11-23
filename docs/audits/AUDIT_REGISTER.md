@@ -842,3 +842,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | R-052 myBest mismatch; R-053 hand-mirrored schemas; browser/staging E2E NOT TESTED |
 | Источник | commits `855caa1`, `3e037c4`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-SDK-MYBEST-001 — myBest contract fix
+
+| Поле | Значение |
+|---|---|
+| Тип | Public SDK/host conformance fix via AI HQ; no schema change |
+| Результат | `20f379c`: bestOnly emits `{entries,myRank}`, SDK myBest extracts value/achievedAt; null/zero covered; vendored SDK synced |
+| Проверки | JS 23/23 on main; full Python suite 1109/1101/8 exit 0; reviewer accept |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | nickname null in bestOnly entry (schema-legal); browser E2E NOT TESTED |
+| Источник | commit `20f379c`; evidence в `.autonomy/evidence/` |

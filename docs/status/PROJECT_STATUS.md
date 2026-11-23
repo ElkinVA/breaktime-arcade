@@ -344,6 +344,16 @@ negative/oversized/source/origin/replay); Python contract/package tests
 Остатки: R-052 pre-existing `myBest` wire-shape mismatch (follow-up), R-053
 ручное зеркалирование схем, browser/staging E2E NOT TESTED.
 
+## 0.24. SDK myBest contract fix — 2026-11-23
+
+`ARCADE-SDK-MYBEST-001` — **COMPLETED / AI HQ REVIEW ACCEPT** (`20f379c`).
+Host `bestOnly` теперь отвечает `{entries, myRank}` по
+`ba_leaderboard_data`; SDK `myBest` извлекает `{value, achievedAt}` из
+единственной entry, `null` при отсутствии; value=0 обрабатывается корректно.
+JS **23/23**; full Python suite **1109 tests: 1101 passed, 8 skipped,
+exit 0**. Остаток: nickname в bestOnly entry = null (schema-legal); browser
+E2E NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

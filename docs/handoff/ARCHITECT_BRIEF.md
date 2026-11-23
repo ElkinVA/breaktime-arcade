@@ -61,8 +61,9 @@ ambiguity.
   with public ordering parity and pagination (`ARCADE-CRM-GAME-RECORDS-001`,
   `db8a835` + `551e73e`).
 - Runtime validation: host/SDK messages are schema-driven with
-  `E_MESSAGE_INVALID` (`ARCADE-RUNTIME-JSONSCHEMA-001`, `855caa1`); R-052
-  myBest mismatch and R-053 schema mirroring remain.
+  `E_MESSAGE_INVALID` (`ARCADE-RUNTIME-JSONSCHEMA-001`, `855caa1`); myBest
+  now matches `ba_leaderboard_data` (`ARCADE-SDK-MYBEST-001`, `20f379c`);
+  R-053 schema mirroring remains.
 - CRM artifact downloads: staff-only original ZIP, runtime zip and per-version
   reports with step-up for binary artifacts (`ARCADE-ARTIFACTS-DOWNLOAD-001`,
   `f8c3a52` + `91c9c0f`); TOCTOU closed by `75d0159`, R-050 memory/E2E

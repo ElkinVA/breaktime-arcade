@@ -1461,3 +1461,15 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Остаток:** R-052 `myBest` mismatch, R-053 ручное зеркалирование схем,
   browser/staging E2E NOT TESTED.
 - **Commit:** `855caa1`, `3e037c4`.
+
+### ARCADE-SDK-MYBEST-001 — myBest contract fix (AI HQ)
+
+- **Результат:** `20f379c`; host `bestOnly` отдаёт `{entries,myRank}` по
+  `ba_leaderboard_data`, SDK `myBest` извлекает `{value,achievedAt}` из
+  единственной entry (null при отсутствии, value=0 корректен); vendored SDK
+  синхронизированы.
+- **Проверки:** JS **23/23** на main (новые empty/non-empty bestOnly tests);
+  full Python suite **1109/1101/8**; reviewer accept.
+- **Остаток:** nickname в bestOnly entry = null (schema-legal); browser E2E
+  NOT TESTED.
+- **Commit:** `20f379c`.
