@@ -421,6 +421,17 @@ parametrized race-теста с anonymize/block; targeted 26/26; full suite
 **1121 tests: 1113 passed, 8 skipped, exit 0**. R-056 закрыт. Остаток:
 live load/staging E2E NOT TESTED.
 
+## 0.31. Artifact single-pass hash — 2026-11-24
+
+`ARCADE-ARTIFACTS-SINGLE-PASS-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`ee9e9c4`). Original ZIP читается из проверенного `O_NOFOLLOW` handle один
+раз: копируется в temp spool с одновременным SHA-256, сравнивается с
+`package_hash`, и отдаётся только проверенный spool; mismatch → 404 без
+единого байта тела. Double-read/in-place-swap окно устранено. 15 targeted
+tests (byte-exact, mutation, chunked, symlink/swap); full suite **1123
+tests: 1115 passed, 8 skipped, exit 0**. R-050 закрыт в коде; остаток:
+runtime zip не hash-verified, real nginx/volume E2E NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

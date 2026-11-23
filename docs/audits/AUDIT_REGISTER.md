@@ -926,3 +926,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | live load/staging E2E NOT TESTED |
 | Источник | commit `bcd99a7`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-ARTIFACTS-SINGLE-PASS-001 — single-pass ZIP hash
+
+| Поле | Значение |
+|---|---|
+| Тип | Security hardening via AI HQ; no schema/contract change |
+| Результат | `ee9e9c4`: hash-while-spooling from verified fd, serve only verified spool; no body on mismatch |
+| Проверки | 15 targeted artifact tests; ruff/mypy clean; reviewer accept; full suite 1123/1115/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | runtime zip not hash-verified; real nginx/volume E2E NOT TESTED |
+| Источник | commit `ee9e9c4`; evidence в `.autonomy/evidence/` |

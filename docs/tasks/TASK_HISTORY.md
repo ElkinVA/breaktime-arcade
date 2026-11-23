@@ -1542,3 +1542,14 @@ tests: 1056 passed, 8 skipped, exit 0**.
   ruff/mypy целевого модуля; reviewer accept; full suite **1121/1113/8**.
 - **Остаток:** live load/staging E2E NOT TESTED.
 - **Commit:** `bcd99a7`.
+
+### ARCADE-ARTIFACTS-SINGLE-PASS-001 — single-pass ZIP hash (AI HQ)
+
+- **Результат:** `ee9e9c4`; original ZIP читается один раз в temp spool с
+  одновременным SHA-256, отдаётся только проверенный spool; mismatch → 404
+  без тела; double-read/in-place-swap устранён.
+- **Проверки:** 15 targeted artifact tests (byte-exact, in-place mutation,
+  chunked, symlink/path-swap); ruff/mypy clean; reviewer accept; full suite
+  **1123/1115/8**.
+- **Остаток:** runtime zip не hash-verified; real nginx/volume E2E NOT TESTED.
+- **Commit:** `ee9e9c4`.

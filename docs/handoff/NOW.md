@@ -388,6 +388,11 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-ARTIFACTS-SINGLE-PASS-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`ee9e9c4`): ZIP один раз копируется в spool с SHA-256, отдаётся только
+проверенный spool; 15 targeted tests; full suite **1123/1115/8**. R-050
+закрыт в коде; runtime zip не hash-verified, E2E NOT TESTED.
+
 `ARCADE-STORAGE-LOCK-ORDER-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
 (`bcd99a7`): put_storage User lock + is_active до storage locks; 4 race
 tests; full suite **1121/1113/8**; R-056 закрыт. Live load/staging NOT
