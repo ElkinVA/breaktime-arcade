@@ -73,8 +73,8 @@ product acceptance remains owner-level).
 
 ## 0.3. Локальная сверка 2026-11-23 (Claude)
 
-- Git: `HEAD` = `origin/main` = `734b592`; рабочее дерево чистое,
-  неотправленных локальных коммитов нет.
+- Git: `HEAD` = `origin/main` (на момент проверки `5aa1d82`); рабочее
+  дерево чистое, неотправленных локальных коммитов нет.
 - Полный fresh pytest: **981 passed**; 8 skip из-за отсутствия `git` в
   контейнере `web` (7 `test_autonomy_worktree.py` + 1 `test_devcontrol.py`)
   и 4 module-level E2E skip при выключенном `BA_E2E` — всего отчётные
