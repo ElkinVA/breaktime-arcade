@@ -593,6 +593,19 @@ def test_moderation_queues_paginate_while_summary_stays_complete() -> None:
     ]
     assert "complaints_page=1" in page_two_complaints.content.decode()
 
+    # Each queue's pagination links preserve the other queue's page and filters.
+    combined = client.get(
+        reverse("crm:moderation"),
+        {"game": "pagination_game", "ratings_page": "2", "complaints_page": "2"},
+    )
+    assert combined.status_code == 200
+    rating_query = combined.context["rating_pagination_query"]
+    complaint_query = combined.context["complaint_pagination_query"]
+    assert "game=pagination_game" in rating_query
+    assert "complaints_page=2" in rating_query
+    assert "game=pagination_game" in complaint_query
+    assert "ratings_page=2" in complaint_query
+
 
 @pytest.mark.django_db
 def test_rating_queue_summary_queries_do_not_scale_with_votes() -> None:

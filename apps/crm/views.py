@@ -1787,6 +1787,12 @@ def moderation_queue(request: HttpRequest) -> TemplateResponse:
     rating_params.pop("ratings_page", None)
     rating_params.pop("complaints_page", None)
     rating_params.pop("page", None)
+    # Keep the other queue's current page when one paginator moves.
+    complaint_params = rating_params.copy()
+    if request.GET.get("complaints_page"):
+        rating_params["complaints_page"] = request.GET["complaints_page"]
+    if request.GET.get("ratings_page"):
+        complaint_params["ratings_page"] = request.GET["ratings_page"]
     assignees = User.objects.filter(
         is_staff=True,
         is_active=True,
@@ -1807,6 +1813,7 @@ def moderation_queue(request: HttpRequest) -> TemplateResponse:
             "rating_values": RATING_VALUE_CHOICES,
             "complaints": complaint_page.object_list,
             "complaints_page_obj": complaint_page,
+            "complaint_pagination_query": complaint_params.urlencode(),
             "assignees": assignees,
         },
     )
