@@ -1532,3 +1532,13 @@ tests: 1056 passed, 8 skipped, exit 0**.
   summary complete); ruff clean; reviewer accept; full suite **1117/1109/8**.
 - **Остаток:** browser/staging NOT TESTED.
 - **Commit:** `07a287a`, `380cd11`.
+
+### ARCADE-STORAGE-LOCK-ORDER-001 — storage write lock order (AI HQ)
+
+- **Результат:** `bcd99a7`; `put_storage` для user subject берёт User row
+  lock до storage advisory/row и перепроверяет `is_active`; guest-ветка не
+  изменена.
+- **Проверки:** 4 parametrized race-теста с anonymize/block; targeted 26/26;
+  ruff/mypy целевого модуля; reviewer accept; full suite **1121/1113/8**.
+- **Остаток:** live load/staging E2E NOT TESTED.
+- **Commit:** `bcd99a7`.

@@ -411,6 +411,16 @@ game/value/status и обе page-позиции сохраняются при п
 page 2, summary=120); full suite **1117 tests: 1109 passed, 8 skipped,
 exit 0**. Остаток: browser/staging NOT TESTED.
 
+## 0.30. Storage lock order — 2026-11-24
+
+`ARCADE-STORAGE-LOCK-ORDER-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`bcd99a7`). `put_storage` для user subject берёт User row lock до storage
+advisory/row и перепроверяет `is_active`; guest-ветка не изменена. Запись не
+может появиться после anonymize/block, FK deadlock cycle устранён. Четыре
+parametrized race-теста с anonymize/block; targeted 26/26; full suite
+**1121 tests: 1113 passed, 8 skipped, exit 0**. R-056 закрыт. Остаток:
+live load/staging E2E NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

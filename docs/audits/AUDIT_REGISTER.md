@@ -914,3 +914,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | browser/staging NOT TESTED |
 | Источник | commits `07a287a`, `380cd11`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-STORAGE-LOCK-ORDER-001 — storage write lock order
+
+| Поле | Значение |
+|---|---|
+| Тип | Reliability/concurrency fix via AI HQ; no schema change |
+| Результат | `bcd99a7`: User lock + is_active before storage advisory/row in put_storage; guest branch unchanged |
+| Проверки | 4 race tests; targeted 26/26; ruff/targeted mypy; reviewer accept; full suite 1121/1113/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | live load/staging E2E NOT TESTED |
+| Источник | commit `bcd99a7`; evidence в `.autonomy/evidence/` |

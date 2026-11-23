@@ -388,6 +388,11 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-STORAGE-LOCK-ORDER-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`bcd99a7`): put_storage User lock + is_active до storage locks; 4 race
+tests; full suite **1121/1113/8**; R-056 закрыт. Live load/staging NOT
+TESTED.
+
 `ARCADE-CRM-MODERATION-PAGINATION-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
 (`07a287a` + `380cd11`): обе очереди по 50, full-set summary, filters и обе
 page-позиции сохраняются; 13 targeted tests; full suite **1117/1109/8**.

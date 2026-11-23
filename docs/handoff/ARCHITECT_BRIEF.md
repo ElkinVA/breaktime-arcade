@@ -50,9 +50,10 @@ ambiguity.
   (`ARCADE-CRM-USERS-001`, `4095ed8` + fixes). R-049 follow-ups now abort
   open SDK sessions on block and clear tombstone credentials
   (`a9e7d2b`, `08ab9c7`); narrow create_session race remains.
-- Session creation, submit_result and heartbeat are serialized with
-  block/anonymise via a User row lock (`ARCADE-SESSION-RACE-001`/`LOCK-ORDER-001`);
-  R-056 storage write ordering remains.
+- Session creation, submit_result, heartbeat and storage writes are
+  serialized with block/anonymise via a User row lock
+  (`ARCADE-SESSION-RACE-001`/`LOCK-ORDER-001`/`STORAGE-LOCK-ORDER-001`);
+  R-056 closed.
 - App F concurrency/idempotency coverage: result/leaderboard races, rating
   limits, storage If-Match and Idempotency-Key (`ARCADE-APPF-RACE-TESTS-001`,
   `7af18bb`).
