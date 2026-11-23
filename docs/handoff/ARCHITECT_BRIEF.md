@@ -67,10 +67,10 @@ ambiguity.
   `E_MESSAGE_INVALID` (`ARCADE-RUNTIME-JSONSCHEMA-001`, `855caa1`); myBest
   now matches `ba_leaderboard_data` (`ARCADE-SDK-MYBEST-001`, `20f379c`);
   R-053 schema mirroring remains.
-- CRM artifact downloads: staff-only original ZIP, runtime zip and per-version
-  reports with step-up for binary artifacts (`ARCADE-ARTIFACTS-DOWNLOAD-001`,
-  `f8c3a52` + `91c9c0f`); TOCTOU closed by `75d0159`, R-050 memory/E2E
-  residual.
+- CRM artifact downloads: staff-only original ZIP (SHA-256 verified, chunked),
+  runtime zip (temp-file spooled) and per-version reports with step-up
+  (`ARCADE-ARTIFACTS-DOWNLOAD-001`/`TOCTOU-001`/`STREAMING-001`, `8d22aee`);
+  R-050 double-read/E2E residual.
 - CRM SEO diagnostics: `/crm/seo/` reports empty descriptions, duplicate
   titles, missing alt and incomplete translations by language
   (`ARCADE-CRM-SEO-DIAGNOSTICS-001`, `f5474d8`).

@@ -1487,3 +1487,16 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Остаток:** probe/Playwright E2E NOT TESTED; `expires_at` snake_case и
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
+
+### ARCADE-ARTIFACTS-STREAMING-001 — artifact streaming + ZIP hash (AI HQ)
+
+- **Результат:** `8d22aee` + fixes `167ece6`; original ZIP SHA-256 проверяется
+  до отдачи и стримится bounded-chunk из verified fd; runtime zip — temp-file
+  spool и FileResponse; corrupted package → 404 без частичного тела; spool
+  закрывается на любом исключении; удалён неиспользуемый буферный helper.
+- **Проверки:** 13 targeted artifact tests (chunked read, corrupted package,
+  spool, symlink/path-swap); ruff/mypy clean; reviewer accept; full suite
+  **1112/1104/8**.
+- **Остаток:** R-050 double-read in-place swap, runtime zip не hash-verified,
+  real nginx/volume E2E NOT TESTED.
+- **Commit:** `8d22aee`, `167ece6`.

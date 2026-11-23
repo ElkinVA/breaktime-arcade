@@ -866,3 +866,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | probe/Playwright E2E NOT TESTED; R-054 expires_at snake_case/no alias |
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-ARTIFACTS-STREAMING-001 — artifact streaming + ZIP hash
+
+| Поле | Значение |
+|---|---|
+| Тип | Security/performance hardening via AI HQ; no schema/contract change |
+| Результат | `8d22aee` + `167ece6`: SHA-256 before body, chunked package streaming, temp-file runtime zip, spool cleanup on any failure |
+| Проверки | 13 targeted artifact tests; ruff/mypy clean; reviewer accept; full suite 1112/1104/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | R-050 double-read/in-place swap, runtime zip not hash-verified, E2E NOT TESTED |
+| Источник | commits `8d22aee`, `167ece6`; evidence в `.autonomy/evidence/` |

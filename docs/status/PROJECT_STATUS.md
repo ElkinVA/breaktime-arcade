@@ -365,6 +365,19 @@ E2E NOT TESTED.
 TESTED (нет live dev stack в sandbox); `expires_at` намеренно оставлен
 snake_case до отдельного решения (§7), alias не выдаётся — R-054.
 
+## 0.26. Artifact streaming — 2026-11-23
+
+`ARCADE-ARTIFACTS-STREAMING-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`8d22aee` + fixes `167ece6`). Original ZIP проверяется по SHA-256 до
+отправки тела и стримится bounded-chunk через проверенный descriptor;
+runtime zip пишется в temp-file и отдаётся FileResponse, без `io.BytesIO`.
+Corrupted package → `ArtifactUnavailable`/404 без частичного тела; symlink/
+path-swap защиты сохранены; spool закрывается при любом исключении.
+13 targeted tests; full suite **1112 tests: 1104 passed, 8 skipped,
+exit 0**. Остаток R-050: ZIP читается дважды (in-place swap между hash и
+stream не детектируется), runtime zip не hash-verified, real nginx/volume
+E2E NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

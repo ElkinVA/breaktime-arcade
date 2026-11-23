@@ -388,6 +388,12 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-ARTIFACTS-STREAMING-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`8d22aee` + `167ece6`): SHA-256 original ZIP до отдачи, chunked streaming,
+temp-file runtime zip; 13 targeted tests; full suite **1112/1104/8**.
+Остаток R-050: double-read in-place swap, runtime zip не hash-verified, E2E
+NOT TESTED.
+
 `ARCADE-SESSION-API-CAMELCASE-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
 (`16068f4` + reviewer-prompt `3a91997`): POST sessions → `{sessionId,ticket,
 expires_at}`, player.js без dual-handling; JS 23/23; full suite
