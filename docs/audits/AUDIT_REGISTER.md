@@ -938,3 +938,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | runtime zip not hash-verified; real nginx/volume E2E NOT TESTED |
 | Источник | commit `ee9e9c4`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-RUNTIME-HASH-VERIFY-001 — runtime tree digest
+
+| Поле | Значение |
+|---|---|
+| Тип | Security/integrity hardening via AI HQ; no schema/contract change |
+| Результат | `8f9f7ac`: per-file SHA-256 while zipping, canonical tree digest vs `runtime_hash`, no body on mismatch |
+| Проверки | 17 targeted artifact tests; ruff/mypy clean; reviewer accept (0 findings); full suite 1125/1117/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | real nginx/volume E2E and large-runtime load NOT TESTED |
+| Источник | commit `8f9f7ac`; evidence в `.autonomy/evidence/` |

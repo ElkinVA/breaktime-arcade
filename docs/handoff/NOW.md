@@ -388,6 +388,11 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-RUNTIME-HASH-VERIFY-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`8f9f7ac`): per-file SHA-256 + canonical tree digest vs `runtime_hash`
+до отдачи; 17 targeted tests; full suite **1125/1117/8**. R-050 закрыт;
+real nginx/volume E2E NOT TESTED.
+
 `ARCADE-ARTIFACTS-SINGLE-PASS-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
 (`ee9e9c4`): ZIP один раз копируется в spool с SHA-256, отдаётся только
 проверенный spool; 15 targeted tests; full suite **1123/1115/8**. R-050

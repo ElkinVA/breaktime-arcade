@@ -1553,3 +1553,13 @@ tests: 1056 passed, 8 skipped, exit 0**.
   **1123/1115/8**.
 - **Остаток:** runtime zip не hash-verified; real nginx/volume E2E NOT TESTED.
 - **Commit:** `ee9e9c4`.
+
+### ARCADE-RUNTIME-HASH-VERIFY-001 — runtime tree digest (AI HQ)
+
+- **Результат:** `8f9f7ac`; runtime zip собирается verified-descriptor walk с
+  per-file SHA-256 по arcname; канонический `runtime_hash_for` digest
+  сверяется с `version.runtime_hash` до отдачи; mismatch → 404 без тела.
+- **Проверки:** 17 targeted artifact tests (valid + mismatch); ruff/mypy
+  clean; reviewer accept без findings; full suite **1125/1117/8**.
+- **Остаток:** real nginx/volume E2E и нагрузка больших runtime NOT TESTED.
+- **Commit:** `8f9f7ac`.

@@ -432,6 +432,17 @@ tests (byte-exact, mutation, chunked, symlink/swap); full suite **1123
 tests: 1115 passed, 8 skipped, exit 0**. R-050 закрыт в коде; остаток:
 runtime zip не hash-verified, real nginx/volume E2E NOT TESTED.
 
+## 0.32. Runtime hash verification — 2026-11-24
+
+`ARCADE-RUNTIME-HASH-VERIFY-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`8f9f7ac`). CRM runtime download собирает zip через verified-descriptor walk,
+накапливает per-file SHA-256 по arcname и сравнивает канонический tree digest
+(`name\0hex\n`, `runtime_hash_for`) с `version.runtime_hash` до отдачи;
+mismatch → `ArtifactUnavailable`/404 без тела. 17 targeted artifact tests
+(valid/mismatch); full suite **1125 tests: 1117 passed, 8 skipped, exit 0**.
+R-050 закрыт в коде; остаток: real nginx/volume E2E и нагрузка больших
+runtime NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

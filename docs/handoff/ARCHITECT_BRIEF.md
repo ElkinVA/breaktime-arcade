@@ -75,9 +75,9 @@ ambiguity.
   now matches `ba_leaderboard_data` (`ARCADE-SDK-MYBEST-001`, `20f379c`);
   R-053 schema mirroring remains.
 - CRM artifact downloads: staff-only original ZIP (single-pass SHA-256 +
-  verified spool), runtime zip (temp-file spooled) and per-version reports
-  with step-up (`ARCADE-ARTIFACTS-DOWNLOAD-001`/`TOCTOU-001`/`STREAMING-001`/
-  `SINGLE-PASS-001`, `ee9e9c4`); R-050 closed in code, E2E residual.
+  verified spool), runtime zip (tree digest verified vs `runtime_hash`) and
+  per-version reports with step-up (`ARCADE-ARTIFACTS-*`, `8f9f7ac`); R-050
+  closed in code, E2E residual.
 - CRM SEO diagnostics: `/crm/seo/` reports empty descriptions, duplicate
   titles, missing alt and incomplete translations by language
   (`ARCADE-CRM-SEO-DIAGNOSTICS-001`, `f5474d8`).
