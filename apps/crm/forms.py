@@ -6,9 +6,15 @@ from typing import Any, cast
 
 from django import forms
 from django.core.files.uploadedfile import UploadedFile
+from django.core.validators import RegexValidator
 from django.db.models import QuerySet
 
 from apps.i18n.models import Language, TranslationEntry
+
+SLUG_VALIDATOR = RegexValidator(
+    r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
+    "Slug: только строчные латинские буквы, цифры и дефис.",
+)
 
 
 class ZipUploadForm(forms.Form):
@@ -257,6 +263,7 @@ class GenreTranslationForm(forms.Form):
         max_length=64,
         required=False,
         label="Slug",
+        validators=[SLUG_VALIDATOR],
         widget=forms.TextInput(attrs={"class": _INPUT_CLASS}),
     )
     description = forms.CharField(
@@ -303,6 +310,7 @@ class TagTranslationForm(forms.Form):
         max_length=64,
         required=False,
         label="Slug",
+        validators=[SLUG_VALIDATOR],
         widget=forms.TextInput(attrs={"class": _INPUT_CLASS}),
     )
 

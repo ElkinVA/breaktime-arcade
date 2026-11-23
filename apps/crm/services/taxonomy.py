@@ -18,6 +18,7 @@ from dataclasses import dataclass, replace
 from typing import Any
 from uuid import UUID
 
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import UploadedFile
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
@@ -38,6 +39,15 @@ TAG_IN_USE = "Тег используется играми и не может б
 DUPLICATE_CODE = "Запись с таким кодом уже существует."
 DUPLICATE_SLUG = "Такой slug уже используется для этого языка."
 EMPTY_CODE = "Укажите код."
+
+
+def _delete_image_after_commit(name: str) -> None:
+    """Remove a replaced genre image only after the DB transaction commits."""
+    if not name:
+        return
+    transaction.on_commit(lambda: default_storage.delete(name))
+
+
 INVALID_TRANSLATION = "Укажите название и slug перевода."
 
 
@@ -239,6 +249,7 @@ def update_genre(
             return TaxonomyResult(False, DUPLICATE_SLUG)
 
     before = _genre_snapshot(genre)
+    previous_image = genre.image.name if genre.image else ""
     try:
         with transaction.atomic():
             genre.code = clean_code
@@ -248,6 +259,8 @@ def update_genre(
             elif clear_image:
                 genre.image = ""
             genre.save()
+            if previous_image and (image is not None or clear_image):
+                _delete_image_after_commit(previous_image)
             if payload is not None:
                 _upsert_genre_translation(genre, payload)
             record_audit(
@@ -277,6 +290,7 @@ def delete_genre(
             if locked.game_links.exists() or locked.primary_games.exists():
                 return TaxonomyResult(False, GENRE_IN_USE, instance=genre)
             snapshot = _genre_snapshot(locked)
+            image_name = (locked.image.name or "") if locked.image else ""
             record_audit(
                 actor=actor,
                 action=AdminAuditLog.ACTION_GENRE_DELETED,
@@ -287,6 +301,7 @@ def delete_genre(
                 ip=ip,
             )
             locked.delete()
+            _delete_image_after_commit(image_name)
     except Genre.DoesNotExist:
         return TaxonomyResult(False, GENRE_IN_USE)
     except ProtectedError:

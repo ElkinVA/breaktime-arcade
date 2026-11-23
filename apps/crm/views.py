@@ -1476,7 +1476,7 @@ def genre_delete(request: HttpRequest, genre_id: UUID) -> HttpResponseRedirect:
 @require_GET
 def tags_list(request: HttpRequest) -> TemplateResponse:
     """Tags with an optional «requires translation» queue filter."""
-    queue = str(request.GET.get("queue") or "").strip()
+    queue = str(request.GET.get("queue") or "").strip().lower()
     needs_flag = str(
         request.GET.get("needs_translation") or request.GET.get("translation_queue") or ""
     ).lower()

@@ -205,6 +205,9 @@ def test_tag_crud_translation_queue_and_audit() -> None:
     body = queue.content.decode()
     assert "speedrun" in body
     assert "translated" not in body
+    upper_queue = client.get(reverse("crm:tags"), {"queue": "REQUIRES-TRANSLATION"})
+    assert upper_queue.status_code == 200
+    assert "speedrun" in upper_queue.content.decode()
 
     saved = client.post(
         reverse("crm:tag_edit", args=[tag.id]),
@@ -324,3 +327,17 @@ def test_tag_translation_is_upserted_per_language() -> None:
     assert translation.name == "Русский!"
     assert translation.slug == "russkiy-2"
     assert GenreTranslation.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_translation_slug_rejects_invalid_characters() -> None:
+    editor = _staff("taxonomy_slug_editor", StaffRole.EDITOR)
+    client = _client(editor)
+
+    response = client.post(
+        reverse("crm:tag_new"),
+        _tag_payload(code="bad-slug-tag", name="Bad", slug="foo bar"),
+    )
+
+    assert response.status_code == 200
+    assert not Tag.objects.filter(code="bad-slug-tag").exists()
