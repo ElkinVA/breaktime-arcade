@@ -76,8 +76,10 @@ def _selected_epoch(game: Game, raw: Any, epochs: tuple[int, ...]) -> int:
 def _page_number(raw: Any) -> int:
     """Blank, non-integer and non-positive input maps to the first page.
 
-    ``Paginator.get_page`` would map such values to the last page; the public
-    leaderboard normalises them to page 1, so the staff view does the same.
+    ``Paginator.get_page`` maps non-positive or out-of-range values to the
+    last page (non-integers already fall back to page 1); the public
+    leaderboard normalises invalid values to page 1, so the staff view does
+    the same.
     """
     if raw is None:
         return 1
