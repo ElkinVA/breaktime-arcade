@@ -9,9 +9,11 @@ appended to the immutable CRM audit log with the mandatory reason.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 from django.db import transaction
+from django.db.models import Avg, Count, Q, QuerySet
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -20,6 +22,15 @@ from apps.crm.permissions import MODERATION_MANAGE, has_capability
 from apps.crm.services.audit import record_audit
 from apps.ratings.models import GameRatingVote
 from apps.ratings.services.aggregates import recalculate
+
+STATUS_VALID = "valid"
+STATUS_HIDDEN = "hidden"
+RATING_STATUS_CHOICES = (
+    (STATUS_VALID, "Допущена"),
+    (STATUS_HIDDEN, "Скрыта"),
+)
+_RATING_STATUSES = frozenset(code for code, _label in RATING_STATUS_CHOICES)
+RATING_VALUE_CHOICES = tuple(range(1, 6))
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +41,70 @@ class RatingModerationResult:
     reason: str = ""
     vote: GameRatingVote | None = None
     audit: AdminAuditLog | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RatingFilters:
+    """Validated CRM rating queue filters. Unknown values are ignored."""
+
+    game: str = ""
+    value: int | None = None
+    status: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class RatingSummary:
+    """Average and per-value counts over the filtered vote rows."""
+
+    count: int
+    average: float
+    distribution: dict[int, int]
+
+
+def parse_rating_filters(params: Any) -> RatingFilters:
+    """Read game/value/visibility filters; reject values outside the domain."""
+    game = str(params.get("game") or "").strip()[:40]
+    raw_value = str(params.get("value") or "").strip()
+    value = int(raw_value) if raw_value.isdecimal() and 1 <= int(raw_value) <= 5 else None
+    status = str(params.get("status") or "").strip().lower()
+    if status not in _RATING_STATUSES:
+        status = ""
+    return RatingFilters(game=game, value=value, status=status)
+
+
+def filter_rating_votes(filters: RatingFilters) -> QuerySet[GameRatingVote]:
+    """Queue rows matching the filters, newest first, relations prefetched."""
+    queryset = GameRatingVote.objects.select_related("game", "user", "moderated_by")
+    if filters.game:
+        queryset = queryset.filter(game__technical_id=filters.game)
+    if filters.value is not None:
+        queryset = queryset.filter(value=filters.value)
+    if filters.status == STATUS_VALID:
+        queryset = queryset.filter(is_valid=True)
+    elif filters.status == STATUS_HIDDEN:
+        queryset = queryset.filter(is_valid=False)
+    return queryset.order_by("-created_at")
+
+
+def summarize_rating_votes(queryset: QuerySet[GameRatingVote]) -> RatingSummary:
+    """Compute count/average/distribution in a single aggregate query."""
+    row = queryset.order_by().aggregate(
+        count=Count("id"),
+        average=Avg("value"),
+        **{f"value_{star}": Count("id", filter=Q(value=star)) for star in RATING_VALUE_CHOICES},
+    )
+    average = float(row["average"]) if row["average"] is not None else 0.0
+    distribution = {star: int(row[f"value_{star}"] or 0) for star in RATING_VALUE_CHOICES}
+    return RatingSummary(count=int(row["count"] or 0), average=average, distribution=distribution)
+
+
+def rating_game_options() -> tuple[str, ...]:
+    """Distinct technical ids that have votes, in a single ordered query."""
+    return tuple(
+        GameRatingVote.objects.order_by("game__technical_id")
+        .values_list("game__technical_id", flat=True)
+        .distinct()
+    )
 
 
 def _snapshot(vote: GameRatingVote) -> dict[str, object]:
@@ -100,4 +175,15 @@ def set_rating_visibility(
     return RatingModerationResult(ok=True, vote=vote, audit=audit)
 
 
-__all__ = ["RatingModerationResult", "set_rating_visibility"]
+__all__ = [
+    "RATING_STATUS_CHOICES",
+    "RATING_VALUE_CHOICES",
+    "RatingFilters",
+    "RatingModerationResult",
+    "RatingSummary",
+    "filter_rating_votes",
+    "parse_rating_filters",
+    "rating_game_options",
+    "set_rating_visibility",
+    "summarize_rating_votes",
+]

@@ -6,8 +6,10 @@ import json
 
 import pyotp
 import pytest
+from django.db import connection
 from django.middleware.csrf import get_token
 from django.test import Client, RequestFactory, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
@@ -431,6 +433,131 @@ def test_public_report_intake_records_subject_reporter_and_target() -> None:
     )
     assert unknown.status_code == 400
     assert unknown.json()["code"] == "E_INVALID_REQUEST"
+
+
+@pytest.mark.django_db
+def test_rating_queue_filters_and_summary() -> None:
+    first = _game("filter_game_one")
+    second = _game("filter_game_two")
+    voters = [_user(f"filter_voter_{index}") for index in range(4)]
+    five = _vote(first, voters[0], 5)
+    three = _vote(first, voters[1], 3)
+    _vote(first, voters[2], 4)
+    _vote(second, voters[3], 2)
+    GameRatingVote.objects.filter(pk=three.pk).update(is_valid=False)
+
+    moderator = _staff("filter_moderator", StaffRole.MODERATOR)
+    client = _client(moderator)
+
+    response = client.get(reverse("crm:moderation"))
+    assert response.status_code == 200
+    summary = response.context["rating_summary"]
+    assert summary.count == 4
+    assert summary.average == pytest.approx(3.5)
+    assert summary.distribution == {1: 0, 2: 1, 3: 1, 4: 1, 5: 1}
+    body = response.content.decode()
+    assert 'data-testid="crm-moderation-rating-average">3.50' in body
+    assert 'data-testid="crm-moderation-rating-count">4' in body
+    assert 'data-testid="crm-moderation-distribution-2">1' in body
+    assert 'data-testid="crm-moderation-distribution-5">1' in body
+    assert body.count('data-testid="crm-moderation-vote"') == 4
+
+    by_game = client.get(reverse("crm:moderation"), {"game": "filter_game_one"})
+    game_summary = by_game.context["rating_summary"]
+    assert game_summary.count == 3
+    assert game_summary.average == pytest.approx(4.0)
+    assert game_summary.distribution == {1: 0, 2: 0, 3: 1, 4: 1, 5: 1}
+
+    by_value = client.get(reverse("crm:moderation"), {"value": "5"})
+    value_summary = by_value.context["rating_summary"]
+    assert value_summary.count == 1
+    assert value_summary.average == pytest.approx(5.0)
+    assert value_summary.distribution == {1: 0, 2: 0, 3: 0, 4: 0, 5: 1}
+    assert list(by_value.context["votes"]) == [five]
+
+    hidden = client.get(reverse("crm:moderation"), {"status": "hidden"})
+    hidden_summary = hidden.context["rating_summary"]
+    assert hidden_summary.count == 1
+    assert hidden_summary.average == pytest.approx(3.0)
+    assert list(hidden.context["votes"]) == [three]
+
+    valid = client.get(reverse("crm:moderation"), {"status": "valid"})
+    valid_summary = valid.context["rating_summary"]
+    assert valid_summary.count == 3
+    assert valid_summary.average == pytest.approx(11 / 3)
+
+    combined = client.get(
+        reverse("crm:moderation"),
+        {"game": "filter_game_one", "value": "3", "status": "hidden"},
+    )
+    combined_summary = combined.context["rating_summary"]
+    assert combined_summary.count == 1
+    assert list(combined.context["votes"]) == [three]
+
+    ignored = client.get(reverse("crm:moderation"), {"value": "9", "status": "unknown"})
+    assert ignored.context["rating_filters"].value is None
+    assert ignored.context["rating_filters"].status == ""
+    assert ignored.context["rating_summary"].count == 4
+
+
+@pytest.mark.django_db
+def test_rating_queue_summary_queries_do_not_scale_with_votes() -> None:
+    game = _game("scale_game")
+    moderator = _staff("scale_moderator", StaffRole.MODERATOR)
+    client = _client(moderator)
+    for index in range(2):
+        _vote(game, _user(f"scale_voter_{index}"), (index % 5) + 1)
+
+    # Warm one-time caches (languages, permissions) before measuring.
+    assert client.get(reverse("crm:moderation")).status_code == 200
+
+    with CaptureQueriesContext(connection) as few_votes:
+        assert client.get(reverse("crm:moderation")).status_code == 200
+
+    for index in range(2, 12):
+        _vote(game, _user(f"scale_voter_{index}"), (index % 5) + 1)
+
+    with CaptureQueriesContext(connection) as many_votes:
+        assert client.get(reverse("crm:moderation")).status_code == 200
+
+    assert len(many_votes.captured_queries) == len(few_votes.captured_queries)
+
+
+@pytest.mark.django_db
+def test_rating_visibility_filters_reflect_hide_and_restore() -> None:
+    game = _game("visibility_filter_game")
+    vote = _vote(game, _user("visibility_filter_voter"), 4)
+    recalculate(game)
+    moderator = _staff("visibility_filter_moderator", StaffRole.MODERATOR)
+    client = _client(moderator)
+    _elevate(client)
+
+    hidden = client.post(reverse("crm:rating_hide", args=[vote.id]), {"reason": "Нарушение"})
+    assert hidden.status_code == 302
+    hidden_queue = client.get(reverse("crm:moderation"), {"status": "hidden"})
+    assert hidden_queue.context["rating_summary"].count == 1
+    assert hidden_queue.context["rating_summary"].average == pytest.approx(4.0)
+    assert list(hidden_queue.context["votes"]) == [vote]
+    assert AdminAuditLog.objects.filter(
+        action=AdminAuditLog.ACTION_RATING_HIDDEN,
+        object_id=vote.id,
+    ).exists()
+
+    valid_before = client.get(reverse("crm:moderation"), {"status": "valid"})
+    assert valid_before.context["rating_summary"].count == 0
+
+    restored = client.post(
+        reverse("crm:rating_restore", args=[vote.id]),
+        {"reason": "Апелляция удовлетворена"},
+    )
+    assert restored.status_code == 302
+    valid_after = client.get(reverse("crm:moderation"), {"status": "valid"})
+    assert valid_after.context["rating_summary"].count == 1
+    assert list(valid_after.context["votes"]) == [vote]
+    assert AdminAuditLog.objects.filter(
+        action=AdminAuditLog.ACTION_RATING_RESTORED,
+        object_id=vote.id,
+    ).exists()
 
 
 @pytest.mark.django_db

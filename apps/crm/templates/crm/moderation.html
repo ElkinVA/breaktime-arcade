@@ -10,6 +10,62 @@
 
 <section class="mb-10" aria-labelledby="moderation-ratings-heading">
     <h2 id="moderation-ratings-heading" class="text-xl font-semibold mb-3">Оценки</h2>
+
+    <form method="get"
+          action="{% url 'crm:moderation' %}"
+          class="flex flex-wrap items-end gap-4 p-4 mb-6 bg-surface rounded-card border border-text/10"
+          data-testid="crm-moderation-rating-filters">
+        <label class="flex flex-col gap-1 text-sm">
+            <span class="text-muted">Игра</span>
+            <select name="game" class="bg-bg border border-text/20 rounded px-3 py-2">
+                <option value="">Все игры</option>
+                {% for technical_id in rating_games %}
+                    <option value="{{ technical_id }}"{% if rating_filters.game == technical_id %} selected{% endif %}>{{ technical_id }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="flex flex-col gap-1 text-sm">
+            <span class="text-muted">Оценка</span>
+            <select name="value" class="bg-bg border border-text/20 rounded px-3 py-2">
+                <option value="">Все оценки</option>
+                {% for star in rating_values %}
+                    <option value="{{ star }}"{% if rating_filters.value == star %} selected{% endif %}>{{ star }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="flex flex-col gap-1 text-sm">
+            <span class="text-muted">Статус</span>
+            <select name="status" class="bg-bg border border-text/20 rounded px-3 py-2">
+                <option value="">Все статусы</option>
+                {% for code, label in rating_statuses %}
+                    <option value="{{ code }}"{% if rating_filters.status == code %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="submit" class="px-4 py-2 rounded bg-accent text-bg font-semibold">Применить</button>
+    </form>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div class="p-5 bg-surface rounded-card border border-text/10">
+            <p class="text-sm text-muted">Средняя оценка по фильтру</p>
+            <p class="text-3xl font-display font-bold" data-testid="crm-moderation-rating-average">{{ rating_summary.average|floatformat:2 }}</p>
+            <p class="text-sm text-muted">
+                Всего оценок: <span data-testid="crm-moderation-rating-count">{{ rating_summary.count }}</span>
+            </p>
+        </div>
+        <div class="p-5 bg-surface rounded-card border border-text/10">
+            <p class="text-sm text-muted mb-2">Распределение</p>
+            <ul class="space-y-1 text-sm" data-testid="crm-moderation-rating-distribution">
+                {% for star, count in rating_summary.distribution.items %}
+                    <li class="flex items-center justify-between gap-4">
+                        <span>{{ star }} ★</span>
+                        <span data-testid="crm-moderation-distribution-{{ star }}">{{ count }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
     <div class="overflow-x-auto bg-surface rounded-card border border-text/10">
         <table class="w-full text-sm">
             <thead class="text-left text-muted border-b border-text/10">

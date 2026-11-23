@@ -129,12 +129,19 @@ from apps.moderation.services.complaints import (
     reject_complaint,
     resolve_complaint,
 )
-from apps.moderation.services.ratings import set_rating_visibility
+from apps.moderation.services.ratings import (
+    RATING_STATUS_CHOICES,
+    RATING_VALUE_CHOICES,
+    filter_rating_votes,
+    parse_rating_filters,
+    rating_game_options,
+    set_rating_visibility,
+    summarize_rating_votes,
+)
 from apps.pipeline.models import GameImportDraft
 from apps.pipeline.services.artifacts import ArtifactError
 from apps.pipeline.services.publishing import publish_version
 from apps.pipeline.services.rollback import rollback_version
-from apps.ratings.models import GameRatingVote
 
 _ACTION_ERRORS = {
     "V_VERSION_NOT_IN_GAME": "Версия не принадлежит этой игре.",
@@ -1654,12 +1661,12 @@ def _moderation_step_up_redirect(request: HttpRequest) -> HttpResponseRedirect |
 
 @role_required(MODERATION_MANAGE)
 def moderation_queue(request: HttpRequest) -> TemplateResponse:
-    """Rating and complaint queues for moderators/owners (§2.16.2)."""
-    votes = (
-        GameRatingVote.objects.select_related("game", "user", "moderated_by")
-        .order_by("-created_at")
-        .all()[:100]
-    )
+    """Rating and complaint queues with filters and aggregates (§2.16.2)."""
+    rating_filters = parse_rating_filters(request.GET)
+    rating_queryset = filter_rating_votes(rating_filters)
+    # One aggregate query over the whole filtered set; the table itself is capped.
+    rating_summary = summarize_rating_votes(rating_queryset)
+    votes = rating_queryset[:100]
     complaints = (
         Complaint.objects.select_related("game", "rating", "reporter", "assigned_to")
         .order_by("-created_at")
@@ -1676,6 +1683,11 @@ def moderation_queue(request: HttpRequest) -> TemplateResponse:
         {
             "title": "Модерация · CRM",
             "votes": votes,
+            "rating_filters": rating_filters,
+            "rating_summary": rating_summary,
+            "rating_games": rating_game_options(),
+            "rating_statuses": RATING_STATUS_CHOICES,
+            "rating_values": RATING_VALUE_CHOICES,
             "complaints": complaints,
             "assignees": assignees,
         },
