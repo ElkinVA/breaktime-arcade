@@ -984,6 +984,23 @@ Full **456 passed, 4 skipped**; JS `node --check` clean. Независимый 
 6. Email: единый адаптер поверх Django SMTP; dev/staging Mailpit.
 7. Production requirements зафиксированы письменно (ADR D13).
 
+**Новые внутренние решения, требующие владельца (2026-11-24):**
+
+- `ARCADE-SCHEDULED-PUBLISH-001` — разрешить минимальную миграцию схемы
+  (запись target version для отложенной публикации) либо отклонить задачу.
+- `ARCADE-RETENTION-HARDENING-001` — разрешить миграцию индексов под
+  retention purge; без неё остаются full-table scans на больших объёмах.
+- `ARCADE-RUNTIME-BUILD-SCHEMAS-001` — разрешить изменение Dockerfile
+  assets stage (COPY `scripts/`/`schemas/`, python3) либо оставить parity
+  test/`check:schemas` как достаточный guard.
+- R-054 — решить `expires_at` vs `expiresAt` и нужен ли legacy alias
+  `session_id` для внешних клиентов.
+- R-055 — подтвердить DRAFT-схемы после tightening (limit enum, maxLength)
+  как финальный публичный контракт.
+- `ARCADE-ACCOUNTS-E2E-002` / `ARCADE-CRM-E2E-001` — подготовить live
+  dev DB/browser stack для E2E либо принять эти сценарии как NOT TESTED.
+- R-036 Phase 2 (Celery ack/idempotency/visibility) — решение владельца.
+
 **Внешние (не решены и не выполнялись):**
 
 8. Legal texts/versions Terms/Privacy, DSA/EN 301 549, GDPR-основания и
@@ -1018,6 +1035,9 @@ requirements. Эти пункты не требуют отдельного от�
 5. Провести продуктовую приёмку App F и Browser Arcade.
 6. Решить судьбу остаточных R-003/R-004/R-005; AUD3-001/AUD3-002 и
    R-006/R-007 закрыты технически в BA-I18N-002.
+7. Принять решения 2026-11-24 из §5: scheduled-publish schema, retention
+   indexes, Docker assets stage, R-054 expiresAt/alias, R-055 DRAFT schemas,
+   live E2E environment, R-036 Phase 2.
 7. Определить, когда формально закрывать этап 0/этап 1.
 8. Принять или вернуть BA-DOC-002 и обновлённые реестры.
 9. Решить, где хранится канонический экземпляр ТЗ в Git.

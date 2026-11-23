@@ -1,6 +1,28 @@
 # NOW — Breaktime Arcade
 
-**Дата:** 2026-11-23
+**Дата:** 2026-11-24
+
+## Актуальная сводка автономного цикла (2026-11-24)
+
+- HEAD `aea773a`, `origin/main` синхронизирован; рабочее дерево чистое.
+- Последний полный gate: **1125 tests: 1117 passed, 8 skipped, exit 0**;
+  JS **26/26**; ruff/mypy изменённых модулей чистые.
+- AI HQ: **26 COMPLETED, 5 BLOCKED**; accepted cost по логу
+  `$131.769178` (26 tasks, average `$4.56`; это фактические modelUsage,
+  не budget limit). First-pass rate 84.6 %, 4 QA failures, 3 review rejects.
+- Безопасная READY-очередь исчерпана. Закрыты технические остатки R-049,
+  R-050, R-051, R-052, R-053, R-056; открыто нужны решения владельца в
+  `PROJECT_STATUS.md` §5 (scheduled-publish schema, retention indexes,
+  Docker assets stage, R-054 expiresAt/alias, R-055 DRAFT schemas, live E2E,
+  R-036 Phase 2).
+- BLOCKED: `ARCADE-ACCOUNTS-E2E-002`, `ARCADE-CRM-E2E-001`,
+  `ARCADE-RETENTION-HARDENING-001`, `ARCADE-SCHEDULED-PUBLISH-001`,
+  `ARCADE-RUNTIME-BUILD-SCHEMAS-001`.
+- Возобновление: `.venv/bin/python -m autonomy.orchestrator status` →
+  `propose` → отфильтровать задачи, требующие schema/contract/infra/E2E →
+  `run --max-tasks 1`; после каждой задачи обновить шесть реестров,
+  PROJECT_STATUS и этот файл. Не запускать schema/contract/infra изменения
+  без явного решения владельца.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**
