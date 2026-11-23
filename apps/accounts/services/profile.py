@@ -105,6 +105,11 @@ def cancel_deletion(user: User) -> UserProfile:
 @transaction.atomic
 def anonymize_user(user: User) -> None:
     """Удаляет активные персональные данные, оставляя HMAC-резерв никнейма."""
+    # R-049 / ARCADE-SESSION-RACE-001: hold the account row lock for the whole
+    # anonymisation. ``create_session`` takes the same lock and re-checks
+    # ``is_active``, so a session cannot slip in between the session revoke
+    # scan below and the account being marked inactive.
+    User.objects.select_for_update().filter(pk=user.pk).only("pk").first()
     profile = UserProfile.objects.filter(user=user).first()
     if profile is not None:
         reserve_nickname(

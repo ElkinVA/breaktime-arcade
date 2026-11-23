@@ -24,7 +24,7 @@ from django.http import HttpRequest, HttpResponse
 from django.utils import timezone
 from django.utils.translation import get_language
 
-from apps.accounts.models import AnonymousIdentity, UserProfile
+from apps.accounts.models import AnonymousIdentity, User, UserProfile
 from apps.accounts.services.anonymous import (
     get_anonymous_identity,
     get_or_create_anonymous_identity,
@@ -116,6 +116,19 @@ def create_session(
     ticket_expires_at = current + timedelta(seconds=TICKET_TTL_SECONDS)
 
     with transaction.atomic():
+        # R-049 / ARCADE-SESSION-RACE-001: block and anonymise take a
+        # ``select_for_update`` lock on the account row before revoking open
+        # sessions. Lock the same row here and re-read ``is_active`` while
+        # holding it, so a session can never be created for an account that
+        # was blocked or anonymised while this transaction waited. If this
+        # transaction wins instead, the block/anonymise revoke scan sees the
+        # freshly created row and aborts it.
+        if subject_type == GameSession.SUBJECT_USER:
+            account = (
+                User.objects.select_for_update().filter(pk=subject_id).only("is_active").first()
+            )
+            if account is None or not account.is_active:
+                raise SessionError("E_SESSION_INVALID", "Account is not available", 403)
         _lock_subject_game(subject_type, subject_id, game.id)
         # Unactivated tickets never reach ``expired`` on their own; forget them
         # lazily so a subject cannot accumulate rows without ever activating.

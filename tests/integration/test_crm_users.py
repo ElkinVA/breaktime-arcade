@@ -9,6 +9,7 @@ from datetime import timedelta
 
 import pytest
 from django.db import connections
+from django.http import HttpResponse
 from django.test import Client, RequestFactory
 from django.urls import reverse
 from django.utils import timezone
@@ -20,12 +21,19 @@ from apps.accounts.models import (
     User,
     UserProfile,
 )
+from apps.accounts.services.profile import anonymize_user
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.crm.models import AdminAuditLog
 from apps.crm.services import users as crm_users
 from apps.gameplay.models import GameResult, GameSession, LeaderboardEntry
+from apps.gameplay.services import results as results_service
 from apps.gameplay.services.results import submit_result
-from apps.gameplay.services.sessions import SessionError, activate_session, heartbeat
+from apps.gameplay.services.sessions import (
+    SessionError,
+    activate_session,
+    create_session,
+    heartbeat,
+)
 
 PASSWORD = "correct horse battery staple"
 
@@ -491,6 +499,146 @@ def test_concurrent_submit_result_racing_block_cannot_persist(monkeypatch) -> No
     assert not GameResult.objects.filter(session=session).exists()
     session.refresh_from_db()
     assert session.state == GameSession.STATE_ABORTED
+    target.refresh_from_db()
+    assert target.is_active is False
+
+
+def _open_session_count(user: User) -> int:
+    return GameSession.objects.filter(
+        subject_type=GameSession.SUBJECT_USER,
+        subject_id=user.id,
+        state__in=(GameSession.STATE_CREATED, GameSession.STATE_ACTIVE),
+    ).count()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_create_session_racing_block_creates_no_open_session(monkeypatch) -> None:
+    """R-049 / ARCADE-SESSION-RACE-001: a blocked account cannot gain a session."""
+    owner = _staff("owner", StaffRole.OWNER)
+    target = _customer("target", "Target")
+    game = _game("session_block_race_game")
+    request = RequestFactory().post("/")
+    request.user = target
+    response = HttpResponse()
+
+    reached_audit = threading.Event()
+    release_block = threading.Event()
+    create_started = threading.Event()
+    outcomes: list[str] = []
+    outcomes_lock = threading.Lock()
+    real_record_audit = crm_users.record_audit
+
+    def blocking_audit(**kwargs: object) -> AdminAuditLog:
+        reached_audit.set()
+        assert release_block.wait(timeout=10)
+        return real_record_audit(**kwargs)
+
+    monkeypatch.setattr(crm_users, "record_audit", blocking_audit)
+
+    def block_worker() -> None:
+        try:
+            result = crm_users.toggle_user_active(actor=owner, target_id=target.id)
+            assert result.ok
+        finally:
+            connections.close_all()
+
+    def create_worker() -> None:
+        try:
+            create_started.set()
+            create_session(request, response, game_id=game.technical_id)
+        except SessionError as exc:
+            with outcomes_lock:
+                outcomes.append(exc.code)
+        except Exception as exc:  # noqa: BLE001 - surface unexpected race failures
+            with outcomes_lock:
+                outcomes.append(type(exc).__name__)
+        else:
+            with outcomes_lock:
+                outcomes.append("ok")
+        finally:
+            connections.close_all()
+
+    block_thread = threading.Thread(target=block_worker)
+    block_thread.start()
+    assert reached_audit.wait(timeout=10), "block never reached its audit step"
+    create_thread = threading.Thread(target=create_worker)
+    create_thread.start()
+    assert create_started.wait(timeout=10), "create_session never started"
+    # Let the block commit while create_session is in flight.
+    release_block.set()
+
+    block_thread.join(timeout=30)
+    create_thread.join(timeout=30)
+    assert not block_thread.is_alive()
+    assert not create_thread.is_alive()
+
+    assert outcomes == ["E_SESSION_INVALID"]
+    assert _open_session_count(target) == 0
+    target.refresh_from_db()
+    assert target.is_active is False
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_create_session_racing_anonymise_creates_no_open_session(monkeypatch) -> None:
+    """R-049 / ARCADE-SESSION-RACE-001: an anonymised account cannot gain a session."""
+    target = _customer("target", "Target")
+    game = _game("session_delete_race_game")
+    request = RequestFactory().post("/")
+    request.user = target
+    response = HttpResponse()
+
+    reached_anonymise = threading.Event()
+    release_anonymise = threading.Event()
+    create_started = threading.Event()
+    outcomes: list[str] = []
+    outcomes_lock = threading.Lock()
+    real_anonymize_results = results_service.anonymize_user_results
+
+    def blocking_anonymize_results(user: User) -> None:
+        reached_anonymise.set()
+        assert release_anonymise.wait(timeout=10)
+        real_anonymize_results(user)
+
+    monkeypatch.setattr(results_service, "anonymize_user_results", blocking_anonymize_results)
+
+    def anonymise_worker() -> None:
+        try:
+            anonymize_user(target)
+        finally:
+            connections.close_all()
+
+    def create_worker() -> None:
+        try:
+            create_started.set()
+            create_session(request, response, game_id=game.technical_id)
+        except SessionError as exc:
+            with outcomes_lock:
+                outcomes.append(exc.code)
+        except Exception as exc:  # noqa: BLE001 - surface unexpected race failures
+            with outcomes_lock:
+                outcomes.append(type(exc).__name__)
+        else:
+            with outcomes_lock:
+                outcomes.append("ok")
+        finally:
+            connections.close_all()
+
+    anonymise_thread = threading.Thread(target=anonymise_worker)
+    anonymise_thread.start()
+    assert reached_anonymise.wait(timeout=10), "anonymise never reached the result pass"
+    create_thread = threading.Thread(target=create_worker)
+    create_thread.start()
+    assert create_started.wait(timeout=10), "create_session never started"
+    # Let anonymisation commit while create_session is in flight.
+    release_anonymise.set()
+
+    anonymise_thread.join(timeout=30)
+    create_thread.join(timeout=30)
+    assert not anonymise_thread.is_alive()
+    assert not create_thread.is_alive()
+
+    assert outcomes == ["E_SESSION_INVALID"]
+    assert _open_session_count(target) == 0
     target.refresh_from_db()
     assert target.is_active is False
 
