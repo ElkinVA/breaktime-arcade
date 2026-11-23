@@ -66,7 +66,7 @@
         </div>
     </div>
     <p class="text-xs text-muted mb-4" data-testid="crm-moderation-rating-summary-note">
-        Сводка рассчитана по всем оценкам, соответствующим фильтрам; таблица показывает последние 100.
+        Сводка рассчитана по всем оценкам, соответствующим фильтрам; таблица показывает по 50 на странице.
     </p>
 
     <div class="overflow-x-auto bg-surface rounded-card border border-text/10">
@@ -123,6 +123,7 @@
             </tbody>
         </table>
     </div>
+    {% include "components/pagination.html" with page_obj=rating_page_obj pagination_query=rating_pagination_query pagination_page_param="ratings_page" %}
 </section>
 
 <section aria-labelledby="moderation-complaints-heading">
@@ -237,5 +238,6 @@
             </tbody>
         </table>
     </div>
+    {% include "components/pagination.html" with page_obj=complaints_page_obj pagination_page_param="complaints_page" %}
 </section>
 {% endblock %}

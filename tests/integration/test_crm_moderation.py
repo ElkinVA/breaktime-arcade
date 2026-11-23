@@ -501,6 +501,100 @@ def test_rating_queue_filters_and_summary() -> None:
 
 
 @pytest.mark.django_db
+def test_moderation_queues_paginate_while_summary_stays_complete() -> None:
+    game = _game("pagination_game")
+    voters = [User.objects.create_user(login=f"pagination_voter_{index}") for index in range(120)]
+    GameRatingVote.objects.bulk_create(
+        [
+            GameRatingVote(
+                game=game,
+                user=voter,
+                value=(index % 5) + 1,
+                changed_at=timezone.now(),
+                change_window_started_at=timezone.now(),
+            )
+            for index, voter in enumerate(voters)
+        ],
+        batch_size=60,
+    )
+    Complaint.objects.bulk_create(
+        [
+            Complaint(
+                game=game,
+                category=Complaint.CATEGORY_ABUSE,
+                subject=f"Жалоба {index}",
+                status=Complaint.STATUS_NEW,
+            )
+            for index in range(120)
+        ],
+        batch_size=60,
+    )
+    moderator = _staff("pagination_moderator", StaffRole.MODERATOR)
+    client = _client(moderator)
+
+    first = client.get(reverse("crm:moderation"))
+    assert first.status_code == 200
+    assert first.context["rating_page_obj"].number == 1
+    assert len(first.context["votes"]) == 50
+    assert first.content.decode().count('data-testid="crm-moderation-vote"') == 50
+    # The summary covers all 120 filtered votes, not just the first page.
+    assert first.context["rating_summary"].count == 120
+    assert first.context["rating_summary"].average == pytest.approx(3.0)
+    assert sum(first.context["rating_summary"].distribution.values()) == 120
+
+    second = client.get(reverse("crm:moderation"), {"ratings_page": "2"})
+    assert second.status_code == 200
+    assert second.context["rating_page_obj"].number == 2
+    assert len(second.context["votes"]) == 50
+    assert second.content.decode().count('data-testid="crm-moderation-vote"') == 50
+    assert second.context["rating_summary"].count == 120
+    assert second.context["rating_summary"].average == pytest.approx(3.0)
+    expected_votes = list(
+        GameRatingVote.objects.filter(game=game).order_by("-created_at", "-id")[50:100]
+    )
+    assert [vote.id for vote in second.context["votes"]] == [vote.id for vote in expected_votes]
+
+    # A bare page parameter advances both queues together.
+    both = client.get(reverse("crm:moderation"), {"page": "2"})
+    assert both.context["rating_page_obj"].number == 2
+    assert both.context["complaints_page_obj"].number == 2
+
+    # Game/status filters survive pagination navigation.
+    filtered = client.get(
+        reverse("crm:moderation"),
+        {"game": "pagination_game", "status": "valid", "ratings_page": "2"},
+    )
+    assert filtered.status_code == 200
+    filtered_body = filtered.content.decode()
+    assert filtered.context["rating_filters"].game == "pagination_game"
+    assert filtered.context["rating_filters"].status == "valid"
+    assert "game=pagination_game" in filtered_body
+    assert "status=valid" in filtered_body
+    assert "ratings_page=1" in filtered_body
+    assert filtered.context["rating_summary"].count == 120
+
+    # Complaint ordering is stable across the page boundary.
+    page_one_complaints = client.get(reverse("crm:moderation"))
+    assert page_one_complaints.context["complaints_page_obj"].number == 1
+    assert len(page_one_complaints.context["complaints"]) == 50
+    page_two_complaints = client.get(
+        reverse("crm:moderation"),
+        {"complaints_page": "2"},
+    )
+    assert page_two_complaints.status_code == 200
+    assert page_two_complaints.context["complaints_page_obj"].number == 2
+    assert len(page_two_complaints.context["complaints"]) == 50
+    assert (
+        page_two_complaints.content.decode().count('data-testid="crm-moderation-complaint"') == 50
+    )
+    expected_complaints = list(Complaint.objects.order_by("-created_at", "-id")[50:100])
+    assert [item.id for item in page_two_complaints.context["complaints"]] == [
+        item.id for item in expected_complaints
+    ]
+    assert "complaints_page=1" in page_two_complaints.content.decode()
+
+
+@pytest.mark.django_db
 def test_rating_queue_summary_queries_do_not_scale_with_votes() -> None:
     game = _game("scale_game")
     moderator = _staff("scale_moderator", StaffRole.MODERATOR)

@@ -83,7 +83,9 @@ def filter_rating_votes(filters: RatingFilters) -> QuerySet[GameRatingVote]:
         queryset = queryset.filter(is_valid=True)
     elif filters.status == STATUS_HIDDEN:
         queryset = queryset.filter(is_valid=False)
-    return queryset.order_by("-created_at")
+    # ``id`` is a UUIDv7, so it breaks equal-timestamp ties in insertion order
+    # and keeps a page boundary stable while the moderator navigates.
+    return queryset.order_by("-created_at", "-id")
 
 
 def summarize_rating_votes(queryset: QuerySet[GameRatingVote]) -> RatingSummary:

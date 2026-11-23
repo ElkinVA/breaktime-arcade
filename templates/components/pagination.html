@@ -1,9 +1,10 @@
 {% load ba_i18n %}
+{% firstof pagination_page_param "page" as page_param %}
 {% if page_obj.has_other_pages %}
     <nav class="pagination" aria-label="Pagination" data-testid="pagination">
         {% if page_obj.has_previous %}
-            <a href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}"
-               {% if pagination_hx_target %}hx-get="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}"
+            <a href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}{{ page_param }}={{ page_obj.previous_page_number }}"
+               {% if pagination_hx_target %}hx-get="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}{{ page_param }}={{ page_obj.previous_page_number }}"
                hx-target="{{ pagination_hx_target }}" hx-push-url="true"{% endif %}
                class="pagination__link" rel="prev">{% ba_t "ui.previous" %}</a>
         {% endif %}
@@ -12,16 +13,16 @@
             {% if page_obj.number == num %}
                 <span class="pagination__current" aria-current="page">{{ num }}</span>
             {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                <a href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ num }}"
-                   {% if pagination_hx_target %}hx-get="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ num }}"
+                <a href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}{{ page_param }}={{ num }}"
+                   {% if pagination_hx_target %}hx-get="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}{{ page_param }}={{ num }}"
                    hx-target="{{ pagination_hx_target }}" hx-push-url="true"{% endif %}
                    class="pagination__link">{{ num }}</a>
             {% endif %}
         {% endfor %}
 
         {% if page_obj.has_next %}
-            <a href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}"
-               {% if pagination_hx_target %}hx-get="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}"
+            <a href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}{{ page_param }}={{ page_obj.next_page_number }}"
+               {% if pagination_hx_target %}hx-get="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}{{ page_param }}={{ page_obj.next_page_number }}"
                hx-target="{{ pagination_hx_target }}" hx-push-url="true"{% endif %}
                class="pagination__link" rel="next">{% ba_t "ui.next" %}</a>
         {% endif %}

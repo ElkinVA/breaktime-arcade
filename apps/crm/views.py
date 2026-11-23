@@ -1760,19 +1760,33 @@ def _moderation_step_up_redirect(request: HttpRequest) -> HttpResponseRedirect |
     return redirect("crm:moderation")
 
 
+MODERATION_PAGE_SIZE = 50
+
+
 @role_required(MODERATION_MANAGE)
 def moderation_queue(request: HttpRequest) -> TemplateResponse:
-    """Rating and complaint queues with filters and aggregates (§2.16.2)."""
+    """Rating and complaint queues with filters, aggregates and pagination (§2.16.2)."""
     rating_filters = parse_rating_filters(request.GET)
     rating_queryset = filter_rating_votes(rating_filters)
-    # One aggregate query over the whole filtered set; the table itself is capped.
+    # The aggregate always covers every filtered row, never just one page.
     rating_summary = summarize_rating_votes(rating_queryset)
-    votes = rating_queryset[:100]
-    complaints = (
-        Complaint.objects.select_related("game", "rating", "reporter", "assigned_to")
-        .order_by("-created_at")
-        .all()[:100]
+    # A bare ``page`` advances both queues (deep links keep working); the
+    # table-specific parameters let the two paginators move independently.
+    rating_page = Paginator(rating_queryset, MODERATION_PAGE_SIZE).get_page(
+        request.GET.get("ratings_page", request.GET.get("page"))
     )
+    complaint_page = Paginator(
+        Complaint.objects.select_related("game", "rating", "reporter", "assigned_to").order_by(
+            "-created_at", "-id"
+        ),
+        MODERATION_PAGE_SIZE,
+    ).get_page(request.GET.get("complaints_page", request.GET.get("page")))
+    # Rating links keep the active filters; both page parameters are dropped so
+    # each queue advances independently.
+    rating_params = request.GET.copy()
+    rating_params.pop("ratings_page", None)
+    rating_params.pop("complaints_page", None)
+    rating_params.pop("page", None)
     assignees = User.objects.filter(
         is_staff=True,
         is_active=True,
@@ -1783,13 +1797,16 @@ def moderation_queue(request: HttpRequest) -> TemplateResponse:
         "crm/moderation.html",
         {
             "title": "Модерация · CRM",
-            "votes": votes,
+            "votes": rating_page.object_list,
+            "rating_page_obj": rating_page,
+            "rating_pagination_query": rating_params.urlencode(),
             "rating_filters": rating_filters,
             "rating_summary": rating_summary,
             "rating_games": rating_game_options(),
             "rating_statuses": RATING_STATUS_CHOICES,
             "rating_values": RATING_VALUE_CHOICES,
-            "complaints": complaints,
+            "complaints": complaint_page.object_list,
+            "complaints_page_obj": complaint_page,
             "assignees": assignees,
         },
     )
