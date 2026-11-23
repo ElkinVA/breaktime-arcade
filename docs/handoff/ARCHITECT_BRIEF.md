@@ -37,6 +37,9 @@ ambiguity.
   App F runtime race/idempotency tests and live E2E coverage; catalog rating
   vote UI/CRM diagnostics; accounts history/records/email/legal texts; 2FA
   CRM step-up; retention classes; moderation/antifraud owner gaps.
+- CRM SEO diagnostics: `/crm/seo/` reports empty descriptions, duplicate
+  titles, missing alt and incomplete translations by language
+  (`ARCADE-CRM-SEO-DIAGNOSTICS-001`, `f5474d8`).
 - Catalog slug history: changed Game/GameTranslation slugs return 301 to the
   current canonical URL (`ARCADE-CATALOG-SLUG-301-001`, `cf0936c`).
 - App F retention cleanup: daily beat tasks for sessions (30d, result-linked

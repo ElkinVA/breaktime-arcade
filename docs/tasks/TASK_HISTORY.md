@@ -1274,3 +1274,16 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Остаток:** cross-language negative redirect test absent; shared fallback
   constant duplication; concurrent get_or_create race not tested.
 - **Commit:** `cf0936c`.
+
+
+### ARCADE-CRM-SEO-DIAGNOSTICS-001 — CRM SEO diagnostics (AI HQ)
+
+- **Результат:** `f5474d8`; экран `/crm/seo/` + сервис диагностики:
+  пустые локализованные описания, дубли title по языкам, missing alt,
+  неполное покрытие переводов; per-language summary и ссылки; `GAMES_VIEW`.
+- **Проверки:** 11 tests (queries/summary/screen/roles/anonymous); ruff/mypy
+  clean; full suite **1044 tests: 1036 passed, 8 skipped, exit 0**;
+  AI HQ reviewer accept без findings.
+- **Стоимость AI HQ (journal):** $4.075 (developer+QA+reviewer, attempt 1).
+- **Остаток:** large-catalog performance NOT TESTED; staging/prod NOT TESTED.
+- **Commit:** `f5474d8`.

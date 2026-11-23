@@ -190,6 +190,17 @@ slug — 404. 5 новых integration tests + migration guard; ruff/mypy clean;
 нет отдельного negative-теста cross-language old slug; `FALLBACK_LANGUAGE_CODE`
 дублируется с SEO/sitemap; concurrent `get_or_create` race не тестировался.
 
+## 0.11. CRM SEO diagnostics — 2026-11-23
+
+`ARCADE-CRM-SEO-DIAGNOSTICS-001` — **COMPLETED / AI HQ REVIEWER ACCEPT**
+(`f5474d8`). Новый read-only экран `/crm/seo/` (§2.19): пустые локализованные
+описания, дубли page title по языкам, ассеты без alt, неполное покрытие
+переводов; per-language summary и ссылки на игры; доступ через `GAMES_VIEW`.
+11 integration tests, role-gating/redirect; ruff/mypy clean; полный suite
+**1044 tests: 1036 passed, 8 skipped, exit 0**. Остаток: экран строит
+диагностику по всем published games в памяти — performance на очень больших
+каталогах не тестировался; staging/prod NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

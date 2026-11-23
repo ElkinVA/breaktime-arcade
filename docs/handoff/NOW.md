@@ -382,6 +382,12 @@ race retry, live beat NOT TESTED.
 migration guard, full suite **1033/1025/8**. Остатки: cross-language
 negative test, shared fallback constant, concurrent get_or_create race.
 
+`ARCADE-CRM-SEO-DIAGNOSTICS-001` — **COMPLETED / AI HQ REVIEWER ACCEPT**
+(`f5474d8`): CRM `/crm/seo/` screen with empty descriptions, duplicate
+titles, missing alt, incomplete translations, per-language summary; 11 tests;
+full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
+NOT TESTED.
+
 ## Модели
 
 - План/ревью: `architect`, `code-reviewer`, `security-auditor` /

@@ -686,3 +686,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEWER ACCEPT**; product/staging/prod не заявляются |
 | Остаток | cross-language negative redirect test absent; `FALLBACK_LANGUAGE_CODE` duplicated with SEO/sitemap; concurrent get_or_create race not tested |
 | Источник | commit `cf0936c`; `.autonomy/evidence/qa-26588089-*.json`, reviewer evidence |
+
+
+## ARCADE-CRM-SEO-DIAGNOSTICS-001 — CRM SEO diagnostics
+
+| Поле | Значение |
+|---|---|
+| Тип | Product/CRM implementation via AI HQ; no schema/contract change |
+| Результат | `f5474d8`: read-only `/crm/seo/` screen + `seo_diagnostics` service; empty descriptions, duplicate titles, missing alt, incomplete translations; per-language summary; links; `GAMES_VIEW` gating |
+| Проверки | 11 tests (queries, summary, screen links, role matrix, anonymous redirect); ruff/mypy clean; full suite 1044/1036/8 exit 0; AI HQ reviewer accept без findings |
+| Статус | **COMPLETED / AI HQ REVIEWER ACCEPT**; product/staging/prod не заявляются |
+| Остаток | large-catalog performance NOT TESTED; staging/prod NOT TESTED |
+| Источник | commit `f5474d8`; QA/reviewer evidence в `.autonomy/evidence/` |
