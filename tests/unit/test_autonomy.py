@@ -135,10 +135,10 @@ class FakeRunner:
             duration_seconds=0.1,
         )
 
-    def architect(self, prompt: str) -> RunResult:
+    def architect(self, prompt: str, **_: object) -> RunResult:
         return self._result("architect", self.architect_result, "deepseek-v4-pro")
 
-    def developer(self, prompt: str) -> RunResult:
+    def developer(self, prompt: str, **_: object) -> RunResult:
         return self._result(
             "developer",
             '{"status":"done","files":["tests/unit/test_autonomy.py"],'
@@ -147,10 +147,10 @@ class FakeRunner:
             "deepseek-flash[1m]",
         )
 
-    def qa(self, prompt: str) -> RunResult:
+    def qa(self, prompt: str, **_: object) -> RunResult:
         return self._result("qa", '{"status":"pass"}', "deepseek-flash")
 
-    def reviewer(self, prompt: str) -> RunResult:
+    def reviewer(self, prompt: str, **_: object) -> RunResult:
         return self._result(
             "reviewer",
             json.dumps({"verdict": self.verdict, "findings": []}),

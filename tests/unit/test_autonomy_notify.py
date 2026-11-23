@@ -224,11 +224,11 @@ class StubRunner:
             total_cost_usd=self.cost,
         )
 
-    def architect(self, prompt: str) -> RunResult:
+    def architect(self, prompt: str, **_: object) -> RunResult:
         del prompt
         return self._result("architect", "deepseek-v4-pro", '{"tasks": []}')
 
-    def developer(self, prompt: str) -> RunResult:
+    def developer(self, prompt: str, **_: object) -> RunResult:
         del prompt
         return self._result(
             "developer",
@@ -238,11 +238,11 @@ class StubRunner:
             '"tests_run":["targeted"],"localization_reviewed":true,"known_limits":[]}}',
         )
 
-    def qa(self, prompt: str) -> RunResult:
+    def qa(self, prompt: str, **_: object) -> RunResult:
         del prompt
         return self._result("qa", "deepseek-flash", '{"status":"pass"}')
 
-    def reviewer(self, prompt: str) -> RunResult:
+    def reviewer(self, prompt: str, **_: object) -> RunResult:
         del prompt
         import json
 

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
+import socket
 import subprocess
 import time
 import uuid
@@ -13,6 +15,16 @@ from pathlib import Path
 from typing import Any
 
 from autonomy.budget import Usage
+from autonomy.observability import (
+    InvocationContext,
+    InvocationStart,
+    boot_id,
+    from_failure,
+    from_outcome,
+    pid_start_ticks,
+    record_finished,
+    record_started,
+)
 from autonomy.sandbox import (
     SandboxError,
     build_child_env,
@@ -63,6 +75,7 @@ class ClaudeRunner:
         timeout: int = DEFAULT_TIMEOUT,
         *,
         worktree_root: Path | None = None,
+        journal_root: Path | None = None,
     ) -> None:
         self.root = Path(root).resolve()
         self.timeout = timeout
@@ -70,6 +83,9 @@ class ClaudeRunner:
             Path(worktree_root).resolve()
             if worktree_root is not None
             else self.root / ".autonomy" / "worktrees"
+        )
+        self.journal_root = (
+            Path(journal_root).resolve() if journal_root is not None else self.root / ".autonomy"
         )
         EVIDENCE_ROOT.mkdir(parents=True, exist_ok=True)
 
@@ -97,7 +113,9 @@ class ClaudeRunner:
         permission_mode: str,
         timeout: int | None = None,
         cwd: Path | None = None,
+        context: InvocationContext | None = None,
     ) -> RunResult:
+        context = context or InvocationContext()
         command = [
             "claude",
             "-p",
@@ -117,7 +135,72 @@ class ClaudeRunner:
         started_at = datetime.now(UTC).isoformat()
         invocation_id = str(uuid.uuid4())
         child_env = build_child_env()
+        owner_pid = os.getpid()
+        finished = False
+
+        def write_finish(metrics: Any) -> None:
+            nonlocal finished
+            if finished:
+                return
+            finished = True
+            with contextlib.suppress(Exception):
+                record_finished(self.journal_root, metrics)
+
+        def failure_metrics(
+            *,
+            status: str,
+            error_type: str,
+            finished_at: str,
+            duration_seconds: float,
+            exit_code: int | None = None,
+            session_id: str | None = None,
+            model_usage: dict[str, Any] | None = None,
+            total_cost: float | None = None,
+            request_count: int | None = None,
+            num_turns: int | None = None,
+            is_error: bool | None = None,
+        ) -> Any:
+            return from_failure(
+                invocation_id=invocation_id,
+                agent=agent,
+                role=role,
+                model=model,
+                status=status,
+                error_type=error_type,
+                task_id=context.task_id,
+                attempt_id=context.attempt_id,
+                retry_count=context.retry_count,
+                session_id=session_id,
+                model_usage=model_usage,
+                total_cost_usd=total_cost,
+                request_count=request_count,
+                num_turns=num_turns,
+                started_at=started_at,
+                finished_at=finished_at,
+                duration_seconds=duration_seconds,
+                exit_code=exit_code,
+                is_error=is_error,
+            )
+
         try:
+            with contextlib.suppress(Exception):
+                record_started(
+                    self.journal_root,
+                    InvocationStart(
+                        invocation_id=invocation_id,
+                        agent_id=agent,
+                        role=role,
+                        model=model,
+                        started_at=started_at,
+                        task_id=context.task_id,
+                        attempt_id=context.attempt_id,
+                        retry_count=context.retry_count,
+                        owner_pid=owner_pid,
+                        owner_pid_start_ticks=pid_start_ticks(owner_pid),
+                        boot_id=boot_id(),
+                        host=socket.gethostname(),
+                    ),
+                )
             completed = subprocess.run(  # noqa: S603 - fixed argv, no shell
                 command,
                 cwd=cwd or self.root,
@@ -128,10 +211,53 @@ class ClaudeRunner:
                 env=child_env,
             )
         except subprocess.TimeoutExpired as exc:
+            duration = time.monotonic() - started
+            write_finish(
+                failure_metrics(
+                    status="timeout",
+                    error_type="timeout",
+                    finished_at=datetime.now(UTC).isoformat(),
+                    duration_seconds=duration,
+                )
+            )
             raise RunnerError(f"{role} timed out after {timeout or self.timeout}s") from exc
+        except KeyboardInterrupt:
+            duration = time.monotonic() - started
+            write_finish(
+                failure_metrics(
+                    status="cancelled",
+                    error_type="operator_interrupt",
+                    finished_at=datetime.now(UTC).isoformat(),
+                    duration_seconds=duration,
+                )
+            )
+            raise
+        except Exception:
+            duration = time.monotonic() - started
+            write_finish(
+                failure_metrics(
+                    status="failed",
+                    error_type="launch_error",
+                    finished_at=datetime.now(UTC).isoformat(),
+                    duration_seconds=duration,
+                )
+            )
+            raise
         duration = time.monotonic() - started
         finished_at = datetime.now(UTC).isoformat()
-        payload = self._parse_stdout(completed.stdout)
+        try:
+            payload = self._parse_stdout(completed.stdout)
+        except RunnerError:
+            write_finish(
+                failure_metrics(
+                    status="failed",
+                    error_type="invalid_output",
+                    finished_at=finished_at,
+                    duration_seconds=duration,
+                    exit_code=completed.returncode,
+                )
+            )
+            raise
         model_usage = payload.get("modelUsage") or {}
         session_id = payload.get("session_id")
         result = payload.get("result") or ""
@@ -145,6 +271,7 @@ class ClaudeRunner:
         num_turns = payload.get("num_turns")
         if not isinstance(num_turns, int) or isinstance(num_turns, bool):
             num_turns = None
+        is_error = bool(payload.get("is_error"))
         evidence = {
             "role": role,
             "requested_model": model,
@@ -166,11 +293,65 @@ class ClaudeRunner:
             "duration_seconds": duration,
             "stderr_tail": completed.stderr[-2000:],
         }
-        evidence_path = self._write_evidence(evidence)
-        if completed.returncode != 0 or payload.get("is_error"):
+        if completed.returncode != 0 or is_error:
+            write_finish(
+                failure_metrics(
+                    status="failed",
+                    error_type="api_error",
+                    finished_at=finished_at,
+                    duration_seconds=duration,
+                    exit_code=completed.returncode,
+                    session_id=session_id,
+                    model_usage=model_usage,
+                    total_cost=total_cost,
+                    request_count=request_count,
+                    num_turns=num_turns,
+                    is_error=is_error,
+                )
+            )
+            self._write_evidence(evidence)
             raise RunnerError(f"{role} failed: {result or completed.stderr[-500:]}")
         if not self._actual_model_matches(role, model_usage, model):
+            write_finish(
+                failure_metrics(
+                    status="failed",
+                    error_type="model_mismatch",
+                    finished_at=finished_at,
+                    duration_seconds=duration,
+                    exit_code=completed.returncode,
+                    session_id=session_id,
+                    model_usage=model_usage,
+                    total_cost=total_cost,
+                    request_count=request_count,
+                    num_turns=num_turns,
+                    is_error=False,
+                )
+            )
+            self._write_evidence(evidence)
             raise RunnerError(f"{role} did not use expected model {model}: {model_usage}")
+        write_finish(
+            from_outcome(
+                invocation_id=invocation_id,
+                agent=agent,
+                role=role,
+                model=model,
+                status="ok",
+                task_id=context.task_id,
+                attempt_id=context.attempt_id,
+                retry_count=context.retry_count,
+                session_id=session_id,
+                model_usage=model_usage,
+                total_cost_usd=total_cost,
+                request_count=request_count,
+                num_turns=num_turns,
+                started_at=started_at,
+                finished_at=finished_at,
+                duration_seconds=duration,
+                exit_code=completed.returncode,
+                is_error=False,
+            )
+        )
+        evidence_path = self._write_evidence(evidence)
         return RunResult(
             role=role,
             model=model,
@@ -248,7 +429,13 @@ class ClaudeRunner:
         temp.replace(path)
         return str(path)
 
-    def architect(self, prompt: str, cwd: Path | None = None) -> RunResult:
+    def architect(
+        self,
+        prompt: str,
+        cwd: Path | None = None,
+        *,
+        context: InvocationContext | None = None,
+    ) -> RunResult:
         return self.run(
             role="architect",
             model=ARCHITECT_MODEL,
@@ -257,9 +444,16 @@ class ClaudeRunner:
             allowed_tools=["Read", "Grep", "Glob"],
             permission_mode="plan",
             cwd=self._worktree_cwd("architect", cwd),
+            context=context,
         )
 
-    def developer(self, prompt: str, cwd: Path | None = None) -> RunResult:
+    def developer(
+        self,
+        prompt: str,
+        cwd: Path | None = None,
+        *,
+        context: InvocationContext | None = None,
+    ) -> RunResult:
         return self.run(
             role="developer",
             model=DEVELOPER_MODEL,
@@ -280,9 +474,16 @@ class ClaudeRunner:
             ],
             permission_mode="acceptEdits",
             cwd=self._worktree_cwd("developer", cwd),
+            context=context,
         )
 
-    def qa(self, prompt: str, cwd: Path | None = None) -> RunResult:
+    def qa(
+        self,
+        prompt: str,
+        cwd: Path | None = None,
+        *,
+        context: InvocationContext | None = None,
+    ) -> RunResult:
         return self.run(
             role="qa",
             model=QA_MODEL,
@@ -300,9 +501,16 @@ class ClaudeRunner:
             ],
             permission_mode="acceptEdits",
             cwd=self._worktree_cwd("qa", cwd),
+            context=context,
         )
 
-    def reviewer(self, prompt: str, cwd: Path | None = None) -> RunResult:
+    def reviewer(
+        self,
+        prompt: str,
+        cwd: Path | None = None,
+        *,
+        context: InvocationContext | None = None,
+    ) -> RunResult:
         return self.run(
             role="reviewer",
             model=REVIEWER_MODEL,
@@ -311,4 +519,5 @@ class ClaudeRunner:
             allowed_tools=["Read", "Grep", "Glob", "Bash(git diff:*)"],
             permission_mode="plan",
             cwd=self._worktree_cwd("reviewer", cwd),
+            context=context,
         )

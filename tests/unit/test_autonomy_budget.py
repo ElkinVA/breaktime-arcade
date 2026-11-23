@@ -62,7 +62,7 @@ class BudgetFakeRunner:
         self.cost = cost
         self.calls: list[str] = []
 
-    def architect(self, prompt: str) -> RunResult:
+    def architect(self, prompt: str, **_: object) -> RunResult:
         del prompt
         self.calls.append("architect")
         return _usage_result(
@@ -73,7 +73,7 @@ class BudgetFakeRunner:
             result='{"tasks": []}',
         )
 
-    def developer(self, prompt: str) -> RunResult:
+    def developer(self, prompt: str, **_: object) -> RunResult:
         del prompt
         self.calls.append("developer")
         return _usage_result(
@@ -89,7 +89,7 @@ class BudgetFakeRunner:
             ),
         )
 
-    def qa(self, prompt: str) -> RunResult:
+    def qa(self, prompt: str, **_: object) -> RunResult:
         del prompt
         self.calls.append("qa")
         return _usage_result(
@@ -100,7 +100,7 @@ class BudgetFakeRunner:
             result='{"status":"pass"}',
         )
 
-    def reviewer(self, prompt: str) -> RunResult:
+    def reviewer(self, prompt: str, **_: object) -> RunResult:
         del prompt
         self.calls.append("reviewer")
         return _usage_result(
@@ -245,7 +245,7 @@ def test_runner_captures_usage_in_evidence_and_result(
     monkeypatch.setattr(runner_module, "EVIDENCE_ROOT", tmp_path)
     monkeypatch.setattr(runner_module.subprocess, "run", lambda *args, **kwargs: Completed())
 
-    result = runner_module.ClaudeRunner().run(
+    result = runner_module.ClaudeRunner(journal_root=tmp_path / "journal").run(
         role="developer",
         model="deepseek-flash",
         agent="test",

@@ -6,6 +6,13 @@
 **Запрещено:** prompt content, response content, HTTP headers, API keys,
 cookies, tokens, stack traces, произвольные tool outputs.
 
+**Schema v2 (BA-TOKEN-OBSERVABILITY-002):** журнал содержит события
+`invocation_started` и `invocation_finished`; token/cost-поля могут быть
+`null` при `usage_known=false`; добавлены `request_count_known`, `status`,
+`error_type`, `exit_code`, `duration_seconds`, `inferred`, `reconciled_at`.
+Legacy-записи без `event` остаются читаемыми как authoritative terminal.
+Полная схема — `docs/audits/BA_TOKEN_OBSERVABILITY_002_DESIGN.md`.
+
 ## 1. Record
 
 | Поле | Тип | Null | Источник | Смысл |

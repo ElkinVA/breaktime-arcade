@@ -33,7 +33,7 @@ from autonomy.notifier import (
     NotificationEvent,
     Notifier,
 )
-from autonomy.observability import InvocationMetrics, record_invocation
+from autonomy.observability import InvocationContext, reconcile_invocations
 from autonomy.runner import ClaudeRunner, RunResult
 from autonomy.state import (
     BLOCKED,
@@ -414,28 +414,28 @@ class Orchestrator:
         task_id: str | None,
         result: RunResult,
         tracker: BudgetTracker,
-        *,
-        attempt_id: str | None = None,
-        retry_count: int = 0,
     ) -> None:
         """Persist actual model usage and add it to the run budget.
 
-        The metadata-only invocation record is an additional side effect; it
-        never changes the task result or the model invocation.
+        Lifecycle events are written by the runner; this method keeps the
+        existing success-only state/budget accounting unchanged.
         """
         usage = result.usage
         self.store.record_usage(task_id, usage.to_dict())
         tracker.add(usage)
+
+    @staticmethod
+    def _context(task: Task) -> InvocationContext:
+        return InvocationContext(
+            task_id=task.id,
+            attempt_id=task.run_id,
+            retry_count=max(0, task.attempts - 1),
+        )
+
+    def _reconcile(self) -> None:
+        journal_root = getattr(self.runner, "journal_root", self.store.root)
         with contextlib.suppress(Exception):
-            record_invocation(
-                self.store.root,
-                InvocationMetrics.from_run_result(
-                    result,
-                    task_id=task_id,
-                    attempt_id=attempt_id,
-                    retry_count=retry_count,
-                ),
-            )
+            reconcile_invocations(journal_root)
 
     @staticmethod
     def _guard(tracker: BudgetTracker) -> None:
@@ -460,10 +460,10 @@ class Orchestrator:
                         acceptance=["planning runs in a disposable worktree"],
                     )
                 )
-                result = self.runner.architect(prompt, cwd=worktree)
+                result = self.runner.architect(prompt, cwd=worktree, context=InvocationContext())
             else:
                 # Test/legacy mode keeps the original prompt-only signature.
-                result = self.runner.architect(prompt)
+                result = self.runner.architect(prompt, context=InvocationContext())
         finally:
             if worktree is not None:
                 _remove_worktree(worktree)
@@ -629,6 +629,7 @@ class Orchestrator:
             self._write_event(report)
             return report
         self.store.recover_running()
+        self._reconcile()
         self._cleanup_orphan_worktrees()
         task = self.store.claim_next()
         if task is None and propose:
@@ -673,15 +674,11 @@ class Orchestrator:
         try:
             worktree, base = _create_worktree(task)
             self.store.set_worktree(task.id, str(worktree), base)
-            developer = self.runner.developer(_developer_prompt(task), cwd=worktree)
-            _validate_self_check(developer)
-            self._account(
-                task.id,
-                developer,
-                tracker,
-                attempt_id=task.run_id,
-                retry_count=max(0, task.attempts - 1),
+            developer = self.runner.developer(
+                _developer_prompt(task), cwd=worktree, context=self._context(task)
             )
+            _validate_self_check(developer)
+            self._account(task.id, developer, tracker)
             self._guard(tracker)
             self.store.transition(
                 task.id,
@@ -690,14 +687,10 @@ class Orchestrator:
                 model=developer.model,
                 evidence=developer.evidence_path,
             )
-            qa = self.runner.qa(_qa_prompt(task, developer), cwd=worktree)
-            self._account(
-                task.id,
-                qa,
-                tracker,
-                attempt_id=task.run_id,
-                retry_count=max(0, task.attempts - 1),
+            qa = self.runner.qa(
+                _qa_prompt(task, developer), cwd=worktree, context=self._context(task)
             )
+            self._account(task.id, qa, tracker)
             self._guard(tracker)
             if not _qa_passed(qa):
                 self.store.record_qa_failure(task.id)
@@ -724,14 +717,9 @@ class Orchestrator:
                     _git_diff(files, base=base, candidate=candidate, root=worktree),
                 ),
                 cwd=worktree,
+                context=self._context(task),
             )
-            self._account(
-                task.id,
-                review,
-                tracker,
-                attempt_id=task.run_id,
-                retry_count=max(0, task.attempts - 1),
-            )
+            self._account(task.id, review, tracker)
             verdict = _parse_json(review.result)
             if verdict.get("verdict") != "accept":
                 _remove_worktree(worktree)
@@ -800,15 +788,9 @@ class Orchestrator:
         files: list[str] = []
         staged = False
         try:
-            developer = self.runner.developer(_developer_prompt(task))
+            developer = self.runner.developer(_developer_prompt(task), context=self._context(task))
             _validate_self_check(developer)
-            self._account(
-                task.id,
-                developer,
-                tracker,
-                attempt_id=task.run_id,
-                retry_count=max(0, task.attempts - 1),
-            )
+            self._account(task.id, developer, tracker)
             self._guard(tracker)
             self.store.transition(
                 task.id,
@@ -817,14 +799,8 @@ class Orchestrator:
                 model=developer.model,
                 evidence=developer.evidence_path,
             )
-            qa = self.runner.qa(_qa_prompt(task, developer))
-            self._account(
-                task.id,
-                qa,
-                tracker,
-                attempt_id=task.run_id,
-                retry_count=max(0, task.attempts - 1),
-            )
+            qa = self.runner.qa(_qa_prompt(task, developer), context=self._context(task))
+            self._account(task.id, qa, tracker)
             self._guard(tracker)
             if not _qa_passed(qa):
                 self.store.record_qa_failure(task.id)
@@ -852,15 +828,10 @@ class Orchestrator:
             review = self.runner.reviewer(
                 _reviewer_prompt(
                     task, developer, qa, _git_diff(files, base=base, candidate=candidate, root=ROOT)
-                )
+                ),
+                context=self._context(task),
             )
-            self._account(
-                task.id,
-                review,
-                tracker,
-                attempt_id=task.run_id,
-                retry_count=max(0, task.attempts - 1),
-            )
+            self._account(task.id, review, tracker)
             verdict = _parse_json(review.result)
             if verdict.get("verdict") != "accept":
                 if staged:
@@ -995,11 +966,13 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps({"status": "locked", "reason": "a run is active"}))
                 return 3
             recovered = store.recover_running()
+            with contextlib.suppress(Exception):
+                reconcile_invocations(store.root)
             _cleanup_worktrees()
         print(json.dumps([task.to_dict() for task in recovered], ensure_ascii=False, indent=2))
         return 0
     orchestrator = Orchestrator(
-        ClaudeRunner(),
+        ClaudeRunner(journal_root=store.root),
         store,
         notifier=Notifier.from_env(),
     )

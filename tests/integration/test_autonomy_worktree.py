@@ -105,7 +105,7 @@ class FakeRunner:
             duration_seconds=0.1,
         )
 
-    def architect(self, prompt: str, cwd: Path | None = None) -> RunResult:
+    def architect(self, prompt: str, cwd: Path | None = None, **_: object) -> RunResult:
         del prompt
         # Assert the cleanup precondition while the worktree still exists.
         assert cwd is not None
@@ -114,7 +114,7 @@ class FakeRunner:
         self.architect_cwd = cwd
         return self._result("architect", '{"tasks": []}', "deepseek-v4-pro")
 
-    def developer(self, prompt: str, cwd: Path | None = None) -> RunResult:
+    def developer(self, prompt: str, cwd: Path | None = None, **_: object) -> RunResult:
         assert cwd is not None
         target = cwd / CHANGE
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -125,11 +125,11 @@ class FakeRunner:
             "deepseek-flash[1m]",
         )
 
-    def qa(self, prompt: str, cwd: Path | None = None) -> RunResult:
+    def qa(self, prompt: str, cwd: Path | None = None, **_: object) -> RunResult:
         del prompt, cwd
         return self._result("qa", '{"status":"pass"}', "deepseek-flash")
 
-    def reviewer(self, prompt: str, cwd: Path | None = None) -> RunResult:
+    def reviewer(self, prompt: str, cwd: Path | None = None, **_: object) -> RunResult:
         del prompt
         assert cwd is not None
         self.reviewed_head = _git(cwd, "rev-parse", "HEAD")
