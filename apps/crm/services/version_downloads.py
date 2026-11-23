@@ -112,7 +112,11 @@ def runtime_directory(version: GameVersion) -> Path:
 
 
 def runtime_zip_bytes(directory: Path) -> bytes:
-    """Zip the published runtime tree deterministically, rejecting symlinks."""
+    """Zip the published runtime tree, rejecting symlinks.
+
+    File mtimes are preserved, so bytes are stable only while the tree is
+    unchanged; the archive is a convenience copy, not a hash-verified artifact.
+    """
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(Path(directory).rglob("*")):
