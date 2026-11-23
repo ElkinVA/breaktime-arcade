@@ -1381,3 +1381,18 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Остаток:** R-050 TOCTOU при write-доступе к artifact root; runtime zip
   bytes не стабильны между деревьями; real nginx/volume E2E NOT TESTED.
 - **Commit:** `f8c3a52`, `91c9c0f`.
+
+### ARCADE-CRM-GAME-RECORDS-001 — CRM records/epochs tab (AI HQ)
+
+- **Результат:** `db8a835` + docstring fix `551e73e`; read-only текущая и
+  архивные таблицы рекордов в карточке игры (rank, nickname, value,
+  achieved_at, trust_level), селектор эпох, пагинация 25, empty state,
+  `GAMES_VIEW` guard; порядок/rank — общие с публичным leaderboard.
+- **Review:** первая попытка **reject** (blocker): `achieved_at` был ISO-
+  строкой, `|date` давал пустую колонку, тест проверял только context;
+  retry исправил тип на datetime и добавил HTML-assert.
+- **Проверки:** 5 targeted tests; ruff/mypy для изменённых модулей; AI HQ
+  reviewer accept; full suite **1090/1082/8**.
+- **Остаток:** live browser/staging NOT TESTED; показываются только
+  `is_public=True` (осознанно).
+- **Commit:** `db8a835`, `551e73e`.

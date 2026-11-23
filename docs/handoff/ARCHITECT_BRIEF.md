@@ -48,6 +48,9 @@ ambiguity.
   (`ARCADE-CRM-USERS-001`, `4095ed8` + fixes). R-049 follow-ups now abort
   open SDK sessions on block and clear tombstone credentials
   (`a9e7d2b`, `08ab9c7`); narrow create_session race remains.
+- CRM game records: read-only current/archived epoch board in the game card
+  with public ordering parity and pagination (`ARCADE-CRM-GAME-RECORDS-001`,
+  `db8a835` + `551e73e`).
 - CRM artifact downloads: staff-only original ZIP, runtime zip and per-version
   reports with step-up for binary artifacts (`ARCADE-ARTIFACTS-DOWNLOAD-001`,
   `f8c3a52` + `91c9c0f`); R-050 TOCTOU residual.

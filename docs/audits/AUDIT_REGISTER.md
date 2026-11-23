@@ -770,3 +770,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | R-050: TOCTOU при write-доступе к artifact root; runtime zip не hash-verified; real nginx/volume E2E NOT TESTED |
 | Источник | commits `f8c3a52`, `91c9c0f`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-CRM-GAME-RECORDS-001 — CRM records/epochs tab
+
+| Поле | Значение |
+|---|---|
+| Тип | Product/CRM read-only implementation via AI HQ |
+| Результат | `db8a835` + `551e73e`: текущая/архивная таблица рекордов в карточке игры, public ordering/rank parity, селектор эпох, пагинация 25, role guard |
+| Проверки | 5 targeted tests; ruff/mypy изменённых модулей; reviewer reject → blocker fixed → accept; full suite 1090/1082/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | live browser/staging NOT TESTED; отображаются только public entries |
+| Источник | commits `db8a835`, `551e73e`; evidence в `.autonomy/evidence/` |

@@ -388,6 +388,13 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-CRM-GAME-RECORDS-001` — **COMPLETED / AI HQ REVIEW ACCEPT after one
+reject** (`db8a835` + `551e73e`): read-only records/epochs tab in CRM game
+card, public ordering parity, pagination 25, role guard. Первый review
+поймал пустую колонку даты (ISO в `|date`); retry исправил и добавил
+HTML-проверку. 5 targeted tests; full suite **1090/1082/8**. Остаток:
+live browser/staging NOT TESTED.
+
 `ARCADE-ARTIFACTS-DOWNLOAD-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
 (`f8c3a52` + `91c9c0f`): staff-only ZIP/runtime/report downloads, step-up для
 ZIP/runtime, hash-derived paths, nosniff/no-store. 6 targeted tests; full

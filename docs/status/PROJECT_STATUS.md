@@ -273,6 +273,19 @@ tests; full suite **1085 tests: 1077 passed, 8 skipped, exit 0**. Остаток
 R-050: TOCTOU при write-доступе к artifact root, runtime zip bytes не
 гарантированно стабильны, real nginx/volume E2E NOT TESTED.
 
+## 0.18. CRM game records tab — 2026-11-23
+
+`ARCADE-CRM-GAME-RECORDS-001` — **COMPLETED / AI HQ REVIEW ACCEPT after one
+reject** (`db8a835` + docstring fix `551e73e`). В карточке игры CRM появилась
+read-only секция текущей таблицы рекордов и архивных эпох: rank/nickname/
+value/achieved_at/trust_level, пагинация 25, селектор эпох, empty state.
+Порядок и rank переиспользуют публичный `leaderboard_ordering`/`annotate_rank`;
+показываются только `is_public=True`, записи не меняются. Первый review
+отклонил попытку: ISO-строка передавалась в `|date`, колонка даты была пустой,
+а тест проверял только context. Retry перевёл `RecordRow.achieved_at` в
+datetime и добавил проверку HTML. 5 targeted tests; full suite **1090 tests:
+1082 passed, 8 skipped, exit 0**. Остаток: live browser/staging NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не
