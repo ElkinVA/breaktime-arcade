@@ -63,7 +63,7 @@ class RatingSummary:
 
 def parse_rating_filters(params: Any) -> RatingFilters:
     """Read game/value/visibility filters; reject values outside the domain."""
-    game = str(params.get("game") or "").strip()[:40]
+    game = str(params.get("game") or "").strip()
     raw_value = str(params.get("value") or "").strip()
     value = int(raw_value) if raw_value.isdecimal() and 1 <= int(raw_value) <= 5 else None
     status = str(params.get("status") or "").strip().lower()
