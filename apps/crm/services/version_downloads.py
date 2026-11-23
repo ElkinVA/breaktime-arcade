@@ -299,25 +299,16 @@ def runtime_zip_file(directory: Path) -> BinaryIO:
     try:
         with zipfile.ZipFile(spool, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             _zip_tree(archive, root_fd, "")
-    except ArtifactUnavailable:
-        spool.close()
-        raise
     except OSError:
         spool.close()
         raise ArtifactUnavailable("Runtime artifact is unavailable") from None
+    except Exception:
+        spool.close()
+        raise
     finally:
         os.close(root_fd)
     spool.seek(0)
     return spool
-
-
-def runtime_zip_bytes(directory: Path) -> bytes:
-    """Return the runtime ZIP bytes; kept for callers that need a buffer."""
-    spool = runtime_zip_file(directory)
-    try:
-        return spool.read()
-    finally:
-        spool.close()
 
 
 def _stream_attachment(
@@ -553,6 +544,5 @@ __all__ = [
     "report_response",
     "runtime_directory",
     "runtime_response",
-    "runtime_zip_bytes",
     "runtime_zip_file",
 ]
