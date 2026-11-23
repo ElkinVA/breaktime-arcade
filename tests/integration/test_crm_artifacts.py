@@ -217,6 +217,72 @@ def test_package_response_streams_in_bounded_chunks(
 
 
 @pytest.mark.django_db
+def test_package_in_place_mutation_during_read_fails_the_hash(
+    artifact_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A second handle rewriting the inode while it is read must fail the request.
+
+    The descriptor is read once, so bytes mutated after the first chunk are
+    hashed as mutated and can never match ``version.package_hash``.
+    """
+    game = _game(technical_id="inplace_during", host_label="inplace-during.test")
+    payload = b"PK\x03\x04" + b"A" * (2 * downloads.ARTIFACT_CHUNK_SIZE)
+    version = _version(game, package_hash=hashlib.sha256(payload).hexdigest())
+    root = ensure_root(Path(settings.ZIP_PIPELINE_STORAGE_ROOT))
+    target = package_path(root, version.package_hash)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(payload)
+
+    real_read = downloads.os.read
+    mutated = False
+
+    def mutating_read(fd: int, size: int) -> bytes:
+        nonlocal mutated
+        chunk = real_read(fd, size)
+        if chunk and not mutated:
+            mutated = True
+            # A second descriptor on the same inode rewrites the whole file.
+            with target.open("r+b") as attacker:
+                attacker.write(b"X" * len(payload))
+        return chunk
+
+    monkeypatch.setattr(downloads.os, "read", mutating_read)
+
+    with pytest.raises(downloads.ArtifactUnavailable):
+        downloads.package_response(version)
+    assert mutated
+
+
+@pytest.mark.django_db
+def test_package_body_is_the_hash_verified_bytes_after_in_place_mutation(
+    artifact_env: Path,
+) -> None:
+    """Mutating the store after open must not change the served body.
+
+    The response streams the spool produced during the hashing pass, so a
+    hardlink writing the same inode after ``package_response`` returns leaves
+    the body byte-identical to the bytes that matched ``package_hash``.
+    """
+    game = _game(technical_id="inplace_after", host_label="inplace-after.test")
+    version = _version(game)
+    _store_package(version)
+    root = ensure_root(Path(settings.ZIP_PIPELINE_STORAGE_ROOT))
+    target = package_path(root, version.package_hash)
+
+    response = downloads.package_response(version)
+    hardlink = artifact_env / "package-hardlink.zip"
+    os.link(target, hardlink)
+    with hardlink.open("r+b") as attacker:
+        attacker.write(b"X" * len(PACKAGE_BYTES))
+    assert target.read_bytes() != PACKAGE_BYTES
+
+    body = b"".join(response.streaming_content)
+    assert body == PACKAGE_BYTES
+    assert hashlib.sha256(body).hexdigest() == version.package_hash
+    response.close()
+
+
+@pytest.mark.django_db
 def test_corrupted_package_is_rejected_before_any_body_is_served(
     artifact_env: Path,
 ) -> None:

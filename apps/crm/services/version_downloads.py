@@ -11,11 +11,13 @@ the persisted ``validation_report`` / ``e2e_report`` / ``import_report``
 Responses are always attachments with a fixed name derived from UUIDs only and
 carry ``nosniff`` plus a private, non-cacheable policy.
 
-The original package is hash-verified against ``version.package_hash`` on the
-verified descriptor and then streamed in bounded chunks, so a corrupted file is
-rejected before any body byte is served and the response never holds the whole
-ZIP in memory. Runtime bundles are generated once into a temporary file and
-streamed from there for the same reason.
+The original package is read from the verified descriptor exactly once: its
+bytes are copied into a temporary spool while SHA-256 is computed and the
+response streams that spool only after the digest matches
+``version.package_hash``. The served bytes are therefore the same bytes that
+were hashed, a corrupted file is rejected before any body byte is served, and
+the response never holds the whole ZIP in memory. Runtime bundles are generated
+once into a temporary file and streamed from there for the same reason.
 """
 
 from __future__ import annotations
@@ -140,12 +142,19 @@ def _open_verified(path: Path, *, directory: bool) -> tuple[int, os.stat_result]
     return fd, opened
 
 
-def _verify_handle_hash(fd: int, expected: str) -> None:
-    """Hash the opened handle in bounded chunks and compare to ``expected``.
+def _spool_verified_handle(fd: int, expected: str) -> BinaryIO:
+    """Copy the opened handle into a spool, hashing the exact bytes copied.
 
-    Nothing is buffered beyond one chunk, so a large or corrupted artifact is
-    checked before the caller builds any response body.
+    The descriptor is read once in bounded chunks; every chunk is fed both to
+    SHA-256 and to the temporary spool. Only when the digest matches
+    ``expected`` is the rewound spool returned, so the bytes later served are
+    provably the bytes that were hashed and an in-place write after the open
+    cannot slip into the response. Nothing is buffered beyond one chunk.
     """
+    try:
+        spool = tempfile.TemporaryFile(prefix="ba-package-", suffix=".zip")  # noqa: SIM115
+    except OSError:
+        raise ArtifactUnavailable("Artifact file is unavailable") from None
     digest = hashlib.sha256()
     try:
         os.lseek(fd, 0, os.SEEK_SET)
@@ -154,11 +163,18 @@ def _verify_handle_hash(fd: int, expected: str) -> None:
             if not chunk:
                 break
             digest.update(chunk)
-        os.lseek(fd, 0, os.SEEK_SET)
+            spool.write(chunk)
     except OSError:
+        spool.close()
         raise ArtifactUnavailable("Artifact file is unavailable") from None
+    except BaseException:
+        spool.close()
+        raise
     if digest.hexdigest() != expected:
+        spool.close()
         raise ArtifactUnavailable("Artifact hash mismatch")
+    spool.seek(0)
+    return spool
 
 
 def _write_handle_to_zip(archive: zipfile.ZipFile, info: zipfile.ZipInfo, fd: int) -> None:
@@ -343,31 +359,29 @@ def _artifact_name(version: GameVersion, suffix: str) -> str:
 
 
 def package_response(version: GameVersion) -> FileResponse:
-    """Verify and stream the immutable original ZIP from its verified handle.
+    """Verify and stream the immutable original ZIP in a single pass.
 
-    The SHA-256 of the bytes read from the ``O_NOFOLLOW`` descriptor is checked
-    against ``version.package_hash`` before the response is built; a mismatch
-    raises ``ArtifactUnavailable`` without serving a single body byte.
+    The ``O_NOFOLLOW`` descriptor is read exactly once: bytes go into a
+    temporary spool while SHA-256 is computed, the digest is checked against
+    ``version.package_hash``, and only a matching spool is served. A mismatch
+    raises ``ArtifactUnavailable`` without serving a single body byte, and an
+    in-place write after the open is either part of the hashed bytes or the
+    request fails -- never a served body that differs from the verified digest.
     """
     path = package_file(version)
     fd, _path_stat = _open_verified(path, directory=False)
     try:
-        _verify_handle_hash(fd, version.package_hash)
-        try:
-            handle = os.fdopen(fd, "rb")
-        except OSError:
-            raise ArtifactUnavailable("Artifact file is unavailable") from None
-    except BaseException:
+        spool = _spool_verified_handle(fd, version.package_hash)
+    finally:
         os.close(fd)
-        raise
     try:
         return _stream_attachment(
-            handle,
+            spool,
             filename=_artifact_name(version, "package.zip"),
             content_type="application/zip",
         )
     except BaseException:
-        handle.close()
+        spool.close()
         raise
 
 
