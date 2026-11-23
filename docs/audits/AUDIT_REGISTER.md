@@ -710,3 +710,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEWER ACCEPT**; product/staging/prod не заявляются |
 | Остаток | concurrent test использует mock, не реальную двухтранзакционную гонку |
 | Источник | commit `bf33191`; QA/reviewer evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-CRM-USERS-001 — CRM customer accounts
+
+| Поле | Значение |
+|---|---|
+| Тип | Product/CRM implementation via AI HQ; security-sensitive |
+| Результат | `4095ed8` + fixes: `/crm/users/` search/filters/detail, block/unblock audit, deletion window/confirm, export via shared service; step-up export/delete; staff-target/tombstone guards; pagination; epoch filter |
+| Проверки | 19 targeted tests; ruff/format/mypy clean; AI HQ code reviewer accept; security-auditor conditional → delta **resolved**; full suite 1064 tests / 1056 passed / 8 skipped / exit 0 |
+| Статус | **COMPLETED / CODE REVIEW ACCEPT; SECURITY DELTA RESOLVED**; product/staging/prod не заявляются |
+| Остаток | R-049: block не отзывает game SDK sessions/launch tickets; tombstone password/TOTP retention; live CSRF/HTTP not tested |
+| Источник | commit `4095ed8` + security fix commit; evidence в `.autonomy/evidence/` |

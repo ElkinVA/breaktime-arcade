@@ -388,6 +388,11 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-CRM-USERS-001` — **COMPLETED / CODE REVIEW ACCEPT; SECURITY DELTA
+RESOLVED** (`4095ed8` + fixes): CRM customer list/detail/search/block/delete/
+export; step-up for export/delete, staff-target/tombstone guards, pagination.
+Остаток R-049: block не отзывает game SDK sessions; tombstone credential
+retention; live HTTP/CSRF not tested; full suite **1064/1056/8**.
 `ARCADE-SLUG-HISTORY-HARDENING-001` — **COMPLETED / AI HQ REVIEWER ACCEPT**
 (`bf33191`): race-safe history insert, shared fallback constant,
 cross-language negative and concurrent tests; no schema change; full suite

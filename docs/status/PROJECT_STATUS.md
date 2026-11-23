@@ -213,6 +213,12 @@ ruff/mypy clean; full suite **1046 tests: 1038 passed, 8 skipped, exit 0**.
 Остаток: concurrent test
 детерминированно мокает `get_or_create`, реальная DB-гонка не проверялась.
 
+## 0.13. CRM customer accounts — 2026-11-23
+
+`ARCADE-CRM-USERS-001` — **COMPLETED / AI HQ CODE REVIEW ACCEPT; SECURITY REVIEW CONDITIONAL → DELTA RESOLVED** (`4095ed8` + security fixes). Экран `/crm/users/`: поиск login/nickname/email (min 2, citext), фильтры verified/blocked, detail без password/TOTP/recovery, block/unblock с аудитом, delete через `anonymize_user` с 7-дневным окном и подтверждением, export через ту же `export_account_data`.
+Security hardening: customer-маршруты не адресуют staff/owner/tombstone; export требует step-up (§2.16.1), delete — step-up + confirm; tombstone не реактивируется; leaderboard только текущая эпоха; пагинация 50; nosniff; CSRF-negative test. Security delta verdict — **resolved**. Targeted 19 tests; full suite **1064 tests:
+1056 passed, 8 skipped, exit 0**. Остатки: block не отзывает уже выданные game SDK-сессии (R-049); tombstone хранит password hash/TOTP до удаления строки; live CSRF/HTTP not tested.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

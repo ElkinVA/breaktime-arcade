@@ -1300,3 +1300,19 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Остаток:** concurrent test мокает `get_or_create`, реальная DB-гонка
   не воспроизводилась.
 - **Commit:** `bf33191`.
+
+
+### ARCADE-CRM-USERS-001 — CRM customer accounts (AI HQ)
+
+- **Результат:** `4095ed8` + security fixes; `/crm/users/` list/detail,
+  search/filters, block/unblock с аудитом, delete по 7-дневному окну с
+  confirm, export через `export_account_data`.
+- **Security hardening:** customer scope (no staff/owner/tombstone), step-up
+  для export/delete (§2.16.1), tombstone guard, current-epoch leaderboard,
+  pagination 50, nosniff, CSRF-negative test.
+- **Проверки:** 19 targeted tests; ruff/format/mypy clean; AI HQ code review
+  accept; security-auditor conditional → delta **resolved**; full suite **1064
+tests: 1056 passed, 8 skipped, exit 0**.
+- **Остаток:** R-049 block не отзывает game SDK sessions; tombstone хранит
+  password hash/TOTP; live HTTP/CSRF not tested.
+- **Commits:** `4095ed8` + security fix commit (см. git log).

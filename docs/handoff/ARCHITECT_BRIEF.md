@@ -37,6 +37,10 @@ ambiguity.
   App F runtime race/idempotency tests and live E2E coverage; catalog rating
   vote UI/CRM diagnostics; accounts history/records/email/legal texts; 2FA
   CRM step-up; retention classes; moderation/antifraud owner gaps.
+- CRM customer accounts: `/crm/users/` search/filters, detail, block/unblock,
+  deletion window, export; step-up and staff-target guards
+  (`ARCADE-CRM-USERS-001`, `4095ed8` + fixes). R-049 SDK-session revocation
+  remains open.
 - CRM SEO diagnostics: `/crm/seo/` reports empty descriptions, duplicate
   titles, missing alt and incomplete translations by language
   (`ARCADE-CRM-SEO-DIAGNOSTICS-001`, `f5474d8`).
