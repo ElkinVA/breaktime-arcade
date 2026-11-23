@@ -132,6 +132,38 @@ full suite exit 0; ruff/mypy clean. Provider request/cache/cost invoice пока
 не коррелируется с task_id — residual. Отчёт —
 `docs/audits/BA_TOKEN_OBSERVABILITY_IMPLEMENTATION_REPORT.md`.
 
+## 0.7. Token observability lifecycle — 2026-11-23
+
+`BA-TOKEN-OBSERVABILITY-002` — **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT**
+(minor fixes applied). Schema v2 в `.autonomy/invocations.jsonl`: start/finish
+events, failed/timeout/cancelled/interrupted, reconciliation по owner pid /
+PID reuse / boot_id, legacy-записи читаются как authoritative terminal.
+Runner — единственный писатель lifecycle; `_account` сохраняет success-only
+state/budget. API-error usage сохраняется, если CLI его вернул; unknown
+usage — `null` + `usage_known=false`. Реальный control run: success
+(usage 5962/105, cost 0.0324), timeout, SIGINT, invalid model, SIGKILL+
+reconcile — 5 started/5 finished, двойного учёта нет. 30 observability
+tests; full suite **1019 tests: 1011 passed, 8 skipped, exit 0**;
+ruff/format/mypy clean.
+Residual: usage при timeout/cancel/interrupted неизвестен; provider
+request_count/cache/invoice не коррелируются; SIGKILL может оставить child;
+ротации журнала нет. Отчёт — `docs/audits/BA_TOKEN_OBSERVABILITY_002_IMPLEMENTATION_REPORT.md`.
+
+## 0.8. Token efficiency optimization — 2026-11-23
+
+Практический срез по аудиту BA-TOKEN-EFFICIENCY-AUDIT-001:
+
+- Architect brief: обязательный bundle 168 145 → 5 011 chars (−97.0 %);
+  architect читает brief + точечные разделы, а не четыре полных реестра.
+- Реальная пара planning calls: input_tokens 132 148 → 59 430 (−55.0 %),
+  cost 1.617336 → 1.205210 USD (−25.5 %), cache read −33.0 %, output +48.8 %
+  и num_turns 32→39; оба proposal валидны после штатного `_parse_json`
+  (4 и 3 задачи). Один запуск на фазу — индикативно, не статистика.
+- Prompt-level context discipline для developer/QA/reviewer; runbook
+  `ai_session_policy.md` для интерактивных/`--bg` сессий.
+- Модели, маршрутизация, число агентов, budget/stop-политика не менялись.
+  Отчёт — `docs/audits/BA_TOKEN_EFFICIENCY_OPTIMIZATION_REPORT.md`.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

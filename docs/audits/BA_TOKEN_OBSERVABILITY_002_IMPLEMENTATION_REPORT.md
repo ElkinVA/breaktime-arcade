@@ -131,5 +131,5 @@ pytest --create-db (full)                          -> exit 0; 1019 tests, 1011 p
 
 ## 9. Git
 
-- Commit: заполняется после коммита.
+- Commit: `63a5954` — `feat(autonomy): record failed and interrupted invocations`.
 - Working tree после коммита проверяется.

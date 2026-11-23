@@ -1194,3 +1194,36 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - Full fresh gate **930 passed, 12 skipped**; Browser E2E 18 passed.
 - Pro reviewer: **accept** after delta review; product acceptance external
   blockers remain. Staging live runtime NOT TESTED (missing `.env.staging`).
+
+### BA-TOKEN-OBSERVABILITY-002 — invocation lifecycle
+
+- **ID:** BA-TOKEN-OBSERVABILITY-002.
+- **Результат:** schema v2 `invocation_started`/`invocation_finished` в
+  `.autonomy/invocations.jsonl`; runner — единственный писатель lifecycle;
+  `_account` сохраняет success-only state/budget; reconciliation по owner
+  pid/PID reuse/boot_id; ручной `python -m autonomy.observability reconcile`;
+  unknown usage — `null` + `usage_known=false`.
+- **Проверки:** observability **30 passed**; autonomy subset; ruff/format/
+  mypy clean; full suite **1019 tests: 1011 passed, 8 skipped, exit 0**. Реальный control
+  run: success/timeout/SIGINT/invalid-model/SIGKILL+reconcile, 5 started +
+  5 finished, без двойного учёта; API-error usage сохраняется.
+- **Review:** `code-reviewer` **ACCEPT** после delta; исправлены by_status
+  zeros, abandoned start, SIGINT pre-spawn window, manual CLI, недостающие
+  тесты, ERROR_TYPES/reasoning.
+- **Остаток:** usage при timeout/cancel/interrupted неизвестен; provider
+  request_count/cache/invoice не коррелируются; SIGKILL child; нет ротации.
+- **Отчёт:** `docs/audits/BA_TOKEN_OBSERVABILITY_002_IMPLEMENTATION_REPORT.md`.
+
+### BA-TOKEN-EFFICIENCY-OPTIMIZATION-001 — practical context reduction
+
+- **ID:** BA-TOKEN-EFFICIENCY-OPTIMIZATION-001.
+- **Результат:** `docs/handoff/ARCHITECT_BRIEF.md`; architect читает brief +
+  точечные разделы; context discipline в autonomy developer/QA/reviewer;
+  `docs/runbook/ai_session_policy.md` для интерактивных/`--bg` сессий.
+- **Измерение:** обязательный bundle 168 145 → 5 011 chars (−97.0 %);
+  реальная пара planning calls — input 132 148 → 59 430 (−55.0 %), cost
+  1.617336 → 1.205210 USD (−25.5 %), output +48.8 %, num_turns 32→39; оба
+  proposal валидны (4/3 задачи). Один запуск на фазу — индикативно.
+- **Ограничения:** модели/маршрутизация/budget/stop-политика не менялись;
+  интерактивные сессии по-прежнему вне journal.
+- **Отчёт:** `docs/audits/BA_TOKEN_EFFICIENCY_OPTIMIZATION_REPORT.md`.

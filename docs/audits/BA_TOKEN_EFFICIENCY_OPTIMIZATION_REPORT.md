@@ -133,4 +133,4 @@ chars (context discipline), что пренебрежимо мало относ�
 
 ## 6. Git
 
-- Commit: заполняется после коммита.
+- Commit: `c389f53` — `chore(ai): reduce architect context and add session hygiene`.

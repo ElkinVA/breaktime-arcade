@@ -627,3 +627,26 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | TECHNICALLY ACCEPTED; product acceptance owner |
 | Остаток | Staging live runtime/backup NOT TESTED (`.env.staging` absent); R-033/R-037; real game/email/legal/domains/TLS/S3/deploy external |
 | Источник | `docs/foundation/PRODUCT_ACCEPTANCE_REPORT.md`, commits `021a36c`…`9017254` |
+
+## BA-TOKEN-OBSERVABILITY-002 — invocation lifecycle
+
+| Поле | Значение |
+|---|---|
+| Тип | Technical instrumentation; execution behavior не менялся |
+| Результат | Schema v2 start/finish events; failed/timeout/cancelled/interrupted; reconciliation по owner pid/PID reuse/boot_id; runner — единственный писатель; `_account` — success-only state/budget; manual `python -m autonomy.observability reconcile` |
+| Проверки | 30 observability tests; targeted autonomy subset; ruff/format/mypy clean; full suite exit 0 (final count — в отчёте); реальный control run: 5 scenarios, 5 started/5 finished |
+| Статус | **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT** (minor fixes applied) |
+| Review | `code-reviewer` ACCEPT после delta: by_status zeros, abandoned start, SIGINT window, manual CLI, недостающие тесты, ERROR_TYPES/reasoning исправлены |
+| Остаток | Timeout/cancel/interrupted usage неизвестен; provider request_count/cache/invoice; SIGKILL child; нет ротации |
+| Источник | `docs/audits/BA_TOKEN_OBSERVABILITY_002_IMPLEMENTATION_REPORT.md` |
+
+## BA-TOKEN-EFFICIENCY-OPTIMIZATION-001 — practical context reduction
+
+| Поле | Значение |
+|---|---|
+| Тип | Prompt/documentation optimization; no model/routing/budget changes |
+| Результат | Architect brief + targeted reads; context discipline developer/QA/reviewer; session hygiene runbook |
+| Проверки | Обязательный bundle 168 145→5 011 chars (−97.0 %); реальная пара planning calls: input 132 148→59 430 (−55.0 %), cost 1.617→1.205 USD (−25.5 %), output +48.8 %, num_turns 32→39; оба proposal валидны (4/3 задачи) |
+| Статус | **IMPLEMENTED; effect measured (single pair, indicative)** |
+| Остаток | Интерактивные сессии вне journal; tool-loop не ограничен hard cap; один запуск на фазу |
+| Источник | `docs/audits/BA_TOKEN_EFFICIENCY_OPTIMIZATION_REPORT.md` |

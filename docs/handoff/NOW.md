@@ -349,6 +349,23 @@ Claude-reported input/output/cache/cost, optional `num_turns`; exact
 модели, бюджет и число агентов не менялись. Отчёт —
 `docs/audits/BA_TOKEN_OBSERVABILITY_IMPLEMENTATION_REPORT.md`.
 
+`BA-TOKEN-OBSERVABILITY-002` — **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT**
+(minor fixes applied). Schema v2: `invocation_started`/`invocation_finished`,
+failed/timeout/cancelled/interrupted, reconciliation по owner pid / PID reuse
+/ boot_id, unknown usage = null + `usage_known=false`; runner — единственный
+писатель lifecycle, `_account` — success-only state/budget. Реальный control
+run (5 сценариев, 5 started/5 finished); 30 observability tests; full suite
+**1019 tests: 1011 passed, 8 skipped, exit 0**. Остаток: usage timeout/cancel/interrupted неизвестен, provider
+invoice не коррелируется, SIGKILL child, нет ротации. Отчёт —
+`docs/audits/BA_TOKEN_OBSERVABILITY_002_IMPLEMENTATION_REPORT.md`.
+
+`BA-TOKEN-EFFICIENCY-OPTIMIZATION-001` — **IMPLEMENTED**. Architect brief
+(168 145→5 011 chars, −97.0 %); реальная пара planning calls: input
+132 148→59 430 (−55.0 %), cost 1.617→1.205 USD (−25.5 %), output +48.8 %,
+num_turns 32→39; оба proposal валидны (4/3 задачи). Один запуск на фазу —
+индикативно. Модели/маршрутизация/budget не менялись. Отчёт —
+`docs/audits/BA_TOKEN_EFFICIENCY_OPTIMIZATION_REPORT.md`.
+
 ## Модели
 
 - План/ревью: `architect`, `code-reviewer`, `security-auditor` /
