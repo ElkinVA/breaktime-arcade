@@ -121,10 +121,15 @@ class Game(models.Model):
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         """Keep identity immutable after first publication; never reuse it."""
+        old_slug: str | None = None
         if not self._state.adding and self.pk is not None:
             update_fields = kwargs.get("update_fields")
             names = set(update_fields) if update_fields is not None else set(self.IDENTITY_FIELDS)
             fields_to_check = {field for field in self.IDENTITY_FIELDS if field in names}
+            if update_fields is None or "slug" in update_fields:
+                old_slug = (
+                    type(self).objects.filter(pk=self.pk).values_list("slug", flat=True).first()
+                )
             if fields_to_check:
                 previous = (
                     type(self)
@@ -144,3 +149,7 @@ class Game(models.Model):
                                 code="game_identity_immutable",
                             )
         super().save(*args, **kwargs)
+        if old_slug is not None and old_slug != self.slug:
+            from apps.catalog.services.slugs import record_game_slug
+
+            record_game_slug(self, old_slug)

@@ -10,7 +10,11 @@ from urllib.parse import quote, urlparse
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.http import Http404, HttpRequest
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponsePermanentRedirect,
+)
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
@@ -38,6 +42,7 @@ from apps.catalog.services.pagination import (
 )
 from apps.catalog.services.popularity import popularity
 from apps.catalog.services.seo import catalog_seo, game_seo
+from apps.catalog.services.slugs import canonical_game_path, resolve_old_slug
 from apps.gameplay.api.throttling import (
     GuestIpRateThrottle,
     SubjectScopedRateThrottle,
@@ -156,15 +161,22 @@ def game_list(request: HttpRequest) -> TemplateResponse:
     return TemplateResponse(request, "catalog/game_list.html", context)
 
 
-def game_detail(request: HttpRequest, slug: str) -> TemplateResponse:
+def game_detail(
+    request: HttpRequest, slug: str
+) -> TemplateResponse | HttpResponsePermanentRedirect:
+    language = _language(request)
     game = published_games().filter(Q(slug=slug) | Q(translations__slug=slug)).distinct().first()
     if game is None:
+        # A slug recorded before a rename: permanent redirect to the current
+        # canonical URL for the requested language (§2.4.1/§2.6).
+        previous_game = resolve_old_slug(slug, language)
+        if previous_game is not None:
+            return HttpResponsePermanentRedirect(canonical_game_path(previous_game, language))
         raise Http404("game not found")
-    translation = localized_translation(game, _language(request))
+    translation = localized_translation(game, language)
     active_language_codes = get_active_language_codes_safely()
     ratings = rating_summary(game, request.user)
-    seo = game_seo(game, translation, _language(request), active_language_codes)
-    language = _language(request)
+    seo = game_seo(game, translation, language, active_language_codes)
     fallback_alt = translation.name if translation is not None else game.technical_id
     cover = game.assets.filter(type=GameAsset.TYPE_COVER).order_by("sort_order").first()
     screenshots = list(

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVectorField
 from django.db import models
@@ -44,3 +46,18 @@ class GameTranslation(models.Model):
 
     def __str__(self) -> str:
         return f"{self.game} [{self.language.code}] {self.name}"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Remember the previous slug so the old localized URL gets a 301."""
+        old_slug: str | None = None
+        if not self._state.adding and self.pk is not None:
+            update_fields = kwargs.get("update_fields")
+            if update_fields is None or "slug" in update_fields:
+                old_slug = (
+                    type(self).objects.filter(pk=self.pk).values_list("slug", flat=True).first()
+                )
+        super().save(*args, **kwargs)
+        if old_slug is not None and old_slug != self.slug:
+            from apps.catalog.services.slugs import record_translation_slug
+
+            record_translation_slug(self, old_slug)
