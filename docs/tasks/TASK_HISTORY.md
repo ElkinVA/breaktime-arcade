@@ -953,6 +953,37 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   incomplete: diff evidence/parentOrigin residual; probe/E2E 2 passed; BA-SDK-1.1 не утверждён).
 - **Отчёт:** `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md`.
 
+### AUTONOMY-AUDIT-2026-11-23 — проверка AI Headquarters
+
+- **ID:** AUTONOMY-AUDIT-2026-11-23.
+- **Результат:** фактическая проверка `autonomy/`, `devcontrol/`, state,
+  systemd/timers, background sessions и Telegram. A — PASS (код), D —
+  PASS (код)/NOT TESTED live; B/C/E — FAIL/NOT TESTED; `.autonomy` и
+  user units/timers отсутствуют; Telegram API timeout.
+- **Проверки:** autonomy/devcontrol tests **94 passed, 1 skipped**; full
+  suite 981/12; `claude agents --json` — только текущая interactive-сессия.
+- **Остаток:** `AUTONOMY-CONTINUATION-001` (timer) — **BLOCKED, owner**;
+  план `docs/tasks/AUTONOMY-CONTINUATION-001_PLAN.md`. Параллельная
+  оркестрация не создавалась.
+- **Статус:** **COMPLETED / AUDIT ONLY**; не приёмка AI HQ.
+
+### APPF-RUNTIME-REVIEW-001 — независимое ревью App F Runtime
+
+- **ID:** APPF-RUNTIME-REVIEW-001.
+- **Результат:** проверены SDK/host/player/play, sessions/results/verifier/
+  storage, leaderboards и негативные сценарии. Исправлены stale-response
+  guard, best-effort close старой сессии перед newSession, per-session
+  Idempotency-Key, host validation (`safe integer`, duration, eventLog
+  null/array, limit 10/100), no-retry activate/close. Добавлены
+  `tests/js/player.test.mjs` и negative host tests.
+- **Проверки:** targeted pytest 79 passed; `npm test:js` 7 passed;
+  `npm run check:js` clean; полный suite — см. отчёт.
+- **Review:** code-reviewer и security-auditor (deepseek-v4-pro, text-only)
+  — **ACCEPT** после delta; F1/F2/F3/F4/F5/F6 закрыты или residual.
+- **Статус:** **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT**; product/staging/
+  production — владелец; R-036 Phase 2 не менялся; R-043/44/45 residual.
+- **Отчёт:** `docs/foundation/APPF-RUNTIME-REVIEW-001_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,

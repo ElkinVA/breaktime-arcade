@@ -311,7 +311,32 @@ host E2E (13 сценариев, после локальной настройк�
   есть; серверный `is_personal_best`/`myBest` покрыт API-тестами. Остаётся
   UI-асинхронность `myBest` (при ошибке/не-record может остаться «—»);
   это cosmetic residual, не ошибка score/rank. SDK-контракт не менялся.
+- **App F Runtime Review:** `APPF-RUNTIME-REVIEW-001` —
+  **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT**; исправлены stale-response
+  guard, newSession close, idempotency key, host validation; 79 targeted
+  tests, 7 JS tests, full suite — см. `docs/foundation/
+  APPF-RUNTIME-REVIEW-001_REPORT.md`. Product acceptance — владелец.
 - **План следующей задачи:** `docs/tasks/APPF-RUNTIME-REVIEW-001_PLAN.md`.
+
+### AI Headquarters — проверка 2026-11-23
+
+- **A, переход между задачами:** `Orchestrator.run` умеет bounded-цикл
+  нескольких задач; VPS unit запускает `--max-tasks 1`. **PASS (код),
+  NOT TESTED live.**
+- **B, продолжение после сессии:** автоматического запуска следующей
+  сессии нет; `devcontrol` `/continue` — ручной, hooks только фиксируют
+  события. **FAIL.**
+- **C, постоянная фоновая работа:** `.autonomy` отсутствует; user units
+  `ba-autonomy-orchestrator`/`ba-devcontrol` не установлены; timers — 0;
+  background-сессий нет. **FAIL.**
+- **D, восстановление:** `StateStore.recover_running`, `RUN_LOCK`,
+  worktree cleanup и retry limits есть; autonomy tests **94 passed,
+  1 skipped**. **PASS (код), NOT TESTED live.**
+- **E, Telegram:** `api.telegram.org:443` — connection timeout; process и
+  state отсутствуют. **FAIL/NOT TESTED.**
+- Минимальное исправление (timer для существующего orchestrator) оформлено
+  в `docs/tasks/AUTONOMY-CONTINUATION-001_PLAN.md`; статус — **BLOCKED,
+  требуется решение владельца**, параллельная система не создавалась.
 
 ## Модели
 

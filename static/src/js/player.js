@@ -10,6 +10,7 @@ if (frame) {
     const iframeOrigin = new URL(runtimeUrl).origin;
     let sessionId = frame.dataset.sessionId;
     let currentContext = context;
+    const submissionKeys = new Map();
 
     function headers(extra = {}) {
         return {
@@ -20,12 +21,15 @@ if (frame) {
     }
 
     async function api(path, options = {}) {
+        const canRetry = options.retry !== false;
+        const requestOptions = { ...options };
+        delete requestOptions.retry;
         let lastError;
         for (let attempt = 0; attempt < 3; attempt += 1) {
             try {
                 const response = await fetch(path, {
                     credentials: "same-origin",
-                    ...options,
+                    ...requestOptions,
                 });
                 let payload = null;
                 if (response.status !== 204) {
@@ -37,7 +41,7 @@ if (frame) {
                 const error = new Error(payload?.message || "request failed");
                 error.code = payload?.code || "E_INTERNAL";
                 error.status = response.status;
-                if (response.status < 500 || attempt === 2) {
+                if (response.status < 500 || !canRetry || attempt === 2) {
                     throw error;
                 }
                 lastError = error;
@@ -46,7 +50,7 @@ if (frame) {
                     throw error;
                 }
                 lastError = error;
-                if (attempt === 2) {
+                if (!canRetry || attempt === 2) {
                     throw error;
                 }
             }
@@ -56,6 +60,8 @@ if (frame) {
     }
 
     async function createSession() {
+        // Creation is safely retryable: a lost response can leave a CREATED
+        // orphan, not an ACTIVE session; activation remains single-shot.
         const created = await api("/api/v1/sessions", {
             method: "POST",
             headers: headers(),
@@ -72,6 +78,7 @@ if (frame) {
                     ticket: createdPayload.ticket,
                     binding_nonce: nonce,
                 }),
+                retry: false,
             },
         );
         sessionId = createdPayload.session_id;
@@ -81,12 +88,15 @@ if (frame) {
     }
 
     async function submitResult(requestId, payload) {
+        const requestSession = sessionId;
+        const idempotencyKey = submissionKeys.get(requestSession) || crypto.randomUUID();
+        submissionKeys.set(requestSession, idempotencyKey);
         try {
             const { payload: result } = await api(
-                `/api/v1/sessions/${sessionId}/result`,
+                `/api/v1/sessions/${requestSession}/result`,
                 {
                     method: "POST",
-                    headers: headers({ "Idempotency-Key": crypto.randomUUID() }),
+                    headers: headers({ "Idempotency-Key": idempotencyKey }),
                     body: JSON.stringify({
                         value: payload.value,
                         durationMs: payload.durationMs,
@@ -96,6 +106,10 @@ if (frame) {
                     }),
                 },
             );
+            // A response from a superseded session must not touch the new round.
+            if (sessionId !== requestSession) {
+                return;
+            }
             bridge.sendResult(requestId, {
                 status: result.status,
                 rank: result.rank ?? null,
@@ -104,6 +118,9 @@ if (frame) {
                 trustLevel: result.trust_level ?? "client_reported",
             });
         } catch (error) {
+            if (sessionId !== requestSession) {
+                return;
+            }
             if (error.code === "E_GUEST_FORBIDDEN") {
                 bridge.sendResult(requestId, {
                     status: "guest",
@@ -120,12 +137,16 @@ if (frame) {
     }
 
     async function leaderboard(requestId, payload) {
+        const requestSession = sessionId;
         try {
             if (payload.bestOnly) {
                 const { payload: best } = await api(
                     `/api/v1/games/${gameId}/me/best`,
                     { headers: { Accept: "application/json" } },
                 );
+                if (sessionId !== requestSession) {
+                    return;
+                }
                 bridge.sendLeaderboardData(requestId, {
                     value: best.value ?? null,
                     achievedAt: best.achieved_at ?? null,
@@ -138,6 +159,9 @@ if (frame) {
                 `/api/v1/games/${gameId}/leaderboard?limit=${encodeURIComponent(limit)}`,
                 { headers: { Accept: "application/json" } },
             );
+            if (sessionId !== requestSession) {
+                return;
+            }
             bridge.sendLeaderboardData(requestId, {
                 entries: (board.entries ?? []).map((entry) => ({
                     rank: entry.rank,
@@ -149,16 +173,23 @@ if (frame) {
                 myRank: board.me?.rank ?? null,
             });
         } catch (error) {
+            if (sessionId !== requestSession) {
+                return;
+            }
             bridge.sendError(requestId, error.code || "E_INTERNAL", error.message);
         }
     }
 
     async function storage(requestId, payload) {
+        const requestSession = sessionId;
         try {
             const { response, payload: current } = await api(
                 `/api/v1/games/${gameId}/storage`,
                 { headers: { Accept: "application/json" } },
             );
+            if (sessionId !== requestSession) {
+                return;
+            }
             const data = current.data && typeof current.data === "object" ? current.data : {};
             if (payload.op === "get") {
                 bridge.sendStorageData(requestId, {
@@ -188,17 +219,29 @@ if (frame) {
                     body: JSON.stringify(next),
                 },
             );
+            if (sessionId !== requestSession) {
+                return;
+            }
             bridge.sendStorageData(requestId, {
                 value: payload.op === "set" ? saved.data?.[payload.key] : null,
                 revision: saved.revision ?? 0,
             });
         } catch (error) {
+            if (sessionId !== requestSession) {
+                return;
+            }
             bridge.sendError(requestId, error.code || "E_INTERNAL", error.message);
         }
     }
 
     async function newSession(requestId) {
         try {
+            // Finish the previous active session before opening the next one.
+            // Otherwise guest replays accumulate active sessions and hit the
+            // three-session cap.
+            const previousSession = sessionId;
+            await closeSession();
+            submissionKeys.delete(previousSession);
             const created = await createSession();
             bridge.sendSession(requestId, created);
         } catch (error) {
@@ -211,6 +254,7 @@ if (frame) {
             await api(`/api/v1/sessions/${sessionId}/close`, {
                 method: "POST",
                 headers: headers(),
+                retry: false,
             });
         } catch {
             /* close is best-effort */

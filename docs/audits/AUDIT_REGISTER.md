@@ -531,6 +531,28 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Остаток | JS schema validation, snake/camel API adapter, retry policy, staging/prod origin, static collectstatic perms |
 | Источник | `docs/foundation/BA-APPF-002_RUNTIME_SDK_REPORT.md` |
 
+## AUTONOMY-AUDIT-2026-11-23 — проверка AI Headquarters
+
+| Поле | Значение |
+|---|---|
+| Тип | Read-only аудит оркестрации/Dev Control; не product acceptance |
+| Результат | A PASS (код), D PASS (код)/NOT TESTED live; B/C/E FAIL/NOT TESTED; `.autonomy` и systemd user units/timers отсутствуют; Telegram API timeout |
+| Проверки | autonomy/devcontrol tests 94 passed, 1 skipped; full 981/12; `claude agents --json` — только текущая interactive-сессия |
+| Статус | **COMPLETED / AUDIT ONLY** |
+| Остаток | `AUTONOMY-CONTINUATION-001` — BLOCKED owner; timer не устанавливался |
+
+## APPF-RUNTIME-REVIEW-001 — App F Runtime
+
+| Поле | Значение |
+|---|---|
+| Тип | Независимое техническое/security ревью runtime A+B/C |
+| Результат | stale-response guard, newSession close, per-session Idempotency-Key, host validation; JS/negative tests |
+| Проверки | targeted pytest 79 passed; npm test:js 7 passed; check:js clean; full suite — см. отчёт |
+| Статус | **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT**; product/staging/prod — owner |
+| Review | code-reviewer + security-auditor — **ACCEPT** после delta |
+| Остаток | race/idempotency tests, server cross-check, R-036 Phase 2, R-043/44/45 |
+| Источник | `docs/foundation/APPF-RUNTIME-REVIEW-001_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

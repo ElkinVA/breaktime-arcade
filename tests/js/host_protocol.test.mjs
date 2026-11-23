@@ -107,6 +107,48 @@ test("host bridge emits protocol error for invalid payload", () => {
     assert.equal(sent.at(-1).data.payload.code, "E_MESSAGE_INVALID");
 });
 
+test("host bridge rejects non-integer scores and unsupported leaderboard limits", () => {
+    const { bridge, sent, calls } = setup();
+    const submit = message({
+        type: "ba:submit",
+        payload: {
+            value: Number.NaN,
+            durationMs: 1000,
+            eventLog: { v: 1, seed: "s", events: [] },
+            seed: "s",
+        },
+    });
+    bridge.onWindowMessage({
+        source: bridge.iframe.contentWindow,
+        origin: ORIGIN,
+        data: submit,
+    });
+    for (const limit of [5, 50, 1000]) {
+        bridge.onWindowMessage({
+            source: bridge.iframe.contentWindow,
+            origin: ORIGIN,
+            data: message({
+                type: "ba:leaderboard",
+                payload: { limit },
+            }),
+        });
+    }
+    for (const payload of [
+        { value: 1, durationMs: 1.5, eventLog: {}, seed: "s" },
+        { value: 1, durationMs: 1000, eventLog: [], seed: "s" },
+        { value: 1, durationMs: 1000, eventLog: null, seed: "s" },
+        { value: 1, durationMs: 1000, eventLog: {}, seed: 7 },
+    ]) {
+        bridge.onWindowMessage({
+            source: bridge.iframe.contentWindow,
+            origin: ORIGIN,
+            data: message({ type: "ba:submit", payload }),
+        });
+    }
+    assert.equal(calls.length, 0);
+    assert.equal(sent.at(-1).data.payload.code, "E_MESSAGE_INVALID");
+});
+
 test("host bridge enforces 60 messages per minute", () => {
     const { bridge, sent, calls } = setup();
     for (let index = 0; index < 61; index += 1) {

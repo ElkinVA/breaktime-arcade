@@ -90,6 +90,35 @@ product acceptance remains owner-level).
   cosmetic residual. SDK-контракт не менялся.
 - План ревью: `docs/tasks/APPF-RUNTIME-REVIEW-001_PLAN.md`.
 
+## 0.4. AI Headquarters — проверка 2026-11-23
+
+- **A:** bounded-цикл задач в `autonomy/orchestrator.py`; VPS unit
+  `--max-tasks 1` → **PASS код / NOT TESTED live**.
+- **B:** нет автозапуска следующей сессии; `/continue` в devcontrol —
+  ручной → **FAIL**.
+- **C:** нет `.autonomy`, установленных user units/timers и background
+  sessions → **FAIL**.
+- **D:** `recover_running`, `RUN_LOCK`, worktree cleanup/retry limits;
+  autonomy tests **94 passed, 1 skipped** → **PASS код / NOT TESTED live**.
+- **E:** `api.telegram.org:443` timeout; bot process/state отсутствуют →
+  **FAIL/NOT TESTED**.
+- Минимальный timer для существующего orchestrator:
+  `docs/tasks/AUTONOMY-CONTINUATION-001_PLAN.md`, **BLOCKED — owner**.
+
+## 0.5. App F Runtime Review — 2026-11-23
+
+`APPF-RUNTIME-REVIEW-001` — **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT**
+(code-reviewer + security-auditor, deepseek-v4-pro, text-only; delta
+ACCEPT). Исправлены: host validation (`safe integer`, duration, eventLog
+null/array, limit 10/100), stale-response guard в player, best-effort close
+старой сессии перед newSession, per-session Idempotency-Key, отказ от
+retry для activate/close. Проверки: targeted 79 passed, `npm test:js`
+7 passed, `npm run check:js` clean; полный suite — см. фактические
+результаты. Остатки: race/stale и idempotency-key тесты не добавлены;
+серверная cross-check strictness — NOT TESTED; R-036 Phase 2 не менялся;
+R-043/R-044/R-045 — residual; live E2E/staging/prod — NOT TESTED.
+Отчёт — `docs/foundation/APPF-RUNTIME-REVIEW-001_REPORT.md`.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

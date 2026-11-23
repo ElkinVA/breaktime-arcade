@@ -68,10 +68,10 @@ export function validatePayload(type, payload) {
     }
     switch (type) {
         case "ba:submit":
-            if (typeof payload.value !== "number" ||
-                !Number.isInteger(payload.durationMs) || payload.durationMs < 0 ||
-                payload.eventLog === null || typeof payload.eventLog !== "object" ||
-                typeof payload.seed !== "string") {
+            if (!Number.isSafeInteger(payload.value) ||
+                !Number.isSafeInteger(payload.durationMs) || payload.durationMs < 0 ||
+                payload.eventLog === null || Array.isArray(payload.eventLog) ||
+                typeof payload.eventLog !== "object" || typeof payload.seed !== "string") {
                 return "E_MESSAGE_INVALID";
             }
             return null;
@@ -83,8 +83,7 @@ export function validatePayload(type, payload) {
             }
             return null;
         case "ba:leaderboard":
-            if (payload.limit !== undefined &&
-                (!Number.isInteger(payload.limit) || payload.limit < 1 || payload.limit > 100)) {
+            if (payload.limit !== undefined && payload.limit !== 10 && payload.limit !== 100) {
                 return "E_MESSAGE_INVALID";
             }
             if (payload.bestOnly !== undefined && typeof payload.bestOnly !== "boolean") {
