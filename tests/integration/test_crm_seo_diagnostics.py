@@ -1,0 +1,268 @@
+"""CRM SEO diagnostics for published games (§2.19)."""
+
+from __future__ import annotations
+
+import pytest
+from django.test import Client
+from django.urls import reverse
+from django.utils import timezone
+
+from apps.accounts.models import StaffRole, User
+from apps.catalog.models import Game, GameAsset, GameTranslation, GameVersion, Genre
+from apps.crm.services.seo_diagnostics import (
+    DESCRIPTION_MISSING,
+    META_DESCRIPTION_MISSING,
+    MISSING_TRANSLATION,
+    UNSUPPORTED_LANGUAGE,
+    build_seo_diagnostics,
+    duplicate_title_issues,
+    empty_description_issues,
+    incomplete_translation_issues,
+    missing_alt_issues,
+)
+from apps.i18n.models import Language
+
+PASSWORD = "correct horse battery staple"
+
+
+def _genre() -> Genre:
+    genre, _created = Genre.objects.get_or_create(code="puzzle")
+    return genre
+
+
+def _game(
+    technical_id: str,
+    *,
+    status: str = Game.STATUS_PUBLISHED,
+    supported_languages: tuple[str, ...] = ("en",),
+) -> Game:
+    game = Game.objects.create(
+        technical_id=technical_id,
+        host_label=f"{technical_id.replace('_', '-')}.games.test",
+        slug=f"slug-{technical_id}",
+        primary_genre=_genre(),
+        status=status,
+        published_at=timezone.now() if status == Game.STATUS_PUBLISHED else None,
+    )
+    version = GameVersion.objects.create(
+        game=game,
+        semver="1.0.0",
+        package_hash="a" * 64,
+        runtime_hash="b" * 64,
+        sdk_version="1.1.0",
+        size_bytes=1000,
+        manifest={},
+        supported_languages=list(supported_languages),
+        validation_report={"ok": True, "summary": {"blocker": 0}},
+        e2e_report={"passed": True},
+    )
+    game.current_version = version
+    game.save(update_fields=["current_version"])
+    return game
+
+
+def _translation(
+    game: Game,
+    code: str,
+    *,
+    name: str | None = None,
+    description: str = "Long enough localized description",
+    short_description: str = "Short description",
+    seo_title: str = "",
+    seo_description: str = "",
+) -> GameTranslation:
+    return GameTranslation.objects.create(
+        game=game,
+        language=Language.objects.get(code=code),
+        name=name if name is not None else f"{game.technical_id} {code}",
+        slug=f"slug-{game.technical_id}-{code}",
+        short_description=short_description,
+        description=description,
+        seo_title=seo_title,
+        seo_description=seo_description,
+    )
+
+
+def _asset(game: Game, alt: dict[str, str], *, sort_order: int = 0) -> GameAsset:
+    return GameAsset.objects.create(
+        game=game,
+        type=GameAsset.TYPE_COVER,
+        file=f"games/assets/{game.technical_id}-{sort_order}.png",
+        alt=alt,
+        sort_order=sort_order,
+    )
+
+
+def _staff(role: str) -> User:
+    staff = User.objects.create_user(
+        login=f"staff_{role}",
+        password=PASSWORD,
+        is_staff=True,
+        crm_role=role,
+    )
+    User.objects.filter(pk=staff.pk).update(totp_confirmed_at=timezone.now())
+    staff.refresh_from_db()
+    return staff
+
+
+def _staff_client(role: str) -> Client:
+    client = Client()
+    client.force_login(_staff(role))
+    session = client.session
+    session["ba_2fa_verified"] = True
+    session.save()
+    return client
+
+
+@pytest.mark.django_db
+def test_empty_description_query_flags_blank_localized_description() -> None:
+    broken = _game("broken_descriptions")
+    _translation(broken, "en", description="")
+    missing_meta = _game("missing_meta")
+    _translation(
+        missing_meta,
+        "en",
+        short_description="",
+        seo_description="",
+    )
+    healthy = _game("healthy_descriptions")
+    _translation(
+        healthy,
+        "en",
+        description="A long description",
+        short_description="A short description",
+        seo_description="A meta description",
+    )
+    draft = _game("draft_descriptions", status=Game.STATUS_DRAFT)
+    _translation(draft, "en", description="")
+
+    issues = empty_description_issues(["en"])
+
+    assert {(issue.game.pk, issue.reason) for issue in issues} == {
+        (broken.pk, DESCRIPTION_MISSING),
+        (missing_meta.pk, META_DESCRIPTION_MISSING),
+    }
+
+
+@pytest.mark.django_db
+def test_duplicate_title_query_groups_by_language() -> None:
+    first = _game("dup_one")
+    _translation(first, "en", name="Same Title", seo_title="Same Title")
+    second = _game("dup_two")
+    _translation(second, "en", name="Same Title", seo_title="same title")
+    unique = _game("unique_one")
+    _translation(unique, "en", name="Unique Title")
+    other_language = _game("dup_other_language")
+    _translation(other_language, "de", name="Same Title")
+    draft = _game("dup_draft", status=Game.STATUS_DRAFT)
+    _translation(draft, "en", name="Same Title")
+
+    issues = duplicate_title_issues(["en", "de"])
+
+    assert len(issues) == 1
+    issue = issues[0]
+    assert issue.language_code == "en"
+    assert issue.title == "Same Title"
+    assert {game.pk for game in issue.games} == {first.pk, second.pk}
+
+
+@pytest.mark.django_db
+def test_missing_alt_query_reports_each_language() -> None:
+    game = _game("alt_game")
+    _asset(game, {"en": "Cover"})
+    _asset(game, {"en": "  "}, sort_order=1)
+    draft = _game("alt_draft", status=Game.STATUS_DRAFT)
+    _asset(draft, {})
+
+    issues = missing_alt_issues(["en", "de"])
+
+    assert {(issue.game.pk, issue.language_code, issue.sort_order) for issue in issues} == {
+        (game.pk, "de", 0),
+        (game.pk, "en", 1),
+        (game.pk, "de", 1),
+    }
+
+
+@pytest.mark.django_db
+def test_incomplete_translation_query_reports_missing_languages() -> None:
+    game = _game("translation_game", supported_languages=("en", "de"))
+    _translation(game, "en")
+    unsupported = _game("unsupported_language_game", supported_languages=("en",))
+    _translation(unsupported, "en")
+    _translation(unsupported, "de")
+    draft = _game(
+        "translation_draft",
+        status=Game.STATUS_DRAFT,
+        supported_languages=("en",),
+    )
+    _translation(draft, "en")
+
+    issues = incomplete_translation_issues(["en", "de"])
+
+    assert {(issue.game.pk, issue.language_code, issue.reason) for issue in issues} == {
+        (game.pk, "de", MISSING_TRANSLATION),
+        (unsupported.pk, "de", UNSUPPORTED_LANGUAGE),
+    }
+
+
+@pytest.mark.django_db
+def test_build_seo_diagnostics_adds_per_language_summary() -> None:
+    game = _game("summary_game", supported_languages=("en",))
+    _translation(game, "en", name="Summary title", description="")
+    _asset(game, {})
+    duplicate = _game("summary_duplicate")
+    _translation(duplicate, "en", name="Summary title")
+
+    diagnostics = build_seo_diagnostics(["en", "de"])
+
+    assert diagnostics.language_codes == ("en", "de")
+    summaries = {row.language_code: row for row in diagnostics.summaries}
+    assert summaries["en"].empty_descriptions == 1
+    assert summaries["en"].duplicate_titles == 1
+    assert summaries["en"].missing_alt == 1
+    assert summaries["en"].incomplete_translations == 0
+    assert summaries["de"].incomplete_translations == 2
+    assert diagnostics.total_issues == len(diagnostics.descriptions) + len(
+        diagnostics.duplicate_titles
+    ) + len(diagnostics.missing_alt) + len(diagnostics.incomplete_translations)
+
+
+@pytest.mark.django_db
+def test_screen_lists_offending_games_with_links() -> None:
+    game = _game("screen_game")
+    _translation(game, "en", description="")
+    _asset(game, {})
+    client = _staff_client(StaffRole.OWNER)
+
+    response = client.get(reverse("crm:seo_diagnostics"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert game.technical_id in content
+    assert reverse("crm:game_detail", args=[game.id]) in content
+    assert "en" in content
+    assert 'data-testid="crm-seo-description-issue"' in content
+    assert 'data-testid="crm-seo-alt-issue"' in content
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("role", "expected"),
+    [
+        (StaffRole.OWNER, 200),
+        (StaffRole.EDITOR, 200),
+        (StaffRole.MODERATOR, 403),
+        (StaffRole.OBSERVER, 403),
+    ],
+)
+def test_screen_is_gated_by_games_view_capability(role: str, expected: int) -> None:
+    client = _staff_client(role)
+    response = client.get(reverse("crm:seo_diagnostics"))
+    assert response.status_code == expected
+
+
+@pytest.mark.django_db
+def test_screen_redirects_anonymous_to_staff_login() -> None:
+    response = Client().get(reverse("crm:seo_diagnostics"))
+    assert response.status_code == 302
+    assert response.url == reverse("crm:login")

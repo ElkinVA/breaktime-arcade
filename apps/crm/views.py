@@ -87,6 +87,7 @@ from apps.crm.services.imports import (
     upload_package,
 )
 from apps.crm.services.reports import diagnostic_rows
+from apps.crm.services.seo_diagnostics import build_seo_diagnostics
 from apps.crm.services.staff import change_staff_role, set_staff_active
 from apps.crm.services.step_up import (
     confirm_step_up,
@@ -228,6 +229,20 @@ def games_list(request: HttpRequest) -> TemplateResponse:
         request,
         "crm/games/list.html",
         {"title": "Игры · CRM", "page": page},
+    )
+
+
+@role_required(GAMES_VIEW)
+@require_GET
+def seo_diagnostics(request: HttpRequest) -> TemplateResponse:
+    """SEO diagnostics for published games with a per-language breakdown (§2.19)."""
+    return TemplateResponse(
+        request,
+        "crm/seo_diagnostics.html",
+        {
+            "title": "SEO-диагностика · CRM",
+            "diagnostics": build_seo_diagnostics(get_active_language_codes_safely()),
+        },
     )
 
 
@@ -1269,6 +1284,7 @@ __all__ = [
     "moderation_queue",
     "rating_hide",
     "rating_restore",
+    "seo_diagnostics",
     "staff_management",
     "step_up",
     "wizard_analysis",

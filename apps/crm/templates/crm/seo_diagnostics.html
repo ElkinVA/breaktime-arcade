@@ -1,0 +1,112 @@
+{% extends "crm/base.html" %}
+
+{% block title %}SEO-диагностика · CRM{% endblock %}
+
+{% block crm_content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold">SEO-диагностика</h1>
+        <p class="text-sm text-muted">Опубликованные игры: описания, дубли Title, alt и покрытие переводов (§2.19).</p>
+    </div>
+    <p class="text-sm text-muted" data-testid="crm-seo-total">Проблем: {{ diagnostics.total_issues }}</p>
+</div>
+
+<section class="mb-8" data-testid="crm-seo-summary">
+    <h2 class="text-xl font-display font-bold mb-3">По языкам</h2>
+    <div class="overflow-x-auto bg-surface rounded-card border border-text/10">
+        <table class="w-full text-sm">
+            <thead class="text-left text-muted border-b border-text/10">
+                <tr>
+                    <th class="px-4 py-3">Язык</th>
+                    <th class="px-4 py-3">Пустые описания</th>
+                    <th class="px-4 py-3">Дубли Title</th>
+                    <th class="px-4 py-3">Нет alt</th>
+                    <th class="px-4 py-3">Неполные переводы</th>
+                    <th class="px-4 py-3">Всего</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in diagnostics.summaries %}
+                    <tr class="border-b border-text/5 last:border-0" data-testid="crm-seo-language-row">
+                        <td class="px-4 py-3 font-semibold" data-testid="crm-seo-language-code">{{ row.language_code }}</td>
+                        <td class="px-4 py-3" data-testid="crm-seo-count-descriptions">{{ row.empty_descriptions }}</td>
+                        <td class="px-4 py-3" data-testid="crm-seo-count-duplicates">{{ row.duplicate_titles }}</td>
+                        <td class="px-4 py-3" data-testid="crm-seo-count-alt">{{ row.missing_alt }}</td>
+                        <td class="px-4 py-3" data-testid="crm-seo-count-translations">{{ row.incomplete_translations }}</td>
+                        <td class="px-4 py-3 font-semibold" data-testid="crm-seo-count-total">{{ row.total }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-4 py-6 text-muted" data-testid="crm-seo-no-languages">
+                            Активные языки не заданы.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="mb-8" data-testid="crm-seo-descriptions">
+    <h2 class="text-xl font-display font-bold mb-3">Пустые локализованные описания</h2>
+    <ul class="space-y-2">
+        {% for issue in diagnostics.descriptions %}
+            <li class="p-4 bg-surface rounded-card border border-text/10 text-sm" data-testid="crm-seo-description-issue">
+                <a class="font-semibold hover:text-accent" href="{% url 'crm:game_detail' issue.game.id %}" data-testid="crm-seo-game-link">{{ issue.game.technical_id }}</a>
+                <span class="text-muted"> · {{ issue.language_code }} ·
+                    {% if issue.reason == 'meta_description' %}пустое meta-описание{% else %}пустое описание{% endif %}
+                </span>
+            </li>
+        {% empty %}
+            <li class="text-muted" data-testid="crm-seo-descriptions-empty">Пустых описаний нет.</li>
+        {% endfor %}
+    </ul>
+</section>
+
+<section class="mb-8" data-testid="crm-seo-duplicates">
+    <h2 class="text-xl font-display font-bold mb-3">Дубли Title</h2>
+    <ul class="space-y-2">
+        {% for issue in diagnostics.duplicate_titles %}
+            <li class="p-4 bg-surface rounded-card border border-text/10 text-sm" data-testid="crm-seo-duplicate-issue">
+                <span class="font-semibold">{{ issue.title }}</span>
+                <span class="text-muted"> · {{ issue.language_code }} · {{ issue.games|length }} игры:</span>
+                {% for game in issue.games %}
+                    <a class="hover:text-accent" href="{% url 'crm:game_detail' game.id %}" data-testid="crm-seo-game-link">{{ game.technical_id }}</a>{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </li>
+        {% empty %}
+            <li class="text-muted" data-testid="crm-seo-duplicates-empty">Дублей Title нет.</li>
+        {% endfor %}
+    </ul>
+</section>
+
+<section class="mb-8" data-testid="crm-seo-alt">
+    <h2 class="text-xl font-display font-bold mb-3">Отсутствующий alt у ассетов</h2>
+    <ul class="space-y-2">
+        {% for issue in diagnostics.missing_alt %}
+            <li class="p-4 bg-surface rounded-card border border-text/10 text-sm" data-testid="crm-seo-alt-issue">
+                <a class="font-semibold hover:text-accent" href="{% url 'crm:game_detail' issue.game.id %}" data-testid="crm-seo-game-link">{{ issue.game.technical_id }}</a>
+                <span class="text-muted"> · {{ issue.language_code }} · {{ issue.asset_type }} #{{ issue.sort_order }}</span>
+            </li>
+        {% empty %}
+            <li class="text-muted" data-testid="crm-seo-alt-empty">Пропусков alt нет.</li>
+        {% endfor %}
+    </ul>
+</section>
+
+<section data-testid="crm-seo-translations">
+    <h2 class="text-xl font-display font-bold mb-3">Неполное покрытие переводов</h2>
+    <ul class="space-y-2">
+        {% for issue in diagnostics.incomplete_translations %}
+            <li class="p-4 bg-surface rounded-card border border-text/10 text-sm" data-testid="crm-seo-translation-issue">
+                <a class="font-semibold hover:text-accent" href="{% url 'crm:game_detail' issue.game.id %}" data-testid="crm-seo-game-link">{{ issue.game.technical_id }}</a>
+                <span class="text-muted"> · {{ issue.language_code }} ·
+                    {% if issue.reason == 'unsupported_language' %}язык не заявлен версией{% else %}нет перевода{% endif %}
+                </span>
+            </li>
+        {% empty %}
+            <li class="text-muted" data-testid="crm-seo-translations-empty">Покрытие переводов полное.</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}

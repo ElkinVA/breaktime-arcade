@@ -60,6 +60,7 @@ urlpatterns = [
     ),
     path("audit/", views.audit_log, name="audit"),
     path("games/", views.games_list, name="games"),
+    path("seo/", views.seo_diagnostics, name="seo_diagnostics"),
     path("games/add/", views.wizard_upload, name="game_add"),
     path("games/<uuid:game_id>/", views.game_detail, name="game_detail"),
     path("games/<uuid:game_id>/publish/", views.game_publish, name="game_publish"),
