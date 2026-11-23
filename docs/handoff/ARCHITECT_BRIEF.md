@@ -39,7 +39,9 @@ ambiguity.
   CRM step-up; retention classes; moderation/antifraud owner gaps.
 - CRM ratings moderation: `/crm/moderation/` filters by game/value/visibility
   with average and per-value distribution (`ARCADE-CRM-RATINGS-001`,
-  `c577416` + fixes).
+  `c577416` + fixes); both moderation queues are paginated 50/page with
+  filters and both page positions preserved (`ARCADE-CRM-MODERATION-PAGINATION-001`,
+  `07a287a` + `380cd11`).
 - CRM taxonomy: `/crm/genres/` and `/crm/tags/` CRUD with translations,
   delete guards and requires-translation queue (`ARCADE-CRM-TAXONOMY-001`,
   `98b848c` + fixes).

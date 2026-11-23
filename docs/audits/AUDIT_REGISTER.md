@@ -902,3 +902,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | R-056 put_storage; live load/staging E2E NOT TESTED |
 | Источник | commits `92ef3b1`, `f871f06`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-CRM-MODERATION-PAGINATION-001 — moderation queues pagination
+
+| Поле | Значение |
+|---|---|
+| Тип | CRM UX implementation via AI HQ; no schema change |
+| Результат | `07a287a` + `380cd11`: 50/page rating and complaint queues, full-set rating summary, filters and both page positions preserved |
+| Проверки | 13 targeted tests; ruff clean; reviewer accept; full suite 1117/1109/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | browser/staging NOT TESTED |
+| Источник | commits `07a287a`, `380cd11`; evidence в `.autonomy/evidence/` |

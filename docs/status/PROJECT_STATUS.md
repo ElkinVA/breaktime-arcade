@@ -401,6 +401,16 @@ race suite 8/8; full suite **1116 tests: 1108 passed, 8 skipped, exit 0**.
 R-051 закрыт. Остаток: R-056 `put_storage` вне scope; live load/staging
 E2E NOT TESTED.
 
+## 0.29. CRM moderation pagination — 2026-11-24
+
+`ARCADE-CRM-MODERATION-PAGINATION-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`07a287a` + fix `380cd11`). Очереди оценок и жалоб пагинируются по 50;
+rating-сводка считается по всему filtered set, не по странице; фильтры
+game/value/status и обе page-позиции сохраняются при переходе между
+страницами любой очереди. 13 targeted tests (120 votes + 120 complaints,
+page 2, summary=120); full suite **1117 tests: 1109 passed, 8 skipped,
+exit 0**. Остаток: browser/staging NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

@@ -1522,3 +1522,13 @@ tests: 1056 passed, 8 skipped, exit 0**.
   targeted 22/22, race suite 8/8; full suite **1116/1108/8**; reviewer accept.
 - **Остаток:** R-056 `put_storage`; live load/staging E2E NOT TESTED.
 - **Commit:** `92ef3b1`, `f871f06`.
+
+### ARCADE-CRM-MODERATION-PAGINATION-001 — moderation queues pagination (AI HQ)
+
+- **Результат:** `07a287a` + fix `380cd11`; rating/complaint queues по 50,
+  rating summary по полному filtered set, фильтры и обе page-позиции
+  сохраняются при пагинации любой очереди.
+- **Проверки:** 13 targeted tests (120 votes + 120 complaints, page 2,
+  summary complete); ruff clean; reviewer accept; full suite **1117/1109/8**.
+- **Остаток:** browser/staging NOT TESTED.
+- **Commit:** `07a287a`, `380cd11`.

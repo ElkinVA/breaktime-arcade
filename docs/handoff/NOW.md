@@ -388,6 +388,10 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-CRM-MODERATION-PAGINATION-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`07a287a` + `380cd11`): обе очереди по 50, full-set summary, filters и обе
+page-позиции сохраняются; 13 targeted tests; full suite **1117/1109/8**.
+
 `ARCADE-SESSION-LOCK-ORDER-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
 (`92ef3b1` + `f871f06`): submit_result/heartbeat берут User lock до
 GameSession; 3 concurrency tests; full suite **1116/1108/8**. R-051 закрыт;
