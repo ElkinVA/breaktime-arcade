@@ -242,6 +242,7 @@ def test_runner_passes_filtered_env_and_validated_cwd(
     assert (
         "Bash(python3 devcontrol/sandbox/run_tests.py:*)" in argv[argv.index("--allowedTools") + 1]
     )
+    assert "Bash(npm run test:js:*)" in argv[argv.index("--allowedTools") + 1]
 
 
 @pytest.mark.parametrize("role", ["architect", "developer", "qa", "reviewer"])
@@ -294,6 +295,7 @@ def test_permission_modes_and_tools_are_preserved(
 
     qa = calls["autonomy-qa"]
     assert qa[qa.index("--permission-mode") + 1] == "acceptEdits"
+    assert "Bash(npm run test:js:*)" in qa[qa.index("--allowedTools") + 1]
 
     reviewer = calls["autonomy-reviewer"]
     assert reviewer[reviewer.index("--permission-mode") + 1] == "plan"
