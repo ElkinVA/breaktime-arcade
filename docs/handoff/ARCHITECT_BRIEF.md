@@ -63,6 +63,10 @@ ambiguity.
 - Session API create response is camelCase `sessionId` only
   (`ARCADE-SESSION-API-CAMELCASE-001`, `16068f4`); `expires_at` and no-alias
   are R-054 residuals.
+- Host message schemas are generated from `schemas/messages/*.json` with a
+  parity test and unsupported-keyword guard
+  (`ARCADE-RUNTIME-SCHEMA-SINGLE-SOURCE-001`, `f9a75d4`); R-055 schema
+  tightenings await owner/contract confirmation.
 - Runtime validation: host/SDK messages are schema-driven with
   `E_MESSAGE_INVALID` (`ARCADE-RUNTIME-JSONSCHEMA-001`, `855caa1`); myBest
   now matches `ba_leaderboard_data` (`ARCADE-SDK-MYBEST-001`, `20f379c`);

@@ -378,6 +378,18 @@ exit 0**. Остаток R-050: ZIP читается дважды (in-place swap
 stream не детектируется), runtime zip не hash-verified, real nginx/volume
 E2E NOT TESTED.
 
+## 0.27. Single-source host schemas — 2026-11-23
+
+`ARCADE-RUNTIME-SCHEMA-SINGLE-SOURCE-001` — **COMPLETED / AI HQ REVIEW
+ACCEPT** (`f9a75d4` + generator guard `d1c4e6f`). Host registry
+`static/src/js/host_schemas.generated.js` генерируется из
+`schemas/messages/*.json` (flatten `$ref`/`allOf`), parity test падает при
+drift; generator отвергает неподдерживаемые JSON-Schema keywords вместо
+тихого drop. Wire-поведение для SDK/host сохранено; DRAFT-схемы уточнены
+(лимиты/maxLength) — R-055. JS 23/23; full suite **1113 tests: 1105 passed,
+8 skipped, exit 0**. Остаток: `npm run build` не вызывает генерацию (drift
+ловится тестом); browser/staging E2E NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

@@ -1500,3 +1500,15 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Остаток:** R-050 double-read in-place swap, runtime zip не hash-verified,
   real nginx/volume E2E NOT TESTED.
 - **Commit:** `8d22aee`, `167ece6`.
+
+### ARCADE-RUNTIME-SCHEMA-SINGLE-SOURCE-001 — generated host schemas (AI HQ)
+
+- **Результат:** `f9a75d4` + `d1c4e6f`; host registry генерируется из
+  `schemas/messages/*.json` с flatten `$ref`/`allOf`; parity test ловит drift;
+  generator падает на неподдерживаемых keywords. DRAFT-схемы уточнены
+  (limit enum, maxLength) — R-055.
+- **Проверки:** JS 23/23; registry tests 4/4; `generate_host_schemas.py
+  --check`; full suite **1113/1105/8**.
+- **Остаток:** `npm run build` не вызывает генерацию (drift ловится тестом);
+  browser/staging E2E NOT TESTED; R-055 требует contract/owner подтверждения.
+- **Commit:** `f9a75d4`, `d1c4e6f`.

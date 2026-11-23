@@ -388,6 +388,12 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-RUNTIME-SCHEMA-SINGLE-SOURCE-001` — **COMPLETED / AI HQ REVIEW
+ACCEPT** (`f9a75d4` + `d1c4e6f`): host registry генерируется из
+`schemas/messages/*.json`, parity test + unsupported-keyword guard; JS
+23/23; full suite **1113/1105/8**. R-053 закрыт, R-055 (schema tightening)
+остаётся; build не генерирует автоматически.
+
 `ARCADE-ARTIFACTS-STREAMING-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
 (`8d22aee` + `167ece6`): SHA-256 original ZIP до отдачи, chunked streaming,
 temp-file runtime zip; 13 targeted tests; full suite **1112/1104/8**.

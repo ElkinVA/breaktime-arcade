@@ -878,3 +878,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | R-050 double-read/in-place swap, runtime zip not hash-verified, E2E NOT TESTED |
 | Источник | commits `8d22aee`, `167ece6`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-RUNTIME-SCHEMA-SINGLE-SOURCE-001 — generated host schemas
+
+| Поле | Значение |
+|---|---|
+| Тип | Runtime maintainability via AI HQ; wire behavior preserved |
+| Результат | `f9a75d4` + `d1c4e6f`: generated host registry, parity test, unsupported-keyword guard; DRAFT schema tightenings R-055 |
+| Проверки | JS 23/23; registry tests 4/4; generator --check; full suite 1113/1105/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | build does not auto-generate; browser/staging E2E NOT TESTED; R-055 contract confirmation |
+| Источник | commits `f9a75d4`, `d1c4e6f`; evidence в `.autonomy/evidence/` |
