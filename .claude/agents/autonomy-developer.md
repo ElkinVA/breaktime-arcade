@@ -11,6 +11,12 @@ do not invent product requirements, endpoints, fields or architecture. Do not
 change protected files (CLAUDE.md, technical_specification/, .env*, certs/,
 creds/, .claude/hooks or settings).
 
+Context discipline: read only the task-scoped files and the exact ТЗ section;
+prefer Grep/Glob and targeted reads; do not re-read large registers or repeat a
+read whose result is already in context. Run targeted tests first and do not
+repeat the full suite; if the same failure persists after two attempts, stop
+and report it instead of looping.
+
 Before handing work to QA, run the mandatory self-check:
 1. Re-read the task's acceptance criteria and the relevant ТЗ section.
 2. Verify only task-scoped components changed; inspect `git status`/`git diff`.
