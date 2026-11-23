@@ -17,7 +17,7 @@ from django.db import connection, transaction
 from apps.accounts.models import AnonymousIdentity, User
 from apps.core.contracts import validate_eventlog_semantics
 from apps.gameplay.models import GameResult, GameSession, LeaderboardEntry
-from apps.gameplay.services.sessions import SessionError, _now
+from apps.gameplay.services.sessions import SessionError, _lock_account, _now
 from apps.gameplay.services.verifier import verify
 
 MAX_IDEMPOTENCY_KEY_LENGTH = 128
@@ -101,6 +101,14 @@ def submit_result(
         raise SessionError("E_INVALID_REQUEST", "Invalid request", 400)
 
     with transaction.atomic():
+        # R-052: take the account row lock before the session row. Anonymous
+        # users have no account lock. The result insert below needs
+        # ``FOR KEY SHARE`` on the User row; acquiring it after the session
+        # lock would deadlock with anonymise/block (User -> sessions).
+        account = None
+        request_user = getattr(request, "user", None)
+        if request_user is not None and request_user.is_authenticated:
+            account = _lock_account(GameSession.SUBJECT_USER, request_user.id)
         session = (
             GameSession.objects.select_for_update()
             .select_related("game", "game_version")
@@ -128,6 +136,12 @@ def submit_result(
             if session.state in {GameSession.STATE_EXPIRED, GameSession.STATE_ABORTED}:
                 raise SessionError("E_SESSION_EXPIRED", "Session is expired", 410)
             raise SessionError("E_SESSION_INVALID", "Session is not active", 400)
+
+        # The account lock is now held, so ``is_active`` cannot change until
+        # this transaction ends: a result is never stored for an account that
+        # was blocked/anonymised while the submission waited.
+        if account is None or not account.is_active:
+            raise SessionError("E_SESSION_INVALID", "Account is not available", 403)
 
         if seed is not None and seed != session.seed:
             raise SessionError("E_MESSAGE_INVALID", "Seed does not match the session", 400)

@@ -21,12 +21,19 @@ from apps.accounts.models import (
     User,
     UserProfile,
 )
+from apps.accounts.services import profile as profile_service
 from apps.accounts.services.profile import anonymize_user
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.crm.models import AdminAuditLog
 from apps.crm.services import users as crm_users
-from apps.gameplay.models import GameResult, GameSession, LeaderboardEntry
+from apps.gameplay.models import (
+    GameResult,
+    GameSession,
+    LeaderboardEntry,
+    UserGamePlaytime,
+)
 from apps.gameplay.services import results as results_service
+from apps.gameplay.services import sessions as sessions_service
 from apps.gameplay.services.results import submit_result
 from apps.gameplay.services.sessions import (
     SessionError,
@@ -501,6 +508,252 @@ def test_concurrent_submit_result_racing_block_cannot_persist(monkeypatch) -> No
     assert session.state == GameSession.STATE_ABORTED
     target.refresh_from_db()
     assert target.is_active is False
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_submit_result_racing_anonymise_cannot_deadlock(monkeypatch) -> None:
+    """R-052: submit_result and anonymize_user share the User -> Session order.
+
+    Anonymisation is parked after it took the User row lock and before it
+    locks the sessions. ``submit_result`` must wait on that same account lock
+    instead of locking the session first (which would deadlock on the result
+    insert's ``FOR KEY SHARE`` on the User row).
+    """
+    target = _customer("target", "Target")
+    game = _game("result_anonymise_race_game")
+    session = _session(game, target, GameSession.STATE_ACTIVE, seed="race", credited_ms=30_000)
+    request = RequestFactory().post("/")
+    request.user = target
+
+    reached_user_lock = threading.Event()
+    release_anonymise = threading.Event()
+    reached_session = threading.Event()
+    outcomes: list[str] = []
+    outcomes_lock = threading.Lock()
+    real_reserve_nickname = profile_service.reserve_nickname
+    real_subject = results_service._subject
+
+    def blocking_reserve_nickname(*args: object, **kwargs: object) -> object:
+        reached_user_lock.set()
+        assert release_anonymise.wait(timeout=10)
+        return real_reserve_nickname(*args, **kwargs)
+
+    def signalling_subject(request_, session_):  # type: ignore[no-untyped-def]
+        # Called only once the session row is locked by submit_result.
+        reached_session.set()
+        return real_subject(request_, session_)
+
+    monkeypatch.setattr(profile_service, "reserve_nickname", blocking_reserve_nickname)
+    monkeypatch.setattr(results_service, "_subject", signalling_subject)
+
+    def anonymise_worker() -> None:
+        try:
+            anonymize_user(target)
+        finally:
+            connections.close_all()
+
+    def submit_worker() -> None:
+        try:
+            submit_result(
+                request,
+                session.pk,
+                idempotency_key="race-key",
+                value=10,
+                duration_ms=30_000,
+            )
+        except SessionError as exc:
+            with outcomes_lock:
+                outcomes.append(exc.code)
+        except Exception as exc:  # noqa: BLE001 - surface unexpected race failures
+            with outcomes_lock:
+                outcomes.append(type(exc).__name__)
+        else:
+            with outcomes_lock:
+                outcomes.append("ok")
+        finally:
+            connections.close_all()
+
+    anonymise_thread = threading.Thread(target=anonymise_worker)
+    anonymise_thread.start()
+    assert reached_user_lock.wait(timeout=10), "anonymise never locked the account"
+
+    submit_thread = threading.Thread(target=submit_worker)
+    submit_thread.start()
+    # With User -> GameSession ordering submit parks on the account lock and
+    # never reaches the session while anonymisation holds the User row.
+    reached_session.wait(timeout=1.0)
+    release_anonymise.set()
+
+    anonymise_thread.join(timeout=30)
+    submit_thread.join(timeout=30)
+    assert not anonymise_thread.is_alive()
+    assert not submit_thread.is_alive()
+
+    assert outcomes == ["E_OWNERSHIP"]
+    assert not GameResult.objects.filter(session=session).exists()
+    assert not LeaderboardEntry.objects.filter(user=target).exists()
+    session.refresh_from_db()
+    assert session.subject_type == GameSession.SUBJECT_DELETED
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_submit_result_racing_block_revoke_cannot_deadlock(monkeypatch) -> None:
+    """R-052: submit_result waits for the block's account lock, no inversion."""
+    owner = _staff("owner", StaffRole.OWNER)
+    target = _customer("target", "Target")
+    game = _game("result_block_race_game")
+    session = _session(game, target, GameSession.STATE_ACTIVE, seed="race", credited_ms=30_000)
+    request = RequestFactory().post("/")
+    request.user = target
+
+    reached_user_lock = threading.Event()
+    release_block = threading.Event()
+    reached_session = threading.Event()
+    outcomes: list[str] = []
+    outcomes_lock = threading.Lock()
+    real_revoke = crm_users._revoke_open_sessions
+    real_subject = results_service._subject
+
+    def blocking_revoke(user: User) -> int:
+        reached_user_lock.set()
+        assert release_block.wait(timeout=10)
+        return real_revoke(user)
+
+    def signalling_subject(request_, session_):  # type: ignore[no-untyped-def]
+        reached_session.set()
+        return real_subject(request_, session_)
+
+    monkeypatch.setattr(crm_users, "_revoke_open_sessions", blocking_revoke)
+    monkeypatch.setattr(results_service, "_subject", signalling_subject)
+
+    def block_worker() -> None:
+        try:
+            result = crm_users.toggle_user_active(actor=owner, target_id=target.id)
+            assert result.ok
+        finally:
+            connections.close_all()
+
+    def submit_worker() -> None:
+        try:
+            submit_result(
+                request,
+                session.pk,
+                idempotency_key="race-key",
+                value=10,
+                duration_ms=30_000,
+            )
+        except SessionError as exc:
+            with outcomes_lock:
+                outcomes.append(exc.code)
+        except Exception as exc:  # noqa: BLE001 - surface unexpected race failures
+            with outcomes_lock:
+                outcomes.append(type(exc).__name__)
+        else:
+            with outcomes_lock:
+                outcomes.append("ok")
+        finally:
+            connections.close_all()
+
+    block_thread = threading.Thread(target=block_worker)
+    block_thread.start()
+    assert reached_user_lock.wait(timeout=10), "block never locked the account"
+
+    submit_thread = threading.Thread(target=submit_worker)
+    submit_thread.start()
+    # The submit must be blocked on the User row, not holding the session one.
+    reached_session.wait(timeout=1.0)
+    release_block.set()
+
+    block_thread.join(timeout=30)
+    submit_thread.join(timeout=30)
+    assert not block_thread.is_alive()
+    assert not submit_thread.is_alive()
+
+    assert outcomes == ["E_SESSION_EXPIRED"]
+    assert not GameResult.objects.filter(session=session).exists()
+    session.refresh_from_db()
+    assert session.state == GameSession.STATE_ABORTED
+    target.refresh_from_db()
+    assert target.is_active is False
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_heartbeat_racing_anonymise_cannot_deadlock(monkeypatch) -> None:
+    """R-052: heartbeat locks the account before the session it credits."""
+    target = _customer("target", "Target")
+    game = _game("heartbeat_anonymise_race_game")
+    session = _session(
+        game,
+        target,
+        GameSession.STATE_ACTIVE,
+        seed="race",
+        credited_ms=0,
+        last_heartbeat_at=timezone.now() - timedelta(seconds=30),
+    )
+    request = RequestFactory().post("/")
+    request.user = target
+
+    reached_user_lock = threading.Event()
+    release_anonymise = threading.Event()
+    reached_account_lock = threading.Event()
+    outcomes: list[str] = []
+    outcomes_lock = threading.Lock()
+    real_reserve_nickname = profile_service.reserve_nickname
+    real_lock_account = sessions_service._lock_account
+
+    def blocking_reserve_nickname(*args: object, **kwargs: object) -> object:
+        reached_user_lock.set()
+        assert release_anonymise.wait(timeout=10)
+        return real_reserve_nickname(*args, **kwargs)
+
+    def signalling_lock_account(subject_type: str, subject_id):  # type: ignore[no-untyped-def]
+        reached_account_lock.set()
+        return real_lock_account(subject_type, subject_id)
+
+    monkeypatch.setattr(profile_service, "reserve_nickname", blocking_reserve_nickname)
+    monkeypatch.setattr(sessions_service, "_lock_account", signalling_lock_account)
+
+    def anonymise_worker() -> None:
+        try:
+            anonymize_user(target)
+        finally:
+            connections.close_all()
+
+    def heartbeat_worker() -> None:
+        try:
+            heartbeat(request, session.pk)
+        except SessionError as exc:
+            with outcomes_lock:
+                outcomes.append(exc.code)
+        except Exception as exc:  # noqa: BLE001 - surface unexpected race failures
+            with outcomes_lock:
+                outcomes.append(type(exc).__name__)
+        else:
+            with outcomes_lock:
+                outcomes.append("ok")
+        finally:
+            connections.close_all()
+
+    anonymise_thread = threading.Thread(target=anonymise_worker)
+    anonymise_thread.start()
+    assert reached_user_lock.wait(timeout=10), "anonymise never locked the account"
+
+    heartbeat_thread = threading.Thread(target=heartbeat_worker)
+    heartbeat_thread.start()
+    # The heartbeat takes the account lock before the session row; it never
+    # reaches the playtime insert while anonymisation holds the User row.
+    reached_account_lock.wait(timeout=1.0)
+    release_anonymise.set()
+
+    anonymise_thread.join(timeout=30)
+    heartbeat_thread.join(timeout=30)
+    assert not anonymise_thread.is_alive()
+    assert not heartbeat_thread.is_alive()
+
+    assert outcomes == ["E_OWNERSHIP"]
+    assert not UserGamePlaytime.objects.filter(user=target).exists()
+    session.refresh_from_db()
+    assert session.subject_type == GameSession.SUBJECT_DELETED
 
 
 def _open_session_count(user: User) -> int:

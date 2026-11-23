@@ -70,6 +70,20 @@ def _lock_subject_game(subject_type: str, subject_id: UUID, game_id: UUID) -> No
         cursor.execute("SELECT pg_advisory_xact_lock(%s)", [key])
 
 
+def _lock_account(subject_type: str, subject_id: UUID) -> User | None:
+    """Lock the account row before any ``GameSession`` row (R-052).
+
+    ``anonymize_user`` and block take the ``User`` row lock first and then
+    lock the subject's sessions. Write paths that lock a session first and
+    afterwards insert a row with a ``User`` FK (which needs ``FOR KEY SHARE``
+    on the account) would form a lock cycle. Taking the account lock first
+    gives every user-session path the same User -> GameSession order.
+    """
+    if subject_type != GameSession.SUBJECT_USER:
+        return None
+    return User.objects.select_for_update().filter(pk=subject_id).only("pk", "is_active").first()
+
+
 def _subject(
     request: HttpRequest,
     response: HttpResponse | None,
@@ -167,8 +181,12 @@ def _load_owned_session(
     session_id: UUID,
     *,
     lock: bool,
+    lock_account: bool = False,
 ) -> tuple[GameSession, str | None]:
     subject_type, subject_id, _mode, nickname = _subject(request, None, create_guest=False)
+    if lock and lock_account:
+        # R-052: account before session, matching create_session/anonymize_user.
+        _lock_account(subject_type, subject_id)
     queryset = GameSession.objects.select_related("game", "game_version")
     if lock:
         queryset = queryset.select_for_update()
@@ -266,7 +284,9 @@ def heartbeat(
     current = _now(now)
     expired = False
     with transaction.atomic():
-        session, _nickname = _load_owned_session(request, session_id, lock=True)
+        # R-052: heartbeat may insert ``UserGamePlaytime`` (User FK); lock the
+        # account before the session so it cannot deadlock with anonymisation.
+        session, _nickname = _load_owned_session(request, session_id, lock=True, lock_account=True)
         if session.state == GameSession.STATE_FINISHED:
             raise SessionError("E_SESSION_FINISHED", "Session is finished", 410)
         if session.state in {GameSession.STATE_EXPIRED, GameSession.STATE_ABORTED}:
