@@ -529,9 +529,8 @@
                     { limit: 10, bestOnly: true },
                     DEFAULT_REQUEST_TIMEOUT,
                 );
-                return payload?.value === null || payload?.value === undefined
-                    ? null
-                    : { value: payload.value, achievedAt: payload.achievedAt };
+                const entry = payload?.entries?.[0];
+                return entry ? { value: entry.value, achievedAt: entry.achievedAt ?? null } : null;
             },
         };
 

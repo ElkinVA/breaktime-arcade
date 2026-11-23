@@ -147,10 +147,19 @@ if (frame) {
                 if (sessionId !== requestSession) {
                     return;
                 }
+                const hasBest = best?.value !== null && best?.value !== undefined;
                 bridge.sendLeaderboardData(requestId, {
-                    value: best.value ?? null,
-                    achievedAt: best.achieved_at ?? null,
-                    rank: best.rank ?? null,
+                    entries: hasBest
+                        ? [
+                              {
+                                  rank: best.rank,
+                                  nickname: null,
+                                  value: best.value,
+                                  achievedAt: best.achieved_at ?? null,
+                              },
+                          ]
+                        : [],
+                    myRank: hasBest ? (best.rank ?? null) : null,
                 });
                 return;
             }

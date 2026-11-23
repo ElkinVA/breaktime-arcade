@@ -417,3 +417,44 @@ test("SDK leaves a pending request open for a bad requestId or foreign origin", 
     const payload = await pending;
     assert.deepEqual(payload, { entries: [], myRank: null });
 });
+
+test("SDK myBest returns null when the host reports no personal best", async () => {
+    const env = await startSdk();
+    const pending = env.sdk.leaderboard.myBest();
+    const request = env.posted.at(-1).data;
+    assert.equal(request.type, "ba:leaderboard");
+    assert.equal(request.payload.limit, 10);
+    assert.equal(request.payload.bestOnly, true);
+    sdkSend(
+        env,
+        sdkEnvelope(
+            "ba:leaderboard:data",
+            SESSION,
+            { entries: [], myRank: null },
+            request.requestId,
+        ),
+    );
+    assert.equal(await pending, null);
+});
+
+test("SDK myBest extracts value and achievedAt from the single entry", async () => {
+    const env = await startSdk();
+    const pending = env.sdk.leaderboard.myBest();
+    const requestId = env.posted.at(-1).data.requestId;
+    const achievedAt = "2026-11-23T10:00:00+00:00";
+    sdkSend(
+        env,
+        sdkEnvelope(
+            "ba:leaderboard:data",
+            SESSION,
+            {
+                entries: [{ rank: 2, nickname: null, value: 42, achievedAt }],
+                myRank: 2,
+            },
+            requestId,
+        ),
+    );
+    const result = await pending;
+    assert.equal(result.value, 42);
+    assert.equal(result.achievedAt, achievedAt);
+});
