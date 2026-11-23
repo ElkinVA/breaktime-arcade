@@ -11,11 +11,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from django.db import IntegrityError
 from django.db.models import Q
 
+from apps.catalog.constants import FALLBACK_LANGUAGE_CODE
 from apps.catalog.models import Game, GameSlugHistory, GameTranslation
-
-FALLBACK_LANGUAGE_CODE = "en"
 
 
 def _record(*, game_id: UUID, language_id: UUID | None, slug: str) -> None:
@@ -27,7 +27,13 @@ def _record(*, game_id: UUID, language_id: UUID | None, slug: str) -> None:
         lookup["language__isnull"] = True
     else:
         lookup["language_id"] = language_id
-    GameSlugHistory.objects.get_or_create(**lookup)
+    try:
+        GameSlugHistory.objects.get_or_create(**lookup)
+    except IntegrityError:
+        # A concurrent rename inserted the same history row between our
+        # ``SELECT`` and ``INSERT``.  The unique constraint won the race, so
+        # re-fetch the now-existing row instead of failing the slug change.
+        GameSlugHistory.objects.get(**lookup)
 
 
 def record_game_slug(game: Game, old_slug: str) -> None:

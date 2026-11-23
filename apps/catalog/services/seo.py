@@ -17,11 +17,11 @@ from typing import Any
 
 from django.conf import settings
 
+from apps.catalog.constants import FALLBACK_LANGUAGE_CODE
 from apps.catalog.models import Game, GameTranslation
 from apps.i18n.models import Language
 from apps.i18n.services import translate
 
-FALLBACK_LANGUAGE_CODE = "en"
 SITE_NAME = "Breaktime Arcade"
 OG_LOCALES = {
     "en": "en_US",

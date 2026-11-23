@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
+from django.db import IntegrityError
 from django.test import Client
 from django.utils import timezone
 
 from apps.catalog.models import Game, GameSlugHistory, GameTranslation, Genre
+from apps.catalog.services.slugs import record_game_slug, record_translation_slug
 from apps.i18n.models import Language
 
 
@@ -119,3 +123,63 @@ def test_old_slug_of_unpublished_and_unknown_slugs_does_not_redirect() -> None:
     assert GameSlugHistory.objects.filter(game=draft, slug="draft-old-slug").exists()
 
     assert Client().get("/en/games/draft-old-slug/").status_code == 404
+
+
+@pytest.mark.django_db
+def test_localized_old_slug_does_not_redirect_in_another_language() -> None:
+    game = _game(technical_id="cross_language_slug_game", slug="cross-language-game")
+    translation = _translation(game, "en", "old-english-slug")
+    _translation(game, "de", "de-current-slug")
+
+    translation.slug = "new-english-slug"
+    translation.save(update_fields=["slug", "updated_at"])
+
+    assert GameSlugHistory.objects.filter(
+        game=game, language__code="en", slug="old-english-slug"
+    ).exists()
+
+    # A localized history row only belongs to its own language: the old English
+    # slug must not send a German visitor to the English canonical URL.
+    response = Client().get("/de/games/old-english-slug/")
+
+    assert response.status_code == 404
+
+    # The same old slug still redirects for the language that owns it.
+    own_language = Client().get("/en/games/old-english-slug/")
+    assert own_language.status_code == 301
+    assert own_language["Location"] == "/en/games/new-english-slug/"
+
+
+@pytest.mark.django_db
+def test_record_slug_survives_concurrent_insert_integrity_error() -> None:
+    game = _game(technical_id="concurrent_slug_game", slug="concurrent-game")
+    translation = _translation(game, "en", "concurrent-english")
+
+    # Both history rows already exist: the competing request committed first.
+    GameSlugHistory.objects.create(game=game, language=None, slug="raced-neutral-slug")
+    GameSlugHistory.objects.create(
+        game=game,
+        language=translation.language,
+        slug="raced-localized-slug",
+    )
+
+    with patch.object(
+        GameSlugHistory.objects,
+        "get_or_create",
+        side_effect=IntegrityError("duplicate key value violates unique constraint"),
+    ):
+        record_game_slug(game, "raced-neutral-slug")
+        record_translation_slug(translation, "raced-localized-slug")
+
+    assert (
+        GameSlugHistory.objects.filter(
+            game=game, language__isnull=True, slug="raced-neutral-slug"
+        ).count()
+        == 1
+    )
+    assert (
+        GameSlugHistory.objects.filter(
+            game=game, language__code="en", slug="raced-localized-slug"
+        ).count()
+        == 1
+    )
