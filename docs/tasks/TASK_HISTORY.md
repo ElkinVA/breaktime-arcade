@@ -1563,3 +1563,22 @@ tests: 1056 passed, 8 skipped, exit 0**.
   clean; reviewer accept без findings; full suite **1125/1117/8**.
 - **Остаток:** real nginx/volume E2E и нагрузка больших runtime NOT TESTED.
 - **Commit:** `8f9f7ac`.
+
+### ARCADE-SDK-ABORT-PENDING-001 — SDK pending-request abort (AI HQ)
+
+- **Результат:** `ebe7d30` + test cleanup `b34a288`; при `exit()`/`newSession`
+  SDK немедленно settle-ит pending-запросы (`E_TIMEOUT`/cancelled), удаляет
+  таймеры, игнорирует late responses; newSession не отменяет сам себя.
+- **Проверки:** 3 JS-теста; JS **26/26**; SDK contract/package tests; reviewer
+  accept; full Python suite **1125/1117/8**.
+- **Остаток:** browser/staging E2E NOT TESTED.
+- **Commit:** `ebe7d30`, `b34a288`.
+
+### ARCADE-RUNTIME-BUILD-SCHEMAS-001 — BLOCKED
+
+- QA обнаружил blocker: `npm run build` исполняется в Docker assets stage, где
+  нет `scripts/`/`schemas/` (исключены `.dockerignore`) и нет python3; вызов
+  schema-генерации сломал бы `docker build`.
+- Изменение Dockerfile/infra вне согласованного scope. Drift уже ловится
+  parity-тестом `tests/unit/test_host_schemas_registry.py` и
+  `npm run check:schemas`; задача остановлена без merge.

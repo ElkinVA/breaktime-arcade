@@ -443,6 +443,20 @@ mismatch → `ArtifactUnavailable`/404 без тела. 17 targeted artifact tes
 R-050 закрыт в коде; остаток: real nginx/volume E2E и нагрузка больших
 runtime NOT TESTED.
 
+## 0.33. SDK pending-request abort — 2026-11-24
+
+`ARCADE-SDK-ABORT-PENDING-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`ebe7d30` + test cleanup `b34a288`). При `exit()`/`ba:newSession` SDK
+немедленно settle-ит все pending-запросы (`E_TIMEOUT`/cancelled), удаляет их
+таймеры и игнорирует late responses; `newSession`-запрос не отменяет сам
+себя. Три JS-теста; JS **26/26**; full Python suite **1125 tests: 1117
+passed, 8 skipped, exit 0**. Остаток: browser/staging E2E NOT TESTED.
+
+`ARCADE-RUNTIME-BUILD-SCHEMAS-001` — **BLOCKED**: wiring schema generation в
+`npm run build` ломает Docker assets stage (`scripts/`/`schemas/` не
+копируются, node:22-slim без python3). Drift уже ловится parity-тестом и
+`check:schemas`; изменение Dockerfile вне согласованного scope.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

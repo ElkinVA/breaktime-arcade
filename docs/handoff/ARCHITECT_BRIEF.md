@@ -68,8 +68,11 @@ ambiguity.
   are R-054 residuals.
 - Host message schemas are generated from `schemas/messages/*.json` with a
   parity test and unsupported-keyword guard
-  (`ARCADE-RUNTIME-SCHEMA-SINGLE-SOURCE-001`, `f9a75d4`); R-055 schema
-  tightenings await owner/contract confirmation.
+  (`ARCADE-RUNTIME-SCHEMA-SINGLE-SOURCE-001`, `f9a75d4`); build integration is
+  BLOCKED on Docker assets-stage changes; R-055 await owner/contract
+  confirmation.
+- SDK settles pending requests on exit/newSession
+  (`ARCADE-SDK-ABORT-PENDING-001`, `ebe7d30`).
 - Runtime validation: host/SDK messages are schema-driven with
   `E_MESSAGE_INVALID` (`ARCADE-RUNTIME-JSONSCHEMA-001`, `855caa1`); myBest
   now matches `ba_leaderboard_data` (`ARCADE-SDK-MYBEST-001`, `20f379c`);

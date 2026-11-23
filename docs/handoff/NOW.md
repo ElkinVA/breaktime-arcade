@@ -388,6 +388,12 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-SDK-ABORT-PENDING-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`ebe7d30` + `b34a288`): exit/newSession immediately settle pending SDK
+requests and clear timers, late responses ignored; JS 26/26; full suite
+**1125/1117/8**. `ARCADE-RUNTIME-BUILD-SCHEMAS-001` — **BLOCKED** (Docker
+assets stage lacks scripts/schemas/python3; drift guarded by parity test).
+
 `ARCADE-RUNTIME-HASH-VERIFY-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
 (`8f9f7ac`): per-file SHA-256 + canonical tree digest vs `runtime_hash`
 до отдачи; 17 targeted tests; full suite **1125/1117/8**. R-050 закрыт;

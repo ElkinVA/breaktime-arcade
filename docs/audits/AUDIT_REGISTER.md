@@ -950,3 +950,26 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | real nginx/volume E2E and large-runtime load NOT TESTED |
 | Источник | commit `8f9f7ac`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-SDK-ABORT-PENDING-001 — SDK pending-request abort
+
+| Поле | Значение |
+|---|---|
+| Тип | SDK lifecycle implementation via AI HQ; wire contract unchanged |
+| Результат | `ebe7d30` + `b34a288`: exit/newSession settles pending requests, clears timers, ignores late responses |
+| Проверки | JS 26/26; SDK contract/package tests; reviewer accept; full Python suite 1125/1117/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | browser/staging E2E NOT TESTED |
+| Источник | commits `ebe7d30`, `b34a288`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-RUNTIME-BUILD-SCHEMAS-001 — BLOCKED
+
+| Поле | Значение |
+|---|---|
+| Тип | Build integration proposal via AI HQ |
+| Результат | Не merged: QA blocker — npm build runs in Docker assets stage without scripts/schemas/python3; Dockerfile change out of scope |
+| Проверки | QA fail с конкретным evidence; parity test/check:schemas уже защищают drift |
+| Статус | **BLOCKED — infra/owner decision**; продуктовая функциональность не затронута |
+| Источник | `.autonomy/state.json`, QA evidence |
