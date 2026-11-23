@@ -43,6 +43,9 @@ ALLOWED_KEYWORDS = frozenset(
     }
 )
 
+# Document metadata that is intentionally not part of the JS validation subset.
+IGNORED_KEYWORDS = frozenset({"$schema", "$id", "title", "description"})
+
 
 class SchemaError(ValueError):
     """Raised when a message schema cannot be flattened into the JS subset."""
@@ -103,6 +106,10 @@ def _flatten_children(
         out["additionalProperties"] = _flatten(
             out["additionalProperties"], base_dir, stack=stack, cache=cache
         )
+    unsupported = set(out) - ALLOWED_KEYWORDS - IGNORED_KEYWORDS
+    if unsupported:
+        names = ", ".join(sorted(unsupported))
+        raise SchemaError(f"unsupported JSON Schema keyword(s): {names}")
     return {key: value for key, value in out.items() if key in ALLOWED_KEYWORDS}
 
 

@@ -4,6 +4,8 @@ import importlib.util
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
     "generate_host_schemas",
@@ -55,3 +57,10 @@ def test_registry_is_flattened_into_the_js_keyword_subset() -> None:
     _walk_keywords(registry.envelope)
     for payload in registry.payloads.values():
         _walk_keywords(payload)
+
+
+def test_flattener_rejects_unsupported_keywords() -> None:
+    with pytest.raises(generate_host_schemas.SchemaError, match="pattern"):
+        generate_host_schemas._flatten(
+            {"type": "string", "pattern": "^x$"}, ROOT / "schemas" / "messages"
+        )
