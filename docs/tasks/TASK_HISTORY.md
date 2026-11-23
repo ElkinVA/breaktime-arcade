@@ -1396,3 +1396,14 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Остаток:** live browser/staging NOT TESTED; показываются только
   `is_public=True` (осознанно).
 - **Commit:** `db8a835`, `551e73e`.
+
+### ARCADE-CATALOG-GENRE-PAGINATION-001 — genre page pagination (AI HQ)
+
+- **Результат:** `0c4e64d`; `genre_detail` использует общий `paginate_games`/
+  `pagination_query`/`canonical_url`/`should_noindex`, сохраняет sort/filters
+  в ссылках, deep pages `noindex,follow`, single-page без chrome.
+- **Проверки:** 5 targeted tests + catalog pagination/public regressions;
+  ruff/mypy clean; AI HQ reviewer accept; full suite **1095/1087/8**.
+- **Остаток:** live HTTP/nginx/staging NOT TESTED; context-key `games`
+  сохранён для обратной совместимости (informational).
+- **Commit:** `0c4e64d`.

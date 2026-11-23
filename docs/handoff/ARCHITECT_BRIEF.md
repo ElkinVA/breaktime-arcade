@@ -48,6 +48,9 @@ ambiguity.
   (`ARCADE-CRM-USERS-001`, `4095ed8` + fixes). R-049 follow-ups now abort
   open SDK sessions on block and clear tombstone credentials
   (`a9e7d2b`, `08ab9c7`); narrow create_session race remains.
+- Catalog genre pages: paginated with sort/filter persistence and
+  canonical/noindex parity (`ARCADE-CATALOG-GENRE-PAGINATION-001`,
+  `0c4e64d`).
 - CRM game records: read-only current/archived epoch board in the game card
   with public ordering parity and pagination (`ARCADE-CRM-GAME-RECORDS-001`,
   `db8a835` + `551e73e`).

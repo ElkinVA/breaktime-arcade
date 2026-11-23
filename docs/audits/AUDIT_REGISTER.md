@@ -782,3 +782,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | live browser/staging NOT TESTED; отображаются только public entries |
 | Источник | commits `db8a835`, `551e73e`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-CATALOG-GENRE-PAGINATION-001 — genre page pagination
+
+| Поле | Значение |
+|---|---|
+| Тип | Public catalog implementation via AI HQ; no schema/contract change |
+| Результат | `0c4e64d`: shared pagination/clamping, sort/filter persistence, canonical + noindex,follow on deep pages, single-page without chrome |
+| Проверки | 5 targeted tests + catalog pagination/public regressions; ruff/mypy clean; reviewer accept; full suite 1095/1087/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | live HTTP/nginx/staging NOT TESTED; unused `games` context key informational |
+| Источник | commit `0c4e64d`; evidence в `.autonomy/evidence/` |

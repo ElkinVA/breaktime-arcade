@@ -286,6 +286,18 @@ value/achieved_at/trust_level, пагинация 25, селектор эпох,
 datetime и добавил проверку HTML. 5 targeted tests; full suite **1090 tests:
 1082 passed, 8 skipped, exit 0**. Остаток: live browser/staging NOT TESTED.
 
+## 0.19. Catalog genre pagination — 2026-11-23
+
+`ARCADE-CATALOG-GENRE-PAGINATION-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`0c4e64d`). Публичная страница жанра использует общий
+`apps/catalog/services/pagination.py`: page bounds/clamping, сохранение
+active sort/filters в ссылках, компонент пагинации, canonical и
+`noindex,follow` на глубоких страницах; single-page жанр не показывает
+pagination chrome. 5 targeted tests + catalog regression; full suite
+**1095 tests: 1087 passed, 8 skipped, exit 0**. Остаток: live
+HTTP/nginx/staging NOT TESTED; неиспользуемый context-key `games` оставлен
+для обратной совместимости (informational).
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не
