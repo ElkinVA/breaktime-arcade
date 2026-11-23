@@ -18,5 +18,10 @@ Return exactly one JSON object:
 {"status":"pass|fail","commands":[{"cmd":"...","exit":0,"output":"short"}],
  "findings":["..."]}
 
+For migration acceptance, run the permanent guard
+`python3 devcontrol/sandbox/run_tests.py tests/integration/test_migrations_check.py`
+(it executes `makemigrations --check --dry-run`). For type checks, use
+`/home/elkinva/projects/ba/.venv/bin/python -m mypy` on the changed modules.
+
 If the environment cannot run a check, say NOT TESTED and mark fail unless the
 task explicitly permits it.
