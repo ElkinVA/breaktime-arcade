@@ -20,7 +20,12 @@ from apps.catalog.models import Game, GameVersion, Genre
 from apps.crm.services import version_downloads as downloads
 from apps.crm.services.step_up import SESSION_KEY
 from apps.i18n.models import Language
-from apps.pipeline.services.artifacts import ensure_root, package_path, runtime_path
+from apps.pipeline.services.artifacts import (
+    ensure_root,
+    package_path,
+    runtime_hash_for,
+    runtime_path,
+)
 
 PASSWORD = "correct horse battery staple"
 PACKAGE_BYTES = b"PK\x03\x04original-package-bytes"
@@ -29,10 +34,9 @@ RUNTIME_FILES = {
     "js/ba-sdk.js": b"/* official SDK 1.1.0 */",
     "js/game.js": b"var started = true;",
 }
-
-
-def _sha(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+RUNTIME_HASH = runtime_hash_for(
+    {name: hashlib.sha256(payload).hexdigest() for name, payload in RUNTIME_FILES.items()}
+)
 
 
 def _genre() -> Genre:
@@ -67,7 +71,7 @@ def _version(
         game=game,
         semver=semver,
         package_hash=package_hash or hashlib.sha256(PACKAGE_BYTES).hexdigest(),
-        runtime_hash=runtime_hash or _sha(f"runtime-{semver}"),
+        runtime_hash=runtime_hash or RUNTIME_HASH,
         sdk_version="1.1.0",
         size_bytes=len(PACKAGE_BYTES),
         manifest={},
@@ -335,6 +339,54 @@ def test_runtime_response_spools_the_archive_to_a_temp_file(
             assert archive.read(relative) == payload
     response.close()
     assert created[0].closed
+
+
+@pytest.mark.django_db
+def test_intact_runtime_tree_returns_200_and_matches_runtime_hash(artifact_env: Path) -> None:
+    """A valid published tree is served as a ZIP whose digest is runtime_hash."""
+    game = _game(technical_id="runtime_intact", host_label="runtime-intact.test")
+    version = _version(game)
+    _store_runtime(version)
+    client = _staff_client(elevated=True)
+
+    response = client.get(reverse("crm:version_runtime", args=[game.id, version.id]))
+    assert response.status_code == 200
+    assert response["Content-Type"] == "application/zip"
+    body = b"".join(response.streaming_content)
+    assert body.startswith(b"PK")
+
+    with zipfile.ZipFile(io.BytesIO(body)) as archive:
+        names = sorted(archive.namelist())
+        assert names == sorted(RUNTIME_FILES)
+        hashes = {name: hashlib.sha256(archive.read(name)).hexdigest() for name in names}
+    assert runtime_hash_for(hashes) == version.runtime_hash
+
+    repeat = client.get(reverse("crm:version_runtime", args=[game.id, version.id]))
+    assert repeat.status_code == 200
+    assert b"".join(repeat.streaming_content) == body
+
+
+@pytest.mark.django_db
+def test_runtime_file_mutated_after_import_is_rejected_without_body(
+    artifact_env: Path,
+) -> None:
+    """A changed runtime file must never produce a partial or mismatched body."""
+    game = _game(technical_id="runtime_mutated", host_label="runtime-mutated.test")
+    version = _version(game)
+    directory = _store_runtime(version)
+    (directory / "index.html").write_bytes(b"tampered runtime content")
+
+    with pytest.raises(downloads.ArtifactUnavailable):
+        downloads.runtime_response(version)
+
+    client = _staff_client(elevated=True)
+    response = client.get(reverse("crm:version_runtime", args=[game.id, version.id]))
+    assert response.status_code == 404
+    assert not getattr(response, "streaming", False)
+    assert not response.content.startswith(b"PK")
+    for payload in RUNTIME_FILES.values():
+        assert payload not in response.content
+    assert b"tampered runtime content" not in response.content
 
 
 @pytest.mark.django_db

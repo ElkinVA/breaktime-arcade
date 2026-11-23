@@ -16,8 +16,14 @@ bytes are copied into a temporary spool while SHA-256 is computed and the
 response streams that spool only after the digest matches
 ``version.package_hash``. The served bytes are therefore the same bytes that
 were hashed, a corrupted file is rejected before any body byte is served, and
-the response never holds the whole ZIP in memory. Runtime bundles are generated
-once into a temporary file and streamed from there for the same reason.
+the response never holds the whole ZIP in memory.
+
+The runtime bundle is built through one verified-descriptor walk that computes
+each file's SHA-256 from exactly the bytes written into the archive. The
+canonical tree digest (``runtime_hash_for``) is compared with
+``version.runtime_hash`` before the spool is served, so a file changed after
+import yields ``ArtifactUnavailable`` instead of a body that no longer matches
+the published hash.
 """
 
 from __future__ import annotations
@@ -41,6 +47,7 @@ from apps.pipeline.services.artifacts import (
     ArtifactError,
     ensure_root,
     package_path,
+    runtime_hash_for,
     runtime_path,
 )
 
@@ -177,19 +184,22 @@ def _spool_verified_handle(fd: int, expected: str) -> BinaryIO:
     return spool
 
 
-def _write_handle_to_zip(archive: zipfile.ZipFile, info: zipfile.ZipInfo, fd: int) -> None:
-    """Copy a verified file descriptor into ``archive`` chunk by chunk."""
+def _write_handle_to_zip(archive: zipfile.ZipFile, info: zipfile.ZipInfo, fd: int) -> str:
+    """Copy a verified descriptor into ``archive``, hashing the copied bytes."""
+    digest = hashlib.sha256()
     try:
         with archive.open(info, "w") as target:
             while True:
                 chunk = os.read(fd, ARTIFACT_CHUNK_SIZE)
                 if not chunk:
                     break
+                digest.update(chunk)
                 target.write(chunk)
     except OSError:
         raise ArtifactUnavailable("Artifact file is unavailable") from None
     finally:
         os.close(fd)
+    return digest.hexdigest()
 
 
 def _open_child(
@@ -261,12 +271,19 @@ def _zip_date_time(timestamp: float) -> tuple[int, int, int, int, int, int]:
     return (local.tm_year, local.tm_mon, local.tm_mday, local.tm_hour, local.tm_min, local.tm_sec)
 
 
-def _zip_tree(archive: zipfile.ZipFile, directory_fd: int, prefix: str) -> None:
+def _zip_tree(
+    archive: zipfile.ZipFile,
+    directory_fd: int,
+    prefix: str,
+    hashes: dict[str, str],
+) -> None:
     """Archive a directory tree read through verified descriptors.
 
     Every entry is opened relative to the already verified parent descriptor
     with ``O_NOFOLLOW``; the opened handle is compared with the entry identity
     before any bytes are read, so a symlink or swap cannot substitute content.
+    Each regular file's SHA-256 is accumulated under the archive name while the
+    same bytes are written, so the digest describes exactly the served tree.
     """
     try:
         names = os.listdir(directory_fd)
@@ -283,7 +300,7 @@ def _zip_tree(archive: zipfile.ZipFile, directory_fd: int, prefix: str) -> None:
         if stat.S_ISDIR(entry.st_mode):
             child_fd, _child_stat = _open_child(directory_fd, name, directory=True)
             try:
-                _zip_tree(archive, child_fd, f"{arcname}/")
+                _zip_tree(archive, child_fd, f"{arcname}/", hashes)
             finally:
                 os.close(child_fd)
         elif stat.S_ISREG(entry.st_mode):
@@ -291,19 +308,22 @@ def _zip_tree(archive: zipfile.ZipFile, directory_fd: int, prefix: str) -> None:
             info = zipfile.ZipInfo(arcname, date_time=_zip_date_time(opened.st_mtime))
             info.external_attr = (opened.st_mode & 0xFFFF) << 16
             info.compress_type = zipfile.ZIP_DEFLATED
-            _write_handle_to_zip(archive, info, file_fd)
+            hashes[arcname] = _write_handle_to_zip(archive, info, file_fd)
         # Special files stay excluded, matching the regular-files-only contract.
 
 
-def runtime_zip_file(directory: Path) -> BinaryIO:
-    """Zip the published runtime tree into a temporary file, rejecting symlinks.
+def runtime_zip_file(directory: Path, expected_hash: str) -> BinaryIO:
+    """Zip and hash-verify the published runtime tree into a temporary file.
 
     The tree is walked through verified directory descriptors opened relative
     to the resolved root; a symlink or path swap anywhere in the tree raises
-    ``ArtifactUnavailable``. The archive is written to an anonymous temporary
-    file rather than ``io.BytesIO`` so its size never lives in memory. File
-    mtimes are preserved, so bytes are stable only while the tree is unchanged;
-    the archive is a convenience copy, not a hash-verified artifact.
+    ``ArtifactUnavailable``. While each file is written into the archive its
+    SHA-256 is accumulated under the archive name, then the canonical tree
+    digest (``runtime_hash_for`` format) is compared with ``expected_hash``.
+    The spool is served only after the digest matches, so a file changed after
+    import is rejected before any body byte is written. The archive uses an
+    anonymous temporary file rather than ``io.BytesIO`` so its size never lives
+    in memory.
     """
     root_fd, _root_stat = _open_verified(directory, directory=True)
     try:
@@ -312,9 +332,10 @@ def runtime_zip_file(directory: Path) -> BinaryIO:
     except OSError:
         os.close(root_fd)
         raise ArtifactUnavailable("Runtime artifact is unavailable") from None
+    hashes: dict[str, str] = {}
     try:
         with zipfile.ZipFile(spool, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-            _zip_tree(archive, root_fd, "")
+            _zip_tree(archive, root_fd, "", hashes)
     except OSError:
         spool.close()
         raise ArtifactUnavailable("Runtime artifact is unavailable") from None
@@ -323,6 +344,9 @@ def runtime_zip_file(directory: Path) -> BinaryIO:
         raise
     finally:
         os.close(root_fd)
+    if runtime_hash_for(hashes) != expected_hash:
+        spool.close()
+        raise ArtifactUnavailable("Runtime hash mismatch")
     spool.seek(0)
     return spool
 
@@ -386,7 +410,7 @@ def package_response(version: GameVersion) -> FileResponse:
 
 
 def runtime_response(version: GameVersion) -> FileResponse:
-    spool = runtime_zip_file(runtime_directory(version))
+    spool = runtime_zip_file(runtime_directory(version), version.runtime_hash)
     try:
         return _stream_attachment(
             spool,
