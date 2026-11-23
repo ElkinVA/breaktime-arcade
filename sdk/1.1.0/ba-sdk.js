@@ -15,16 +15,7 @@
     const SUBMIT_TIMEOUT = 10000;
     const MAX_MESSAGES_PER_MINUTE = 60;
     const SEEN_LIMIT = 512;
-    const HOST_TYPES = new Set([
-        "ba:context",
-        "ba:result",
-        "ba:leaderboard:data",
-        "ba:storage:data",
-        "ba:session",
-        "ba:pause",
-        "ba:resume",
-        "ba:error",
-    ]);
+    const MAX_MESSAGE_BYTES = 64 * 1024;
     const SDK_TYPES = new Set([
         "ba:hello",
         "ba:submit",
@@ -97,80 +88,303 @@
         return { parentOrigin: origin, sessionId };
     }
 
-    function isEnvelope(value) {
-        return (
-            value !== null &&
-            typeof value === "object" &&
-            typeof value.source === "string" &&
-            value.protocol === PROTOCOL &&
-            typeof value.type === "string" &&
-            isUuid(value.requestId) &&
-            isUuid(value.sessionId) &&
-            value.payload !== null &&
-            typeof value.payload === "object"
-        );
+    /* Explicit per-message schemas for the host -> game direction. They mirror
+     * schemas/messages/*.json; violations produce a structured
+     * {code: "E_MESSAGE_INVALID", field, reason} object.
+     */
+    const MAX_TYPE_LENGTH = 64;
+    const MAX_GAME_ID_LENGTH = 40;
+    const MAX_GAME_VERSION_LENGTH = 32;
+    const MAX_LANGUAGE_LENGTH = 35;
+    const MAX_NICKNAME_LENGTH = 20;
+    const MAX_TRUST_LEVEL_LENGTH = 32;
+    const MAX_SEED_LENGTH = 128;
+    const MAX_ERROR_CODE_LENGTH = 128;
+    const MAX_LEADERBOARD_ENTRIES = 100;
+    const MAX_STATUS_LENGTH = 32;
+
+    function invalid(field, reason) {
+        return Object.freeze({ code: "E_MESSAGE_INVALID", field, reason });
+    }
+
+    function tooLarge(field) {
+        return Object.freeze({ code: "E_PAYLOAD_TOO_LARGE", field, reason: "payload too large" });
     }
 
     function isObject(value) {
         return value !== null && typeof value === "object" && !Array.isArray(value);
     }
 
-    function validHostPayload(type, payload) {
-        if (!isObject(payload)) {
-            return false;
+    function matchesType(value, type) {
+        if (Array.isArray(type)) {
+            return type.some((item) => matchesType(value, item));
         }
-        if (type === "ba:context") {
-            return (
-                isUuid(payload.sessionId) &&
-                typeof payload.gameId === "string" &&
-                typeof payload.gameVersion === "string" &&
-                typeof payload.mode === "string" &&
-                (payload.nickname === null || typeof payload.nickname === "string") &&
-                typeof payload.language === "string" &&
-                typeof payload.fallbackLanguage === "string" &&
-                isObject(payload.strings) &&
-                isObject(payload.score) &&
-                isObject(payload.limits) &&
-                typeof payload.trustLevel === "string" &&
-                typeof payload.seed === "string"
-            );
+        switch (type) {
+            case "object":
+                return isObject(value);
+            case "array":
+                return Array.isArray(value);
+            case "string":
+                return typeof value === "string";
+            case "integer":
+                return typeof value === "number" && Number.isInteger(value);
+            case "number":
+                return typeof value === "number" && Number.isFinite(value);
+            case "boolean":
+                return typeof value === "boolean";
+            case "null":
+                return value === null;
+            default:
+                return false;
         }
-        if (type === "ba:result") {
-            return (
-                typeof payload.status === "string" &&
-                (payload.rank === null || Number.isInteger(payload.rank)) &&
-                typeof payload.isPersonalBest === "boolean" &&
-                typeof payload.isRecord === "boolean" &&
-                typeof payload.trustLevel === "string"
-            );
+    }
+
+    function joinPath(path, field) {
+        return path ? `${path}.${field}` : field;
+    }
+
+    /* JSON-Schema-subset validator shared by every message schema below.
+     * Supported keywords: type (including nullable type arrays), const, enum,
+     * required, properties, additionalProperties, minLength, maxLength, format
+     * ("uuid"), minimum, maximum, items, maxItems.
+     */
+    function validateSchema(value, schema, path = "") {
+        if (!schema) {
+            return null;
         }
-        if (type === "ba:leaderboard:data") {
-            return (
-                Array.isArray(payload.entries) &&
-                (payload.myRank === null || Number.isInteger(payload.myRank)) &&
-                payload.entries.every(
-                    (entry) =>
-                        isObject(entry) &&
-                        Number.isInteger(entry.rank) &&
-                        (entry.nickname === null || typeof entry.nickname === "string") &&
-                        typeof entry.value === "number",
-                )
-            );
+        if (schema.type && !matchesType(value, schema.type)) {
+            return invalid(path, `expected ${[].concat(schema.type).join("|")}`);
         }
-        if (type === "ba:storage:data") {
-            return Object.prototype.hasOwnProperty.call(payload, "value");
+        if (Object.prototype.hasOwnProperty.call(schema, "const") && value !== schema.const) {
+            return invalid(path, "unexpected constant");
         }
-        if (type === "ba:session") {
-            return (
-                isUuid(payload.sessionId) &&
-                typeof payload.seed === "string" &&
-                (payload.context === undefined || isObject(payload.context))
-            );
+        if (schema.enum && !schema.enum.includes(value)) {
+            return invalid(path, "value is not in enum");
         }
-        if (type === "ba:error") {
-            return typeof payload.code === "string" && payload.code.length > 0;
+        if (typeof value === "string") {
+            if (schema.minLength !== undefined && value.length < schema.minLength) {
+                return invalid(path, `shorter than ${schema.minLength}`);
+            }
+            if (schema.maxLength !== undefined && value.length > schema.maxLength) {
+                return invalid(path, `longer than ${schema.maxLength}`);
+            }
+            if (schema.format === "uuid" && !isUuid(value)) {
+                return invalid(path, "expected uuid");
+            }
         }
-        return type === "ba:pause" || type === "ba:resume";
+        if (typeof value === "number") {
+            if (schema.minimum !== undefined && value < schema.minimum) {
+                return invalid(path, `less than ${schema.minimum}`);
+            }
+            if (schema.maximum !== undefined && value > schema.maximum) {
+                return invalid(path, `greater than ${schema.maximum}`);
+            }
+        }
+        if (Array.isArray(value)) {
+            if (schema.maxItems !== undefined && value.length > schema.maxItems) {
+                return invalid(path, `more than ${schema.maxItems} items`);
+            }
+            if (schema.items) {
+                for (let index = 0; index < value.length; index += 1) {
+                    const error = validateSchema(value[index], schema.items, `${path}[${index}]`);
+                    if (error) {
+                        return error;
+                    }
+                }
+            }
+        }
+        if (isObject(value)) {
+            if (schema.required) {
+                for (const field of schema.required) {
+                    if (!Object.prototype.hasOwnProperty.call(value, field)) {
+                        return invalid(joinPath(path, field), "required field missing");
+                    }
+                }
+            }
+            const properties = schema.properties ?? {};
+            if (schema.properties) {
+                for (const [field, propertySchema] of Object.entries(schema.properties)) {
+                    if (Object.prototype.hasOwnProperty.call(value, field)) {
+                        const error = validateSchema(
+                            value[field],
+                            propertySchema,
+                            joinPath(path, field),
+                        );
+                        if (error) {
+                            return error;
+                        }
+                    }
+                }
+            }
+            if (schema.additionalProperties === false) {
+                for (const field of Object.keys(value)) {
+                    if (!Object.prototype.hasOwnProperty.call(properties, field)) {
+                        return invalid(joinPath(path, field), "unknown field");
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    const UUID_SCHEMA = { type: "string", format: "uuid" };
+
+    const ENVELOPE_SCHEMA = {
+        type: "object",
+        additionalProperties: false,
+        required: ["source", "protocol", "type", "requestId", "sessionId", "payload"],
+        properties: {
+            source: { type: "string", enum: ["ba-sdk", "ba-host"] },
+            protocol: { const: PROTOCOL },
+            type: { type: "string", minLength: 1, maxLength: MAX_TYPE_LENGTH },
+            requestId: UUID_SCHEMA,
+            sessionId: UUID_SCHEMA,
+            payload: { type: "object" },
+        },
+    };
+
+    const HOST_MESSAGE_SCHEMAS = Object.freeze({
+        "ba:context": Object.freeze({
+            type: "object",
+            additionalProperties: true,
+            required: [
+                "sessionId",
+                "gameId",
+                "gameVersion",
+                "mode",
+                "nickname",
+                "language",
+                "fallbackLanguage",
+                "strings",
+                "score",
+                "limits",
+                "trustLevel",
+                "seed",
+            ],
+            properties: {
+                sessionId: UUID_SCHEMA,
+                gameId: { type: "string", minLength: 1, maxLength: MAX_GAME_ID_LENGTH },
+                gameVersion: {
+                    type: "string",
+                    minLength: 1,
+                    maxLength: MAX_GAME_VERSION_LENGTH,
+                },
+                mode: { type: "string", enum: ["guest", "user", "autotest", "preview"] },
+                nickname: { type: ["string", "null"], maxLength: MAX_NICKNAME_LENGTH },
+                language: { type: "string", minLength: 2, maxLength: MAX_LANGUAGE_LENGTH },
+                fallbackLanguage: {
+                    type: "string",
+                    minLength: 2,
+                    maxLength: MAX_LANGUAGE_LENGTH,
+                },
+                strings: { type: "object" },
+                score: { type: "object" },
+                limits: { type: "object" },
+                trustLevel: {
+                    type: "string",
+                    minLength: 1,
+                    maxLength: MAX_TRUST_LEVEL_LENGTH,
+                },
+                seed: { type: "string", minLength: 1, maxLength: MAX_SEED_LENGTH },
+            },
+        }),
+        "ba:result": Object.freeze({
+            type: "object",
+            additionalProperties: true,
+            required: ["status", "rank", "isPersonalBest", "isRecord", "trustLevel"],
+            properties: {
+                status: { type: "string", minLength: 1, maxLength: MAX_STATUS_LENGTH },
+                rank: { type: ["integer", "null"] },
+                isPersonalBest: { type: "boolean" },
+                isRecord: { type: "boolean" },
+                trustLevel: {
+                    type: "string",
+                    minLength: 1,
+                    maxLength: MAX_TRUST_LEVEL_LENGTH,
+                },
+                code: { type: ["string", "null"], maxLength: MAX_ERROR_CODE_LENGTH },
+            },
+        }),
+        "ba:leaderboard:data": Object.freeze({
+            type: "object",
+            additionalProperties: true,
+            required: ["entries", "myRank"],
+            properties: {
+                entries: {
+                    type: "array",
+                    maxItems: MAX_LEADERBOARD_ENTRIES,
+                    items: {
+                        type: "object",
+                        additionalProperties: true,
+                        required: ["rank", "nickname", "value"],
+                        properties: {
+                            rank: { type: "integer", minimum: 1 },
+                            nickname: {
+                                type: ["string", "null"],
+                                maxLength: MAX_NICKNAME_LENGTH,
+                            },
+                            value: { type: "number" },
+                        },
+                    },
+                },
+                myRank: { type: ["integer", "null"] },
+            },
+        }),
+        "ba:storage:data": Object.freeze({
+            type: "object",
+            additionalProperties: true,
+            required: ["value"],
+            properties: {
+                value: {},
+                revision: { type: ["integer", "string", "null"] },
+            },
+        }),
+        "ba:session": Object.freeze({
+            type: "object",
+            additionalProperties: true,
+            required: ["sessionId", "seed"],
+            properties: {
+                sessionId: UUID_SCHEMA,
+                seed: { type: "string", minLength: 1, maxLength: MAX_SEED_LENGTH },
+                context: { type: "object" },
+            },
+        }),
+        "ba:pause": Object.freeze({ type: "object", additionalProperties: false }),
+        "ba:resume": Object.freeze({ type: "object", additionalProperties: false }),
+        "ba:error": Object.freeze({
+            type: "object",
+            additionalProperties: true,
+            required: ["code"],
+            properties: {
+                code: { type: "string", minLength: 1, maxLength: MAX_ERROR_CODE_LENGTH },
+                message: { type: "string" },
+            },
+        }),
+    });
+
+    function payloadBytes(payload) {
+        try {
+            return new TextEncoder().encode(JSON.stringify(payload)).length;
+        } catch {
+            return Number.POSITIVE_INFINITY;
+        }
+    }
+
+    function validateHostMessage(value) {
+        const envelopeError = validateSchema(value, ENVELOPE_SCHEMA);
+        if (envelopeError) {
+            return envelopeError;
+        }
+        if (value.source !== "ba-host") {
+            return invalid("source", "expected source ba-host");
+        }
+        if (!Object.prototype.hasOwnProperty.call(HOST_MESSAGE_SCHEMAS, value.type)) {
+            return invalid("type", "unsupported message type");
+        }
+        if (payloadBytes(value.payload) > MAX_MESSAGE_BYTES) {
+            return tooLarge("payload");
+        }
+        return validateSchema(value.payload, HOST_MESSAGE_SCHEMAS[value.type], "payload");
     }
 
     class BreaktimeArcadeSDK {
@@ -430,6 +644,30 @@
             this.messageTimes.push(now);
         }
 
+        rejectInvalid(data, error) {
+            const failure = new Error(error.reason || "Invalid message");
+            failure.code = error.code;
+            if (error.field) {
+                failure.field = error.field;
+            }
+            const requestId = isUuid(data?.requestId) ? data.requestId : null;
+            if (requestId) {
+                const pending = this.pending.get(requestId);
+                if (pending) {
+                    global.clearTimeout(pending.timer);
+                    this.pending.delete(requestId);
+                    pending.reject(failure);
+                    return;
+                }
+            }
+            if (this.state === "init") {
+                this.rejectContext?.(failure);
+                this.rejectContext = null;
+                this.resolveContext = null;
+                this.state = "failed";
+            }
+        }
+
         onMessage(event) {
             if (event.source !== global.parent) {
                 return;
@@ -438,10 +676,16 @@
                 return;
             }
             const data = event.data;
-            if (!isEnvelope(data) || data.source !== "ba-host" || !HOST_TYPES.has(data.type)) {
+            const schemaError = validateHostMessage(data);
+            if (schemaError) {
+                this.rejectInvalid(data, schemaError);
                 return;
             }
             if (data.type !== "ba:session" && data.sessionId !== this.sessionId) {
+                this.rejectInvalid(
+                    data,
+                    invalid("sessionId", "does not match the active session"),
+                );
                 return;
             }
             if (this.seen.has(data.requestId)) {
@@ -451,9 +695,6 @@
             this.seenOrder.push(data.requestId);
             if (this.seenOrder.length > SEEN_LIMIT) {
                 this.seen.delete(this.seenOrder.shift());
-            }
-            if (!validHostPayload(data.type, data.payload)) {
-                return;
             }
 
             if (data.type === "ba:context") {

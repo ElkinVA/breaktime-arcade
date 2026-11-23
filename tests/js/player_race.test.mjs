@@ -121,7 +121,7 @@ function envelope(type, sessionId, requestId, payload = {}) {
     return { source: "ba-sdk", protocol: 1, type, requestId, sessionId, payload };
 }
 
-const submitPayload = { value: 5, durationMs: 1000, eventLog: { events: [] }, seed: "seed" };
+const submitPayload = { value: 5, durationMs: 1000, eventLog: { v: 1, seed: "seed", events: [] }, seed: "seed" };
 
 await messageHandler({
     source: frame.contentWindow,

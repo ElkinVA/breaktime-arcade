@@ -3,6 +3,12 @@
  * The host owns the launch ticket and calls the portal API; the iframe only
  * receives the session fragment and public context. This module performs the
  * validation order required by BA-PLAT §2.12.4 before dispatching a message.
+ *
+ * Message envelopes and payloads are validated against the explicit
+ * per-message schema tables below (mirroring schemas/messages/*.json for the
+ * game -> host direction). A schema violation produces a structured
+ * {code: "E_MESSAGE_INVALID", field, reason} object, which the bridge relays
+ * to the trusted iframe as a ba:error message.
  */
 
 const PROTOCOL = 1;
@@ -10,6 +16,12 @@ const MAX_MESSAGES_PER_MINUTE = 60;
 const SEEN_LIMIT = 512;
 const MAX_MESSAGE_BYTES = 64 * 1024;
 const MAX_SUBMIT_BYTES = 2 * 1024 * 1024 + 64 * 1024;
+const MAX_TYPE_LENGTH = 64;
+const MAX_STORAGE_KEY_LENGTH = 128;
+const MAX_EVENT_COUNT = 20000;
+const MAX_EVENT_KIND_LENGTH = 64;
+const MAX_SEED_LENGTH = 128;
+const MAX_ERROR_CODE_LENGTH = 128;
 const SDK_TYPES = new Set([
     "ba:hello",
     "ba:submit",
@@ -37,19 +49,219 @@ export function isUuid(value) {
     );
 }
 
-function envelope(value) {
-    return (
-        value !== null &&
-        typeof value === "object" &&
-        value.source === "ba-sdk" &&
-        value.protocol === PROTOCOL &&
-        typeof value.type === "string" &&
-        isUuid(value.requestId) &&
-        isUuid(value.sessionId) &&
-        value.payload !== null &&
-        typeof value.payload === "object"
-    );
+function invalid(field, reason) {
+    return Object.freeze({ code: "E_MESSAGE_INVALID", field, reason });
 }
+
+function tooLarge(field) {
+    return Object.freeze({ code: "E_PAYLOAD_TOO_LARGE", field, reason: "payload too large" });
+}
+
+function isObject(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function matchesType(value, type) {
+    if (Array.isArray(type)) {
+        return type.some((item) => matchesType(value, item));
+    }
+    switch (type) {
+        case "object":
+            return isObject(value);
+        case "array":
+            return Array.isArray(value);
+        case "string":
+            return typeof value === "string";
+        case "integer":
+            return typeof value === "number" && Number.isInteger(value);
+        case "number":
+            return typeof value === "number" && Number.isFinite(value);
+        case "boolean":
+            return typeof value === "boolean";
+        case "null":
+            return value === null;
+        default:
+            return false;
+    }
+}
+
+function joinPath(path, field) {
+    return path ? `${path}.${field}` : field;
+}
+
+/* JSON-Schema-subset validator shared by every message schema below.
+ * Supported keywords: type (including nullable type arrays), const, enum,
+ * required, properties, additionalProperties, minLength, maxLength, format
+ * ("uuid"), minimum, maximum, items, maxItems.
+ */
+function validateSchema(value, schema, path = "") {
+    if (!schema) {
+        return null;
+    }
+    if (schema.type && !matchesType(value, schema.type)) {
+        return invalid(path, `expected ${[].concat(schema.type).join("|")}`);
+    }
+    if (Object.prototype.hasOwnProperty.call(schema, "const") && value !== schema.const) {
+        return invalid(path, "unexpected constant");
+    }
+    if (schema.enum && !schema.enum.includes(value)) {
+        return invalid(path, "value is not in enum");
+    }
+    if (typeof value === "string") {
+        if (schema.minLength !== undefined && value.length < schema.minLength) {
+            return invalid(path, `shorter than ${schema.minLength}`);
+        }
+        if (schema.maxLength !== undefined && value.length > schema.maxLength) {
+            return invalid(path, `longer than ${schema.maxLength}`);
+        }
+        if (schema.format === "uuid" && !isUuid(value)) {
+            return invalid(path, "expected uuid");
+        }
+    }
+    if (typeof value === "number") {
+        if (schema.minimum !== undefined && value < schema.minimum) {
+            return invalid(path, `less than ${schema.minimum}`);
+        }
+        if (schema.maximum !== undefined && value > schema.maximum) {
+            return invalid(path, `greater than ${schema.maximum}`);
+        }
+    }
+    if (Array.isArray(value)) {
+        if (schema.maxItems !== undefined && value.length > schema.maxItems) {
+            return invalid(path, `more than ${schema.maxItems} items`);
+        }
+        if (schema.items) {
+            for (let index = 0; index < value.length; index += 1) {
+                const error = validateSchema(value[index], schema.items, `${path}[${index}]`);
+                if (error) {
+                    return error;
+                }
+            }
+        }
+    }
+    if (isObject(value)) {
+        if (schema.required) {
+            for (const field of schema.required) {
+                if (!Object.prototype.hasOwnProperty.call(value, field)) {
+                    return invalid(joinPath(path, field), "required field missing");
+                }
+            }
+        }
+        const properties = schema.properties ?? {};
+        if (schema.properties) {
+            for (const [field, propertySchema] of Object.entries(schema.properties)) {
+                if (Object.prototype.hasOwnProperty.call(value, field)) {
+                    const error = validateSchema(
+                        value[field],
+                        propertySchema,
+                        joinPath(path, field),
+                    );
+                    if (error) {
+                        return error;
+                    }
+                }
+            }
+        }
+        if (schema.additionalProperties === false) {
+            for (const field of Object.keys(value)) {
+                if (!Object.prototype.hasOwnProperty.call(properties, field)) {
+                    return invalid(joinPath(path, field), "unknown field");
+                }
+            }
+        }
+    }
+    return null;
+}
+
+const UUID_SCHEMA = { type: "string", format: "uuid" };
+
+const ENVELOPE_SCHEMA = {
+    type: "object",
+    additionalProperties: false,
+    required: ["source", "protocol", "type", "requestId", "sessionId", "payload"],
+    properties: {
+        source: { type: "string", enum: ["ba-sdk", "ba-host"] },
+        protocol: { const: PROTOCOL },
+        type: { type: "string", minLength: 1, maxLength: MAX_TYPE_LENGTH },
+        requestId: UUID_SCHEMA,
+        sessionId: UUID_SCHEMA,
+        payload: { type: "object" },
+    },
+};
+
+const EVENT_LOG_SCHEMA = {
+    type: "object",
+    additionalProperties: false,
+    required: ["v", "seed", "events"],
+    properties: {
+        v: { const: 1 },
+        seed: { type: "string", minLength: 1, maxLength: MAX_SEED_LENGTH },
+        events: {
+            type: "array",
+            maxItems: MAX_EVENT_COUNT,
+            items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["t", "k", "d"],
+                properties: {
+                    t: { type: "integer", minimum: 0 },
+                    k: { type: "string", minLength: 1, maxLength: MAX_EVENT_KIND_LENGTH },
+                    d: { type: "object" },
+                },
+            },
+        },
+    },
+};
+
+/* Explicit per-message payload schemas for the game -> host direction.
+ * They mirror schemas/messages/*.json; ba:leaderboard still enforces the
+ * SDK API contract limit ∈ {10, 100} (BA-SDK-1.1 §2/§7) rather than the
+ * wider 1..100 range in the draft JSON schema.
+ */
+export const SDK_MESSAGE_SCHEMAS = Object.freeze({
+    "ba:hello": Object.freeze({ type: "object", additionalProperties: true }),
+    "ba:submit": Object.freeze({
+        type: "object",
+        additionalProperties: true,
+        required: ["value", "durationMs", "eventLog", "seed"],
+        properties: {
+            value: { type: "number" },
+            durationMs: { type: "integer", minimum: 0 },
+            eventLog: EVENT_LOG_SCHEMA,
+            seed: { type: "string" },
+            clientMeta: { type: "object" },
+        },
+    }),
+    "ba:leaderboard": Object.freeze({
+        type: "object",
+        additionalProperties: true,
+        properties: {
+            limit: { type: "integer", enum: [10, 100] },
+            bestOnly: { type: "boolean" },
+        },
+    }),
+    "ba:storage": Object.freeze({
+        type: "object",
+        additionalProperties: false,
+        required: ["op", "key"],
+        properties: {
+            op: { type: "string", enum: ["get", "set", "remove"] },
+            key: { type: "string", minLength: 1, maxLength: MAX_STORAGE_KEY_LENGTH },
+            value: {},
+        },
+    }),
+    "ba:newSession": Object.freeze({ type: "object", additionalProperties: false }),
+    "ba:exit": Object.freeze({ type: "object", additionalProperties: false }),
+    "ba:error": Object.freeze({
+        type: "object",
+        additionalProperties: true,
+        required: ["code"],
+        properties: {
+            code: { type: "string", minLength: 1, maxLength: MAX_ERROR_CODE_LENGTH },
+            message: { type: "string" },
+        },
+    }),
+});
 
 function payloadBytes(payload) {
     try {
@@ -59,45 +271,36 @@ function payloadBytes(payload) {
     }
 }
 
+export function validateEnvelope(value, expectedSource = "ba-sdk") {
+    const error = validateSchema(value, ENVELOPE_SCHEMA);
+    if (error) {
+        return error;
+    }
+    if (expectedSource && value.source !== expectedSource) {
+        return invalid("source", `expected source ${expectedSource}`);
+    }
+    if (!Object.prototype.hasOwnProperty.call(SDK_MESSAGE_SCHEMAS, value.type)) {
+        return invalid("type", "unsupported message type");
+    }
+    return null;
+}
+
 export function validatePayload(type, payload) {
+    if (!Object.prototype.hasOwnProperty.call(SDK_MESSAGE_SCHEMAS, type)) {
+        return invalid("type", "unsupported message type");
+    }
     if (payloadBytes(payload) > (type === "ba:submit" ? MAX_SUBMIT_BYTES : MAX_MESSAGE_BYTES)) {
-        return "E_PAYLOAD_TOO_LARGE";
+        return tooLarge("payload");
     }
-    if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
-        return "E_MESSAGE_INVALID";
+    return validateSchema(payload, SDK_MESSAGE_SCHEMAS[type], "payload");
+}
+
+export function validateMessage(value, expectedSource = "ba-sdk") {
+    const envelopeError = validateEnvelope(value, expectedSource);
+    if (envelopeError) {
+        return envelopeError;
     }
-    switch (type) {
-        case "ba:submit":
-            if (!Number.isSafeInteger(payload.value) ||
-                !Number.isSafeInteger(payload.durationMs) || payload.durationMs < 0 ||
-                payload.eventLog === null || Array.isArray(payload.eventLog) ||
-                typeof payload.eventLog !== "object" || typeof payload.seed !== "string") {
-                return "E_MESSAGE_INVALID";
-            }
-            return null;
-        case "ba:storage":
-            if (!["get", "set", "remove"].includes(payload.op) ||
-                typeof payload.key !== "string" ||
-                payload.key.length < 1 || payload.key.length > 128) {
-                return "E_MESSAGE_INVALID";
-            }
-            return null;
-        case "ba:leaderboard":
-            if (payload.limit !== undefined && payload.limit !== 10 && payload.limit !== 100) {
-                return "E_MESSAGE_INVALID";
-            }
-            if (payload.bestOnly !== undefined && typeof payload.bestOnly !== "boolean") {
-                return "E_MESSAGE_INVALID";
-            }
-            return null;
-        case "ba:hello":
-        case "ba:newSession":
-        case "ba:exit":
-        case "ba:error":
-            return null;
-        default:
-            return "E_MESSAGE_INVALID";
-    }
+    return validatePayload(value.type, value.payload);
 }
 
 export class HostBridge {
@@ -175,8 +378,23 @@ export class HostBridge {
         this.send("ba:resume", null, payload);
     }
 
-    sendError(requestId, code, message = "") {
-        this.send("ba:error", requestId, { code, message });
+    sendError(requestId, code, message = "", field = null) {
+        const payload = { code, message };
+        if (typeof field === "string" && field && field.length <= 64) {
+            payload.field = field;
+        }
+        this.send("ba:error", requestId, payload);
+    }
+
+    checkRate(requestId) {
+        const now = Date.now();
+        this.messageTimes = this.messageTimes.filter((time) => now - time < 60000);
+        if (this.messageTimes.length >= MAX_MESSAGES_PER_MINUTE) {
+            this.sendError(requestId, "E_RATE_LIMIT", "Too many messages");
+            return false;
+        }
+        this.messageTimes.push(now);
+        return true;
     }
 
     onWindowMessage(event) {
@@ -187,22 +405,27 @@ export class HostBridge {
             return;
         }
         const data = event.data;
-        if (!envelope(data) || !SDK_TYPES.has(data.type)) {
+        const requestId = isUuid(data?.requestId) ? data.requestId : null;
+        if (!this.checkRate(requestId)) {
+            return;
+        }
+        const schemaError = validateMessage(data, "ba-sdk");
+        if (schemaError) {
+            this.sendError(requestId, schemaError.code, schemaError.reason, schemaError.field);
             return;
         }
         if (data.sessionId !== this.sessionId) {
+            this.sendError(
+                data.requestId,
+                "E_MESSAGE_INVALID",
+                "sessionId does not match the active session",
+                "sessionId",
+            );
             return;
         }
         if (this.seen.has(data.requestId)) {
             return;
         }
-        const now = Date.now();
-        this.messageTimes = this.messageTimes.filter((time) => now - time < 60000);
-        if (this.messageTimes.length >= MAX_MESSAGES_PER_MINUTE) {
-            this.sendError(data.requestId, "E_RATE_LIMIT", "Too many messages");
-            return;
-        }
-        this.messageTimes.push(now);
         this.seen.add(data.requestId);
         this.seenOrder.push(data.requestId);
         if (this.seenOrder.length > SEEN_LIMIT) {
@@ -220,11 +443,6 @@ export class HostBridge {
             return;
         } else if (this.state === "exited") {
             this.sendError(data.requestId, "E_SESSION_FINISHED", "Session is closed");
-            return;
-        }
-        const error = validatePayload(data.type, data.payload);
-        if (error) {
-            this.sendError(data.requestId, error, "Invalid message");
             return;
         }
         this.onMessage?.(data.type, data.payload, data.requestId);
