@@ -8,6 +8,7 @@ import subprocess
 import time
 import uuid
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +44,11 @@ class RunResult:
     evidence_path: str
     duration_seconds: float
     total_cost_usd: float | None = None
+    invocation_id: str = ""
+    started_at: str | None = None
+    finished_at: str | None = None
+    request_count: int | None = None
+    num_turns: int | None = None
 
     @property
     def usage(self) -> Usage:
@@ -108,6 +114,8 @@ class ClaudeRunner:
             prompt,
         ]
         started = time.monotonic()
+        started_at = datetime.now(UTC).isoformat()
+        invocation_id = str(uuid.uuid4())
         child_env = build_child_env()
         try:
             completed = subprocess.run(  # noqa: S603 - fixed argv, no shell
@@ -122,6 +130,7 @@ class ClaudeRunner:
         except subprocess.TimeoutExpired as exc:
             raise RunnerError(f"{role} timed out after {timeout or self.timeout}s") from exc
         duration = time.monotonic() - started
+        finished_at = datetime.now(UTC).isoformat()
         payload = self._parse_stdout(completed.stdout)
         model_usage = payload.get("modelUsage") or {}
         session_id = payload.get("session_id")
@@ -130,6 +139,12 @@ class ClaudeRunner:
         if not isinstance(total_cost, (int, float)) or isinstance(total_cost, bool):
             total_cost = None
         usage = Usage.from_model_usage(model_usage, total_cost_usd=total_cost)
+        request_count = payload.get("request_count")
+        if not isinstance(request_count, int) or isinstance(request_count, bool):
+            request_count = None
+        num_turns = payload.get("num_turns")
+        if not isinstance(num_turns, int) or isinstance(num_turns, bool):
+            num_turns = None
         evidence = {
             "role": role,
             "requested_model": model,
@@ -138,6 +153,11 @@ class ClaudeRunner:
             "allowed_tools": allowed_tools,
             "returncode": completed.returncode,
             "session_id": session_id,
+            "invocation_id": invocation_id,
+            "started_at": started_at,
+            "finished_at": finished_at,
+            "request_count": request_count,
+            "num_turns": num_turns,
             "modelUsage": model_usage,
             "usage": usage.to_dict(),
             "total_cost_usd": total_cost,
@@ -162,6 +182,11 @@ class ClaudeRunner:
             evidence_path=evidence_path,
             duration_seconds=duration,
             total_cost_usd=total_cost,
+            invocation_id=invocation_id,
+            started_at=started_at,
+            finished_at=finished_at,
+            request_count=request_count,
+            num_turns=num_turns,
         )
 
     @staticmethod

@@ -984,6 +984,23 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
   production — владелец; R-036 Phase 2 не менялся; R-043/44/45 residual.
 - **Отчёт:** `docs/foundation/APPF-RUNTIME-REVIEW-001_REPORT.md`.
 
+### BA-TOKEN-OBSERVABILITY-001 — metadata-only учёт invocations
+
+- **ID:** BA-TOKEN-OBSERVABILITY-001.
+- **Результат:** `autonomy/observability.py` (InvocationMetrics,
+  record/read/summarize), `RunResult` optional invocation/timestamps/
+  request_count/num_turns, runner evidence fields, orchestrator `_account`
+  append-only `invocations.jsonl`; 8 unit tests.
+- **Проверки:** observability 8 passed; autonomy/devcontrol/vps subset
+  **100 passed, 1 skipped**; ruff/format/mypy clean; full suite exit 0.
+- **Review:** code-reviewer **ACCEPT**; minor fixes (corrupt marker,
+  first-wins dedup, request_count_known, zero cost); `propose` concurrent
+  append documented as residual.
+- **Статус:** **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT**; execution
+  behavior не менялся. `request_count` exact provider value недоступен из
+  CLI; provider fields reserved.
+- **Отчёт:** `docs/audits/BA_TOKEN_OBSERVABILITY_IMPLEMENTATION_REPORT.md`.
+
 ## 4. Источники и пробелы
 
 - `PROJECT_STATUS.md`, `OWNER_DECISIONS.md`, `AUDIT_REGISTER.md`,

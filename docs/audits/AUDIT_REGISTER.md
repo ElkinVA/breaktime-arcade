@@ -553,6 +553,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Остаток | race/idempotency tests, server cross-check, R-036 Phase 2, R-043/44/45 |
 | Источник | `docs/foundation/APPF-RUNTIME-REVIEW-001_REPORT.md` |
 
+## BA-TOKEN-OBSERVABILITY-001 — metadata-only учёт invocations
+
+| Поле | Значение |
+|---|---|
+| Тип | Техническая instrumentation; execution behavior не менялся |
+| Результат | `autonomy/observability.py`; `RunResult` optional fields; `invocations.jsonl`; task/attempt/agent/role/session/invocation, Claude-reported cache/cost, optional num_turns |
+| Проверки | observability 8 passed; autonomy/devcontrol/vps subset 100 passed/1 skipped; full suite exit 0; ruff/format/mypy clean |
+| Статус | **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT** |
+| Review | code-reviewer ACCEPT; minor fixes applied; provider request_count/cache unavailable, documented |
+| Источник | `docs/audits/BA_TOKEN_OBSERVABILITY_IMPLEMENTATION_REPORT.md` |
+
 ## Общие ограничения
 
 - Аудит не закрывает BA-FIX-001 и не принимает BA-STAGE-1.1.

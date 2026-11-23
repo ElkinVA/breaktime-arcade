@@ -33,6 +33,7 @@ from autonomy.notifier import (
     NotificationEvent,
     Notifier,
 )
+from autonomy.observability import InvocationMetrics, record_invocation
 from autonomy.runner import ClaudeRunner, RunResult
 from autonomy.state import (
     BLOCKED,
@@ -413,11 +414,28 @@ class Orchestrator:
         task_id: str | None,
         result: RunResult,
         tracker: BudgetTracker,
+        *,
+        attempt_id: str | None = None,
+        retry_count: int = 0,
     ) -> None:
-        """Persist actual model usage and add it to the run budget."""
+        """Persist actual model usage and add it to the run budget.
+
+        The metadata-only invocation record is an additional side effect; it
+        never changes the task result or the model invocation.
+        """
         usage = result.usage
         self.store.record_usage(task_id, usage.to_dict())
         tracker.add(usage)
+        with contextlib.suppress(Exception):
+            record_invocation(
+                self.store.root,
+                InvocationMetrics.from_run_result(
+                    result,
+                    task_id=task_id,
+                    attempt_id=attempt_id,
+                    retry_count=retry_count,
+                ),
+            )
 
     @staticmethod
     def _guard(tracker: BudgetTracker) -> None:
@@ -657,7 +675,13 @@ class Orchestrator:
             self.store.set_worktree(task.id, str(worktree), base)
             developer = self.runner.developer(_developer_prompt(task), cwd=worktree)
             _validate_self_check(developer)
-            self._account(task.id, developer, tracker)
+            self._account(
+                task.id,
+                developer,
+                tracker,
+                attempt_id=task.run_id,
+                retry_count=max(0, task.attempts - 1),
+            )
             self._guard(tracker)
             self.store.transition(
                 task.id,
@@ -667,7 +691,13 @@ class Orchestrator:
                 evidence=developer.evidence_path,
             )
             qa = self.runner.qa(_qa_prompt(task, developer), cwd=worktree)
-            self._account(task.id, qa, tracker)
+            self._account(
+                task.id,
+                qa,
+                tracker,
+                attempt_id=task.run_id,
+                retry_count=max(0, task.attempts - 1),
+            )
             self._guard(tracker)
             if not _qa_passed(qa):
                 self.store.record_qa_failure(task.id)
@@ -695,7 +725,13 @@ class Orchestrator:
                 ),
                 cwd=worktree,
             )
-            self._account(task.id, review, tracker)
+            self._account(
+                task.id,
+                review,
+                tracker,
+                attempt_id=task.run_id,
+                retry_count=max(0, task.attempts - 1),
+            )
             verdict = _parse_json(review.result)
             if verdict.get("verdict") != "accept":
                 _remove_worktree(worktree)
@@ -766,7 +802,13 @@ class Orchestrator:
         try:
             developer = self.runner.developer(_developer_prompt(task))
             _validate_self_check(developer)
-            self._account(task.id, developer, tracker)
+            self._account(
+                task.id,
+                developer,
+                tracker,
+                attempt_id=task.run_id,
+                retry_count=max(0, task.attempts - 1),
+            )
             self._guard(tracker)
             self.store.transition(
                 task.id,
@@ -776,7 +818,13 @@ class Orchestrator:
                 evidence=developer.evidence_path,
             )
             qa = self.runner.qa(_qa_prompt(task, developer))
-            self._account(task.id, qa, tracker)
+            self._account(
+                task.id,
+                qa,
+                tracker,
+                attempt_id=task.run_id,
+                retry_count=max(0, task.attempts - 1),
+            )
             self._guard(tracker)
             if not _qa_passed(qa):
                 self.store.record_qa_failure(task.id)
@@ -806,7 +854,13 @@ class Orchestrator:
                     task, developer, qa, _git_diff(files, base=base, candidate=candidate, root=ROOT)
                 )
             )
-            self._account(task.id, review, tracker)
+            self._account(
+                task.id,
+                review,
+                tracker,
+                attempt_id=task.run_id,
+                retry_count=max(0, task.attempts - 1),
+            )
             verdict = _parse_json(review.result)
             if verdict.get("verdict") != "accept":
                 if staged:

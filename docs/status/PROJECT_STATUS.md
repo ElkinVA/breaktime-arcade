@@ -119,6 +119,19 @@ retry для activate/close. Проверки: targeted 79 passed, `npm test:js`
 R-043/R-044/R-045 — residual; live E2E/staging/prod — NOT TESTED.
 Отчёт — `docs/foundation/APPF-RUNTIME-REVIEW-001_REPORT.md`.
 
+## 0.6. Token observability — 2026-11-23
+
+`BA-TOKEN-OBSERVABILITY-001` — **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT**.
+Добавлен metadata-only учёт role invocations: task/attempt/agent/role/
+session/invocation, model/reported models, Claude-reported input/output/
+cache/cost, optional `num_turns`; `request_count` остаётся `None`, если CLI
+не отдаёт точное значение. Запись — `.autonomy/invocations.jsonl`, без
+prompt/response/секретов. Execution behavior, модели, бюджет и число
+агентов не менялись. 8 observability tests, autonomy subset 100/1 skipped,
+full suite exit 0; ruff/mypy clean. Provider request/cache/cost invoice пока
+не коррелируется с task_id — residual. Отчёт —
+`docs/audits/BA_TOKEN_OBSERVABILITY_IMPLEMENTATION_REPORT.md`.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

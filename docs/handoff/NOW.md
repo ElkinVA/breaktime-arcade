@@ -338,6 +338,17 @@ host E2E (13 сценариев, после локальной настройк�
   в `docs/tasks/AUTONOMY-CONTINUATION-001_PLAN.md`; статус — **BLOCKED,
   требуется решение владельца**, параллельная система не создавалась.
 
+### Token observability 2026-11-23
+
+`BA-TOKEN-OBSERVABILITY-001` — **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT**.
+`autonomy/observability.py` пишет metadata-only `invocations.jsonl`:
+task/attempt/agent/role/session/invocation, model/reported models,
+Claude-reported input/output/cache/cost, optional `num_turns`; exact
+`request_count`/provider cache/cost недоступны из CLI и остаются None.
+8 tests; autonomy subset 100/1; full suite exit 0; execution behavior,
+модели, бюджет и число агентов не менялись. Отчёт —
+`docs/audits/BA_TOKEN_OBSERVABILITY_IMPLEMENTATION_REPORT.md`.
+
 ## Модели
 
 - План/ревью: `architect`, `code-reviewer`, `security-auditor` /
