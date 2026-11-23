@@ -291,11 +291,11 @@ host E2E (13 сценариев, после локальной настройк�
 
 ## Git
 
-- `ba`: `main`; HEAD `678fcbe` (= `origin/main` на момент проверки).
-  ZIP preflight — `fa8a1a7`, extract — `4c44009`; **BA-ZIP-WORKER-001
-  в рабочем дереве не закоммичен** (изменения: worker.py, tasks.py,
-  unpack.py, settings, compose, Dockerfile, entrypoint, tests, docs).
-  Origin — приватный `git@github.com:ElkinVA/breaktime-arcade.git`.
+- `ba`: `main`; P5 acceptance — `42296fa`, docs-синхронизация счётчиков —
+  `db80896`; актуальный HEAD — `git log -1`. ZIP preflight — `fa8a1a7`,
+  extract — `4c44009`, worker — `8cc4747`, hardening — `d36e4c6`;
+  рабочее дерево чистое. Origin — приватный
+  `git@github.com:ElkinVA/breaktime-arcade.git`.
 - `ai-dev`: `main`, HEAD `d09a3f1`, tag `ai-dev-autonomy-003`.
 - Backup: `~/backups/20261120-pre-autonomy/`.
 
