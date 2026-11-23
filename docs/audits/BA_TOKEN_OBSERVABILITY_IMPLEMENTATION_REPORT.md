@@ -88,6 +88,16 @@ summary = summarize(records, accepted_task_ids={"ARCADE-..."})
   отдельное решение.
 - Interactive/CLI sessions не попадают в `execution_channel=orchestrator`;
   их расход остаётся в provider billing/транскриптах.
+- `requests_per_accepted_task` точно не вычисляется: `request_count` в CLI
+  JSON отсутствует, а `num_turns` не подменяет его. Допустима только
+  прокси-метрика «model round-trips per accepted task» с явной пометкой.
+- `cache_hit_ratio` (`hit/(hit+miss)`) и `first_pass_rate` (accepted tasks с
+  `retry_count=0`) выводятся из записей, но отдельного CLI-отчёта и порога
+  «аномальной сессии» нет: порог владельцем не задан, автоматическая
+  эвристика не вводилась.
+- Разделение interactive vs orchestrator возможно только если
+  транскрипты/провайдерский billing обрабатываются отдельным источником;
+  в `.autonomy/invocations.jsonl` interactive-сессий нет.
 
 ## 7. Независимый review
 
