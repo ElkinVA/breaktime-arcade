@@ -6,6 +6,7 @@ from typing import Any, cast
 
 from django import forms
 from django.core.files.uploadedfile import UploadedFile
+from django.db.models import QuerySet
 
 from apps.i18n.models import Language, TranslationEntry
 
@@ -176,10 +177,154 @@ class ContentPageTranslationForm(forms.Form):
         language.queryset = Language.objects.filter(is_active=True).order_by("sort_order", "code")
 
 
+def _active_language_queryset() -> QuerySet[Language]:
+    return Language.objects.filter(is_active=True).order_by("sort_order", "code")
+
+
+def _language_field(*, hidden: bool) -> forms.ModelChoiceField:  # type: ignore[type-arg]
+    widget = forms.HiddenInput() if hidden else forms.Select(attrs={"class": _INPUT_CLASS})
+    return forms.ModelChoiceField(
+        queryset=_active_language_queryset(),
+        label="Язык",
+        widget=widget,
+    )
+
+
+class GenreForm(forms.Form):
+    """Language-neutral genre fields (§2.16.2, §2.22)."""
+
+    code = forms.CharField(
+        max_length=32,
+        label="Код",
+        widget=forms.TextInput(attrs={"class": _INPUT_CLASS, "data-testid": "crm-genre-code"}),
+    )
+    sort_order = forms.IntegerField(
+        min_value=0,
+        max_value=32767,
+        required=False,
+        initial=0,
+        label="Порядок",
+        widget=forms.NumberInput(attrs={"class": _INPUT_CLASS}),
+    )
+    image = forms.ImageField(
+        required=False,
+        label="Изображение",
+        widget=forms.ClearableFileInput(attrs={"class": "block w-full text-sm"}),
+    )
+    clear_image = forms.BooleanField(
+        required=False,
+        label="Удалить текущее изображение",
+    )
+
+
+class TagForm(forms.Form):
+    """Language-neutral tag fields (§2.16.2, §2.22)."""
+
+    code = forms.CharField(
+        max_length=64,
+        label="Код",
+        widget=forms.TextInput(attrs={"class": _INPUT_CLASS, "data-testid": "crm-tag-code"}),
+    )
+    needs_translation = forms.BooleanField(
+        required=False,
+        label="Требует перевода",
+        widget=forms.CheckboxInput(attrs={"data-testid": "crm-tag-needs-translation"}),
+    )
+
+
+def _validate_translation_pair(form: forms.Form, cleaned: dict[str, Any]) -> None:
+    name = str(cleaned.get("name") or "").strip()
+    slug = str(cleaned.get("slug") or "").strip()
+    if not name and not slug:
+        return
+    if not name:
+        form.add_error("name", "Укажите название перевода.")
+    if not slug:
+        form.add_error("slug", "Укажите slug перевода.")
+
+
+class GenreTranslationForm(forms.Form):
+    """One localized genre translation; all fields optional as a group."""
+
+    language = _language_field(hidden=True)
+    name = forms.CharField(
+        max_length=64,
+        required=False,
+        label="Название",
+        widget=forms.TextInput(attrs={"class": _INPUT_CLASS}),
+    )
+    slug = forms.CharField(
+        max_length=64,
+        required=False,
+        label="Slug",
+        widget=forms.TextInput(attrs={"class": _INPUT_CLASS}),
+    )
+    description = forms.CharField(
+        max_length=500,
+        required=False,
+        label="Описание",
+        widget=forms.Textarea(attrs={"rows": 3, "class": _INPUT_CLASS}),
+    )
+    seo_title = forms.CharField(
+        max_length=60,
+        required=False,
+        label="SEO Title",
+        widget=forms.TextInput(attrs={"class": _INPUT_CLASS}),
+    )
+    seo_description = forms.CharField(
+        max_length=160,
+        required=False,
+        label="SEO Description",
+        widget=forms.Textarea(attrs={"rows": 2, "class": _INPUT_CLASS}),
+    )
+
+    def __init__(self, *args: Any, show_language: bool = False, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        if show_language:
+            self.fields["language"] = _language_field(hidden=False)
+
+    def clean(self) -> dict[str, Any]:
+        cleaned = super().clean() or {}
+        _validate_translation_pair(self, cleaned)
+        return cleaned
+
+
+class TagTranslationForm(forms.Form):
+    """One localized tag translation; all fields optional as a group."""
+
+    language = _language_field(hidden=True)
+    name = forms.CharField(
+        max_length=64,
+        required=False,
+        label="Название",
+        widget=forms.TextInput(attrs={"class": _INPUT_CLASS}),
+    )
+    slug = forms.CharField(
+        max_length=64,
+        required=False,
+        label="Slug",
+        widget=forms.TextInput(attrs={"class": _INPUT_CLASS}),
+    )
+
+    def __init__(self, *args: Any, show_language: bool = False, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        if show_language:
+            self.fields["language"] = _language_field(hidden=False)
+
+    def clean(self) -> dict[str, Any]:
+        cleaned = super().clean() or {}
+        _validate_translation_pair(self, cleaned)
+        return cleaned
+
+
 __all__ = [
     "ContentPageForm",
     "ContentPageTranslationForm",
+    "GenreForm",
+    "GenreTranslationForm",
     "StepUpForm",
+    "TagForm",
+    "TagTranslationForm",
     "TranslationEntryCreateForm",
     "TranslationEntryEditForm",
     "ZipUploadForm",

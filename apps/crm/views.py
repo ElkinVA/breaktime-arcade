@@ -11,6 +11,7 @@ CRM нет; неавторизованные и не-персонал напра
 
 from __future__ import annotations
 
+from typing import Any
 from urllib.parse import urlencode
 from uuid import UUID
 
@@ -55,7 +56,11 @@ from apps.crm.decorators import role_required, staff_required
 from apps.crm.forms import (
     ContentPageForm,
     ContentPageTranslationForm,
+    GenreForm,
+    GenreTranslationForm,
     StepUpForm,
+    TagForm,
+    TagTranslationForm,
     TranslationEntryCreateForm,
     TranslationEntryEditForm,
     ZipUploadForm,
@@ -96,6 +101,15 @@ from apps.crm.services.step_up import (
     confirm_step_up,
     is_step_up_valid,
     mark_step_up,
+)
+from apps.crm.services.taxonomy import (
+    TranslationPayload,
+    create_genre,
+    create_tag,
+    delete_genre,
+    delete_tag,
+    update_genre,
+    update_tag,
 )
 from apps.crm.services.users import (
     MIN_SEARCH_LENGTH,
@@ -1264,6 +1278,356 @@ def content_page(request: HttpRequest, page_id: UUID) -> TemplateResponse | Http
     )
 
 
+# --- Жанры и теги (§2.16.2) ---------------------------------------------
+
+
+def _parse_uuid(raw: object) -> UUID | None:
+    try:
+        return UUID(str(raw))
+    except ValueError:
+        return None
+
+
+def _requested_language(request: HttpRequest) -> Language | None:
+    """Resolve a language from a posted PK or a GET ``?language=<code>``."""
+    raw = str(request.POST.get("language") or request.GET.get("language") or "").strip()
+    if not raw:
+        return None
+    pk = _parse_uuid(raw)
+    if pk is not None:
+        return Language.objects.filter(pk=pk).first()
+    return Language.objects.filter(code=raw, is_active=True).first()
+
+
+def _translation_payload(
+    cleaned: dict[str, Any] | None,
+) -> TranslationPayload | None:
+    """Build a translation payload; blank pairs mean "do not touch"."""
+    if not cleaned:
+        return None
+    language = cleaned.get("language")
+    name = str(cleaned.get("name") or "").strip()
+    slug = str(cleaned.get("slug") or "").strip()
+    if not isinstance(language, Language) or not name or not slug:
+        return None
+    return TranslationPayload(
+        language=language,
+        name=name,
+        slug=slug,
+        description=str(cleaned.get("description") or ""),
+        seo_title=str(cleaned.get("seo_title") or ""),
+        seo_description=str(cleaned.get("seo_description") or ""),
+    )
+
+
+@role_required(CONTENT_MANAGE)
+@require_GET
+def genres_list(request: HttpRequest) -> TemplateResponse:
+    """Genres ordered by their CRM-defined ``sort_order``."""
+    genres = Genre.objects.prefetch_related("translations__language").order_by("sort_order", "code")
+    return TemplateResponse(
+        request,
+        "crm/genres/list.html",
+        {"title": "Жанры · CRM", "genres": genres},
+    )
+
+
+@role_required(CONTENT_MANAGE)
+@require_http_methods(["GET", "POST"])
+def genre_new(request: HttpRequest) -> TemplateResponse | HttpResponseRedirect:
+    languages = _active_languages()
+    default_language = languages[0] if languages else None
+    form = GenreForm(
+        request.POST if request.method == "POST" else None,
+        request.FILES if request.method == "POST" else None,
+    )
+    translation_form = GenreTranslationForm(
+        request.POST if request.method == "POST" else None,
+        show_language=True,
+        initial={"language": default_language.id if default_language else None},
+    )
+    if request.method == "POST" and form.is_valid() and translation_form.is_valid():
+        result = create_genre(
+            code=str(form.cleaned_data["code"]),
+            sort_order=int(form.cleaned_data.get("sort_order") or 0),
+            image=form.cleaned_data.get("image"),
+            translation=_translation_payload(translation_form.cleaned_data),
+            actor=_staff_user(request),
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        if result.ok and isinstance(result.instance, Genre):
+            messages.success(request, "Жанр создан.")
+            return redirect("crm:genre_edit", genre_id=result.instance.id)
+        messages.error(request, result.message)
+    return TemplateResponse(
+        request,
+        "crm/genres/form.html",
+        {
+            "title": "Новый жанр · CRM",
+            "genre": None,
+            "form": form,
+            "translation_form": translation_form,
+            "languages": languages,
+            "selected_code": default_language.code if default_language else "",
+            "translations": [],
+            "is_new": True,
+        },
+    )
+
+
+@role_required(CONTENT_MANAGE)
+@require_http_methods(["GET", "POST"])
+def genre_edit(request: HttpRequest, genre_id: UUID) -> TemplateResponse | HttpResponseRedirect:
+    genre = get_object_or_404(Genre, pk=genre_id)
+    languages = _active_languages()
+    requested = _requested_language(request)
+    translation = None
+    if requested is not None:
+        translation = (
+            genre.translations.select_related("language").filter(language=requested).first()
+        )
+    if translation is None and requested is None:
+        translation = (
+            genre.translations.select_related("language")
+            .order_by("language__sort_order", "language__code")
+            .first()
+        )
+        if translation is not None:
+            requested = translation.language
+    if requested is None and languages:
+        requested = languages[0]
+
+    form = GenreForm(
+        request.POST if request.method == "POST" else None,
+        request.FILES if request.method == "POST" else None,
+        initial=None
+        if request.method == "POST"
+        else {
+            "code": genre.code,
+            "sort_order": genre.sort_order,
+        },
+    )
+    translation_form = GenreTranslationForm(
+        request.POST if request.method == "POST" else None,
+        initial=None
+        if request.method == "POST"
+        else {
+            "language": requested.id if requested else None,
+            "name": translation.name if translation else "",
+            "slug": translation.slug if translation else "",
+            "description": translation.description if translation else "",
+            "seo_title": translation.seo_title if translation else "",
+            "seo_description": translation.seo_description if translation else "",
+        },
+    )
+    if request.method == "POST" and form.is_valid() and translation_form.is_valid():
+        result = update_genre(
+            genre,
+            code=str(form.cleaned_data["code"]),
+            sort_order=int(form.cleaned_data.get("sort_order") or 0),
+            image=form.cleaned_data.get("image"),
+            clear_image=bool(form.cleaned_data.get("clear_image")),
+            translation=_translation_payload(translation_form.cleaned_data),
+            actor=_staff_user(request),
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        if result.ok:
+            messages.success(request, "Жанр сохранён.")
+            return redirect("crm:genre_edit", genre_id=genre.id)
+        messages.error(request, result.message)
+
+    return TemplateResponse(
+        request,
+        "crm/genres/form.html",
+        {
+            "title": f"{genre.code} · CRM",
+            "genre": genre,
+            "form": form,
+            "translation_form": translation_form,
+            "languages": languages,
+            "selected_code": requested.code if requested else "",
+            "translations": list(
+                genre.translations.select_related("language").order_by(
+                    "language__sort_order", "language__code"
+                )
+            ),
+            "is_new": False,
+        },
+    )
+
+
+@role_required(CONTENT_MANAGE)
+@require_POST
+def genre_delete(request: HttpRequest, genre_id: UUID) -> HttpResponseRedirect:
+    genre = get_object_or_404(Genre, pk=genre_id)
+    result = delete_genre(
+        genre,
+        actor=_staff_user(request),
+        ip=request.META.get("REMOTE_ADDR"),
+    )
+    if result.ok:
+        messages.success(request, "Жанр удалён.")
+        return redirect("crm:genres")
+    messages.error(request, result.message)
+    return redirect("crm:genre_edit", genre_id=genre.id)
+
+
+@role_required(CONTENT_MANAGE)
+@require_GET
+def tags_list(request: HttpRequest) -> TemplateResponse:
+    """Tags with an optional «requires translation» queue filter."""
+    queue = str(request.GET.get("queue") or "").strip()
+    needs_flag = str(
+        request.GET.get("needs_translation") or request.GET.get("translation_queue") or ""
+    ).lower()
+    show_queue = queue in {"requires-translation", "requires_translation", "1"} or needs_flag in {
+        "1",
+        "true",
+        "yes",
+    }
+    tags = Tag.objects.prefetch_related("translations__language").order_by("code")
+    if show_queue:
+        tags = tags.filter(needs_translation=True)
+    return TemplateResponse(
+        request,
+        "crm/tags/list.html",
+        {
+            "title": "Теги · CRM",
+            "tags": tags,
+            "show_queue": show_queue,
+            "queue_count": Tag.objects.filter(needs_translation=True).count(),
+        },
+    )
+
+
+@role_required(CONTENT_MANAGE)
+@require_http_methods(["GET", "POST"])
+def tag_new(request: HttpRequest) -> TemplateResponse | HttpResponseRedirect:
+    languages = _active_languages()
+    default_language = languages[0] if languages else None
+    form = TagForm(request.POST if request.method == "POST" else None)
+    translation_form = TagTranslationForm(
+        request.POST if request.method == "POST" else None,
+        show_language=True,
+        initial={"language": default_language.id if default_language else None},
+    )
+    if request.method == "POST" and form.is_valid() and translation_form.is_valid():
+        result = create_tag(
+            code=str(form.cleaned_data["code"]),
+            needs_translation=bool(form.cleaned_data.get("needs_translation")),
+            translation=_translation_payload(translation_form.cleaned_data),
+            actor=_staff_user(request),
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        if result.ok and isinstance(result.instance, Tag):
+            messages.success(request, "Тег создан.")
+            return redirect("crm:tag_edit", tag_id=result.instance.id)
+        messages.error(request, result.message)
+    return TemplateResponse(
+        request,
+        "crm/tags/form.html",
+        {
+            "title": "Новый тег · CRM",
+            "tag": None,
+            "form": form,
+            "translation_form": translation_form,
+            "languages": languages,
+            "selected_code": default_language.code if default_language else "",
+            "translations": [],
+            "is_new": True,
+        },
+    )
+
+
+@role_required(CONTENT_MANAGE)
+@require_http_methods(["GET", "POST"])
+def tag_edit(request: HttpRequest, tag_id: UUID) -> TemplateResponse | HttpResponseRedirect:
+    tag = get_object_or_404(Tag, pk=tag_id)
+    languages = _active_languages()
+    requested = _requested_language(request)
+    translation = None
+    if requested is not None:
+        translation = tag.translations.select_related("language").filter(language=requested).first()
+    if translation is None and requested is None:
+        translation = (
+            tag.translations.select_related("language")
+            .order_by("language__sort_order", "language__code")
+            .first()
+        )
+        if translation is not None:
+            requested = translation.language
+    if requested is None and languages:
+        requested = languages[0]
+
+    form = TagForm(
+        request.POST if request.method == "POST" else None,
+        initial=None
+        if request.method == "POST"
+        else {
+            "code": tag.code,
+            "needs_translation": tag.needs_translation,
+        },
+    )
+    translation_form = TagTranslationForm(
+        request.POST if request.method == "POST" else None,
+        initial=None
+        if request.method == "POST"
+        else {
+            "language": requested.id if requested else None,
+            "name": translation.name if translation else "",
+            "slug": translation.slug if translation else "",
+        },
+    )
+    if request.method == "POST" and form.is_valid() and translation_form.is_valid():
+        result = update_tag(
+            tag,
+            code=str(form.cleaned_data["code"]),
+            needs_translation=bool(form.cleaned_data.get("needs_translation")),
+            translation=_translation_payload(translation_form.cleaned_data),
+            actor=_staff_user(request),
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+        if result.ok:
+            messages.success(request, "Тег сохранён.")
+            return redirect("crm:tag_edit", tag_id=tag.id)
+        messages.error(request, result.message)
+
+    return TemplateResponse(
+        request,
+        "crm/tags/form.html",
+        {
+            "title": f"{tag.code} · CRM",
+            "tag": tag,
+            "form": form,
+            "translation_form": translation_form,
+            "languages": languages,
+            "selected_code": requested.code if requested else "",
+            "translations": list(
+                tag.translations.select_related("language").order_by(
+                    "language__sort_order", "language__code"
+                )
+            ),
+            "is_new": False,
+        },
+    )
+
+
+@role_required(CONTENT_MANAGE)
+@require_POST
+def tag_delete(request: HttpRequest, tag_id: UUID) -> HttpResponseRedirect:
+    tag = get_object_or_404(Tag, pk=tag_id)
+    result = delete_tag(
+        tag,
+        actor=_staff_user(request),
+        ip=request.META.get("REMOTE_ADDR"),
+    )
+    if result.ok:
+        messages.success(request, "Тег удалён.")
+        return redirect("crm:tags")
+    messages.error(request, result.message)
+    return redirect("crm:tag_edit", tag_id=tag.id)
+
+
 _MODERATION_ERRORS = {
     "forbidden": "Недостаточно прав для модерации.",
     "not_found": "Запись не найдена.",
@@ -1465,6 +1829,10 @@ __all__ = [
     "game_publish",
     "game_rollback",
     "games_list",
+    "genre_delete",
+    "genre_edit",
+    "genre_new",
+    "genres_list",
     "login_view",
     "logout_view",
     "moderation_queue",
@@ -1473,6 +1841,10 @@ __all__ = [
     "seo_diagnostics",
     "staff_management",
     "step_up",
+    "tag_delete",
+    "tag_edit",
+    "tag_new",
+    "tags_list",
     "wizard_analysis",
     "wizard_card",
     "wizard_check",

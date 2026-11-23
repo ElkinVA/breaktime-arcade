@@ -41,6 +41,15 @@ urlpatterns = [
     path("content/pages/", views.content_pages, name="content_pages"),
     path("content/pages/new/", views.content_page_new, name="content_page_new"),
     path("content/pages/<uuid:page_id>/", views.content_page, name="content_page"),
+    # Жанры и теги (§2.16.2): CRUD, переводы, очередь «требует перевода».
+    path("genres/", views.genres_list, name="genres"),
+    path("genres/new/", views.genre_new, name="genre_new"),
+    path("genres/<uuid:genre_id>/", views.genre_edit, name="genre_edit"),
+    path("genres/<uuid:genre_id>/delete/", views.genre_delete, name="genre_delete"),
+    path("tags/", views.tags_list, name="tags"),
+    path("tags/new/", views.tag_new, name="tag_new"),
+    path("tags/<uuid:tag_id>/", views.tag_edit, name="tag_edit"),
+    path("tags/<uuid:tag_id>/delete/", views.tag_delete, name="tag_delete"),
     path("moderation/", views.moderation_queue, name="moderation"),
     path("moderation/complaints/", views.moderation_queue, name="complaints"),
     path(

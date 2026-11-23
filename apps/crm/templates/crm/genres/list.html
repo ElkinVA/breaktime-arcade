@@ -1,0 +1,65 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Жанры · CRM{% endblock %}
+
+{% block crm_content %}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold">Жанры</h1>
+        <p class="text-sm text-muted mt-1">Порядок вывода задаётся полем «Порядок». Удаление жанра, связанного с играми, запрещено.</p>
+    </div>
+    <div class="flex items-center gap-3">
+        <a href="{% url 'crm:content' %}" class="text-sm text-muted">Назад к контенту</a>
+        <a href="{% url 'crm:genre_new' %}"
+           class="px-4 py-2 rounded bg-accent text-bg font-semibold"
+           data-testid="crm-genre-create-link">Добавить жанр</a>
+    </div>
+</div>
+
+<div class="overflow-x-auto bg-surface rounded-card border border-text/10">
+    <table class="w-full text-sm">
+        <thead class="text-left text-muted border-b border-text/10">
+            <tr>
+                <th class="px-4 py-3">Код</th>
+                <th class="px-4 py-3">Порядок</th>
+                <th class="px-4 py-3">Переводы</th>
+                <th class="px-4 py-3">Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for genre in genres %}
+                <tr class="border-b border-text/5 last:border-0 align-top" data-testid="crm-genre-row">
+                    <td class="px-4 py-3 font-mono">{{ genre.code }}</td>
+                    <td class="px-4 py-3" data-testid="crm-genre-sort-order">{{ genre.sort_order }}</td>
+                    <td class="px-4 py-3">
+                        {% for translation in genre.translations.all %}
+                            <div data-testid="crm-genre-translation">
+                                <span class="text-muted">{{ translation.language.code }}</span>
+                                {{ translation.name }}
+                            </div>
+                        {% empty %}
+                            <span class="text-muted">Нет переводов</span>
+                        {% endfor %}
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-3">
+                            <a class="text-accent" href="{% url 'crm:genre_edit' genre.id %}"
+                               data-testid="crm-genre-edit-link">Изменить</a>
+                            <form method="post" action="{% url 'crm:genre_delete' genre.id %}"
+                                  data-testid="crm-genre-delete-form">
+                                {% csrf_token %}
+                                <button type="submit" class="text-sm text-muted hover:text-accent"
+                                        data-testid="crm-genre-delete">Удалить</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="4" class="px-4 py-6 text-muted" data-testid="crm-genres-empty">Жанры не заданы.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

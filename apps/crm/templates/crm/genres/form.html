@@ -1,0 +1,61 @@
+{% extends "crm/base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block crm_content %}
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-3xl font-display font-bold">
+            {% if is_new %}Новый жанр{% else %}{{ genre.code }}{% endif %}
+        </h1>
+        <p class="text-sm text-muted mt-1">Код, порядок, изображение и переводы по языкам.</p>
+    </div>
+    <a href="{% url 'crm:genres' %}" class="text-sm text-muted">Назад к списку</a>
+</div>
+
+{% if not is_new %}
+<div class="flex flex-wrap items-center gap-3 mb-4" data-testid="crm-genre-language-tabs">
+    <span class="text-sm text-muted">Язык перевода:</span>
+    {% for language in languages %}
+        <a href="{% url 'crm:genre_edit' genre.id %}?language={{ language.code }}"
+           class="text-sm {% if language.code == selected_code %}text-accent font-semibold{% else %}text-muted{% endif %}"
+           data-testid="crm-genre-language-{{ language.code }}">{{ language.code }}</a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data"
+      class="p-5 bg-surface rounded-card border border-text/10 max-w-3xl"
+      data-testid="crm-genre-form">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <h2 class="text-xl font-display font-bold mt-6 mb-3">Перевод</h2>
+    {{ translation_form.as_p }}
+
+    <button type="submit" class="mt-4 px-4 py-2 rounded bg-accent text-bg font-semibold"
+            data-testid="crm-genre-submit">Сохранить</button>
+</form>
+
+{% if not is_new %}
+<div class="mt-6">
+    <h2 class="text-lg font-display font-bold mb-3">Сохранённые переводы</h2>
+    <ul class="space-y-2 text-sm">
+        {% for translation in translations %}
+            <li class="flex justify-between gap-3" data-testid="crm-genre-translation-row">
+                <span class="text-muted">{{ translation.language.code }}</span>
+                <span>{{ translation.name }} · {{ translation.slug }}</span>
+            </li>
+        {% empty %}
+            <li class="text-muted" data-testid="crm-genre-translations-empty">Переводов пока нет.</li>
+        {% endfor %}
+    </ul>
+    <form method="post" action="{% url 'crm:genre_delete' genre.id %}" class="mt-6"
+          data-testid="crm-genre-delete-form">
+        {% csrf_token %}
+        <button type="submit" class="px-4 py-2 rounded border border-text/20"
+                data-testid="crm-genre-delete">Удалить жанр</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

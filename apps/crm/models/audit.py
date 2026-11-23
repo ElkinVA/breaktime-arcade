@@ -34,6 +34,12 @@ class AdminAuditLog(models.Model):
     ACTION_USER_UNBLOCKED = "user.unblocked"
     ACTION_USER_DELETION_REQUESTED = "user.deletion_requested"
     ACTION_USER_DELETED = "user.deleted"
+    ACTION_GENRE_CREATED = "genre.created"
+    ACTION_GENRE_UPDATED = "genre.updated"
+    ACTION_GENRE_DELETED = "genre.deleted"
+    ACTION_TAG_CREATED = "tag.created"
+    ACTION_TAG_UPDATED = "tag.updated"
+    ACTION_TAG_DELETED = "tag.deleted"
 
     ACTION_CHOICES = [
         (ACTION_STAFF_ROLE_CHANGED, "Смена роли сотрудника"),
@@ -52,6 +58,12 @@ class AdminAuditLog(models.Model):
         (ACTION_USER_UNBLOCKED, "Разблокировка аккаунта"),
         (ACTION_USER_DELETION_REQUESTED, "Запрос удаления аккаунта"),
         (ACTION_USER_DELETED, "Удаление аккаунта"),
+        (ACTION_GENRE_CREATED, "Создание жанра"),
+        (ACTION_GENRE_UPDATED, "Изменение жанра"),
+        (ACTION_GENRE_DELETED, "Удаление жанра"),
+        (ACTION_TAG_CREATED, "Создание тега"),
+        (ACTION_TAG_UPDATED, "Изменение тега"),
+        (ACTION_TAG_DELETED, "Удаление тега"),
     ]
 
     id = models.BigAutoField(primary_key=True)

@@ -22,7 +22,10 @@
 
 <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <div class="p-5 bg-surface rounded-card border border-text/10">
-        <h2 class="text-xl font-display font-bold mb-3">Жанры</h2>
+        <div class="flex items-center justify-between gap-3 mb-3">
+            <h2 class="text-xl font-display font-bold">Жанры</h2>
+            <a href="{% url 'crm:genres' %}" class="text-sm text-accent" data-testid="crm-content-genres-link">Управление</a>
+        </div>
         <ul class="space-y-2 text-sm">
             {% for genre in genres %}
                 <li class="flex justify-between gap-3" data-testid="crm-content-genre">
@@ -35,7 +38,10 @@
         </ul>
     </div>
     <div class="p-5 bg-surface rounded-card border border-text/10">
-        <h2 class="text-xl font-display font-bold mb-3">Теги</h2>
+        <div class="flex items-center justify-between gap-3 mb-3">
+            <h2 class="text-xl font-display font-bold">Теги</h2>
+            <a href="{% url 'crm:tags' %}" class="text-sm text-accent" data-testid="crm-content-tags-link">Управление</a>
+        </div>
         <ul class="space-y-2 text-sm">
             {% for tag in tags %}
                 <li class="flex justify-between gap-3" data-testid="crm-content-tag">
