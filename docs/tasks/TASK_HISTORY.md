@@ -1341,3 +1341,30 @@ tests: 1056 passed, 8 skipped, exit 0**.
   усечение game-фильтра.
 - **Остаток:** строки сверх 100 не пагинируются; staging/prod NOT TESTED.
 - **Commit:** `c577416` + minor-fix commit.
+
+### ARCADE-R049-SESSION-REVOCATION-001 — block revokes SDK sessions (AI HQ)
+
+- **Результат:** `a9e7d2b`; `toggle_user_active` в существующей atomic-транзакции
+  переводит `created`/`active` GameSession пользователя в `aborted`, обнуляет
+  `ticket_hash`/`ticket_expires_at`/`binding_nonce_hash`; unblock не
+  переиздаёт; audit `user.blocked`/`user.unblocked` не изменён.
+- **Проверки:** 17 targeted tests (revocation, SDK activate/heartbeat/submit
+  `E_SESSION_EXPIRED`, unblock no-op, concurrent submit race); migration guard;
+  ruff clean; mypy — только pre-existing `referencing` stub; AI HQ reviewer
+  accept; full suite **1079/1071/8**.
+- **Остаток:** inverse ordering (submit до block) намеренно сохраняет finished
+  result; узкая гонка create_session (advisory-lock) с revoke-сканом;
+  live SDK/staging NOT TESTED.
+- **Commit:** `a9e7d2b`.
+
+### ARCADE-R049-TOMBSTONE-CREDENTIALS-001 — tombstone credential cleanup (AI HQ)
+
+- **Результат:** `08ab9c7`; `anonymize_user` удаляет RecoveryCode/
+  OwnerRecoveryCode, ставит unusable password, очищает TOTP secret/confirmed/
+  counter; export payload не изменён.
+- **Проверки:** 18 targeted tests, tombstone auth failures по password/TOTP/
+  recovery; DB-001 session tombstone и CRM delete window; migration guard;
+  ruff clean; mypy — только pre-existing stub; AI HQ reviewer accept; full
+  suite **1079/1071/8**.
+- **Остаток:** live HTTP/staging NOT TESTED.
+- **Commit:** `08ab9c7`.

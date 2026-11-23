@@ -746,3 +746,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | строки сверх 100 не пагинируются (disclosed); staging/prod NOT TESTED |
 | Источник | commit `c577416` + minor-fix commit; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-R049-SESSION-REVOCATION-001 / ARCADE-R049-TOMBSTONE-CREDENTIALS-001 — R-049 follow-ups
+
+| Поле | Значение |
+|---|---|
+| Тип | Product/security implementation via AI HQ; no schema/public-contract change |
+| Результат | `a9e7d2b`: block абортирует created/active SDK-сессии, сжигает tickets, unblock no-op; `08ab9c7`: tombstone удаляет password/TOTP/recovery credentials |
+| Проверки | QA pass; 17 + 18 targeted tests, DB-001/CRM delete checks, migration guard clean; ruff clean; mypy — только pre-existing stub; reviewer accept; full suite 1079/1071/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | R-049: узкая гонка create_session с revoke-сканом; inverse ordering оставляет finished result намеренно; live SDK/staging NOT TESTED |
+| Источник | commits `a9e7d2b`, `08ab9c7`; evidence в `.autonomy/evidence/` |

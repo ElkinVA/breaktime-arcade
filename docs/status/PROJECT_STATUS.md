@@ -217,7 +217,7 @@ ruff/mypy clean; full suite **1046 tests: 1038 passed, 8 skipped, exit 0**.
 
 `ARCADE-CRM-USERS-001` — **COMPLETED / AI HQ CODE REVIEW ACCEPT; SECURITY REVIEW CONDITIONAL → DELTA RESOLVED** (`4095ed8` + security fixes). Экран `/crm/users/`: поиск login/nickname/email (min 2, citext), фильтры verified/blocked, detail без password/TOTP/recovery, block/unblock с аудитом, delete через `anonymize_user` с 7-дневным окном и подтверждением, export через ту же `export_account_data`.
 Security hardening: customer-маршруты не адресуют staff/owner/tombstone; export требует step-up (§2.16.1), delete — step-up + confirm; tombstone не реактивируется; leaderboard только текущая эпоха; пагинация 50; nosniff; CSRF-negative test. Security delta verdict — **resolved**. Targeted 19 tests; full suite **1064 tests:
-1056 passed, 8 skipped, exit 0**. Остатки: block не отзывает уже выданные game SDK-сессии (R-049); tombstone хранит password hash/TOTP до удаления строки; live CSRF/HTTP not tested.
+1056 passed, 8 skipped, exit 0**. Остатки R-049 (block SDK-сессии, tombstone credentials) закрыты follow-up задачами `a9e7d2b`/`08ab9c7` — см. §0.16; live CSRF/HTTP not tested; узкая гонка create_session остаётся.
 
 ## 0.14. CRM taxonomy — 2026-11-23
 
@@ -244,6 +244,21 @@ hide/restore с reason и audit не менялись. Исправлены mino
 25 targeted tests; ruff/mypy clean; full suite **1075 tests: 1067 passed,
 8 skipped, exit 0**. Остаток: строки сверх 100 в таблице не пагинируются
 (disclosed); staging/prod NOT TESTED.
+
+## 0.16. R-049 follow-ups — 2026-11-23
+
+`ARCADE-R049-SESSION-REVOCATION-001` (`a9e7d2b`) и
+`ARCADE-R049-TOMBSTONE-CREDENTIALS-001` (`08ab9c7`) — **COMPLETED / AI HQ
+REVIEW ACCEPT**. Блокировка клиента в одной транзакции переводит его
+`created`/`active` GameSession в `aborted`, обнуляет ticket hash/expiry и
+binding nonce; activate/heartbeat/submit после этого возвращают
+`E_SESSION_EXPIRED`, unblock ничего не переиздаёт. Tombstone-анонимизация
+удаляет RecoveryCode/OwnerRecoveryCode, ставит unusable password и очищает
+TOTP secret/confirmed/counter. QA pass; targeted tests 17 + 18 + DB-001/CRM
+delete; migration guard clean; full suite **1079 tests: 1071 passed,
+8 skipped, exit 0**. Остаток R-049: узкая гонка `create_session`
+(advisory-lock) с revoke-сканом не сериализована; inverse ordering оставляет
+завершённый результат намеренно; live SDK/staging NOT TESTED.
 
 ## 1. Текущий статус
 

@@ -45,8 +45,9 @@ ambiguity.
   `98b848c` + fixes).
 - CRM customer accounts: `/crm/users/` search/filters, detail, block/unblock,
   deletion window, export; step-up and staff-target guards
-  (`ARCADE-CRM-USERS-001`, `4095ed8` + fixes). R-049 SDK-session revocation
-  remains open.
+  (`ARCADE-CRM-USERS-001`, `4095ed8` + fixes). R-049 follow-ups now abort
+  open SDK sessions on block and clear tombstone credentials
+  (`a9e7d2b`, `08ab9c7`); narrow create_session race remains.
 - CRM SEO diagnostics: `/crm/seo/` reports empty descriptions, duplicate
   titles, missing alt and incomplete translations by language
   (`ARCADE-CRM-SEO-DIAGNOSTICS-001`, `f5474d8`).

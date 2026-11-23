@@ -388,6 +388,13 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-R049-SESSION-REVOCATION-001` (`a9e7d2b`) +
+`ARCADE-R049-TOMBSTONE-CREDENTIALS-001` (`08ab9c7`) — **COMPLETED / AI HQ
+REVIEW ACCEPT**: block абортирует created/active SDK-сессии и сжигает
+tickets; tombstone очищает password/TOTP/recovery. Full suite
+**1079 tests: 1071 passed, 8 skipped, exit 0**. Остаток: узкая гонка
+create_session с revoke; live SDK/staging NOT TESTED.
+
 `ARCADE-CRM-RATINGS-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
 (`c577416` + fixes): фильтры game/value/visibility, overall average и
 per-value distribution; 25 targeted tests; full suite **1075/1067/8**.
@@ -401,8 +408,8 @@ staging/prod NOT TESTED.
 `ARCADE-CRM-USERS-001` — **COMPLETED / CODE REVIEW ACCEPT; SECURITY DELTA
 RESOLVED** (`4095ed8` + fixes): CRM customer list/detail/search/block/delete/
 export; step-up for export/delete, staff-target/tombstone guards, pagination.
-Остаток R-049: block не отзывает game SDK sessions; tombstone credential
-retention; live HTTP/CSRF not tested; full suite **1064/1056/8**.
+R-049 residue (block SDK sessions, tombstone credentials) закрыт задачами
+`a9e7d2b`/`08ab9c7`; live HTTP/CSRF not tested; full suite **1064/1056/8**.
 `ARCADE-SLUG-HISTORY-HARDENING-001` — **COMPLETED / AI HQ REVIEWER ACCEPT**
 (`bf33191`): race-safe history insert, shared fallback constant,
 cross-language negative and concurrent tests; no schema change; full suite
