@@ -698,3 +698,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEWER ACCEPT**; product/staging/prod не заявляются |
 | Остаток | large-catalog performance NOT TESTED; staging/prod NOT TESTED |
 | Источник | commit `f5474d8`; QA/reviewer evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-SLUG-HISTORY-HARDENING-001 — slug residuals
+
+| Поле | Значение |
+|---|---|
+| Тип | Minor hardening via AI HQ; no schema/contract change |
+| Результат | `bf33191`: IntegrityError re-fetch в record helpers; общий `FALLBACK_LANGUAGE_CODE`; cross-language negative + concurrent-insert tests |
+| Проверки | 7 slug tests; migration guard; ruff/mypy clean; AI HQ reviewer accept (2 minor notes); full suite 1046 tests / 1038 passed / 8 skipped / exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEWER ACCEPT**; product/staging/prod не заявляются |
+| Остаток | concurrent test использует mock, не реальную двухтранзакционную гонку |
+| Источник | commit `bf33191`; QA/reviewer evidence в `.autonomy/evidence/` |

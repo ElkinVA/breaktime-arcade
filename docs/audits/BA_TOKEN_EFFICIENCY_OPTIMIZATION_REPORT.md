@@ -157,13 +157,17 @@ OBS-002 journal:
 developer/QA, а неудачная QA-попытка стоила ~4.39 USD. Это не объявляется
 достигнутой экономией; это измеренная точка для следующих шагов. QA-тулинг
 (host mypy + постоянный migration guard) исправлен, чтобы не повторять
-retry по инфраструктурной причине. Модели/бюджет не менялись. Следующая задача Второй production `propose` (после slug/retention) записал 45 370 input,
+retry по инфраструктурной причине. Модели/бюджет не менялись.
+
+Второй production `propose` (после slug/retention) записал 45 370 input,
 18 400 output, 29 turns, $1.064130 и 3 валидные задачи — input снизился ещё
 на 24 % относительно первого production propose.
 
 `ARCADE-CATALOG-SLUG-301-001` (attempt 1) стоила
 ~4.848 USD (developer 2.763, QA 0.723, reviewer 1.362) — без failed QA и
 retry; architect-вызов амортизируется между задачами.
+`ARCADE-SLUG-HISTORY-HARDENING-001` (attempt 1) — $1.702025
+(developer+QA+reviewer), без retry.
 
 ## 7. Git
 

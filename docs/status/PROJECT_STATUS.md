@@ -201,6 +201,18 @@ slug — 404. 5 новых integration tests + migration guard; ruff/mypy clean;
 диагностику по всем published games в памяти — performance на очень больших
 каталогах не тестировался; staging/prod NOT TESTED.
 
+## 0.12. Slug-history hardening — 2026-11-23
+
+`ARCADE-SLUG-HISTORY-HARDENING-001` — **COMPLETED / AI HQ REVIEWER ACCEPT**
+(`bf33191`). `record_game_slug`/`record_translation_slug` переживают
+concurrent insert (IntegrityError → re-fetch); `FALLBACK_LANGUAGE_CODE`
+вынесен в `apps/catalog/constants.py` и используется slug/SEO; добавлены
+cross-language negative test и concurrent-insert test (mock пути).
+4 файла, без schema/contracts; targeted 7 slug tests + migration guard;
+ruff/mypy clean; full suite **1046 tests: 1038 passed, 8 skipped, exit 0**.
+Остаток: concurrent test
+детерминированно мокает `get_or_create`, реальная DB-гонка не проверялась.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

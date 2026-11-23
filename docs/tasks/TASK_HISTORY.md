@@ -1287,3 +1287,16 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Стоимость AI HQ (journal):** $4.075 (developer+QA+reviewer, attempt 1).
 - **Остаток:** large-catalog performance NOT TESTED; staging/prod NOT TESTED.
 - **Commit:** `f5474d8`.
+
+
+### ARCADE-SLUG-HISTORY-HARDENING-001 — slug residuals (AI HQ)
+
+- **Результат:** `bf33191`; race-safe `get_or_create` re-fetch; общий
+  `apps/catalog/constants.FALLBACK_LANGUAGE_CODE` для slug/SEO;
+  cross-language negative test и concurrent-insert test.
+- **Проверки:** 7 slug tests + migration guard; ruff/mypy clean; AI HQ
+  reviewer accept; full suite **1046 tests: 1038 passed, 8 skipped, exit 0**.
+- **Стоимость AI HQ (journal):** $1.702 (developer+QA+reviewer, attempt 1).
+- **Остаток:** concurrent test мокает `get_or_create`, реальная DB-гонка
+  не воспроизводилась.
+- **Commit:** `bf33191`.

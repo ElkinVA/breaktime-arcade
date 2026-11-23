@@ -40,6 +40,9 @@ ambiguity.
 - CRM SEO diagnostics: `/crm/seo/` reports empty descriptions, duplicate
   titles, missing alt and incomplete translations by language
   (`ARCADE-CRM-SEO-DIAGNOSTICS-001`, `f5474d8`).
+- Slug hardening: shared fallback constant, race-safe history insert and
+  cross-language negative test (`ARCADE-SLUG-HISTORY-HARDENING-001`,
+  `bf33191`).
 - Catalog slug history: changed Game/GameTranslation slugs return 301 to the
   current canonical URL (`ARCADE-CATALOG-SLUG-301-001`, `cf0936c`).
 - App F retention cleanup: daily beat tasks for sessions (30d, result-linked
