@@ -512,7 +512,7 @@ def test_concurrent_submit_result_racing_block_cannot_persist(monkeypatch) -> No
 
 @pytest.mark.django_db(transaction=True)
 def test_concurrent_submit_result_racing_anonymise_cannot_deadlock(monkeypatch) -> None:
-    """R-052: submit_result and anonymize_user share the User -> Session order.
+    """R-051: submit_result and anonymize_user share the User -> Session order.
 
     Anonymisation is parked after it took the User row lock and before it
     locks the sessions. ``submit_result`` must wait on that same account lock
@@ -598,7 +598,7 @@ def test_concurrent_submit_result_racing_anonymise_cannot_deadlock(monkeypatch) 
 
 @pytest.mark.django_db(transaction=True)
 def test_concurrent_submit_result_racing_block_revoke_cannot_deadlock(monkeypatch) -> None:
-    """R-052: submit_result waits for the block's account lock, no inversion."""
+    """R-051: submit_result waits for the block's account lock, no inversion."""
     owner = _staff("owner", StaffRole.OWNER)
     target = _customer("target", "Target")
     game = _game("result_block_race_game")
@@ -679,7 +679,7 @@ def test_concurrent_submit_result_racing_block_revoke_cannot_deadlock(monkeypatc
 
 @pytest.mark.django_db(transaction=True)
 def test_concurrent_heartbeat_racing_anonymise_cannot_deadlock(monkeypatch) -> None:
-    """R-052: heartbeat locks the account before the session it credits."""
+    """R-051: heartbeat locks the account before the session it credits."""
     target = _customer("target", "Target")
     game = _game("heartbeat_anonymise_race_game")
     session = _session(

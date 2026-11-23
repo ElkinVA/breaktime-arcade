@@ -101,7 +101,7 @@ def submit_result(
         raise SessionError("E_INVALID_REQUEST", "Invalid request", 400)
 
     with transaction.atomic():
-        # R-052: take the account row lock before the session row. Anonymous
+        # R-051: take the account row lock before the session row. Anonymous
         # users have no account lock. The result insert below needs
         # ``FOR KEY SHARE`` on the User row; acquiring it after the session
         # lock would deadlock with anonymise/block (User -> sessions).
