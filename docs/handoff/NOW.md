@@ -388,6 +388,12 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-ARTIFACTS-DOWNLOAD-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`f8c3a52` + `91c9c0f`): staff-only ZIP/runtime/report downloads, step-up для
+ZIP/runtime, hash-derived paths, nosniff/no-store. 6 targeted tests; full
+suite **1085/1077/8**. Остаток R-050: TOCTOU при write-доступе к artifact
+root; runtime zip не hash-verified; real nginx/volume E2E NOT TESTED.
+
 `ARCADE-R049-SESSION-REVOCATION-001` (`a9e7d2b`) +
 `ARCADE-R049-TOMBSTONE-CREDENTIALS-001` (`08ab9c7`) — **COMPLETED / AI HQ
 REVIEW ACCEPT**: block абортирует created/active SDK-сессии и сжигает

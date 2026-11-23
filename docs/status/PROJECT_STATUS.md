@@ -260,6 +260,19 @@ delete; migration guard clean; full suite **1079 tests: 1071 passed,
 (advisory-lock) с revoke-сканом не сериализована; inverse ordering оставляет
 завершённый результат намеренно; live SDK/staging NOT TESTED.
 
+## 0.17. CRM artifact downloads — 2026-11-23
+
+`ARCADE-ARTIFACTS-DOWNLOAD-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`f8c3a52` + docstring fix `91c9c0f`). Staff-only CRM endpoints скачивают
+original ZIP побайтово, runtime tree как zip и per-version validation/
+autotest/import reports в JSON/Markdown. Пути выводятся только из
+`package_hash`/`runtime_hash` через `artifacts.py`, проверяются containment и
+symlink; ZIP/runtime требуют step-up, все ответы — attachment с фиксированным
+именем, `nosniff`, `private, no-store`; missing/unknown → 404. 6 targeted
+tests; full suite **1085 tests: 1077 passed, 8 skipped, exit 0**. Остаток
+R-050: TOCTOU при write-доступе к artifact root, runtime zip bytes не
+гарантированно стабильны, real nginx/volume E2E NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

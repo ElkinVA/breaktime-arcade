@@ -1368,3 +1368,16 @@ tests: 1056 passed, 8 skipped, exit 0**.
   suite **1079/1071/8**.
 - **Остаток:** live HTTP/staging NOT TESTED.
 - **Commit:** `08ab9c7`.
+
+### ARCADE-ARTIFACTS-DOWNLOAD-001 — CRM artifact downloads (AI HQ)
+
+- **Результат:** `f8c3a52` + docstring fix `91c9c0f`; staff-only скачивание
+  original ZIP, runtime tree как zip, validation/autotest/import reports
+  JSON/Markdown; step-up для ZIP/runtime; hash-derived пути, containment/
+  symlink guards, attachment/nosniff/no-store.
+- **Проверки:** 6 targeted tests (byte-exact ZIP, runtime zip, reports, 404,
+  role/step-up, traversal), CRM games/wizard tests; ruff clean; mypy clean для
+  нового модуля; AI HQ reviewer accept; full suite **1085/1077/8**.
+- **Остаток:** R-050 TOCTOU при write-доступе к artifact root; runtime zip
+  bytes не стабильны между деревьями; real nginx/volume E2E NOT TESTED.
+- **Commit:** `f8c3a52`, `91c9c0f`.

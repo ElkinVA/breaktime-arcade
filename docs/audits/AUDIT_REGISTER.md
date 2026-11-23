@@ -758,3 +758,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | R-049: узкая гонка create_session с revoke-сканом; inverse ordering оставляет finished result намеренно; live SDK/staging NOT TESTED |
 | Источник | commits `a9e7d2b`, `08ab9c7`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-ARTIFACTS-DOWNLOAD-001 — CRM artifact downloads
+
+| Поле | Значение |
+|---|---|
+| Тип | Product/CRM implementation via AI HQ; security-sensitive download paths |
+| Результат | `f8c3a52` + `91c9c0f`: original ZIP byte-exact, runtime zip, validation/autotest/import reports JSON/MD; step-up для ZIP/runtime; hash-derived paths, containment/symlink guards, nosniff/no-store |
+| Проверки | 6 targeted tests; CRM games/wizard tests; ruff clean; mypy clean для нового модуля; reviewer accept; full suite 1085/1077/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | R-050: TOCTOU при write-доступе к artifact root; runtime zip не hash-verified; real nginx/volume E2E NOT TESTED |
+| Источник | commits `f8c3a52`, `91c9c0f`; evidence в `.autonomy/evidence/` |
