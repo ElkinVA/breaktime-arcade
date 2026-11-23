@@ -11,7 +11,7 @@ PRO REVIEW ACCEPT; PRODUCT/STAGING/PRODUCTION NOT ACCEPTED.**
 | Area | Status | Evidence |
 |---|---|---|
 | Game code | IMPLEMENTED | `games-src/archer` |
-| Package structure/manifest | TESTED | 13 package tests |
+| Package structure/manifest | TESTED | 14 package tests |
 | Physics/score/combo core | TESTED | 11 Node tests |
 | ZIP reproducibility/preflight | TESTED | package test + pack.py |
 | Isolated-worker import/publish | TESTED | 1 integration test; live worker 137 ms |
@@ -30,7 +30,7 @@ PRO REVIEW ACCEPT; PRODUCT/STAGING/PRODUCTION NOT ACCEPTED.**
 
 ```text
 node tests/js/archer.test.mjs                         -> 11 passed
-sandbox tests/unit/test_archer_package.py             -> 13 passed
+sandbox tests/unit/test_archer_package.py             -> 14 passed
 sandbox tests/integration/test_archer_import.py       -> 1 passed
 sandbox tests/unit/test_neon_snake_package.py         -> 13 passed
 sandbox tests/integration/test_neon_snake_import.py   -> 1 passed
