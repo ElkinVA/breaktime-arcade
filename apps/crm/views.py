@@ -26,6 +26,7 @@ from django.http import (
     HttpRequest,
     HttpResponse,
     HttpResponseBadRequest,
+    HttpResponseBase,
     HttpResponseRedirect,
     JsonResponse,
 )
@@ -474,7 +475,9 @@ def _download_step_up_guard(request: HttpRequest) -> HttpResponseRedirect | None
 
 @role_required(GAMES_VIEW)
 @require_GET
-def version_package_download(request: HttpRequest, game_id: UUID, version_id: UUID) -> HttpResponse:
+def version_package_download(
+    request: HttpRequest, game_id: UUID, version_id: UUID
+) -> HttpResponseBase:
     """Download the byte-for-byte original ZIP; staff role plus step-up."""
     version = _version_or_404(game_id, version_id)
     refused = _download_step_up_guard(request)
@@ -488,7 +491,9 @@ def version_package_download(request: HttpRequest, game_id: UUID, version_id: UU
 
 @role_required(GAMES_VIEW)
 @require_GET
-def version_runtime_download(request: HttpRequest, game_id: UUID, version_id: UUID) -> HttpResponse:
+def version_runtime_download(
+    request: HttpRequest, game_id: UUID, version_id: UUID
+) -> HttpResponseBase:
     """Download the published runtime tree as a zip; staff role plus step-up."""
     version = _version_or_404(game_id, version_id)
     refused = _download_step_up_guard(request)

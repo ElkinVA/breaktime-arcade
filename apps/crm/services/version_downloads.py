@@ -10,22 +10,29 @@ the persisted ``validation_report`` / ``e2e_report`` / ``import_report``
 
 Responses are always attachments with a fixed name derived from UUIDs only and
 carry ``nosniff`` plus a private, non-cacheable policy.
+
+The original package is hash-verified against ``version.package_hash`` on the
+verified descriptor and then streamed in bounded chunks, so a corrupted file is
+rejected before any body byte is served and the response never holds the whole
+ZIP in memory. Runtime bundles are generated once into a temporary file and
+streamed from there for the same reason.
 """
 
 from __future__ import annotations
 
-import io
+import hashlib
 import json
 import os
 import re
 import stat
+import tempfile
 import time
 import zipfile
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
 
 from apps.catalog.models import GameVersion
 from apps.pipeline.services.artifacts import (
@@ -36,6 +43,7 @@ from apps.pipeline.services.artifacts import (
 )
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+ARTIFACT_CHUNK_SIZE = 1024 * 1024
 
 REPORT_KINDS = frozenset({"validation", "autotest", "import"})
 REPORT_FORMATS = frozenset({"json", "md"})
@@ -132,17 +140,40 @@ def _open_verified(path: Path, *, directory: bool) -> tuple[int, os.stat_result]
     return fd, opened
 
 
-def _read_handle(fd: int) -> bytes:
+def _verify_handle_hash(fd: int, expected: str) -> None:
+    """Hash the opened handle in bounded chunks and compare to ``expected``.
+
+    Nothing is buffered beyond one chunk, so a large or corrupted artifact is
+    checked before the caller builds any response body.
+    """
+    digest = hashlib.sha256()
     try:
-        handle = os.fdopen(fd, "rb")
+        os.lseek(fd, 0, os.SEEK_SET)
+        while True:
+            chunk = os.read(fd, ARTIFACT_CHUNK_SIZE)
+            if not chunk:
+                break
+            digest.update(chunk)
+        os.lseek(fd, 0, os.SEEK_SET)
     except OSError:
+        raise ArtifactUnavailable("Artifact file is unavailable") from None
+    if digest.hexdigest() != expected:
+        raise ArtifactUnavailable("Artifact hash mismatch")
+
+
+def _write_handle_to_zip(archive: zipfile.ZipFile, info: zipfile.ZipInfo, fd: int) -> None:
+    """Copy a verified file descriptor into ``archive`` chunk by chunk."""
+    try:
+        with archive.open(info, "w") as target:
+            while True:
+                chunk = os.read(fd, ARTIFACT_CHUNK_SIZE)
+                if not chunk:
+                    break
+                target.write(chunk)
+    except OSError:
+        raise ArtifactUnavailable("Artifact file is unavailable") from None
+    finally:
         os.close(fd)
-        raise ArtifactUnavailable("Artifact file is unavailable") from None
-    try:
-        with handle:
-            return handle.read()
-    except OSError:
-        raise ArtifactUnavailable("Artifact file is unavailable") from None
 
 
 def _open_child(
@@ -241,31 +272,71 @@ def _zip_tree(archive: zipfile.ZipFile, directory_fd: int, prefix: str) -> None:
                 os.close(child_fd)
         elif stat.S_ISREG(entry.st_mode):
             file_fd, opened = _open_child(directory_fd, name, directory=False)
-            data = _read_handle(file_fd)
             info = zipfile.ZipInfo(arcname, date_time=_zip_date_time(opened.st_mtime))
             info.external_attr = (opened.st_mode & 0xFFFF) << 16
             info.compress_type = zipfile.ZIP_DEFLATED
-            archive.writestr(info, data)
+            _write_handle_to_zip(archive, info, file_fd)
         # Special files stay excluded, matching the regular-files-only contract.
 
 
-def runtime_zip_bytes(directory: Path) -> bytes:
-    """Zip the published runtime tree, rejecting symlinks.
+def runtime_zip_file(directory: Path) -> BinaryIO:
+    """Zip the published runtime tree into a temporary file, rejecting symlinks.
 
     The tree is walked through verified directory descriptors opened relative
     to the resolved root; a symlink or path swap anywhere in the tree raises
-    ``ArtifactUnavailable``. File mtimes are preserved, so bytes are stable
-    only while the tree is unchanged; the archive is a convenience copy, not a
-    hash-verified artifact.
+    ``ArtifactUnavailable``. The archive is written to an anonymous temporary
+    file rather than ``io.BytesIO`` so its size never lives in memory. File
+    mtimes are preserved, so bytes are stable only while the tree is unchanged;
+    the archive is a convenience copy, not a hash-verified artifact.
     """
     root_fd, _root_stat = _open_verified(directory, directory=True)
-    buffer = io.BytesIO()
     try:
-        with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        # The response owns and closes this handle after streaming it.
+        spool = tempfile.TemporaryFile(prefix="ba-runtime-", suffix=".zip")  # noqa: SIM115
+    except OSError:
+        os.close(root_fd)
+        raise ArtifactUnavailable("Runtime artifact is unavailable") from None
+    try:
+        with zipfile.ZipFile(spool, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             _zip_tree(archive, root_fd, "")
+    except ArtifactUnavailable:
+        spool.close()
+        raise
+    except OSError:
+        spool.close()
+        raise ArtifactUnavailable("Runtime artifact is unavailable") from None
     finally:
         os.close(root_fd)
-    return buffer.getvalue()
+    spool.seek(0)
+    return spool
+
+
+def runtime_zip_bytes(directory: Path) -> bytes:
+    """Return the runtime ZIP bytes; kept for callers that need a buffer."""
+    spool = runtime_zip_file(directory)
+    try:
+        return spool.read()
+    finally:
+        spool.close()
+
+
+def _stream_attachment(
+    filelike: BinaryIO,
+    *,
+    filename: str,
+    content_type: str,
+) -> FileResponse:
+    """Serve ``filelike`` as a bounded-chunk streaming attachment."""
+    response = FileResponse(
+        filelike,
+        content_type=content_type,
+        as_attachment=True,
+        filename=filename,
+    )
+    response.block_size = ARTIFACT_CHUNK_SIZE
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 
 def _attachment(content: bytes | str, *, filename: str, content_type: str) -> HttpResponse:
@@ -280,23 +351,46 @@ def _artifact_name(version: GameVersion, suffix: str) -> str:
     return f"game-{version.game_id}-version-{version.id}-{suffix}"
 
 
-def package_response(version: GameVersion) -> HttpResponse:
+def package_response(version: GameVersion) -> FileResponse:
+    """Verify and stream the immutable original ZIP from its verified handle.
+
+    The SHA-256 of the bytes read from the ``O_NOFOLLOW`` descriptor is checked
+    against ``version.package_hash`` before the response is built; a mismatch
+    raises ``ArtifactUnavailable`` without serving a single body byte.
+    """
     path = package_file(version)
     fd, _path_stat = _open_verified(path, directory=False)
-    return _attachment(
-        _read_handle(fd),
-        filename=_artifact_name(version, "package.zip"),
-        content_type="application/zip",
-    )
+    try:
+        _verify_handle_hash(fd, version.package_hash)
+        try:
+            handle = os.fdopen(fd, "rb")
+        except OSError:
+            raise ArtifactUnavailable("Artifact file is unavailable") from None
+    except BaseException:
+        os.close(fd)
+        raise
+    try:
+        return _stream_attachment(
+            handle,
+            filename=_artifact_name(version, "package.zip"),
+            content_type="application/zip",
+        )
+    except BaseException:
+        handle.close()
+        raise
 
 
-def runtime_response(version: GameVersion) -> HttpResponse:
-    payload = runtime_zip_bytes(runtime_directory(version))
-    return _attachment(
-        payload,
-        filename=_artifact_name(version, "runtime.zip"),
-        content_type="application/zip",
-    )
+def runtime_response(version: GameVersion) -> FileResponse:
+    spool = runtime_zip_file(runtime_directory(version))
+    try:
+        return _stream_attachment(
+            spool,
+            filename=_artifact_name(version, "runtime.zip"),
+            content_type="application/zip",
+        )
+    except BaseException:
+        spool.close()
+        raise
 
 
 def _stored_report(version: GameVersion, report_kind: str) -> Any:
@@ -449,6 +543,7 @@ def report_response(
 
 
 __all__ = [
+    "ARTIFACT_CHUNK_SIZE",
     "ArtifactUnavailable",
     "REPORT_FORMATS",
     "REPORT_KINDS",
@@ -459,4 +554,5 @@ __all__ = [
     "runtime_directory",
     "runtime_response",
     "runtime_zip_bytes",
+    "runtime_zip_file",
 ]

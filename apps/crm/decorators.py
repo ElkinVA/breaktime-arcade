@@ -17,7 +17,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any, cast
 
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.http import HttpRequest, HttpResponseBase, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
@@ -45,11 +45,11 @@ def _two_factor_verified(request: HttpRequest) -> bool:
     return bool(session and session.get("ba_2fa_verified"))
 
 
-def staff_required[ViewFunc: Callable[..., HttpResponse]](view: ViewFunc) -> ViewFunc:
+def staff_required[ViewFunc: Callable[..., HttpResponseBase]](view: ViewFunc) -> ViewFunc:
     """Allow only authenticated staff with an assigned CRM role."""
 
     @wraps(view)
-    def wrapper(request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+    def wrapper(request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponseBase:
         if not is_staff_user(request.user):
             return _login_redirect()
         if not _two_factor_verified(request):
@@ -61,14 +61,14 @@ def staff_required[ViewFunc: Callable[..., HttpResponse]](view: ViewFunc) -> Vie
     return cast(ViewFunc, wrapper)
 
 
-def role_required[ViewFunc: Callable[..., HttpResponse]](
+def role_required[ViewFunc: Callable[..., HttpResponseBase]](
     capability: str,
 ) -> Callable[[ViewFunc], ViewFunc]:
     """Require a specific §2.16 capability in addition to staff + role."""
 
     def decorator(view: ViewFunc) -> ViewFunc:
         @wraps(view)
-        def wrapper(request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        def wrapper(request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponseBase:
             if not is_staff_user(request.user):
                 return _login_redirect()
             if not _two_factor_verified(request):

@@ -66,7 +66,7 @@ def _version(
     return GameVersion.objects.create(
         game=game,
         semver=semver,
-        package_hash=package_hash or _sha(f"package-{semver}"),
+        package_hash=package_hash or hashlib.sha256(PACKAGE_BYTES).hexdigest(),
         runtime_hash=runtime_hash or _sha(f"runtime-{semver}"),
         sdk_version="1.1.0",
         size_bytes=len(PACKAGE_BYTES),
@@ -169,7 +169,7 @@ def test_package_and_runtime_downloads_are_byte_exact(artifact_env: Path) -> Non
 
     package_response = client.get(reverse("crm:version_package", args=[game.id, version.id]))
     assert package_response.status_code == 200
-    assert package_response.content == PACKAGE_BYTES
+    assert b"".join(package_response.streaming_content) == PACKAGE_BYTES
     assert package_response["Content-Type"] == "application/zip"
     _assert_attachment(package_response, f"game-{game.id}-version-{version.id}-package.zip")
 
@@ -177,10 +177,98 @@ def test_package_and_runtime_downloads_are_byte_exact(artifact_env: Path) -> Non
     assert runtime_response.status_code == 200
     assert runtime_response["Content-Type"] == "application/zip"
     _assert_attachment(runtime_response, f"game-{game.id}-version-{version.id}-runtime.zip")
-    with zipfile.ZipFile(io.BytesIO(runtime_response.content)) as archive:
+    runtime_bytes = b"".join(runtime_response.streaming_content)
+    with zipfile.ZipFile(io.BytesIO(runtime_bytes)) as archive:
         assert sorted(archive.namelist()) == sorted(RUNTIME_FILES)
         for relative, payload in RUNTIME_FILES.items():
             assert archive.read(relative) == payload
+
+
+@pytest.mark.django_db
+def test_package_response_streams_in_bounded_chunks(
+    artifact_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The package is hashed and served chunk by chunk, never as one buffer."""
+    game = _game(technical_id="chunked_package", host_label="chunked-package.test")
+    payload = b"PK\x03\x04" + b"payload" * (downloads.ARTIFACT_CHUNK_SIZE // 2)
+    version = _version(game, package_hash=hashlib.sha256(payload).hexdigest())
+    root = ensure_root(Path(settings.ZIP_PIPELINE_STORAGE_ROOT))
+    target = package_path(root, version.package_hash)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(payload)
+
+    read_sizes: list[int] = []
+    real_read = downloads.os.read
+
+    def tracking_read(fd: int, size: int) -> bytes:
+        read_sizes.append(size)
+        return real_read(fd, size)
+
+    monkeypatch.setattr(downloads.os, "read", tracking_read)
+
+    response = downloads.package_response(version)
+    assert response.streaming
+    assert read_sizes
+    assert max(read_sizes) <= downloads.ARTIFACT_CHUNK_SIZE
+    assert len(read_sizes) >= 3  # the hash pass never asks for the whole file
+    assert response.block_size == downloads.ARTIFACT_CHUNK_SIZE
+    assert b"".join(response.streaming_content) == payload
+    response.close()
+
+
+@pytest.mark.django_db
+def test_corrupted_package_is_rejected_before_any_body_is_served(
+    artifact_env: Path,
+) -> None:
+    """A mismatched SHA-256 must never turn into a partial download."""
+    game = _game(technical_id="corrupted_package", host_label="corrupted-package.test")
+    version = _version(game)
+    _store_package(version)
+    root = ensure_root(Path(settings.ZIP_PIPELINE_STORAGE_ROOT))
+    target = package_path(root, version.package_hash)
+    target.write_bytes(b"corrupted package bytes")
+
+    with pytest.raises(downloads.ArtifactUnavailable):
+        downloads.package_response(version)
+
+    client = _staff_client(elevated=True)
+    response = client.get(reverse("crm:version_package", args=[game.id, version.id]))
+    assert response.status_code == 404
+    assert b"corrupted package bytes" not in response.content
+
+
+@pytest.mark.django_db
+def test_runtime_response_spools_the_archive_to_a_temp_file(
+    artifact_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The runtime ZIP is built on disk, not in an in-memory io.BytesIO."""
+    game = _game(technical_id="runtime_spool", host_label="runtime-spool.test")
+    version = _version(game)
+    _store_runtime(version)
+
+    created: list[io.BufferedIOBase] = []
+    real_temporary_file = downloads.tempfile.TemporaryFile
+
+    def tracking_temporary_file(*args: object, **kwargs: object) -> io.BufferedIOBase:
+        handle = real_temporary_file(*args, **kwargs)
+        created.append(handle)
+        return handle
+
+    monkeypatch.setattr(downloads.tempfile, "TemporaryFile", tracking_temporary_file)
+
+    response = downloads.runtime_response(version)
+    assert created
+    assert response.file_to_stream is created[0]
+    assert not isinstance(response.file_to_stream, io.BytesIO)
+    assert response.file_to_stream.fileno() >= 0
+
+    body = b"".join(response.streaming_content)
+    with zipfile.ZipFile(io.BytesIO(body)) as archive:
+        assert sorted(archive.namelist()) == sorted(RUNTIME_FILES)
+        for relative, payload in RUNTIME_FILES.items():
+            assert archive.read(relative) == payload
+    response.close()
+    assert created[0].closed
 
 
 @pytest.mark.django_db
