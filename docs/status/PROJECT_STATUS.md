@@ -354,6 +354,17 @@ JS **23/23**; full Python suite **1109 tests: 1101 passed, 8 skipped,
 exit 0**. Остаток: nickname в bestOnly entry = null (schema-legal); browser
 E2E NOT TESTED.
 
+## 0.25. Session API camelCase — 2026-11-23
+
+`ARCADE-SESSION-API-CAMELCASE-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`16068f4`; reviewer-prompt fix `3a91997`). `POST /api/v1/sessions` отдаёт
+`{sessionId, ticket, expires_at}` по C-001/SESSION_ID_PROTOCOL; player.js
+читает только `sessionId`, dual-handling и snake_case mock-и удалены; SDK уже
+использовал camelCase. JS **23/23**, targeted sessions 41/41, full suite
+**1109 tests: 1101 passed, 8 skipped, exit 0**. Probe/Playwright E2E NOT
+TESTED (нет live dev stack в sandbox); `expires_at` намеренно оставлен
+snake_case до отдельного решения (§7), alias не выдаётся — R-054.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

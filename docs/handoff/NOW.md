@@ -388,6 +388,11 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-SESSION-API-CAMELCASE-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`16068f4` + reviewer-prompt `3a91997`): POST sessions → `{sessionId,ticket,
+expires_at}`, player.js без dual-handling; JS 23/23; full suite
+**1109/1101/8**. E2E NOT TESTED; R-054 (expires_at/alias) остаётся.
+
 `ARCADE-SDK-MYBEST-001` — **COMPLETED / AI HQ REVIEW ACCEPT** (`20f379c`):
 host bestOnly → `{entries,myRank}`, SDK myBest извлекает value/achievedAt;
 JS 23/23; full suite **1109/1101/8**; R-052 закрыт. Остаток: nickname null

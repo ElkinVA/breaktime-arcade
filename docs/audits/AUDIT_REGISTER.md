@@ -854,3 +854,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | nickname null in bestOnly entry (schema-legal); browser E2E NOT TESTED |
 | Источник | commit `20f379c`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-SESSION-API-CAMELCASE-001 — sessionId create response
+
+| Поле | Значение |
+|---|---|
+| Тип | Public API conformance fix via AI HQ; C-001/SESSION_ID_PROTOCOL |
+| Результат | `16068f4`: POST sessions returns exact `{sessionId,ticket,expires_at}`, player.js/SDK camelCase only, tests/mocks updated |
+| Проверки | JS 23/23; targeted sessions 41/41; full suite 1109/1101/8 exit 0; reviewer accept after reviewer-JSON prompt fix `3a91997` |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | probe/Playwright E2E NOT TESTED; R-054 expires_at snake_case/no alias |
+| Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |

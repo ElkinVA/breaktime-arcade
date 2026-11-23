@@ -60,6 +60,9 @@ ambiguity.
 - CRM game records: read-only current/archived epoch board in the game card
   with public ordering parity and pagination (`ARCADE-CRM-GAME-RECORDS-001`,
   `db8a835` + `551e73e`).
+- Session API create response is camelCase `sessionId` only
+  (`ARCADE-SESSION-API-CAMELCASE-001`, `16068f4`); `expires_at` and no-alias
+  are R-054 residuals.
 - Runtime validation: host/SDK messages are schema-driven with
   `E_MESSAGE_INVALID` (`ARCADE-RUNTIME-JSONSCHEMA-001`, `855caa1`); myBest
   now matches `ba_leaderboard_data` (`ARCADE-SDK-MYBEST-001`, `20f379c`);

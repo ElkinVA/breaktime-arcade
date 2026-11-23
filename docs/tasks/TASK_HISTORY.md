@@ -1473,3 +1473,17 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Остаток:** nickname в bestOnly entry = null (schema-legal); browser E2E
   NOT TESTED.
 - **Commit:** `20f379c`.
+
+### ARCADE-SESSION-API-CAMELCASE-001 — sessionId create response (AI HQ)
+
+- **Результат:** `16068f4`; POST `/api/v1/sessions` отдаёт exact
+  `{sessionId, ticket, expires_at}`; player.js читает только `sessionId`,
+  snake_case mocks/assertions удалены; SDK уже camelCase.
+- **QA/review:** QA pass после явной фиксации, что probe/Playwright E2E
+  недоступен (NOT TESTED); две попытки reviewer вернули невалидный JSON
+  (лишняя/пропущенная `]`), prompt ужесточён `3a91997`, задача requeued с
+  attempts=0; финальный reviewer — **accept**.
+- **Проверки:** JS 23/23; targeted sessions 41/41; full suite **1109/1101/8**.
+- **Остаток:** probe/Playwright E2E NOT TESTED; `expires_at` snake_case и
+  отсутствие alias — R-054 (осознанно).
+- **Commit:** `16068f4`; tooling `3a91997`.
