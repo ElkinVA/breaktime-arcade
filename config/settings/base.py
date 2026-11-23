@@ -326,6 +326,16 @@ CELERY_BEAT_SCHEDULE: dict[str, dict[str, object]] = {
         "schedule": 60 * 60 * 24,
         "options": {"expires": 60 * 60},
     },
+    "gameplay-cleanup-retention": {
+        "task": "apps.gameplay.tasks.cleanup_gameplay_retention",
+        "schedule": 60 * 60 * 24,
+        "options": {"expires": 60 * 60},
+    },
+    "pipeline-cleanup-retention": {
+        "task": "apps.pipeline.tasks.cleanup_pipeline_retention",
+        "schedule": 60 * 60 * 24,
+        "options": {"expires": 60 * 60},
+    },
     "catalog-refresh-search-vectors": {
         "task": "catalog.refresh_catalog_search_vectors",
         "schedule": 60 * 60 * 24,

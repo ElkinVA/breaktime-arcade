@@ -7,6 +7,9 @@ from typing import Any
 
 from celery.exceptions import SoftTimeLimitExceeded
 
+from apps.pipeline.services.retention import (
+    cleanup_pipeline_retention as cleanup_pipeline_retention_service,
+)
 from apps.pipeline.services.worker import (
     WorkerError,
     cleanup_expired_jobs,
@@ -59,6 +62,15 @@ def cleanup_zip_uploads() -> dict[str, int]:
     cleanup is idempotent and safe to rerun after a restart.
     """
     return cleanup_upload_jobs(active_job_ids=_active_extraction_job_ids())
+
+
+@shared_task(name="apps.pipeline.tasks.cleanup_pipeline_retention")
+def cleanup_pipeline_retention() -> dict[str, int]:
+    """Purge import drafts unchanged for more than 7 days (§2.22).
+
+    R-036: at-least-once; the strict ``updated_at`` cutoff is idempotent.
+    """
+    return cleanup_pipeline_retention_service()
 
 
 def enqueue_extraction(job_id: str) -> str:
