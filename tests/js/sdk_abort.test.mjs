@@ -118,15 +118,20 @@ async function startSdk() {
  * a real request timeout (those are deliberately never fired here).
  */
 async function settlement(promise) {
-    return Promise.race([
-        promise.then(
-            () => ({ status: "resolved" }),
-            (error) => ({ status: "rejected", error }),
-        ),
-        new Promise((resolve) => {
-            setTimeout(() => resolve({ status: "pending" }), 500);
-        }),
-    ]);
+    let timer;
+    try {
+        return await Promise.race([
+            promise.then(
+                () => ({ status: "resolved" }),
+                (error) => ({ status: "rejected", error }),
+            ),
+            new Promise((resolve) => {
+                timer = setTimeout(() => resolve({ status: "pending" }), 500);
+            }),
+        ]);
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 function assertCancelled(outcome) {
