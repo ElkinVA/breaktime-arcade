@@ -16,6 +16,8 @@ from apps.accounts.models import (
     AccountToken,
     EmailAddress,
     NicknameHistory,
+    OwnerRecoveryCode,
+    RecoveryCode,
     User,
     UserLegalAcceptance,
     UserProfile,
@@ -154,9 +156,26 @@ def anonymize_user(user: User) -> None:
     ).delete()
     remove_user_ratings(user)
 
+    # R-049: a tombstone must not retain any authenticatable credential —
+    # password hash, TOTP secret/counter or recovery codes.
+    RecoveryCode.objects.filter(user=user).delete()
+    OwnerRecoveryCode.objects.filter(user=user).delete()
+    user.set_unusable_password()
+    user.totp_secret = ""
+    user.totp_confirmed_at = None
+    user.totp_last_counter = None
     user.is_active = False
     user.login = f"deleted-{hashlib.sha256(str(user.pk).encode()).hexdigest()[:20]}"
-    user.save(update_fields=["is_active", "login"])
+    user.save(
+        update_fields=[
+            "is_active",
+            "login",
+            "password",
+            "totp_secret",
+            "totp_confirmed_at",
+            "totp_last_counter",
+        ]
+    )
 
 
 def export_account_data(user: User) -> dict[str, Any]:

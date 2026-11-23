@@ -3,7 +3,9 @@ from __future__ import annotations
 import re
 from datetime import timedelta
 
+import pyotp
 import pytest
+from django.contrib.auth import authenticate
 from django.core import mail
 from django.core.cache import cache
 from django.http import HttpResponse
@@ -16,12 +18,22 @@ from apps.accounts.models import (
     EmailAddress,
     NicknameHistory,
     NicknameReservation,
+    OwnerRecoveryCode,
+    RecoveryCode,
     User,
     UserProfile,
 )
 from apps.accounts.services.anonymous import COOKIE_NAME, get_or_create_anonymous_identity
-from apps.accounts.services.profile import anonymize_user
+from apps.accounts.services.profile import anonymize_user, export_account_data
 from apps.accounts.services.tokens import issue_token
+from apps.accounts.services.two_factor import (
+    enable_totp,
+    generate_owner_recovery_code,
+    generate_secret,
+    verify_owner_recovery_code,
+    verify_recovery_code,
+    verify_totp,
+)
 from apps.accounts.tasks import anonymize_due_accounts
 
 LOCMEM_CACHES = {
@@ -423,6 +435,54 @@ def test_anonymize_user_removes_pii_and_reserves_nickname() -> None:
     user.refresh_from_db()
     assert user.is_active is False
     assert user.login.startswith("deleted-")
+
+
+@pytest.mark.django_db
+def test_tombstone_cannot_authenticate_with_password_totp_or_recovery_code() -> None:
+    password = "correct horse battery staple"
+    user = User.objects.create_user(login="creduser", password=password)
+    user.is_staff = True
+    user.is_superuser = True
+    user.save(update_fields=["is_staff", "is_superuser"])
+    UserProfile.objects.create(user=user, nickname="CredUser", nickname_skeleton="creduser")
+
+    secret = generate_secret()
+    recovery_codes = enable_totp(user, secret, pyotp.TOTP(secret).now())
+    owner_recovery_code = generate_owner_recovery_code(user)
+    original_login = user.login
+    assert RecoveryCode.objects.filter(user=user).count() == len(recovery_codes)
+    assert OwnerRecoveryCode.objects.filter(user=user).exists()
+
+    anonymize_user(user)
+
+    user.refresh_from_db()
+    # Password hash is unusable and the deleted-account login cannot log in.
+    assert not user.check_password(password)
+    assert user.has_usable_password() is False
+    assert authenticate(request=None, login=original_login, password=password) is None
+
+    # Every 2FA credential is gone and every verification path fails closed.
+    assert user.totp_secret == ""
+    assert user.totp_confirmed_at is None
+    assert user.totp_last_counter is None
+    assert not RecoveryCode.objects.filter(user=user).exists()
+    assert not OwnerRecoveryCode.objects.filter(user=user).exists()
+    assert verify_totp(user, pyotp.TOTP(secret).now()) is False
+    assert verify_recovery_code(user, recovery_codes[0]) is False
+    assert verify_owner_recovery_code(user, owner_recovery_code) is False
+
+    # Export payload shape stays stable and never carries credentials.
+    payload = export_account_data(user)
+    assert set(payload) == {
+        "login",
+        "created_at",
+        "profile",
+        "email",
+        "legal_acceptances",
+    }
+    assert "password" not in payload
+    assert "totp_secret" not in payload
+    assert "recovery_codes" not in payload
 
 
 @pytest.mark.django_db
