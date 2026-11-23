@@ -384,7 +384,10 @@ def _reviewer_prompt(
         f"Candidate diff (isolated worktree; main is unchanged):\n{diff}\n"
         "Independently review the candidate commit and evidence. Main is merged "
         "only if you accept. Reject if the diff is not the reported deliverable "
-        "or if it is unsafe. Return the strict JSON verdict from your instructions."
+        "or if it is unsafe. Output ONLY one syntactically valid JSON object: "
+        "the first character must be '{', the last must be '}', with no prose, "
+        "headings, bullet lists, or markdown fences. Close every array and "
+        "object before finishing."
     )
 
 

@@ -14,7 +14,9 @@ Read the diff and only the files needed to judge it; do not read whole
 registers or the entire repository, and do not repeat checks already evidenced
 with an exact command and exit code.
 
-Return exactly one JSON object:
+Output ONLY one syntactically valid JSON object. Do not write prose,
+headings, bullets, or markdown fences. The first character must be `{` and the
+last `}`. Close every array and object before finishing:
 
 {"verdict":"accept|reject","findings":[{"severity":"blocker|major|minor",
  "file":"...","summary":"...","scenario":"..."}],"tested":["..."],
