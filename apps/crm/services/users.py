@@ -27,7 +27,7 @@ from apps.accounts.models import User, UserProfile
 from apps.accounts.services import profile as profile_service
 from apps.crm.models import AdminAuditLog
 from apps.crm.services.audit import record_audit
-from apps.gameplay.models import GameResult, LeaderboardEntry
+from apps.gameplay.models import GameResult, GameSession, LeaderboardEntry
 
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 _FALSE_VALUES = frozenset({"0", "false", "no", "off"})
@@ -131,6 +131,42 @@ def current_leaderboard_entries(user: User) -> QuerySet[LeaderboardEntry]:
     )
 
 
+def _revoke_open_sessions(user: User) -> int:
+    """Abort open sessions and burn their launch tickets.
+
+    Uses ``select_for_update`` so the caller's atomic block holds row locks
+    until commit. A concurrent ``submit_result`` therefore either finishes
+    first (leaving a ``finished`` session that is deliberately untouched) or
+    observes ``aborted`` and refuses to persist a result, mirroring DB-001.
+    """
+    sessions = (
+        GameSession.objects.select_for_update()
+        .filter(
+            subject_type=GameSession.SUBJECT_USER,
+            subject_id=user.id,
+            state__in=(GameSession.STATE_CREATED, GameSession.STATE_ACTIVE),
+        )
+        .order_by("pk")
+    )
+    revoked = 0
+    for session in sessions:
+        session.state = GameSession.STATE_ABORTED
+        session.ticket_hash = None
+        session.ticket_expires_at = None
+        session.binding_nonce_hash = ""
+        session.save(
+            update_fields=[
+                "state",
+                "ticket_hash",
+                "ticket_expires_at",
+                "binding_nonce_hash",
+                "updated_at",
+            ]
+        )
+        revoked += 1
+    return revoked
+
+
 def toggle_user_active(
     *,
     actor: User,
@@ -153,6 +189,10 @@ def toggle_user_active(
         target.is_active = not target.is_active
         target.updated_at = timezone.now()
         target.save(update_fields=["is_active", "updated_at"])
+        if not target.is_active:
+            # §2.16.2: a block must also cut off the SDK sessions and unused
+            # launch tickets that were issued while the account was active.
+            _revoke_open_sessions(target)
         audit = record_audit(
             actor=actor,
             action=(

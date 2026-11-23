@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import threading
 from datetime import timedelta
 
 import pytest
-from django.test import Client
+from django.db import connections
+from django.test import Client, RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 
@@ -19,7 +22,10 @@ from apps.accounts.models import (
 )
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.crm.models import AdminAuditLog
+from apps.crm.services import users as crm_users
 from apps.gameplay.models import GameResult, GameSession, LeaderboardEntry
+from apps.gameplay.services.results import submit_result
+from apps.gameplay.services.sessions import SessionError, activate_session, heartbeat
 
 PASSWORD = "correct horse battery staple"
 
@@ -273,6 +279,220 @@ def test_block_and_unblock_toggle_active_audit_and_authentication() -> None:
         action=AdminAuditLog.ACTION_USER_UNBLOCKED, object_id=target.id
     ).exists()
     assert Client().login(username=target.login, password=PASSWORD) is True
+
+
+def _session(
+    game: Game,
+    user: User,
+    state: str,
+    *,
+    seed: str,
+    **fields: object,
+) -> GameSession:
+    now = timezone.now()
+    defaults: dict[str, object] = {
+        "max_session_seconds": 1800,
+        "activated_at": now - timedelta(seconds=60) if state != GameSession.STATE_CREATED else None,
+        "last_heartbeat_at": now if state != GameSession.STATE_CREATED else None,
+    }
+    defaults.update(fields)
+    return GameSession.objects.create(
+        game=game,
+        game_version=game.current_version,
+        subject_type=GameSession.SUBJECT_USER,
+        subject_id=user.id,
+        mode=GameSession.MODE_USER,
+        state=state,
+        seed=seed,
+        **defaults,
+    )
+
+
+@pytest.mark.django_db
+def test_block_revokes_open_sessions_but_not_closed_ones() -> None:
+    owner = _staff("owner", StaffRole.OWNER)
+    target = _customer("target", "Target")
+    other = _customer("other", "Other")
+    game = _game("revoke_state_game")
+    expires_at = timezone.now() + timedelta(seconds=60)
+    created = _session(
+        game,
+        target,
+        GameSession.STATE_CREATED,
+        seed="created",
+        ticket_hash="c" * 64,
+        ticket_expires_at=expires_at,
+        binding_nonce_hash="d" * 64,
+    )
+    active = _session(
+        game,
+        target,
+        GameSession.STATE_ACTIVE,
+        seed="active",
+        binding_nonce_hash="d" * 64,
+        credited_ms=30_000,
+    )
+    finished = _session(game, target, GameSession.STATE_FINISHED, seed="finished")
+    expired = _session(game, target, GameSession.STATE_EXPIRED, seed="expired")
+    other_active = _session(game, other, GameSession.STATE_ACTIVE, seed="other")
+
+    response = _client(owner).post(reverse("crm:user_block", args=[target.id]))
+    assert response.status_code == 302
+
+    for session in (created, active):
+        session.refresh_from_db()
+        assert session.state == GameSession.STATE_ABORTED
+        assert session.ticket_hash is None
+        assert session.ticket_expires_at is None
+        assert session.binding_nonce_hash == ""
+    for session, expected in (
+        (finished, GameSession.STATE_FINISHED),
+        (expired, GameSession.STATE_EXPIRED),
+        (other_active, GameSession.STATE_ACTIVE),
+    ):
+        session.refresh_from_db()
+        assert session.state == expected
+    assert GameResult.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_block_invalidates_ticket_heartbeat_and_result_and_unblock_is_noop() -> None:
+    owner = _staff("owner", StaffRole.OWNER)
+    target = _customer("target", "Target")
+    game = _game("revoke_sdk_game")
+    ticket = "launch-ticket-before-block"
+    created = _session(
+        game,
+        target,
+        GameSession.STATE_CREATED,
+        seed="created",
+        ticket_hash=hashlib.sha256(ticket.encode()).hexdigest(),
+        ticket_expires_at=timezone.now() + timedelta(seconds=60),
+    )
+    active = _session(
+        game,
+        target,
+        GameSession.STATE_ACTIVE,
+        seed="active",
+        binding_nonce_hash=hashlib.sha256(b"nonce").hexdigest(),
+        credited_ms=30_000,
+    )
+    request = RequestFactory().post("/")
+    request.user = target
+    nonce = "n" * 32
+
+    def expect_revoked() -> None:
+        with pytest.raises(SessionError) as activation:
+            activate_session(request, created.pk, ticket=ticket, binding_nonce=nonce)
+        assert activation.value.code == "E_SESSION_EXPIRED"
+        with pytest.raises(SessionError) as beat:
+            heartbeat(request, active.pk)
+        assert beat.value.code == "E_SESSION_EXPIRED"
+        with pytest.raises(SessionError) as submission:
+            submit_result(
+                request,
+                active.pk,
+                idempotency_key="revoked-key",
+                value=10,
+                duration_ms=30_000,
+            )
+        assert submission.value.code == "E_SESSION_EXPIRED"
+
+    client = _client(owner)
+    assert client.post(reverse("crm:user_block", args=[target.id])).status_code == 302
+    expect_revoked()
+    assert not GameResult.objects.filter(session=active).exists()
+
+    assert client.post(reverse("crm:user_unblock", args=[target.id])).status_code == 302
+    expect_revoked()
+    for session in (created, active):
+        session.refresh_from_db()
+        assert session.state == GameSession.STATE_ABORTED
+        assert session.ticket_hash is None
+        assert session.ticket_expires_at is None
+    # Unblocking must not recreate sessions or reissue launch tickets.
+    assert GameSession.objects.count() == 2
+    assert not GameResult.objects.exists()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_submit_result_racing_block_cannot_persist(monkeypatch) -> None:
+    owner = _staff("owner", StaffRole.OWNER)
+    target = _customer("target", "Target")
+    game = _game("revoke_race_game")
+    session = _session(
+        game,
+        target,
+        GameSession.STATE_ACTIVE,
+        seed="race",
+        credited_ms=30_000,
+    )
+    request = RequestFactory().post("/")
+    request.user = target
+
+    reached_audit = threading.Event()
+    release_block = threading.Event()
+    submit_started = threading.Event()
+    outcomes: list[str] = []
+    outcomes_lock = threading.Lock()
+    real_record_audit = crm_users.record_audit
+
+    def blocking_audit(**kwargs: object) -> AdminAuditLog:
+        reached_audit.set()
+        assert release_block.wait(timeout=10)
+        return real_record_audit(**kwargs)
+
+    monkeypatch.setattr(crm_users, "record_audit", blocking_audit)
+
+    def block_worker() -> None:
+        try:
+            result = crm_users.toggle_user_active(actor=owner, target_id=target.id)
+            assert result.ok
+        finally:
+            connections.close_all()
+
+    def submit_worker() -> None:
+        try:
+            submit_started.set()
+            submit_result(
+                request,
+                session.pk,
+                idempotency_key="race-key",
+                value=10,
+                duration_ms=30_000,
+            )
+        except SessionError as exc:
+            with outcomes_lock:
+                outcomes.append(exc.code)
+        except Exception as exc:  # noqa: BLE001 - surface unexpected race failures
+            with outcomes_lock:
+                outcomes.append(type(exc).__name__)
+        else:
+            with outcomes_lock:
+                outcomes.append("ok")
+        finally:
+            connections.close_all()
+
+    block_thread = threading.Thread(target=block_worker)
+    block_thread.start()
+    assert reached_audit.wait(timeout=10), "block never reached its audit step"
+
+    submit_thread = threading.Thread(target=submit_worker)
+    submit_thread.start()
+    assert submit_started.wait(timeout=10), "submit never started"
+    release_block.set()
+
+    block_thread.join(timeout=30)
+    submit_thread.join(timeout=30)
+    assert not block_thread.is_alive()
+    assert not submit_thread.is_alive()
+
+    assert outcomes == ["E_SESSION_EXPIRED"]
+    assert not GameResult.objects.filter(session=session).exists()
+    session.refresh_from_db()
+    assert session.state == GameSession.STATE_ABORTED
+    target.refresh_from_db()
+    assert target.is_active is False
 
 
 @pytest.mark.django_db
