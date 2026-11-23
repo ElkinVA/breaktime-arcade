@@ -390,6 +390,17 @@ drift; generator отвергает неподдерживаемые JSON-Schema
 8 skipped, exit 0**. Остаток: `npm run build` не вызывает генерацию (drift
 ловится тестом); browser/staging E2E NOT TESTED.
 
+## 0.28. App F lock order — 2026-11-23/24
+
+`ARCADE-SESSION-LOCK-ORDER-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`92ef3b1` + comment fix `f871f06`). `submit_result` и `heartbeat` берут
+User row lock до GameSession, как `create_session`/`anonymize_user`;
+`submit_result` дополнительно проверяет `is_active` под локом. Три
+concurrency-теста (submit vs anonymize/block, heartbeat); targeted 22/22 и
+race suite 8/8; full suite **1116 tests: 1108 passed, 8 skipped, exit 0**.
+R-051 закрыт. Остаток: R-056 `put_storage` вне scope; live load/staging
+E2E NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

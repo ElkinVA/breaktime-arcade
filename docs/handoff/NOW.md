@@ -388,6 +388,11 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-SESSION-LOCK-ORDER-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`92ef3b1` + `f871f06`): submit_result/heartbeat берут User lock до
+GameSession; 3 concurrency tests; full suite **1116/1108/8**. R-051 закрыт;
+R-056 put_storage остаётся; live load/staging NOT TESTED.
+
 `ARCADE-RUNTIME-SCHEMA-SINGLE-SOURCE-001` — **COMPLETED / AI HQ REVIEW
 ACCEPT** (`f9a75d4` + `d1c4e6f`): host registry генерируется из
 `schemas/messages/*.json`, parity test + unsupported-keyword guard; JS

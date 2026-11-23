@@ -1512,3 +1512,13 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Остаток:** `npm run build` не вызывает генерацию (drift ловится тестом);
   browser/staging E2E NOT TESTED; R-055 требует contract/owner подтверждения.
 - **Commit:** `f9a75d4`, `d1c4e6f`.
+
+### ARCADE-SESSION-LOCK-ORDER-001 — App F User-before-GameSession locks (AI HQ)
+
+- **Результат:** `92ef3b1` + comment fix `f871f06`; `submit_result` и
+  `heartbeat` берут User row lock до GameSession, `submit_result` проверяет
+  `is_active` под локом; порядок совместим с create_session/anonymize_user.
+- **Проверки:** 3 concurrency-теста (submit vs anonymize/block, heartbeat);
+  targeted 22/22, race suite 8/8; full suite **1116/1108/8**; reviewer accept.
+- **Остаток:** R-056 `put_storage`; live load/staging E2E NOT TESTED.
+- **Commit:** `92ef3b1`, `f871f06`.

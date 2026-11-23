@@ -890,3 +890,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | build does not auto-generate; browser/staging E2E NOT TESTED; R-055 contract confirmation |
 | Источник | commits `f9a75d4`, `d1c4e6f`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-SESSION-LOCK-ORDER-001 — App F lock order
+
+| Поле | Значение |
+|---|---|
+| Тип | Reliability/concurrency fix via AI HQ; no schema change |
+| Результат | `92ef3b1` + `f871f06`: submit_result/heartbeat User lock before GameSession + is_active check |
+| Проверки | 3 concurrency tests; targeted 22/22; race suite 8/8; full suite 1116/1108/8 exit 0; reviewer accept |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | R-056 put_storage; live load/staging E2E NOT TESTED |
+| Источник | commits `92ef3b1`, `f871f06`; evidence в `.autonomy/evidence/` |
