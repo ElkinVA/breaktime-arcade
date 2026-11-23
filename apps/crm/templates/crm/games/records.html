@@ -1,0 +1,62 @@
+{% if records.epochs %}
+    <form method="get"
+          action="{{ request.path }}"
+          class="mb-4 flex flex-wrap items-end gap-3"
+          data-testid="crm-records-epoch-form">
+        <label class="flex flex-col gap-1 text-xs">
+            <span class="text-muted">Эпоха таблицы рекордов</span>
+            <select name="epoch"
+                    class="bg-surface border border-text/20 rounded px-3 py-2 text-sm"
+                    data-testid="crm-records-epoch-select">
+                {% for epoch in records.epochs %}
+                    <option value="{{ epoch }}"{% if epoch == records.selected_epoch %} selected{% endif %}>
+                        Эпоха {{ epoch }}{% if epoch == records.current_epoch %} · текущая{% else %} · архив{% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="submit"
+                class="px-4 py-2 rounded bg-accent text-bg font-semibold text-sm"
+                data-testid="crm-records-epoch-apply">Показать</button>
+    </form>
+{% endif %}
+
+{% if not records.is_current_epoch %}
+    <p class="mb-4 text-sm text-muted" data-testid="crm-records-archive">
+        Архивная эпоха {{ records.selected_epoch }}: таблица доступна только для чтения.
+    </p>
+{% endif %}
+
+{% if records.rows %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="text-left text-muted border-b border-text/10">
+                <tr>
+                    <th class="px-3 py-2">Место</th>
+                    <th class="px-3 py-2">Никнейм</th>
+                    <th class="px-3 py-2">Результат</th>
+                    <th class="px-3 py-2">Дата</th>
+                    <th class="px-3 py-2">Доверие</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in records.rows %}
+                    <tr class="border-b border-text/5 last:border-0" data-testid="crm-record-row">
+                        <td class="px-3 py-2 font-semibold" data-testid="crm-record-rank">{{ row.rank }}</td>
+                        <td class="px-3 py-2" data-testid="crm-record-nickname">{{ row.nickname|default:"—" }}</td>
+                        <td class="px-3 py-2" data-testid="crm-record-value">{{ row.value }}</td>
+                        <td class="px-3 py-2 text-muted" data-testid="crm-record-achieved-at">{{ row.achieved_at|date:"Y-m-d H:i" }}</td>
+                        <td class="px-3 py-2"
+                            data-testid="crm-record-trust"
+                            data-trust-level="{{ row.trust_level }}">{{ row.trust_level_label }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "components/pagination.html" with page_obj=records.page_obj %}
+{% else %}
+    <p class="text-muted" data-testid="crm-records-empty">
+        В этой эпохе пока нет записей таблицы рекордов.
+    </p>
+{% endif %}

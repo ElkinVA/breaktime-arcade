@@ -60,7 +60,12 @@ def annotate_rank(queryset: QuerySet[LeaderboardEntry]) -> QuerySet[LeaderboardE
     return queryset.annotate(rank=rank_annotation())
 
 
-def _ordering(game) -> list[str]:
+def leaderboard_ordering(game) -> list[str]:
+    """Public board ordering for one game (§2.11 tie-break).
+
+    Shared by the public leaderboard and read-only staff projections so both
+    screens always present rows in exactly the same order.
+    """
     if game.score_direction == "lower_is_better":
         return ["value", "achieved_at", "user_id"]
     return ["-value", "achieved_at", "user_id"]
@@ -97,7 +102,7 @@ def get_leaderboard(game, *, limit: int, user) -> dict[str, Any]:
     queryset = LeaderboardEntry.objects.filter(
         game=game, epoch=epoch, is_public=True
     ).select_related("user__profile")
-    entries = list(queryset.order_by(*_ordering(game))[:limit])
+    entries = list(queryset.order_by(*leaderboard_ordering(game))[:limit])
     payload = {
         "game_id": game.technical_id,
         "epoch": epoch,

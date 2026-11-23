@@ -57,4 +57,15 @@
     </div>
     {% include "crm/games/versions.html" with versions=card.versions current_version=card.current_version %}
 </section>
+
+<section class="bg-surface rounded-card border border-text/10 p-5 mt-8" data-testid="crm-game-records">
+    <div class="mb-4">
+        <h2 class="text-xl font-display font-bold">Таблица рекордов</h2>
+        <p class="text-sm text-muted">
+            Публичные записи выбранной эпохи. Экран доступен только для чтения;
+            изменение рекордов выполняется через модерацию.
+        </p>
+    </div>
+    {% include "crm/games/records.html" with records=records %}
+</section>
 {% endblock %}

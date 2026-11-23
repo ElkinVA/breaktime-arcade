@@ -81,6 +81,7 @@ from apps.crm.services.access import safe_next_path
 from apps.crm.services.audit import record_audit
 from apps.crm.services.dashboard import dashboard_stats
 from apps.crm.services.exports import ReportFormatError, report_response
+from apps.crm.services.game_records import build_game_records
 from apps.crm.services.games import (
     GameCard,
     build_game_list_page,
@@ -292,8 +293,9 @@ def seo_diagnostics(request: HttpRequest) -> TemplateResponse:
 
 
 @role_required(GAMES_VIEW)
+@require_GET
 def game_detail(request: HttpRequest, game_id: UUID) -> TemplateResponse:
-    """Game card with status, current version and immutable version history."""
+    """Game card: status, version history and read-only leaderboard records."""
     card: GameCard | None = load_game_card(
         game_id,
         get_active_language_codes_safely(),
@@ -301,10 +303,24 @@ def game_detail(request: HttpRequest, game_id: UUID) -> TemplateResponse:
     )
     if card is None:
         raise Http404("Game not found")
+    records = build_game_records(
+        card.game,
+        epoch=request.GET.get("epoch"),
+        page=request.GET.get("page"),
+    )
     return TemplateResponse(
         request,
         "crm/games/detail.html",
-        {"title": f"{card.title} · CRM", "card": card},
+        {
+            "title": f"{card.title} · CRM",
+            "card": card,
+            "records": records,
+            # Keep the selected archive epoch while paging; the current epoch
+            # is the default and needs no extra query parameter.
+            "pagination_query": (
+                "" if records.is_current_epoch else f"epoch={records.selected_epoch}"
+            ),
+        },
     )
 
 
