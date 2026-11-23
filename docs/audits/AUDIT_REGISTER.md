@@ -818,3 +818,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | R-051 pre-existing lock-order inversion; live SDK/staging NOT TESTED |
 | Источник | commit `2ac43e1`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-ARTIFACTS-TOCTOU-001 — artifact download TOCTOU
+
+| Поле | Значение |
+|---|---|
+| Тип | Security hardening via AI HQ; no schema/contract change |
+| Результат | `75d0159`: `O_NOFOLLOW` + fstat/inode verification, dir_fd tree walk, symlink/swap rejection for package and runtime |
+| Проверки | 4 new TOCTOU + 6 existing artifact tests; ruff/mypy; reviewer accept; full suite 1109/1101/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | R-050 memory peak, runtime zip not hash-verified, real nginx/volume E2E NOT TESTED |
+| Источник | commit `75d0159`; evidence в `.autonomy/evidence/` |

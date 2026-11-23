@@ -62,7 +62,8 @@ ambiguity.
   `db8a835` + `551e73e`).
 - CRM artifact downloads: staff-only original ZIP, runtime zip and per-version
   reports with step-up for binary artifacts (`ARCADE-ARTIFACTS-DOWNLOAD-001`,
-  `f8c3a52` + `91c9c0f`); R-050 TOCTOU residual.
+  `f8c3a52` + `91c9c0f`); TOCTOU closed by `75d0159`, R-050 memory/E2E
+  residual.
 - CRM SEO diagnostics: `/crm/seo/` reports empty descriptions, duplicate
   titles, missing alt and incomplete translations by language
   (`ARCADE-CRM-SEO-DIAGNOSTICS-001`, `f5474d8`).

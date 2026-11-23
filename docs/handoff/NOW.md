@@ -388,6 +388,11 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-ARTIFACTS-TOCTOU-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`75d0159`): O_NOFOLLOW + fstat/inode, dir_fd tree walk; 10 targeted tests;
+full suite **1109/1101/8**. Остаток R-050: memory peak, runtime zip не
+hash-verified, real nginx/volume E2E NOT TESTED.
+
 `ARCADE-SESSION-RACE-001` — **COMPLETED / AI HQ REVIEW ACCEPT after malformed
 review retry** (`2ac43e1`): create_session берёт User row lock и перепроверяет
 is_active; anonymize_user — тот же lock. 2 concurrency tests; full suite

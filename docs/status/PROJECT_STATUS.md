@@ -321,6 +321,16 @@ concurrency-теста (block и anonymise) + 19 CRM users tests; full suite
 **1105 tests: 1097 passed, 8 skipped, exit 0**. Остаток: live SDK/staging
 NOT TESTED; pre-existing lock-order inversion вынесен в R-051.
 
+## 0.22. Artifact download TOCTOU — 2026-11-23
+
+`ARCADE-ARTIFACTS-TOCTOU-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`75d0159`). Original ZIP и runtime-дерево открываются один раз:
+`O_NOFOLLOW`, `fstat`/inode сверяются с разрешённым путём, дочерние entries
+открываются через `dir_fd`; symlink/path-swap → `ArtifactUnavailable`.
+4 новых TOCTOU-теста + 6 прежних; full suite **1109 tests: 1101 passed,
+8 skipped, exit 0**. Остаток R-050: runtime-файлы читаются в память целиком,
+runtime zip не hash-verified, real nginx/volume E2E NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

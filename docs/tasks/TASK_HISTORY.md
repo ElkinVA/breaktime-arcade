@@ -1434,3 +1434,15 @@ tests: 1056 passed, 8 skipped, exit 0**.
   full suite **1105/1097/8**.
 - **Остаток:** R-051; live SDK/staging NOT TESTED.
 - **Commit:** `2ac43e1`.
+
+### ARCADE-ARTIFACTS-TOCTOU-001 — artifact download TOCTOU (AI HQ)
+
+- **Результат:** `75d0159`; original ZIP и runtime tree открываются через
+  `O_NOFOLLOW` + fstat/inode-проверку, дочерние entries — через `dir_fd`;
+  symlink/path swap → `ArtifactUnavailable`; writing/reading из одного
+  verified handle.
+- **Проверки:** 4 новых TOCTOU-теста + 6 прежних; ruff/mypy; AI HQ reviewer
+  accept; full suite **1109/1101/8**.
+- **Остаток:** R-050 memory peak (файлы читаются целиком), runtime zip не
+  hash-verified, real nginx/volume E2E NOT TESTED.
+- **Commit:** `75d0159`.
