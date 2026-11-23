@@ -48,6 +48,9 @@ ambiguity.
   (`ARCADE-CRM-USERS-001`, `4095ed8` + fixes). R-049 follow-ups now abort
   open SDK sessions on block and clear tombstone credentials
   (`a9e7d2b`, `08ab9c7`); narrow create_session race remains.
+- Session creation is serialized with block/anonymise via a User row lock and
+  `is_active` recheck (`ARCADE-SESSION-RACE-001`, `2ac43e1`); R-051 lock-order
+  inversion remains.
 - App F concurrency/idempotency coverage: result/leaderboard races, rating
   limits, storage If-Match and Idempotency-Key (`ARCADE-APPF-RACE-TESTS-001`,
   `7af18bb`).

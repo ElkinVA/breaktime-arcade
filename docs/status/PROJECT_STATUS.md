@@ -310,6 +310,17 @@ Idempotency-Key. Targeted 8/8; миграций нет; full suite **1103 tests:
 throttle/ETag round-trip остаётся на существующих integration-тестах;
 live browser/staging NOT TESTED.
 
+## 0.21. Session create race — 2026-11-23
+
+`ARCADE-SESSION-RACE-001` — **COMPLETED / AI HQ REVIEW ACCEPT after one
+malformed review retry** (`2ac43e1`). `create_session` внутри транзакции
+берёт `select_for_update` на User и перепроверяет `is_active`; `anonymize_user`
+берёт тот же User row lock перед revoke-сканом. Сессия не может появиться
+для блокируемого/анонимизируемого аккаунта; R-049 в коде закрыт. Два
+concurrency-теста (block и anonymise) + 19 CRM users tests; full suite
+**1105 tests: 1097 passed, 8 skipped, exit 0**. Остаток: live SDK/staging
+NOT TESTED; pre-existing lock-order inversion вынесен в R-051.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

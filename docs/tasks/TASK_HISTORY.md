@@ -1419,3 +1419,18 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Остаток:** service-level scope; HTTP/CSRF/throttle/ETag round-trip
   покрыт существующими integration-тестами; live browser/staging NOT TESTED.
 - **Commit:** `7af18bb`.
+
+### ARCADE-SESSION-RACE-001 — create_session race with block/anonymise (AI HQ)
+
+- **Результат:** `2ac43e1`; `create_session` берёт `select_for_update` на User
+  и перепроверяет `is_active` внутри транзакции; `anonymize_user` держит тот
+  же User row lock. Сессия не создаётся для блокируемого/анонимизируемого
+  аккаунта; R-049 закрыт в коде.
+- **Review:** первая попытка вернула невалидный JSON (лишняя `]`), control
+  plane корректно не принял вердикт; retry — **accept**. Reviewer отметил
+  pre-existing lock-order inversion (`create_session` advisory→rows,
+  `activate_session` row→advisory) — R-051, не введён этим изменением.
+- **Проверки:** 2 concurrency tests (block и anonymise), 19 CRM users tests;
+  full suite **1105/1097/8**.
+- **Остаток:** R-051; live SDK/staging NOT TESTED.
+- **Commit:** `2ac43e1`.

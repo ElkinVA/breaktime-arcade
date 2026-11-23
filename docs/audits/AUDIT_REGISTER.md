@@ -806,3 +806,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | service-level scope; HTTP round-trip and live browser/staging NOT TESTED |
 | Источник | commit `7af18bb`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-SESSION-RACE-001 — create_session vs block/anonymise
+
+| Поле | Значение |
+|---|---|
+| Тип | Reliability/security fix via AI HQ; no schema change |
+| Результат | `2ac43e1`: User row lock + `is_active` recheck in create_session, same lock in anonymize_user; no session survives block/anonymise |
+| Проверки | 2 concurrency tests; 19 CRM users tests; full suite 1105/1097/8 exit 0; reviewer accept after malformed-review retry |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | R-051 pre-existing lock-order inversion; live SDK/staging NOT TESTED |
+| Источник | commit `2ac43e1`; evidence в `.autonomy/evidence/` |
