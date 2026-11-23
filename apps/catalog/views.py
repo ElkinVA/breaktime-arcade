@@ -364,11 +364,16 @@ def genre_detail(request: HttpRequest, slug: str) -> TemplateResponse:
             .first()
         )
     genre = translation.genre if translation is not None else get_object_or_404(Genre, code=slug)
+    params = request.GET
     games = (
-        filter_games(parse_filters(request.GET), language_code)
+        filter_games(parse_filters(params), language_code)
         .filter(Q(primary_genre=genre) | Q(additional_genres=genre))
         .distinct()
     )
+    page_obj = paginate_games(games, params)
+    active_language_codes = get_active_language_codes_safely()
+    page_canonical_url = canonical_url(request, params, page_obj.number)
+    robots_noindex = should_noindex(page_obj.number)
     return TemplateResponse(
         request,
         "catalog/genre_list.html",
@@ -376,8 +381,12 @@ def genre_detail(request: HttpRequest, slug: str) -> TemplateResponse:
             "title": translation.name if translation else genre.code,
             "genre": genre,
             "genre_name": translation.name if translation else genre.code,
-            "games": games,
-            "cards": card_items(games, language_code, get_active_language_codes_safely()),
+            "games": page_obj.object_list,
+            "cards": card_items(page_obj.object_list, language_code, active_language_codes),
             "language_code": language_code,
+            "page_obj": page_obj,
+            "pagination_query": pagination_query(params),
+            "canonical_url": page_canonical_url,
+            "robots_noindex": robots_noindex,
         },
     )
