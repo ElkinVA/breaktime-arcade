@@ -650,3 +650,16 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **IMPLEMENTED; effect measured (single pair, indicative)** |
 | Остаток | Интерактивные сессии вне journal; tool-loop не ограничен hard cap; один запуск на фазу |
 | Источник | `docs/audits/BA_TOKEN_EFFICIENCY_OPTIMIZATION_REPORT.md` |
+
+
+## APPF-RUNTIME-REVIEW-001 — stale/idempotency delta tests
+
+| Поле | Значение |
+|---|---|
+| Тип | Test-only delta; production code не менялся |
+| Результат | `tests/js/player_race.test.mjs`: stale submit success/error, leaderboard, storage после newSession; same-session Idempotency-Key reuse; fresh key для новой сессии; `tests/integration/test_migrations_check.py` guard |
+| Проверки | `npm run test:js` 8 entries / 0 failed; `npm run check:js` clean; migration guard 1 passed |
+| Review | `code-reviewer` ACCEPT после исправления vacuous deferred-ответов |
+| Статус | **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | Live browser E2E/staging/prod NOT TESTED; server cross-check strictness NOT TESTED |
+| Источник | `docs/foundation/APPF-RUNTIME-REVIEW-001_DELTA_TESTS.md` |

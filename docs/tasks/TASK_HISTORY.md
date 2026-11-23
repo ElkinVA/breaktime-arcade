@@ -1227,3 +1227,20 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Ограничения:** модели/маршрутизация/budget/stop-политика не менялись;
   интерактивные сессии по-прежнему вне journal.
 - **Отчёт:** `docs/audits/BA_TOKEN_EFFICIENCY_OPTIMIZATION_REPORT.md`.
+
+
+### APPF-RUNTIME-REVIEW-001 delta — stale/idempotency tests
+
+- **Результат:** `tests/js/player_race.test.mjs` — stale submit success/error,
+  leaderboard/storage responses после `newSession` не пересекают границу
+  сессии; same-session `Idempotency-Key` reuse и fresh key проверены;
+  `tests/integration/test_migrations_check.py` — постоянный
+  `makemigrations --check` guard.
+- **Проверки:** `npm run test:js` 8 entries/0 failed; `npm run check:js`
+  clean; migration guard 1 passed; production-код не менялся.
+- **Review:** `code-reviewer` ACCEPT после reject-итерации: deferred-ответы
+  были raw payload и success-guard'ы не достигались; исправлено
+  Response-shaped helper'ом.
+- **Остаток:** live browser E2E/staging/prod NOT TESTED; server cross-check
+  strictness NOT TESTED.
+- **Отчёт:** `docs/foundation/APPF-RUNTIME-REVIEW-001_DELTA_TESTS.md`.

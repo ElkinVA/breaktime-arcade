@@ -316,6 +316,11 @@ host E2E (13 сценариев, после локальной настройк�
   guard, newSession close, idempotency key, host validation; 79 targeted
   tests, 7 JS tests, full suite — см. `docs/foundation/
   APPF-RUNTIME-REVIEW-001_REPORT.md`. Product acceptance — владелец.
+- **Delta 2026-11-23:** stale-response и Idempotency-Key reuse тесты
+  (`tests/js/player_race.test.mjs`), независимый review ACCEPT после
+  исправления vacuous deferred-ответов; постоянный
+  `tests/integration/test_migrations_check.py`. Отчёт —
+  `docs/foundation/APPF-RUNTIME-REVIEW-001_DELTA_TESTS.md`.
 - **План следующей задачи:** `docs/tasks/APPF-RUNTIME-REVIEW-001_PLAN.md`.
 
 ### AI Headquarters — проверка 2026-11-23

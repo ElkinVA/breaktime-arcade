@@ -114,8 +114,8 @@ null/array, limit 10/100), stale-response guard в player, best-effort close
 старой сессии перед newSession, per-session Idempotency-Key, отказ от
 retry для activate/close. Проверки: targeted 79 passed, `npm test:js`
 7 passed, `npm run check:js` clean; полный suite — см. фактические
-результаты. Остатки: race/stale и idempotency-key тесты не добавлены;
-серверная cross-check strictness — NOT TESTED; R-036 Phase 2 не менялся;
+результаты. Остатки: race/stale и idempotency-key тесты добавлены (`tests/js/player_race.test.mjs`,
+independent review ACCEPT); серверная cross-check strictness — NOT TESTED; R-036 Phase 2 не менялся;
 R-043/R-044/R-045 — residual; live E2E/staging/prod — NOT TESTED.
 Отчёт — `docs/foundation/APPF-RUNTIME-REVIEW-001_REPORT.md`.
 
