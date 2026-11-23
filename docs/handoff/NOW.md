@@ -388,6 +388,10 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-CRM-TAXONOMY-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`98b848c` + fixes): genre/tag CRUD, translations, delete guards, queue;
+9 tests; full suite **1072/1064/8**. Остаток: rollback image orphan;
+staging/prod NOT TESTED.
 `ARCADE-CRM-USERS-001` — **COMPLETED / CODE REVIEW ACCEPT; SECURITY DELTA
 RESOLVED** (`4095ed8` + fixes): CRM customer list/detail/search/block/delete/
 export; step-up for export/delete, staff-target/tombstone guards, pagination.

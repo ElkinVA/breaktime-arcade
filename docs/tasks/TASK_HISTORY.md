@@ -1316,3 +1316,17 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Остаток:** R-049 block не отзывает game SDK sessions; tombstone хранит
   password hash/TOTP; live HTTP/CSRF not tested.
 - **Commits:** `4095ed8` + security fix commit (см. git log).
+
+
+### ARCADE-CRM-TAXONOMY-001 — CRM genre/tag CRUD (AI HQ)
+
+- **Результат:** `98b848c` + minor fixes; `/crm/genres/`, `/crm/tags/` CRUD,
+  translations, delete guards, requires-translation queue, audit;
+  `crm.0006` choices-only migration for new audit actions.
+- **Проверки:** 9 taxonomy tests; ruff/mypy clean; AI HQ reviewer accept;
+  full suite **1072 tests: 1064 passed, 8 skipped, exit 0**.
+- **Minors fixed:** queue filter lowercase, genre image cleanup after commit,
+  slug format validation.
+- **Остаток:** rollback new image upload may orphan file; staging/prod NOT
+  TESTED.
+- **Commit:** `98b848c` + minor-fix commit.

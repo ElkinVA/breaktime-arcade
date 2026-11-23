@@ -37,6 +37,9 @@ ambiguity.
   App F runtime race/idempotency tests and live E2E coverage; catalog rating
   vote UI/CRM diagnostics; accounts history/records/email/legal texts; 2FA
   CRM step-up; retention classes; moderation/antifraud owner gaps.
+- CRM taxonomy: `/crm/genres/` and `/crm/tags/` CRUD with translations,
+  delete guards and requires-translation queue (`ARCADE-CRM-TAXONOMY-001`,
+  `98b848c` + fixes).
 - CRM customer accounts: `/crm/users/` search/filters, detail, block/unblock,
   deletion window, export; step-up and staff-target guards
   (`ARCADE-CRM-USERS-001`, `4095ed8` + fixes). R-049 SDK-session revocation

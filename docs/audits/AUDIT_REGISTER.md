@@ -722,3 +722,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / CODE REVIEW ACCEPT; SECURITY DELTA RESOLVED**; product/staging/prod не заявляются |
 | Остаток | R-049: block не отзывает game SDK sessions/launch tickets; tombstone password/TOTP retention; live CSRF/HTTP not tested |
 | Источник | commit `4095ed8` + security fix commit; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-CRM-TAXONOMY-001 — CRM genre/tag CRUD
+
+| Поле | Значение |
+|---|---|
+| Тип | Product/CRM implementation via AI HQ; choices-only audit migration |
+| Результат | `98b848c` + fixes: genre/tag CRUD routes, translations, image/sort_order, delete guards, requires-translation queue, audit |
+| Проверки | 9 taxonomy tests; ruff/mypy clean; AI HQ reviewer accept; full suite 1072/1064/8 exit 0; minors fixed (queue case, image cleanup, slug validation) |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | new upload rollback may leave an orphan file; staging/prod NOT TESTED |
+| Источник | commit `98b848c` + minor-fix commit; evidence в `.autonomy/evidence/` |

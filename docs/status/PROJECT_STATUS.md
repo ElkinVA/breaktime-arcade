@@ -219,6 +219,20 @@ ruff/mypy clean; full suite **1046 tests: 1038 passed, 8 skipped, exit 0**.
 Security hardening: customer-маршруты не адресуют staff/owner/tombstone; export требует step-up (§2.16.1), delete — step-up + confirm; tombstone не реактивируется; leaderboard только текущая эпоха; пагинация 50; nosniff; CSRF-negative test. Security delta verdict — **resolved**. Targeted 19 tests; full suite **1064 tests:
 1056 passed, 8 skipped, exit 0**. Остатки: block не отзывает уже выданные game SDK-сессии (R-049); tombstone хранит password hash/TOTP до удаления строки; live CSRF/HTTP not tested.
 
+## 0.14. CRM taxonomy — 2026-11-23
+
+`ARCADE-CRM-TAXONOMY-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`98b848c` + minor fixes). `/crm/genres/` и `/crm/tags/` list/create/edit/delete
+под `CONTENT_MANAGE`; genre code/sort_order/image + per-language translations;
+tag code/needs_translation + translations; delete блокируется при
+`GameGenre`/`GameTag`/primary genre; requires-translation queue; audit.
+Migration `crm.0006` — choices-only AlterField для новых audit actions (без
+изменения структуры/данных БД). Исправлены minor review: queue filter
+case-insensitive, очистка заменённого/удалённого genre image после commit,
+slug validation. 9 targeted tests; ruff/mypy clean; full suite **1072 tests:
+1064 passed, 8 skipped, exit 0**. Остаток: image cleanup при rollback новой
+загрузки не гарантирован; live staging/prod NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не
