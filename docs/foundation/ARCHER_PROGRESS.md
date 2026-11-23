@@ -31,7 +31,7 @@ Python package/import tests; live CRM E2E.
 - Official SDK byte-identical; no gateway changes.
 - Assets: 1280×720 WebP cover + two screenshots (live frame/result).
 - `tests/js/archer.test.mjs` — 11 core tests.
-- `tests/unit/test_archer_package.py` — 14 package/content tests.
+- `tests/unit/test_archer_package.py` — 13 package/content tests.
 - `tests/integration/test_archer_import.py` — isolated-worker import/publish.
 
 ## 4. Live dev E2E

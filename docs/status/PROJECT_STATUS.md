@@ -1,7 +1,7 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-22 (P4 operational hardening + first real
-game; product acceptance remains owner-level).
+**Дата актуализации:** 2026-11-23 (P5 Archer; локальная сверка Claude;
+product acceptance remains owner-level).
 
 ## 0.1. P4 — фактическое состояние
 
@@ -70,6 +70,25 @@ game; product acceptance remains owner-level).
   closed.
 - **Not tested:** original prototype (file absent), staging/production,
   non-Chromium devices, real network-fault injection.
+
+## 0.3. Локальная сверка 2026-11-23 (Claude)
+
+- Git: `HEAD` = `origin/main` = `734b592`; рабочее дерево чистое,
+  неотправленных локальных коммитов нет.
+- Полный fresh pytest: **981 passed**; 8 skip из-за отсутствия `git` в
+  контейнере `web` (7 `test_autonomy_worktree.py` + 1 `test_devcontrol.py`)
+  и 4 module-level E2E skip при выключенном `BA_E2E` — всего отчётные
+  **12 skipped**. Исторический P5-отчёт указывает 13 package-тестов;
+  фактическая текущая коллекция — 14 (отчёт не переписывался).
+- PostgreSQL healthy; Redis cache/broker/throttle `PONG`; Celery worker
+  `pong`; `zip-worker`/`zip-volume-init` не запущены.
+- Dev-БД: **0 игр**, **26 неприменённых миграций**; Archer-страницы локально
+  404. Миграции и восстановление не выполнялись.
+- `.env`/`certs/` присутствуют; required core env names заданы;
+  `.env.staging` присутствует, но staging не валидировался.
+- Archer personal best: fallback для record есть; async `myBest` остаётся
+  cosmetic residual. SDK-контракт не менялся.
+- План ревью: `docs/tasks/APPF-RUNTIME-REVIEW-001_PLAN.md`.
 
 ## 1. Текущий статус
 

@@ -282,6 +282,37 @@ queues: worker default/default + celery/celery; zip-worker zip/zip
 host E2E (13 сценариев, после локальной настройки) -> 13 passed
 ```
 
+### Локальная сверка 2026-11-23 (Claude)
+
+- **Git:** `HEAD` = `origin/main` = `734b592`; незакоммиченных изменений нет;
+  локальных неотправленных коммитов нет.
+- **Pytest:** полный fresh-прогон завершился без падений — **981 passed**.
+  Исторический P5-отчёт указывает 13 package-тестов, фактическая текущая
+  коллекция — 14; отчёт не переписывался по ограничению задачи.
+  Пропуски: 7 тестов `tests/integration/test_autonomy_worktree.py` и 1 тест
+  `tests/unit/test_devcontrol.py::test_sandbox_copy_excludes_secrets` —
+  в контейнере `web` отсутствует `git`; ещё 4 module-level skip в
+  `tests/e2e/*` — `BA_E2E` не включён. Итого отчётные **12 skipped**;
+  ранее наблюдавшиеся 8 — те же 8 git-skip, без 4 E2E-модулей.
+- **Локальная инфраструктура:** PostgreSQL принимает соединения; Redis
+  cache/broker/throttle — `PONG`; Celery worker — `pong` (1 node online);
+  `zip-worker` и `zip-volume-init` в текущем стеке **не запущены**;
+  `web` запущен и healthy.
+- **Dev-БД:** `Game.objects.count() = 0`; **26 неприменённых миграций**;
+  поэтому `/en/games/archer/`, `/play/`, `/leaderboard/` локально 404.
+  Миграции не применялись; данные не восстанавливались.
+- **Окружение:** `.env` и `certs/` присутствуют; required core env names
+  (`DJANGO_SECRET_KEY`, `DATABASE_URL`, `POSTGRES_*`, `REDIS_*`,
+  `CELERY_BROKER_URL`, `DJANGO_ALLOWED_HOSTS`, `SESSION_BINDING_KEY`,
+  `BA_SDK_DEFAULT_VERSION`, `BA_GAMES_FRAME_SRC`, `ZIP_MAX_BYTES`) заданы;
+  `S3_ENDPOINT`/`SENTRY_DSN` не заданы (dev). `.env.staging` присутствует,
+  но staging не валидировался.
+- **Archer personal best:** fallback `isRecord || isPersonalBest` в коде
+  есть; серверный `is_personal_best`/`myBest` покрыт API-тестами. Остаётся
+  UI-асинхронность `myBest` (при ошибке/не-record может остаться «—»);
+  это cosmetic residual, не ошибка score/rank. SDK-контракт не менялся.
+- **План следующей задачи:** `docs/tasks/APPF-RUNTIME-REVIEW-001_PLAN.md`.
+
 ## Модели
 
 - План/ревью: `architect`, `code-reviewer`, `security-auditor` /
@@ -291,11 +322,10 @@ host E2E (13 сценариев, после локальной настройк�
 
 ## Git
 
-- `ba`: `main`; P5 acceptance — `42296fa`, docs-синхронизация счётчиков —
-  `db80896`; актуальный HEAD — `git log -1`. ZIP preflight — `fa8a1a7`,
-  extract — `4c44009`, worker — `8cc4747`, hardening — `d36e4c6`;
-  рабочее дерево чистое. Origin — приватный
-  `git@github.com:ElkinVA/breaktime-arcade.git`.
+- `ba`: `main`; P5 acceptance — `42296fa`; последующие docs/plan-коммиты —
+  `git log -1`. ZIP preflight — `fa8a1a7`, extract — `4c44009`,
+  worker — `8cc4747`, hardening — `d36e4c6`; рабочее дерево чистое.
+  Origin — приватный `git@github.com:ElkinVA/breaktime-arcade.git`.
 - `ai-dev`: `main`, HEAD `d09a3f1`, tag `ai-dev-autonomy-003`.
 - Backup: `~/backups/20261120-pre-autonomy/`.
 
