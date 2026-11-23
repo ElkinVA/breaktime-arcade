@@ -22,6 +22,7 @@
                 <a href="{% url 'crm:moderation' %}" class="text-sm hover:text-accent" data-testid="crm-nav-moderation">Модерация</a>
             {% endif %}
             {% if 'users.manage' in crm_caps %}
+                <a href="{% url 'crm:users' %}" class="text-sm hover:text-accent" data-testid="crm-nav-users">Пользователи</a>
                 <a href="{% url 'crm:staff' %}" class="text-sm hover:text-accent" data-testid="crm-nav-staff">Сотрудники</a>
             {% endif %}
             {% if 'audit.view' in crm_caps %}

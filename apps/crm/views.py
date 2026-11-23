@@ -25,13 +25,15 @@ from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseRedirect,
+    JsonResponse,
 )
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from apps.accounts.models import StaffRole, User
+from apps.accounts.models import EmailAddress, StaffRole, User, UserProfile
+from apps.accounts.services.profile import export_account_data
 from apps.analytics.services.aggregates import (
     AnalyticsRangeError,
     build_snapshot,
@@ -93,6 +95,16 @@ from apps.crm.services.step_up import (
     confirm_step_up,
     is_step_up_valid,
     mark_step_up,
+)
+from apps.crm.services.users import (
+    MIN_SEARCH_LENGTH,
+    UserFilters,
+    current_leaderboard_entries,
+    delete_customer,
+    parse_user_filters,
+    recent_results,
+    search_users,
+    toggle_user_active,
 )
 from apps.i18n.models import Language, TranslationEntry
 from apps.i18n.services.language_registry import get_active_language_codes_safely
@@ -755,6 +767,145 @@ def _posted_user_id(request: HttpRequest) -> UUID | None:
         return UUID(raw)
     except ValueError:
         return None
+
+
+def _filter_choices(filters: UserFilters) -> dict[str, str]:
+    return {
+        "email_verified_choice": (
+            "" if filters.email_verified is None else str(filters.email_verified).lower()
+        ),
+        "blocked_choice": "" if filters.blocked is None else str(filters.blocked).lower(),
+    }
+
+
+@role_required(USERS_MANAGE)
+@require_GET
+def users_list(request: HttpRequest) -> TemplateResponse:
+    """Search and filter customer accounts (§2.16.2, "Пользователи")."""
+    filters = parse_user_filters(request.GET)
+    return TemplateResponse(
+        request,
+        "crm/users/list.html",
+        {
+            "title": "Пользователи · CRM",
+            "users": search_users(filters),
+            "filters": filters,
+            "search_min_length": MIN_SEARCH_LENGTH,
+            **_filter_choices(filters),
+        },
+    )
+
+
+def _user_action_redirect(user_id: UUID) -> HttpResponseRedirect:
+    return redirect("crm:user_detail", user_id=user_id)
+
+
+def _toggle_block(request: HttpRequest, user_id: UUID) -> HttpResponseRedirect:
+    actor = _staff_user(request)
+    if actor is None:
+        messages.error(request, _STEP_UP_ERRORS["not_staff"])
+        return redirect("crm:users")
+    result = toggle_user_active(
+        actor=actor,
+        target_id=user_id,
+        ip=request.META.get("REMOTE_ADDR"),
+        reason=str(request.POST.get("reason") or "").strip()[:255],
+    )
+    if not result.ok:
+        if result.reason == "not_found":
+            messages.error(request, "Аккаунт не найден.")
+            return redirect("crm:users")
+        messages.error(request, "Нельзя заблокировать собственную учётную запись.")
+    elif result.is_active:
+        messages.success(request, "Аккаунт разблокирован; изменение записано в журнал.")
+    else:
+        messages.success(request, "Аккаунт заблокирован; изменение записано в журнал.")
+    return _user_action_redirect(user_id)
+
+
+def _delete_user(request: HttpRequest, user_id: UUID) -> HttpResponseRedirect:
+    actor = _staff_user(request)
+    if actor is None:
+        messages.error(request, _STEP_UP_ERRORS["not_staff"])
+        return redirect("crm:users")
+    result = delete_customer(
+        actor=actor,
+        target_id=user_id,
+        ip=request.META.get("REMOTE_ADDR"),
+        reason=str(request.POST.get("reason") or "").strip()[:255],
+    )
+    if not result.ok:
+        messages.error(request, "Аккаунт не найден.")
+        return redirect("crm:users")
+    message = {
+        "deleted": "Аккаунт анонимизирован; персональные данные удалены.",
+        "scheduled": "Запрос на удаление создан: действует 7-дневное окно отмены.",
+        "window_active": "Окно отмены ещё действует; персональные данные не удалены.",
+        "already_deleted": "Аккаунт уже удалён.",
+    }.get(result.reason, "Операция выполнена.")
+    messages.success(request, message)
+    return _user_action_redirect(user_id)
+
+
+@role_required(USERS_MANAGE)
+@require_http_methods(["GET", "POST"])
+def user_detail(request: HttpRequest, user_id: UUID) -> TemplateResponse | HttpResponseRedirect:
+    """Account profile, results and leaderboard rows (§2.16.2).
+
+    POST is accepted as a convenience dispatcher for the action buttons; the
+    dedicated ``.../block/`` and ``.../delete/`` endpoints remain the canonical
+    mutation routes for non-JS forms.
+    """
+    if request.method == "POST":
+        action = str(request.POST.get("action") or "")
+        if action in {"block", "unblock", "toggle"}:
+            return _toggle_block(request, user_id)
+        if action == "delete":
+            return _delete_user(request, user_id)
+        messages.error(request, "Неизвестное действие.")
+        return _user_action_redirect(user_id)
+
+    target = get_object_or_404(User, pk=user_id)
+    profile_obj = UserProfile.objects.filter(user=target).first()
+    email = EmailAddress.objects.filter(user=target).first()
+    return TemplateResponse(
+        request,
+        "crm/users/detail.html",
+        {
+            "title": f"Пользователь {target.login} · CRM",
+            "target": target,
+            "profile": profile_obj,
+            "email": email,
+            "results": recent_results(target),
+            "leaderboard_entries": current_leaderboard_entries(target),
+        },
+    )
+
+
+@role_required(USERS_MANAGE)
+@require_POST
+def user_toggle_block(request: HttpRequest, user_id: UUID) -> HttpResponseRedirect:
+    return _toggle_block(request, user_id)
+
+
+@role_required(USERS_MANAGE)
+@require_POST
+def user_delete(request: HttpRequest, user_id: UUID) -> HttpResponseRedirect:
+    return _delete_user(request, user_id)
+
+
+@role_required(USERS_MANAGE)
+@require_GET
+def user_export(request: HttpRequest, user_id: UUID) -> JsonResponse:
+    """Download the same personal-data JSON the cabinet exposes (§2.16.2)."""
+    target = get_object_or_404(User, pk=user_id)
+    response = JsonResponse(
+        export_account_data(target),
+        json_dumps_params={"ensure_ascii": False, "indent": 2},
+    )
+    response["Content-Disposition"] = 'attachment; filename="breaktime-account.json"'
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 
 @role_required(CONTENT_MANAGE)

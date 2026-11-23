@@ -1,0 +1,105 @@
+{% extends "crm/base.html" %}
+
+{% block title %}Пользователи · CRM{% endblock %}
+
+{% block crm_content %}
+<div class="mb-6">
+    <h1 class="text-3xl font-display font-bold">Пользователи</h1>
+    <p class="text-sm text-muted">
+        Поиск по логину, никнейму и email; фильтры по статусу email и блокировке.
+        Пароли не отображаются и не выгружаются.
+    </p>
+</div>
+
+<form method="get"
+      action="{% url 'crm:users' %}"
+      class="mb-6 flex flex-wrap items-end gap-3"
+      data-testid="crm-users-filters">
+    <label class="flex flex-col gap-1 text-xs">
+        <span class="text-muted">Поиск (мин. {{ search_min_length }} символа)</span>
+        <input type="search"
+               name="q"
+               value="{{ filters.query }}"
+               minlength="{{ search_min_length }}"
+               class="bg-surface border border-text/20 rounded px-3 py-2 text-sm w-64"
+               data-testid="crm-users-search">
+    </label>
+    <label class="flex flex-col gap-1 text-xs">
+        <span class="text-muted">Email</span>
+        <select name="email_verified"
+                class="bg-surface border border-text/20 rounded px-3 py-2 text-sm"
+                data-testid="crm-users-email-filter">
+            <option value=""{% if not email_verified_choice %} selected{% endif %}>Все</option>
+            <option value="true"{% if email_verified_choice == 'true' %} selected{% endif %}>Подтверждён</option>
+            <option value="false"{% if email_verified_choice == 'false' %} selected{% endif %}>Не подтверждён</option>
+        </select>
+    </label>
+    <label class="flex flex-col gap-1 text-xs">
+        <span class="text-muted">Статус</span>
+        <select name="blocked"
+                class="bg-surface border border-text/20 rounded px-3 py-2 text-sm"
+                data-testid="crm-users-blocked-filter">
+            <option value=""{% if not blocked_choice %} selected{% endif %}>Все</option>
+            <option value="true"{% if blocked_choice == 'true' %} selected{% endif %}>Заблокированные</option>
+            <option value="false"{% if blocked_choice == 'false' %} selected{% endif %}>Активные</option>
+        </select>
+    </label>
+    <button type="submit"
+            class="px-4 py-2 rounded bg-accent text-bg font-semibold text-sm"
+            data-testid="crm-users-apply">Применить</button>
+</form>
+
+<div class="overflow-x-auto bg-surface rounded-card border border-text/10">
+    <table class="w-full text-sm">
+        <thead class="text-left text-muted border-b border-text/10">
+            <tr>
+                <th class="px-4 py-3">Логин</th>
+                <th class="px-4 py-3">Никнейм</th>
+                <th class="px-4 py-3">Email</th>
+                <th class="px-4 py-3">Статус</th>
+                <th class="px-4 py-3">Создан</th>
+                <th class="px-4 py-3"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for account in users %}
+                <tr class="border-b border-text/5 last:border-0 align-top"
+                    data-testid="crm-users-row"
+                    data-user-id="{{ account.id }}">
+                    <td class="px-4 py-3 font-semibold" data-testid="crm-users-login">{{ account.login }}</td>
+                    <td class="px-4 py-3" data-testid="crm-users-nickname">{{ account.profile.nickname|default:"—" }}</td>
+                    <td class="px-4 py-3" data-testid="crm-users-email">
+                        {% with address=account.email_address %}
+                            {% if address %}
+                                {{ address.email }}
+                                {% if address.verified_at %}
+                                    <span class="text-xs text-muted"> · подтверждён</span>
+                                {% else %}
+                                    <span class="text-xs text-muted"> · не подтверждён</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td class="px-4 py-3" data-testid="crm-users-status">
+                        {% if account.is_active %}Активен{% else %}Заблокирован{% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-muted">{{ account.created_at|date:"Y-m-d H:i" }}</td>
+                    <td class="px-4 py-3">
+                        <a href="{% url 'crm:user_detail' user_id=account.id %}"
+                           class="text-accent hover:underline"
+                           data-testid="crm-users-open">Открыть</a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6" class="px-4 py-6 text-muted" data-testid="crm-users-empty">
+                        Пользователи не найдены.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

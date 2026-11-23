@@ -30,6 +30,10 @@ class AdminAuditLog(models.Model):
     ACTION_COMPLAINT_REJECTED = "complaint.rejected"
     ACTION_TRANSLATION_PUBLISHED = "content.translation_published"
     ACTION_PAGE_PUBLISHED = "content.page_published"
+    ACTION_USER_BLOCKED = "user.blocked"
+    ACTION_USER_UNBLOCKED = "user.unblocked"
+    ACTION_USER_DELETION_REQUESTED = "user.deletion_requested"
+    ACTION_USER_DELETED = "user.deleted"
 
     ACTION_CHOICES = [
         (ACTION_STAFF_ROLE_CHANGED, "Смена роли сотрудника"),
@@ -44,6 +48,10 @@ class AdminAuditLog(models.Model):
         (ACTION_COMPLAINT_REJECTED, "Отклонение жалобы"),
         (ACTION_TRANSLATION_PUBLISHED, "Публикация перевода"),
         (ACTION_PAGE_PUBLISHED, "Публикация контентной страницы"),
+        (ACTION_USER_BLOCKED, "Блокировка аккаунта"),
+        (ACTION_USER_UNBLOCKED, "Разблокировка аккаунта"),
+        (ACTION_USER_DELETION_REQUESTED, "Запрос удаления аккаунта"),
+        (ACTION_USER_DELETED, "Удаление аккаунта"),
     ]
 
     id = models.BigAutoField(primary_key=True)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, cast
+from typing import cast
 
 from django.conf import settings
 from django.contrib import messages
@@ -53,6 +53,7 @@ from apps.accounts.services.game_records import personal_game_records
 from apps.accounts.services.profile import (
     cancel_deletion,
     ensure_profile,
+    export_account_data,
     update_nickname,
     update_settings,
 )
@@ -550,43 +551,7 @@ def password_change(request: HttpRequest) -> HttpResponse:
 
 @login_required(login_url="accounts:login")
 def export_account(request: HttpRequest) -> JsonResponse:
-    user = _user(request)
-    profile_obj = UserProfile.objects.filter(user=user).first()
-    email = EmailAddress.objects.filter(user=user).first()
-    legal = list(
-        UserLegalAcceptance.objects.filter(user=user).values(
-            "terms_version", "privacy_version", "accepted_at"
-        )
-    )
-    data: dict[str, Any] = {
-        "login": user.login,
-        "created_at": user.created_at.isoformat(),
-        "profile": None
-        if profile_obj is None
-        else {
-            "nickname": profile_obj.nickname,
-            "theme": profile_obj.theme,
-            "language": profile_obj.language.code
-            if profile_obj.language_id and profile_obj.language
-            else None,
-            "age_confirmed_at": profile_obj.age_confirmed_at.isoformat()
-            if profile_obj.age_confirmed_at
-            else None,
-            "marketing_consent_at": profile_obj.marketing_consent_at.isoformat()
-            if profile_obj.marketing_consent_at
-            else None,
-            "deletion_requested_at": profile_obj.deletion_requested_at.isoformat()
-            if profile_obj.deletion_requested_at
-            else None,
-        },
-        "email": None
-        if email is None
-        else {
-            "email": email.email,
-            "verified_at": email.verified_at.isoformat() if email.verified_at else None,
-        },
-        "legal_acceptances": legal,
-    }
+    data = export_account_data(_user(request))
     response = JsonResponse(data, json_dumps_params={"ensure_ascii": False, "indent": 2})
     response["Content-Disposition"] = 'attachment; filename="breaktime-account.json"'
     return response

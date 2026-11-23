@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import timedelta
+from typing import Any
 from uuid import uuid4
 
 from django.conf import settings
@@ -31,6 +32,7 @@ from apps.i18n.models import Language
 __all__ = [
     "anonymize_user",
     "can_change_nickname",
+    "export_account_data",
     "cancel_deletion",
     "ensure_profile",
     "nickname_change_available",
@@ -155,6 +157,51 @@ def anonymize_user(user: User) -> None:
     user.is_active = False
     user.login = f"deleted-{hashlib.sha256(str(user.pk).encode()).hexdigest()[:20]}"
     user.save(update_fields=["is_active", "login"])
+
+
+def export_account_data(user: User) -> dict[str, Any]:
+    """Build the JSON payload used by both cabinet and CRM exports (§2.10.4).
+
+    The shape is deliberately stable: CRM staff must receive exactly the same
+    fields as the account owner. Password hashes, TOTP secrets and recovery
+    codes are never part of this payload.
+    """
+    profile_obj = UserProfile.objects.filter(user=user).first()
+    email = EmailAddress.objects.filter(user=user).first()
+    legal = list(
+        UserLegalAcceptance.objects.filter(user=user).values(
+            "terms_version", "privacy_version", "accepted_at"
+        )
+    )
+    return {
+        "login": user.login,
+        "created_at": user.created_at.isoformat(),
+        "profile": None
+        if profile_obj is None
+        else {
+            "nickname": profile_obj.nickname,
+            "theme": profile_obj.theme,
+            "language": profile_obj.language.code
+            if profile_obj.language_id and profile_obj.language
+            else None,
+            "age_confirmed_at": profile_obj.age_confirmed_at.isoformat()
+            if profile_obj.age_confirmed_at
+            else None,
+            "marketing_consent_at": profile_obj.marketing_consent_at.isoformat()
+            if profile_obj.marketing_consent_at
+            else None,
+            "deletion_requested_at": profile_obj.deletion_requested_at.isoformat()
+            if profile_obj.deletion_requested_at
+            else None,
+        },
+        "email": None
+        if email is None
+        else {
+            "email": email.email,
+            "verified_at": email.verified_at.isoformat() if email.verified_at else None,
+        },
+        "legal_acceptances": legal,
+    }
 
 
 def nickname_change_available(user: User) -> bool:
