@@ -388,6 +388,12 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-CRM-RATINGS-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`c577416` + fixes): фильтры game/value/visibility, overall average и
+per-value distribution; 25 targeted tests; full suite **1075/1067/8**.
+Остаток: строки сверх 100 не пагинируются (disclosed); staging/prod
+NOT TESTED.
+
 `ARCADE-CRM-TAXONOMY-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
 (`98b848c` + fixes): genre/tag CRUD, translations, delete guards, queue;
 9 tests; full suite **1072/1064/8**. Остаток: rollback image orphan;

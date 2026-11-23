@@ -734,3 +734,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | new upload rollback may leave an orphan file; staging/prod NOT TESTED |
 | Источник | commit `98b848c` + minor-fix commit; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-CRM-RATINGS-001 — ratings moderation filters/summary
+
+| Поле | Значение |
+|---|---|
+| Тип | Product/CRM implementation via AI HQ; no schema/contract change |
+| Результат | `c577416` + fixes: фильтры game/value/visibility, overall average + per-value distribution, hide/restore/audit сохранены |
+| Проверки | 25 targeted tests; ruff/mypy clean; AI HQ reviewer accept; full suite 1075/1067/8 exit 0; minors fixed (summary-scope note, no filter truncation) |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | строки сверх 100 не пагинируются (disclosed); staging/prod NOT TESTED |
+| Источник | commit `c577416` + minor-fix commit; evidence в `.autonomy/evidence/` |

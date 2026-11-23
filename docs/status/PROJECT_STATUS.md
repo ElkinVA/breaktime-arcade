@@ -233,6 +233,18 @@ slug validation. 9 targeted tests; ruff/mypy clean; full suite **1072 tests:
 1064 passed, 8 skipped, exit 0**. Остаток: image cleanup при rollback новой
 загрузки не гарантирован; live staging/prod NOT TESTED.
 
+## 0.15. CRM ratings moderation — 2026-11-23
+
+`ARCADE-CRM-RATINGS-001` — **COMPLETED / AI HQ REVIEW ACCEPT** (`c577416` +
+minor fixes). `/crm/moderation/` ratings: фильтры game/value 1–5/visibility,
+сводка overall average и per-value distribution одним aggregate-запросом;
+hide/restore с reason и audit не менялись. Исправлены minors: добавлено
+пояснение, что сводка считается по всем отфильтрованным оценкам, а таблица
+показывает последние 100; убрано silent truncation game-фильтра.
+25 targeted tests; ruff/mypy clean; full suite **1075 tests: 1067 passed,
+8 skipped, exit 0**. Остаток: строки сверх 100 в таблице не пагинируются
+(disclosed); staging/prod NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

@@ -1330,3 +1330,14 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Остаток:** rollback new image upload may orphan file; staging/prod NOT
   TESTED.
 - **Commit:** `98b848c` + minor-fix commit.
+
+### ARCADE-CRM-RATINGS-001 — ratings moderation filters (AI HQ)
+
+- **Результат:** `c577416` + minor fixes; фильтры game/value/visibility,
+  overall average и per-value distribution, hide/restore/audit сохранены.
+- **Проверки:** 25 targeted tests; ruff/mypy clean; AI HQ reviewer accept;
+  full suite **1075 tests: 1067 passed, 8 skipped, exit 0**.
+- **Minors fixed:** пояснение области действия сводки; убрано silent
+  усечение game-фильтра.
+- **Остаток:** строки сверх 100 не пагинируются; staging/prod NOT TESTED.
+- **Commit:** `c577416` + minor-fix commit.
