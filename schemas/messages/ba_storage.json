@@ -17,6 +17,7 @@
           "additionalProperties": false,
           "properties": {
             "op": {
+              "type": "string",
               "enum": [
                 "get",
                 "set",

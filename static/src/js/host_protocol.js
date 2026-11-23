@@ -4,33 +4,28 @@
  * receives the session fragment and public context. This module performs the
  * validation order required by BA-PLAT §2.12.4 before dispatching a message.
  *
- * Message envelopes and payloads are validated against the explicit
- * per-message schema tables below (mirroring schemas/messages/*.json for the
- * game -> host direction). A schema violation produces a structured
- * {code: "E_MESSAGE_INVALID", field, reason} object, which the bridge relays
- * to the trusted iframe as a ba:error message.
+ * Message envelopes and payloads are validated against the schema registry
+ * generated from schemas/messages/*.json (game -> host direction). That
+ * registry is committed as host_schemas.generated.js; regenerate it with
+ * `python3 scripts/generate_host_schemas.py` after editing a schema. A schema
+ * violation produces a structured {code: "E_MESSAGE_INVALID", field, reason}
+ * object, which the bridge relays to the trusted iframe as a ba:error message.
  */
 
-const PROTOCOL = 1;
+import {
+    ENVELOPE_SCHEMA,
+    PROTOCOL,
+    SDK_MESSAGE_SCHEMAS,
+    SDK_MESSAGE_TYPES,
+} from "./host_schemas.generated.js";
+
+export { SDK_MESSAGE_SCHEMAS };
+
 const MAX_MESSAGES_PER_MINUTE = 60;
 const SEEN_LIMIT = 512;
 const MAX_MESSAGE_BYTES = 64 * 1024;
 const MAX_SUBMIT_BYTES = 2 * 1024 * 1024 + 64 * 1024;
-const MAX_TYPE_LENGTH = 64;
-const MAX_STORAGE_KEY_LENGTH = 128;
-const MAX_EVENT_COUNT = 20000;
-const MAX_EVENT_KIND_LENGTH = 64;
-const MAX_SEED_LENGTH = 128;
-const MAX_ERROR_CODE_LENGTH = 128;
-const SDK_TYPES = new Set([
-    "ba:hello",
-    "ba:submit",
-    "ba:leaderboard",
-    "ba:storage",
-    "ba:newSession",
-    "ba:exit",
-    "ba:error",
-]);
+const SDK_TYPES = new Set(SDK_MESSAGE_TYPES);
 const ACTIVE_TYPES = new Set([...SDK_TYPES]);
 const FINISHED_TYPES = new Set([
     "ba:leaderboard",
@@ -89,7 +84,7 @@ function joinPath(path, field) {
     return path ? `${path}.${field}` : field;
 }
 
-/* JSON-Schema-subset validator shared by every message schema below.
+/* JSON-Schema-subset validator shared by the generated schema registry.
  * Supported keywords: type (including nullable type arrays), const, enum,
  * required, properties, additionalProperties, minLength, maxLength, format
  * ("uuid"), minimum, maximum, items, maxItems.
@@ -172,96 +167,6 @@ function validateSchema(value, schema, path = "") {
     }
     return null;
 }
-
-const UUID_SCHEMA = { type: "string", format: "uuid" };
-
-const ENVELOPE_SCHEMA = {
-    type: "object",
-    additionalProperties: false,
-    required: ["source", "protocol", "type", "requestId", "sessionId", "payload"],
-    properties: {
-        source: { type: "string", enum: ["ba-sdk", "ba-host"] },
-        protocol: { const: PROTOCOL },
-        type: { type: "string", minLength: 1, maxLength: MAX_TYPE_LENGTH },
-        requestId: UUID_SCHEMA,
-        sessionId: UUID_SCHEMA,
-        payload: { type: "object" },
-    },
-};
-
-const EVENT_LOG_SCHEMA = {
-    type: "object",
-    additionalProperties: false,
-    required: ["v", "seed", "events"],
-    properties: {
-        v: { const: 1 },
-        seed: { type: "string", minLength: 1, maxLength: MAX_SEED_LENGTH },
-        events: {
-            type: "array",
-            maxItems: MAX_EVENT_COUNT,
-            items: {
-                type: "object",
-                additionalProperties: false,
-                required: ["t", "k", "d"],
-                properties: {
-                    t: { type: "integer", minimum: 0 },
-                    k: { type: "string", minLength: 1, maxLength: MAX_EVENT_KIND_LENGTH },
-                    d: { type: "object" },
-                },
-            },
-        },
-    },
-};
-
-/* Explicit per-message payload schemas for the game -> host direction.
- * They mirror schemas/messages/*.json; ba:leaderboard still enforces the
- * SDK API contract limit ∈ {10, 100} (BA-SDK-1.1 §2/§7) rather than the
- * wider 1..100 range in the draft JSON schema.
- */
-export const SDK_MESSAGE_SCHEMAS = Object.freeze({
-    "ba:hello": Object.freeze({ type: "object", additionalProperties: true }),
-    "ba:submit": Object.freeze({
-        type: "object",
-        additionalProperties: true,
-        required: ["value", "durationMs", "eventLog", "seed"],
-        properties: {
-            value: { type: "number" },
-            durationMs: { type: "integer", minimum: 0 },
-            eventLog: EVENT_LOG_SCHEMA,
-            seed: { type: "string" },
-            clientMeta: { type: "object" },
-        },
-    }),
-    "ba:leaderboard": Object.freeze({
-        type: "object",
-        additionalProperties: true,
-        properties: {
-            limit: { type: "integer", enum: [10, 100] },
-            bestOnly: { type: "boolean" },
-        },
-    }),
-    "ba:storage": Object.freeze({
-        type: "object",
-        additionalProperties: false,
-        required: ["op", "key"],
-        properties: {
-            op: { type: "string", enum: ["get", "set", "remove"] },
-            key: { type: "string", minLength: 1, maxLength: MAX_STORAGE_KEY_LENGTH },
-            value: {},
-        },
-    }),
-    "ba:newSession": Object.freeze({ type: "object", additionalProperties: false }),
-    "ba:exit": Object.freeze({ type: "object", additionalProperties: false }),
-    "ba:error": Object.freeze({
-        type: "object",
-        additionalProperties: true,
-        required: ["code"],
-        properties: {
-            code: { type: "string", minLength: 1, maxLength: MAX_ERROR_CODE_LENGTH },
-            message: { type: "string" },
-        },
-    }),
-});
 
 function payloadBytes(payload) {
     try {

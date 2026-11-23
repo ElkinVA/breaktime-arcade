@@ -8,6 +8,8 @@
   "scripts": {
     "vendor": "mkdir -p static/dist/vendor && cp node_modules/htmx.org/dist/htmx.min.js static/dist/vendor/htmx.min.js",
     "build:css": "tailwindcss -i ./static/src/css/app.css -o ./static/dist/app.css --minify",
+    "build:schemas": "python3 scripts/generate_host_schemas.py",
+    "check:schemas": "python3 scripts/generate_host_schemas.py --check",
     "watch:css": "tailwindcss -i ./static/src/css/app.css -o ./static/dist/app.css --watch",
     "build": "npm run vendor && npm run build:css",
     "check:js": "node --check sdk/1.1.0/ba-sdk.js && node --check --input-type=module < static/src/js/host_protocol.js && node --check --input-type=module < static/src/js/player.js",
