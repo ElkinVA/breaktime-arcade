@@ -104,6 +104,13 @@ chars (context discipline), что пренебрежимо мало относ�
 | num_turns | 32 | 39 | +7 |
 | cost_usd | 1.617336 | 1.205210 | −0.412126 (−25.5 %) |
 
+**Production validation 2026-11-23:** реальный `orchestrator propose` после
+оптимизации записал 59 759 input, 22 537 output, 1 017 984 cache read,
+1.371212 USD, 46 turns и поставил 4 валидные задачи. Относительно
+до-оптимизационного controlled call: input −54.8 %, cost −15.2 %; output и
+num_turns выше. Это фактический production-вызов в OBS-002 journal, не
+оценка.
+
 Оба результата — валидные proposals после штатного `_parse_json` (4 и 3
 задачи); качество на этом срезе не упало. Output/num_turns выросли; причина
 не доказана (возможно, больше исследования кода), поэтому это честный
@@ -131,6 +138,27 @@ chars (context discipline), что пренебрежимо мало относ�
 - `docs/handoff/ARCHITECT_BRIEF.md` (new)
 - `docs/runbook/ai_session_policy.md` (new)
 
-## 6. Git
+## 6. Operational observation: first AI HQ production task
+
+`ARCADE-RETENTION-001` (commit `8e42426`) дал фактическую стоимость по
+OBS-002 journal:
+
+| Роль/попытка | input | output | cost USD |
+|---|---:|---:|---:|
+| architect (propose) | 59 759 | 22 537 | 1.371212 |
+| developer attempt 1 | 64 050 | 33 564 | 3.022070 |
+| QA attempt 1 (fail: NOT TESTED mypy/migrations) | 41 069 | 19 021 | 1.369958 |
+| developer attempt 2 | 59 879 | 27 294 | 1.858417 |
+| QA attempt 2 (pass) | 33 482 | 14 646 | 0.900024 |
+| reviewer attempt 2 | 44 324 | 10 416 | 0.718564 |
+| **Итого** | 302 563 | 127 478 | **9.240245** |
+
+Вывод: после сокращения architect bundle доминируют role/tool-контексты
+developer/QA, а неудачная QA-попытка стоила ~4.39 USD. Это не объявляется
+достигнутой экономией; это измеренная точка для следующих шагов. QA-тулинг
+(host mypy + постоянный migration guard) исправлен, чтобы не повторять
+retry по инфраструктурной причине. Модели/бюджет не менялись.
+
+## 7. Git
 
 - Commit: `c389f53` — `chore(ai): reduce architect context and add session hygiene`.

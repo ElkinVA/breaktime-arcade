@@ -1244,3 +1244,18 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Остаток:** live browser E2E/staging/prod NOT TESTED; server cross-check
   strictness NOT TESTED.
 - **Отчёт:** `docs/foundation/APPF-RUNTIME-REVIEW-001_DELTA_TESTS.md`.
+
+### ARCADE-RETENTION-001 — App F retention cleanup (AI HQ)
+
+- **Результат:** `8e42426`; daily Celery beat: GameSession finished/expired/
+  aborted >30d excluding result-linked, GamePlayCredit >90d, GameImportDraft
+  >7d, guest GameStorage `expires_at < now`; idempotent per-type counts.
+- **Проверки:** 8 integration tests; migration guard; targeted ruff/mypy;
+  QA exit 0; independent AI HQ reviewer **accept**; full suite **1028 tests:
+  1020 passed, 8 skipped, exit 0**.
+- **Процесс:** attempt 1 QA fail (mypy/makemigrations NOT TESTED); добавлены
+  host mypy и постоянный `tests/integration/test_migrations_check.py`,
+  QA-инструкция обновлена; attempt 2 pass.
+- **Остаток:** no indexes on purge timestamps; concurrent result insert →
+  ProtectedError/retry; live beat NOT TESTED.
+- **Commit:** `8e42426`.

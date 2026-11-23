@@ -68,6 +68,10 @@ worktree, журнал — `/tmp/ba-obs-control/journal` (локальный, в
 | invalid model | `failed`/`api_error`, exit 1, usage null (CLI не дал usage) |
 | SIGKILL launcher после start + reconcile | `interrupted`/`orchestrator_gone`, `inferred=true`, usage null |
 
+Дополнительно production `orchestrator propose` после внедрения записал
+start+finish с `usage_known=true` (input 59 759, output 22 537, cost 1.371212,
+4 задачи) — реальный журнал, без pending.
+
 Итог: **5 started + 5 finished**, pending 0, двойного учёта нет; evidence
 создан только для success и API error (timeout/cancel/crash — по дизайну без
 evidence). Orphan `claude`-процессов после kill не осталось.

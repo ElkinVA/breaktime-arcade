@@ -164,6 +164,21 @@ request_count/cache/invoice не коррелируются; SIGKILL может 
 - Модели, маршрутизация, число агентов, budget/stop-политика не менялись.
   Отчёт — `docs/audits/BA_TOKEN_EFFICIENCY_OPTIMIZATION_REPORT.md`.
 
+## 0.9. App F retention cleanup — 2026-11-23
+
+`ARCADE-RETENTION-001` — **COMPLETED / AI HQ REVIEWER ACCEPT** (`8e42426`).
+Суточные Celery beat tasks: GameSession `finished/expired/aborted` старше
+30 дней с `result__isnull=True` (результаты PROTECT сохраняются);
+GamePlayCredit старше 90 дней; GameImportDraft старше 7 дней; гостевое
+GameStorage с `expires_at < now`. Deletes идемпотентны для R-036
+at-least-once, возвращают per-type counts. 8 integration tests + migration
+guard; targeted ruff/mypy clean; full suite **1028 tests: 1020 passed,
+8 skipped, exit 0**. QA attempt 1 корректно упал на NOT TESTED
+mypy/makemigrations; после добавления host mypy и постоянного
+`test_migrations_check.py` attempt 2 прошёл. Остатки: нет индексов на
+`updated_at`/`last_credited_at`; concurrent result insert может дать
+ProtectedError и retry (данные не теряются); live beat NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

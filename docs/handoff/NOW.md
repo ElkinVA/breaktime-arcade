@@ -371,6 +371,12 @@ num_turns 32→39; оба proposal валидны (4/3 задачи). Один �
 индикативно. Модели/маршрутизация/budget не менялись. Отчёт —
 `docs/audits/BA_TOKEN_EFFICIENCY_OPTIMIZATION_REPORT.md`.
 
+`ARCADE-RETENTION-001` — **COMPLETED / AI HQ REVIEWER ACCEPT** (`8e42426`):
+daily retention tasks for sessions/credits/drafts/guest storage; 8 tests +
+migration guard; targeted ruff/mypy clean; full suite **1028/1020/8**. QA tooling fixed after attempt 1
+(host mypy, migration guard). Остатки: no purge indexes, ProtectedError
+race retry, live beat NOT TESTED.
+
 ## Модели
 
 - План/ревью: `architect`, `code-reviewer`, `security-auditor` /

@@ -663,3 +663,14 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | Live browser E2E/staging/prod NOT TESTED; server cross-check strictness NOT TESTED |
 | Источник | `docs/foundation/APPF-RUNTIME-REVIEW-001_DELTA_TESTS.md` |
+
+## ARCADE-RETENTION-001 — App F retention cleanup
+
+| Поле | Значение |
+|---|---|
+| Тип | Product/ops implementation via AI HQ; no schema change |
+| Результат | `8e42426`: gameplay/pipeline retention services + Celery tasks + daily beat; sessions 30d excluding result-linked, credits 90d, drafts 7d, guest storage TTL |
+| Проверки | 8 retention tests; `test_migrations_check.py` pass; targeted ruff/mypy clean; AI HQ QA exit 0; independent reviewer accept; full suite 1028 tests / 1020 passed / 8 skipped / exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEWER ACCEPT**; product/staging/prod не заявляются |
+| Остаток | no index on purge timestamps; concurrent result insert → ProtectedError/retry; live beat NOT TESTED |
+| Источник | commit `8e42426`; QA/reviewer evidence в `.autonomy/evidence/` |
