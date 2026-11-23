@@ -70,7 +70,7 @@ if (frame) {
         const createdPayload = created.payload;
         const nonce = crypto.randomUUID().replaceAll("-", "");
         const activated = await api(
-            `/api/v1/sessions/${createdPayload.session_id}/activate`,
+            `/api/v1/sessions/${createdPayload.sessionId}/activate`,
             {
                 method: "POST",
                 headers: headers(),
@@ -81,7 +81,7 @@ if (frame) {
                 retry: false,
             },
         );
-        sessionId = createdPayload.session_id;
+        sessionId = createdPayload.sessionId;
         currentContext = activated.payload.context;
         bridge.setSession(sessionId);
         return { sessionId, seed: currentContext.seed, context: currentContext };

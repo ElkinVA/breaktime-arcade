@@ -253,7 +253,7 @@ def _guest_client(game: Game) -> tuple[Client, str]:
     assert created.status_code == 201, created.content
     payload = created.json()
     activated = client.post(
-        f"/api/v1/sessions/{payload['session_id']}/activate",
+        f"/api/v1/sessions/{payload['sessionId']}/activate",
         data=json.dumps({"ticket": payload["ticket"], "binding_nonce": "n" * 32}),
         content_type="application/json",
         HTTP_X_CSRFTOKEN=csrf,

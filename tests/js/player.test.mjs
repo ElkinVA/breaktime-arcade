@@ -54,7 +54,7 @@ globalThis.fetch = async (url, options = {}) => {
     }
     if (url.endsWith("/api/v1/sessions")) {
         return response(201, {
-            session_id: NEW_SESSION,
+            sessionId: NEW_SESSION,
             ticket: "ticket-value",
             expires_at: "2026-11-23T00:00:00Z",
         });

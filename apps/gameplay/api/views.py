@@ -72,7 +72,7 @@ class SessionCreateView(APIView):
         except SessionError as exc:
             return _fail(response, exc)
         response.data = {
-            "session_id": str(session.id),
+            "sessionId": str(session.id),
             "ticket": ticket,
             "expires_at": expires_at.isoformat(),
         }

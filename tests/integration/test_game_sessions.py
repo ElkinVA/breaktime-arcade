@@ -165,8 +165,8 @@ def test_guest_create_requires_csrf_and_returns_exact_ticket_response() -> None:
     assert without_csrf.status_code == 403
 
     result = _create(client, csrf, game)
-    assert set(result) == {"session_id", "ticket", "expires_at"}
-    session = GameSession.objects.get(pk=result["session_id"])
+    assert set(result) == {"sessionId", "ticket", "expires_at"}
+    session = GameSession.objects.get(pk=result["sessionId"])
     assert session.state == GameSession.STATE_CREATED
     assert session.subject_type == GameSession.SUBJECT_ANON
     assert session.mode == GameSession.MODE_GUEST
@@ -181,10 +181,10 @@ def test_guest_activate_builds_context_and_rejects_ticket_reuse() -> None:
     client, csrf = _client()
     result = _create(client, csrf, game)
 
-    activated = _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    activated = _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
     assert activated.status_code == 200, activated.content
     context = activated.json()["context"]
-    assert context["sessionId"] == result["session_id"]
+    assert context["sessionId"] == result["sessionId"]
     assert context["gameId"] == game.technical_id
     assert context["gameVersion"] == "1.0.0"
     assert context["mode"] == "guest"
@@ -196,12 +196,12 @@ def test_guest_activate_builds_context_and_rejects_ticket_reuse() -> None:
     assert context["score"]["type"] == game.score_type
     assert context["score"]["maxDeltaMs"] == 45_000
     assert context["limits"]["heartbeatIntervalSeconds"] == 30
-    session = GameSession.objects.get(pk=result["session_id"])
+    session = GameSession.objects.get(pk=result["sessionId"])
     assert context["seed"] == session.seed
     assert session.state == GameSession.STATE_ACTIVE
     assert session.ticket_hash is None
 
-    reused = _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    reused = _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
     assert reused.status_code == 400
     assert reused.json()["code"] == "E_TICKET_INVALID"
 
@@ -212,7 +212,7 @@ def test_activation_rejects_wrong_ticket_and_expired_window() -> None:
     game = _game(technical_id="expired_game")
     client, csrf = _client()
     result = _create(client, csrf, game)
-    session = GameSession.objects.get(pk=result["session_id"])
+    session = GameSession.objects.get(pk=result["sessionId"])
 
     wrong = _activate(client, csrf, str(session.id), "x" * 40)
     assert wrong.status_code == 400
@@ -234,10 +234,10 @@ def test_expired_ticket_is_session_expired() -> None:
     game = _game(technical_id="ticket_game")
     client, csrf = _client()
     result = _create(client, csrf, game)
-    GameSession.objects.filter(pk=result["session_id"]).update(
+    GameSession.objects.filter(pk=result["sessionId"]).update(
         ticket_expires_at=timezone.now() - timedelta(seconds=1)
     )
-    response = _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    response = _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
     assert response.status_code == 410
     assert response.json()["code"] == "E_SESSION_EXPIRED"
 
@@ -249,7 +249,7 @@ def test_other_subject_cannot_activate() -> None:
     owner, csrf = _client()
     result = _create(owner, csrf, game)
     stranger, stranger_csrf = _client()
-    response = _activate(stranger, stranger_csrf, str(result["session_id"]), str(result["ticket"]))
+    response = _activate(stranger, stranger_csrf, str(result["sessionId"]), str(result["ticket"]))
     assert response.status_code == 403
     assert response.json()["code"] == "E_OWNERSHIP"
 
@@ -261,7 +261,7 @@ def test_active_session_limit_is_three() -> None:
     client, csrf = _client()
     for _ in range(3):
         result = _create(client, csrf, game)
-        activated = _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+        activated = _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
         assert activated.status_code == 200
     fourth = client.post(
         API,
@@ -280,7 +280,7 @@ def test_user_session_uses_user_mode() -> None:
     user = User.objects.create_user(login="alice", password="correct horse battery staple")
     client, csrf = _client(user)
     result = _create(client, csrf, game)
-    session = GameSession.objects.get(pk=result["session_id"])
+    session = GameSession.objects.get(pk=result["sessionId"])
     assert session.subject_type == GameSession.SUBJECT_USER
     assert session.subject_id == user.id
     assert session.mode == GameSession.MODE_USER
@@ -307,7 +307,7 @@ def test_heartbeat_clamps_delta_and_caps_credited_time() -> None:
     game = _game(technical_id="heartbeat_game")
     client, csrf = _client()
     result = _create(client, csrf, game)
-    session_id = result["session_id"]
+    session_id = result["sessionId"]
     activated = _activate(client, csrf, str(session_id), str(result["ticket"]))
     assert activated.status_code == 200
     session = GameSession.objects.get(pk=session_id)
@@ -346,8 +346,8 @@ def test_heartbeat_expires_idle_and_max_duration() -> None:
     game = _game(technical_id="idle_game")
     client, csrf = _client()
     result = _create(client, csrf, game)
-    _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
-    session = GameSession.objects.get(pk=result["session_id"])
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
+    session = GameSession.objects.get(pk=result["sessionId"])
     request = RequestFactory().post("/")
     request.user = AnonymousUser()
     request.COOKIES[COOKIE_NAME] = client.cookies[COOKIE_NAME].value
@@ -381,14 +381,12 @@ def test_activation_cannot_take_more_than_three_active_sessions() -> None:
     for _ in range(2):
         done = _create(client, csrf, game)
         assert (
-            _activate(client, csrf, str(done["session_id"]), str(done["ticket"])).status_code == 200
+            _activate(client, csrf, str(done["sessionId"]), str(done["ticket"])).status_code == 200
         )
     first = _create(client, csrf, game)
     second = _create(client, csrf, game)
-    assert (
-        _activate(client, csrf, str(first["session_id"]), str(first["ticket"])).status_code == 200
-    )
-    denied = _activate(client, csrf, str(second["session_id"]), str(second["ticket"]))
+    assert _activate(client, csrf, str(first["sessionId"]), str(first["ticket"])).status_code == 200
+    denied = _activate(client, csrf, str(second["sessionId"]), str(second["ticket"]))
     assert denied.status_code == 429
     assert denied.json()["code"] == "E_RATE_LIMIT"
     assert GameSession.objects.filter(game=game, state=GameSession.STATE_ACTIVE).count() == 3
@@ -433,7 +431,7 @@ def test_session_duration_is_clamped_to_global_maximum() -> None:
     game.save(update_fields=["max_session_seconds"])
     client, csrf = _client()
     result = _create(client, csrf, game)
-    session = GameSession.objects.get(pk=result["session_id"])
+    session = GameSession.objects.get(pk=result["sessionId"])
     assert session.max_session_seconds == 7200
 
 
@@ -447,7 +445,7 @@ def test_garbage_guest_cookie_is_treated_as_no_identity() -> None:
     assert rejected.status_code == 403
     assert rejected.json()["code"] == "E_OWNERSHIP"
     result = _create(client, csrf, game)
-    assert GameSession.objects.filter(pk=result["session_id"]).exists()
+    assert GameSession.objects.filter(pk=result["sessionId"]).exists()
     assert COOKIE_NAME in client.cookies
 
 
@@ -500,7 +498,7 @@ def test_heartbeat_before_activation_is_rejected() -> None:
     result = _create(client, csrf, game)
     token = client.cookies[COOKIE_NAME].value
     with pytest.raises(SessionError) as exc:
-        heartbeat(_service_request(token), UUID(str(result["session_id"])))
+        heartbeat(_service_request(token), UUID(str(result["sessionId"])))
     assert exc.value.code == "E_SESSION_INVALID"
     assert exc.value.status == 400
 
@@ -511,11 +509,11 @@ def test_heartbeat_after_finish_is_gone() -> None:
     game = _game(technical_id="finished_heartbeat_game")
     client, csrf = _client()
     result = _create(client, csrf, game)
-    _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
-    GameSession.objects.filter(pk=result["session_id"]).update(state=GameSession.STATE_FINISHED)
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
+    GameSession.objects.filter(pk=result["sessionId"]).update(state=GameSession.STATE_FINISHED)
     token = client.cookies[COOKIE_NAME].value
     with pytest.raises(SessionError) as exc:
-        heartbeat(_service_request(token), UUID(str(result["session_id"])))
+        heartbeat(_service_request(token), UUID(str(result["sessionId"])))
     assert exc.value.code == "E_SESSION_FINISHED"
     assert exc.value.status == 410
 
@@ -527,19 +525,19 @@ def test_activation_is_allowed_at_ticket_and_window_boundary() -> None:
     client, csrf = _client()
     result = _create(client, csrf, game)
     now = timezone.now()
-    GameSession.objects.filter(pk=result["session_id"]).update(
+    GameSession.objects.filter(pk=result["sessionId"]).update(
         created_at=now - timedelta(seconds=300),
         ticket_expires_at=now,
     )
     token = client.cookies[COOKIE_NAME].value
     context = activate_session(
         _service_request(token),
-        UUID(str(result["session_id"])),
+        UUID(str(result["sessionId"])),
         ticket=str(result["ticket"]),
         binding_nonce=NONCE,
         now=now,
     )
-    assert context["sessionId"] == result["session_id"]
+    assert context["sessionId"] == result["sessionId"]
 
 
 @pytest.mark.django_db
@@ -548,15 +546,15 @@ def test_idle_and_max_duration_boundaries_are_inclusive() -> None:
     game = _game(technical_id="idle_boundary_game")
     client, csrf = _client()
     result = _create(client, csrf, game)
-    _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
     now = timezone.now()
-    GameSession.objects.filter(pk=result["session_id"]).update(
+    GameSession.objects.filter(pk=result["sessionId"]).update(
         activated_at=now - timedelta(seconds=100),
         last_heartbeat_at=now - timedelta(seconds=1800),
     )
     token = client.cookies[COOKIE_NAME].value
-    heartbeat(_service_request(token), UUID(str(result["session_id"])), now=now)
-    session = GameSession.objects.get(pk=result["session_id"])
+    heartbeat(_service_request(token), UUID(str(result["sessionId"])), now=now)
+    session = GameSession.objects.get(pk=result["sessionId"])
     assert session.state == GameSession.STATE_ACTIVE
     assert session.credited_ms == 45_000
 
@@ -568,7 +566,7 @@ def test_concurrent_activation_of_one_ticket_has_single_winner() -> None:
     client, csrf = _client()
     result = _create(client, csrf, game)
     token = client.cookies[COOKIE_NAME].value
-    session_id = UUID(str(result["session_id"]))
+    session_id = UUID(str(result["sessionId"]))
     ticket = str(result["ticket"])
     barrier = threading.Barrier(2)
 
@@ -592,7 +590,7 @@ def test_concurrent_activation_cannot_exceed_active_limit() -> None:
     for _ in range(2):
         done = _create(client, csrf, game)
         assert (
-            _activate(client, csrf, str(done["session_id"]), str(done["ticket"])).status_code == 200
+            _activate(client, csrf, str(done["sessionId"]), str(done["ticket"])).status_code == 200
         )
     tickets = [_create(client, csrf, game), _create(client, csrf, game)]
     token = client.cookies[COOKIE_NAME].value
@@ -610,7 +608,7 @@ def test_concurrent_activation_cannot_exceed_active_limit() -> None:
 
         return worker
 
-    workers = [make_worker(str(item["session_id"]), str(item["ticket"])) for item in tickets]
+    workers = [make_worker(str(item["sessionId"]), str(item["ticket"])) for item in tickets]
     assert sorted(_run_parallel(workers)) == ["E_RATE_LIMIT", "ok"]
     assert GameSession.objects.filter(game=game, state=GameSession.STATE_ACTIVE).count() == 3
 
@@ -621,9 +619,9 @@ def test_concurrent_heartbeat_credits_once() -> None:
     game = _game(technical_id="race_heartbeat_game")
     client, csrf = _client()
     result = _create(client, csrf, game)
-    _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
     token = client.cookies[COOKIE_NAME].value
-    session_pk = UUID(str(result["session_id"]))
+    session_pk = UUID(str(result["sessionId"]))
     base = timezone.now() - timedelta(seconds=100)
     GameSession.objects.filter(pk=session_pk).update(
         activated_at=base,
@@ -648,8 +646,8 @@ def test_heartbeat_http_endpoint_requires_csrf_and_returns_204() -> None:
     game = _game(technical_id="hb_http_game")
     client, csrf = _client()
     result = _create(client, csrf, game)
-    _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
-    url = f"{API}/{result['session_id']}/heartbeat"
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
+    url = f"{API}/{result['sessionId']}/heartbeat"
     without_csrf = client.post(url)
     assert without_csrf.status_code == 403
     accepted = client.post(url, HTTP_X_CSRFTOKEN=csrf)
@@ -662,12 +660,12 @@ def test_heartbeat_throttle_is_per_session_with_structured_error() -> None:
     game = _game(technical_id="hb_throttle_game")
     client, csrf = _client()
     first = _create(client, csrf, game)
-    _activate(client, csrf, str(first["session_id"]), str(first["ticket"]))
+    _activate(client, csrf, str(first["sessionId"]), str(first["ticket"]))
     identity = AnonymousIdentity.objects.latest("created_at")
-    key = f"throttle_heartbeat_anon:{identity.id}:{first['session_id']}"
+    key = f"throttle_heartbeat_anon:{identity.id}:{first['sessionId']}"
     try:
         caches["throttle"].set(key, [time.time()] * 3, timeout=60)
-        response = client.post(f"{API}/{first['session_id']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+        response = client.post(f"{API}/{first['sessionId']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
     finally:
         caches["throttle"].delete(key)
     assert response.status_code == 429
@@ -675,8 +673,8 @@ def test_heartbeat_throttle_is_per_session_with_structured_error() -> None:
     assert "Retry-After" in response.headers
 
     second = _create(client, csrf, game)
-    _activate(client, csrf, str(second["session_id"]), str(second["ticket"]))
-    other = client.post(f"{API}/{second['session_id']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+    _activate(client, csrf, str(second["sessionId"]), str(second["ticket"]))
+    other = client.post(f"{API}/{second['sessionId']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
     assert other.status_code == 204
 
 
@@ -716,7 +714,7 @@ def test_authenticated_user_is_exempt_from_guest_ip_cap() -> None:
         result = _create(client, csrf, game)
     finally:
         caches["throttle"].delete(ip_key)
-    assert GameSession.objects.filter(pk=result["session_id"]).exists()
+    assert GameSession.objects.filter(pk=result["sessionId"]).exists()
 
 
 @pytest.mark.django_db
@@ -725,15 +723,15 @@ def test_heartbeat_max_duration_boundary_is_inclusive() -> None:
     game = _game(technical_id="max_duration_boundary_game")
     client, csrf = _client()
     result = _create(client, csrf, game)
-    _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
     now = timezone.now()
-    GameSession.objects.filter(pk=result["session_id"]).update(
+    GameSession.objects.filter(pk=result["sessionId"]).update(
         activated_at=now - timedelta(seconds=1800),
         last_heartbeat_at=now - timedelta(seconds=10),
     )
     token = client.cookies[COOKIE_NAME].value
-    heartbeat(_service_request(token), UUID(str(result["session_id"])), now=now)
-    session = GameSession.objects.get(pk=result["session_id"])
+    heartbeat(_service_request(token), UUID(str(result["sessionId"])), now=now)
+    session = GameSession.objects.get(pk=result["sessionId"])
     assert session.state == GameSession.STATE_ACTIVE
     assert session.credited_ms == 10_000
 
@@ -744,12 +742,12 @@ def test_second_activation_after_expiry_is_gone() -> None:
     game = _game(technical_id="repeat_expired_game")
     client, csrf = _client()
     result = _create(client, csrf, game)
-    GameSession.objects.filter(pk=result["session_id"]).update(
+    GameSession.objects.filter(pk=result["sessionId"]).update(
         created_at=timezone.now() - timedelta(seconds=301)
     )
-    first = _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    first = _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
     assert first.status_code == 410
-    second = _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    second = _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
     assert second.status_code == 410
     assert second.json()["code"] == "E_SESSION_EXPIRED"
 
@@ -871,7 +869,7 @@ def test_throttle_fails_open_when_backend_is_unavailable() -> None:
         side_effect=RedisError("throttle backend down"),
     ):
         result = _create(client, csrf, game)
-    assert GameSession.objects.filter(pk=result["session_id"]).exists()
+    assert GameSession.objects.filter(pk=result["sessionId"]).exists()
 
 
 def test_ipv6_is_aggregated_by_64_prefix() -> None:
@@ -927,8 +925,8 @@ def test_user_heartbeat_credits_playtime() -> None:
     user = User.objects.create_user(login="sven", password="correct horse battery staple")
     client, csrf = _client(user)
     result = _create(client, csrf, game)
-    _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
-    session = GameSession.objects.get(pk=result["session_id"])
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
+    session = GameSession.objects.get(pk=result["sessionId"])
     base = timezone.now() - timedelta(seconds=100)
     GameSession.objects.filter(pk=session.pk).update(
         activated_at=base, last_heartbeat_at=base, credited_ms=0
@@ -948,8 +946,8 @@ def test_guest_and_preview_heartbeats_do_not_credit_playtime() -> None:
     game = _game(technical_id="no_playtime_game")
     guest, csrf = _client()
     result = _create(guest, csrf, game)
-    _activate(guest, csrf, str(result["session_id"]), str(result["ticket"]))
-    session = GameSession.objects.get(pk=result["session_id"])
+    _activate(guest, csrf, str(result["sessionId"]), str(result["ticket"]))
+    session = GameSession.objects.get(pk=result["sessionId"])
     base = timezone.now() - timedelta(seconds=100)
     GameSession.objects.filter(pk=session.pk).update(
         activated_at=base, last_heartbeat_at=base, credited_ms=0

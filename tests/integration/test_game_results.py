@@ -102,14 +102,14 @@ def _activate(client: Client, csrf: str, session_id: str, ticket: str) -> None:
 
 def _ready_session(client: Client, csrf: str, game: Game) -> str:
     result = _create(client, csrf, game)
-    _activate(client, csrf, str(result["session_id"]), str(result["ticket"]))
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
     now = timezone.now()
-    GameSession.objects.filter(pk=result["session_id"]).update(
+    GameSession.objects.filter(pk=result["sessionId"]).update(
         credited_ms=30_000,
         activated_at=now - timedelta(seconds=30),
         last_heartbeat_at=now,
     )
-    return str(result["session_id"])
+    return str(result["sessionId"])
 
 
 def _result(

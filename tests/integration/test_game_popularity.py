@@ -144,13 +144,13 @@ def test_guest_close_credits_and_preview_is_excluded() -> None:
         HTTP_X_CSRFTOKEN=csrf,
     ).json()
     guest.post(
-        f"/api/v1/sessions/{created['session_id']}/activate",
+        f"/api/v1/sessions/{created['sessionId']}/activate",
         data=json.dumps({"ticket": created["ticket"], "binding_nonce": "n" * 32}),
         content_type="application/json",
         HTTP_X_CSRFTOKEN=csrf,
     )
-    GameSession.objects.filter(pk=created["session_id"]).update(credited_ms=30_000)
-    closed = guest.post(f"/api/v1/sessions/{created['session_id']}/close", HTTP_X_CSRFTOKEN=csrf)
+    GameSession.objects.filter(pk=created["sessionId"]).update(credited_ms=30_000)
+    closed = guest.post(f"/api/v1/sessions/{created['sessionId']}/close", HTTP_X_CSRFTOKEN=csrf)
     assert closed.status_code == 204
     assert GamePlayCredit.objects.filter(game=game, subject_type="anon").exists()
 

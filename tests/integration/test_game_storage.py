@@ -97,13 +97,13 @@ def _open_session(client: Client, csrf: str, game: Game) -> str:
     assert response.status_code == 201, response.content
     created = response.json()
     activated = client.post(
-        f"/api/v1/sessions/{created['session_id']}/activate",
+        f"/api/v1/sessions/{created['sessionId']}/activate",
         data=json.dumps({"ticket": created["ticket"], "binding_nonce": "n" * 32}),
         content_type="application/json",
         HTTP_X_CSRFTOKEN=csrf,
     )
     assert activated.status_code == 200, activated.content
-    return str(created["session_id"])
+    return str(created["sessionId"])
 
 
 def _guest_with_identity(game: Game) -> tuple[Client, str]:
