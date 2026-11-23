@@ -830,3 +830,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | R-050 memory peak, runtime zip not hash-verified, real nginx/volume E2E NOT TESTED |
 | Источник | commit `75d0159`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-RUNTIME-JSONSCHEMA-001 — schema-driven host/SDK validation
+
+| Поле | Значение |
+|---|---|
+| Тип | Public runtime validation via AI HQ; wire contract unchanged |
+| Результат | `855caa1` + tooling `3e037c4`: per-message schema tables, JSON-Schema-subset validator, `E_MESSAGE_INVALID`, sync vendored SDK, negative JS tests |
+| Проверки | 19 JS tests on main; SDK contract/package tests; reviewer accept; full suite 1109/1101/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | R-052 myBest mismatch; R-053 hand-mirrored schemas; browser/staging E2E NOT TESTED |
+| Источник | commits `855caa1`, `3e037c4`; evidence в `.autonomy/evidence/` |

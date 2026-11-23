@@ -388,6 +388,11 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-RUNTIME-JSONSCHEMA-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`855caa1` + tooling `3e037c4`): schema-driven host/SDK validation,
+`E_MESSAGE_INVALID`, 19/19 JS tests; full suite **1109/1101/8**. Остатки:
+R-052 `myBest` mismatch, R-053 schema mirroring; browser/staging NOT TESTED.
+
 `ARCADE-ARTIFACTS-TOCTOU-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
 (`75d0159`): O_NOFOLLOW + fstat/inode, dir_fd tree walk; 10 targeted tests;
 full suite **1109/1101/8**. Остаток R-050: memory peak, runtime zip не

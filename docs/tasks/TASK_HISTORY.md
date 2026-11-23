@@ -1446,3 +1446,18 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Остаток:** R-050 memory peak (файлы читаются целиком), runtime zip не
   hash-verified, real nginx/volume E2E NOT TESTED.
 - **Commit:** `75d0159`.
+
+### ARCADE-RUNTIME-JSONSCHEMA-001 — schema-driven host/SDK validation (AI HQ)
+
+- **Результат:** `855caa1` + tooling fix `3e037c4`; per-message schema-таблицы
+  и JSON-Schema-subset валидатор в `host_protocol.js`/`ba-sdk.js`,
+  `E_MESSAGE_INVALID` для trusted payload-нарушений, синхронизированные
+  vendored SDK; negative JS tests.
+- **QA:** первая попытка fail — QA не мог запустить `npm run test:js`
+  (tooling allowlist); добавлены `Bash(npm run test:js:*)` для developer/QA
+  и тесты allowlist; retry — 19/19 JS tests, reviewer accept.
+- **Проверки:** 19 JS tests на main; SDK contract/package tests; full suite
+  **1109/1101/8**.
+- **Остаток:** R-052 `myBest` mismatch, R-053 ручное зеркалирование схем,
+  browser/staging E2E NOT TESTED.
+- **Commit:** `855caa1`, `3e037c4`.

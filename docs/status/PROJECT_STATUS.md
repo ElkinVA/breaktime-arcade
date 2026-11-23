@@ -331,6 +331,19 @@ NOT TESTED; pre-existing lock-order inversion вынесен в R-051.
 8 skipped, exit 0**. Остаток R-050: runtime-файлы читаются в память целиком,
 runtime zip не hash-verified, real nginx/volume E2E NOT TESTED.
 
+## 0.23. Runtime JSON-schema validation — 2026-11-23
+
+`ARCADE-RUNTIME-JSONSCHEMA-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`855caa1`; tooling fix `3e037c4`). `host_protocol.js` и `ba-sdk.js` валидируют
+envelopes/payloads явными per-message schema-таблицами (JSON-Schema-subset)
+вместо ad-hoc проверок; нарушения дают структурированный `E_MESSAGE_INVALID`;
+vendored SDK-копии синхронизированы. Trusted-envelope spoofing по-прежнему
+молча отбрасывается (security-justified). 19/19 JS tests на main (включая
+negative/oversized/source/origin/replay); Python contract/package tests
+зелёные; full suite **1109 tests: 1101 passed, 8 skipped, exit 0**.
+Остатки: R-052 pre-existing `myBest` wire-shape mismatch (follow-up), R-053
+ручное зеркалирование схем, browser/staging E2E NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не
