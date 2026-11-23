@@ -93,7 +93,7 @@ def cancel_deletion(user: User) -> UserProfile:
     requested = profile.deletion_requested_at
     if requested is None:
         return profile
-    if timezone.now() - requested > timedelta(days=settings.ACCOUNT_DELETION_WINDOW_DAYS):
+    if timezone.now() - requested >= timedelta(days=settings.ACCOUNT_DELETION_WINDOW_DAYS):
         raise ValidationError("Окно отмены удаления истекло.")
     profile.deletion_requested_at = None
     profile.save(update_fields=["deletion_requested_at", "updated_at"])

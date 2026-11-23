@@ -35,6 +35,11 @@
               action="{% url 'crm:user_delete' user_id=target.id %}"
               data-testid="crm-user-delete-form">
             {% csrf_token %}
+            <label class="flex items-center gap-2 text-xs text-muted">
+                <input type="checkbox" name="confirm_delete" value="yes" required
+                       data-testid="crm-user-delete-confirm">
+                Подтверждаю необратимое удаление персональных данных
+            </label>
             <button type="submit"
                     class="px-4 py-2 rounded border border-red-500 text-red-500 text-sm"
                     data-testid="crm-user-delete">Удалить</button>

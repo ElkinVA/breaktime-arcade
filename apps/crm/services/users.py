@@ -20,7 +20,7 @@ from uuid import UUID
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q, QuerySet
+from django.db.models import F, Q, QuerySet
 from django.utils import timezone
 
 from apps.accounts.models import User, UserProfile
@@ -123,8 +123,9 @@ def recent_results(user: User) -> QuerySet[GameResult]:
 
 
 def current_leaderboard_entries(user: User) -> QuerySet[LeaderboardEntry]:
+    """Leaderboard rows for the games' current epoch only."""
     return (
-        LeaderboardEntry.objects.filter(user=user)
+        LeaderboardEntry.objects.filter(user=user, epoch=F("game__leaderboard_epoch"))
         .select_related("game")
         .order_by("game__technical_id", "epoch")
     )
@@ -139,11 +140,15 @@ def toggle_user_active(
 ) -> UserActionResult:
     """Block/unblock a customer account and append an audit row atomically."""
     with transaction.atomic():
-        target = User.objects.select_for_update().filter(pk=target_id).first()
+        target = User.objects.select_for_update().filter(pk=target_id, is_staff=False).first()
         if target is None:
             return UserActionResult(ok=False, reason="not_found")
         if target.pk == actor.pk:
             return UserActionResult(ok=False, reason="self_target")
+        if not UserProfile.objects.filter(user=target).exists():
+            # An anonymised tombstone must never become an authenticatable
+            # account again through the customer block/unblock screen.
+            return UserActionResult(ok=False, reason="already_deleted")
         before = {"is_active": target.is_active}
         target.is_active = not target.is_active
         target.updated_at = timezone.now()
@@ -187,9 +192,11 @@ def delete_customer(
     - profile already gone -> success no-op (the account was deleted before).
     """
     with transaction.atomic():
-        target = User.objects.select_for_update().filter(pk=target_id).first()
+        target = User.objects.select_for_update().filter(pk=target_id, is_staff=False).first()
         if target is None:
             return UserActionResult(ok=False, reason="not_found")
+        if target.pk == actor.pk:
+            return UserActionResult(ok=False, reason="self_target")
         profile = UserProfile.objects.select_for_update().filter(user=target).first()
         if profile is None:
             return UserActionResult(ok=True, reason="already_deleted")

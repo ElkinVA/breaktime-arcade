@@ -45,6 +45,12 @@ def _client(user: User) -> Client:
     return client
 
 
+def _step_up(client: Client) -> None:
+    session = client.session
+    session["crm_step_up_at"] = timezone.now().isoformat()
+    session.save()
+
+
 def _customer(
     login: str,
     nickname: str,
@@ -275,7 +281,16 @@ def test_delete_requests_window_then_anonymizes_when_due_and_is_idempotent() -> 
     target = _customer("target", "Target", email="target@example.com")
     client = _client(owner)
 
-    scheduled = client.post(reverse("crm:user_delete", args=[target.id]))
+    not_elevated = client.post(reverse("crm:user_delete", args=[target.id]))
+    assert not_elevated.status_code == 302
+    assert UserProfile.objects.get(user=target).deletion_requested_at is None
+
+    _step_up(client)
+    no_confirm = client.post(reverse("crm:user_delete", args=[target.id]))
+    assert no_confirm.status_code == 302
+    assert UserProfile.objects.get(user=target).deletion_requested_at is None
+
+    scheduled = client.post(reverse("crm:user_delete", args=[target.id]), {"confirm_delete": "yes"})
     assert scheduled.status_code == 302
     target.refresh_from_db()
     profile = UserProfile.objects.get(user=target)
@@ -285,14 +300,14 @@ def test_delete_requests_window_then_anonymizes_when_due_and_is_idempotent() -> 
     ).exists()
 
     # Inside the cancellation window nothing is purged.
-    again = client.post(reverse("crm:user_delete", args=[target.id]))
+    again = client.post(reverse("crm:user_delete", args=[target.id]), {"confirm_delete": "yes"})
     assert again.status_code == 302
     assert UserProfile.objects.filter(user=target).exists()
 
     UserProfile.objects.filter(user=target).update(
         deletion_requested_at=timezone.now() - timedelta(days=8)
     )
-    deleted = client.post(reverse("crm:user_delete", args=[target.id]))
+    deleted = client.post(reverse("crm:user_delete", args=[target.id]), {"confirm_delete": "yes"})
     assert deleted.status_code == 302
     target.refresh_from_db()
     assert target.is_active is False
@@ -303,7 +318,7 @@ def test_delete_requests_window_then_anonymizes_when_due_and_is_idempotent() -> 
         action=AdminAuditLog.ACTION_USER_DELETED, object_id=target.id
     ).exists()
 
-    repeat = client.post(reverse("crm:user_delete", args=[target.id]))
+    repeat = client.post(reverse("crm:user_delete", args=[target.id]), {"confirm_delete": "yes"})
     assert repeat.status_code == 302
     assert (
         AdminAuditLog.objects.filter(
@@ -323,9 +338,123 @@ def test_export_matches_cabinet_shape_and_is_an_attachment() -> None:
     account_export = cabinet.get(reverse("account:export"))
     assert account_export.status_code == 200
 
-    crm_export = _client(owner).get(reverse("crm:user_export", args=[target.id]))
+    client = _client(owner)
+    blocked = client.get(reverse("crm:user_export", args=[target.id]))
+    assert blocked.status_code == 302
+    assert reverse("crm:step_up") in blocked["Location"]
+
+    _step_up(client)
+    crm_export = client.get(reverse("crm:user_export", args=[target.id]))
     assert crm_export.status_code == 200
     assert "attachment" in crm_export["Content-Disposition"]
     assert "breaktime-account.json" in crm_export["Content-Disposition"]
+    assert crm_export["X-Content-Type-Options"] == "nosniff"
 
     assert json.loads(crm_export.content) == json.loads(account_export.content)
+
+
+@pytest.mark.django_db
+def test_staff_and_owner_targets_are_not_addressable_as_customers() -> None:
+    owner = _staff("owner", StaffRole.OWNER)
+    other_owner = _staff("other_owner", StaffRole.OWNER)
+    UserProfile.objects.create(
+        user=other_owner, nickname="OtherOwner", nickname_skeleton="otherowner"
+    )
+    client = _client(owner)
+    _step_up(client)
+
+    assert client.get(reverse("crm:user_detail", args=[other_owner.id])).status_code == 404
+    assert client.get(reverse("crm:user_export", args=[other_owner.id])).status_code == 404
+    assert client.post(reverse("crm:user_block", args=[other_owner.id])).status_code == 302
+    other_owner.refresh_from_db()
+    assert other_owner.is_active is True
+    assert (
+        client.post(
+            reverse("crm:user_delete", args=[other_owner.id]),
+            {"confirm_delete": "yes"},
+        ).status_code
+        == 302
+    )
+    assert UserProfile.objects.filter(user=other_owner).exists()
+    assert not AdminAuditLog.objects.filter(object_id=other_owner.id).exists()
+
+
+@pytest.mark.django_db
+def test_block_on_anonymized_tombstone_does_not_reactivate() -> None:
+    owner = _staff("owner", StaffRole.OWNER)
+    target = _customer("target", "Target")
+    client = _client(owner)
+
+    UserProfile.objects.filter(user=target).delete()
+    User.objects.filter(pk=target.pk).update(is_active=False)
+    target.refresh_from_db()
+    response = client.post(reverse("crm:user_unblock", args=[target.id]))
+    assert response.status_code == 302
+    target.refresh_from_db()
+    assert target.is_active is False
+
+
+@pytest.mark.django_db
+def test_detail_shows_only_current_leaderboard_epoch() -> None:
+    owner = _staff("owner", StaffRole.OWNER)
+    target = _customer("target", "Target")
+    game = _game("epoch_game")
+    now = timezone.now()
+    old_session = GameSession.objects.create(
+        game=game,
+        game_version=game.current_version,
+        subject_type=GameSession.SUBJECT_USER,
+        subject_id=target.id,
+        mode=GameSession.MODE_USER,
+        state=GameSession.STATE_FINISHED,
+        seed="old-epoch-seed",
+        max_session_seconds=1800,
+        activated_at=now - timedelta(seconds=30),
+        last_heartbeat_at=now,
+        finished_at=now,
+    )
+    old_result = GameResult.objects.create(
+        session=old_session,
+        game=game,
+        game_version=game.current_version,
+        subject_type=GameResult.SUBJECT_USER,
+        user=target,
+        epoch=game.leaderboard_epoch - 1,
+        value=5,
+        unit=game.score_unit,
+        duration_ms=30_000,
+        idempotency_key="old-epoch-key",
+    )
+    LeaderboardEntry.objects.create(
+        game=game,
+        epoch=old_result.epoch,
+        user=target,
+        best_result=old_result,
+        value=5,
+        achieved_at=old_result.created_at,
+        trust_level=GameResult.TRUST_CLIENT_REPORTED,
+    )
+    _result_and_entry(game, target, value=10)
+
+    client = _client(owner)
+    response = client.get(reverse("crm:user_detail", args=[target.id]))
+    assert response.status_code == 200
+    epochs = {entry.epoch for entry in response.context["leaderboard_entries"]}
+    assert epochs == {game.leaderboard_epoch}
+
+
+@pytest.mark.django_db
+def test_mutations_reject_missing_csrf_token() -> None:
+    owner = _staff("owner", StaffRole.OWNER)
+    target = _customer("target", "Target")
+    client = Client(enforce_csrf_checks=True)
+    client.force_login(owner)
+    session = client.session
+    session["ba_2fa_verified"] = True
+    session.save()
+    _step_up(client)
+
+    response = client.post(reverse("crm:user_block", args=[target.id]))
+    assert response.status_code == 403
+    response = client.post(reverse("crm:user_delete", args=[target.id]), {"confirm_delete": "yes"})
+    assert response.status_code == 403

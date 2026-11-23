@@ -17,6 +17,7 @@ from uuid import UUID
 from django.contrib import messages
 from django.contrib.auth import logout as auth_logout
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
 from django.http import (
@@ -778,17 +779,31 @@ def _filter_choices(filters: UserFilters) -> dict[str, str]:
     }
 
 
+USERS_PAGE_SIZE = 50
+
+
+def _customer_or_404(user_id: UUID) -> User:
+    """Customer routes must never address staff/owner accounts or tombstones."""
+    return get_object_or_404(User, pk=user_id, is_staff=False)
+
+
 @role_required(USERS_MANAGE)
 @require_GET
 def users_list(request: HttpRequest) -> TemplateResponse:
     """Search and filter customer accounts (§2.16.2, "Пользователи")."""
     filters = parse_user_filters(request.GET)
+    paginator = Paginator(search_users(filters), USERS_PAGE_SIZE)
+    page_obj = paginator.get_page(request.GET.get("page"))
+    params = request.GET.copy()
+    params.pop("page", None)
     return TemplateResponse(
         request,
         "crm/users/list.html",
         {
             "title": "Пользователи · CRM",
-            "users": search_users(filters),
+            "users": page_obj,
+            "page_obj": page_obj,
+            "pagination_query": params.urlencode(),
             "filters": filters,
             "search_min_length": MIN_SEARCH_LENGTH,
             **_filter_choices(filters),
@@ -815,7 +830,12 @@ def _toggle_block(request: HttpRequest, user_id: UUID) -> HttpResponseRedirect:
         if result.reason == "not_found":
             messages.error(request, "Аккаунт не найден.")
             return redirect("crm:users")
-        messages.error(request, "Нельзя заблокировать собственную учётную запись.")
+        if result.reason == "already_deleted":
+            messages.error(request, "Аккаунт уже удалён и не может быть разблокирован.")
+        elif result.reason == "self_target":
+            messages.error(request, "Нельзя заблокировать собственную учётную запись.")
+        else:
+            messages.error(request, "Операция недоступна.")
     elif result.is_active:
         messages.success(request, "Аккаунт разблокирован; изменение записано в журнал.")
     else:
@@ -828,6 +848,15 @@ def _delete_user(request: HttpRequest, user_id: UUID) -> HttpResponseRedirect:
     if actor is None:
         messages.error(request, _STEP_UP_ERRORS["not_staff"])
         return redirect("crm:users")
+    allowed, reason = _authorize_step_up(request)
+    if not allowed:
+        messages.error(request, reason)
+        if reason == _STEP_UP_REQUIRED:
+            return _step_up_redirect(reverse("crm:user_detail", args=[user_id]))
+        return _user_action_redirect(user_id)
+    if request.POST.get("confirm_delete") != "yes":
+        messages.error(request, "Подтвердите необратимое удаление аккаунта.")
+        return _user_action_redirect(user_id)
     result = delete_customer(
         actor=actor,
         target_id=user_id,
@@ -835,7 +864,10 @@ def _delete_user(request: HttpRequest, user_id: UUID) -> HttpResponseRedirect:
         reason=str(request.POST.get("reason") or "").strip()[:255],
     )
     if not result.ok:
-        messages.error(request, "Аккаунт не найден.")
+        if result.reason == "self_target":
+            messages.error(request, "Нельзя удалить собственную учётную запись.")
+        else:
+            messages.error(request, "Аккаунт не найден.")
         return redirect("crm:users")
     message = {
         "deleted": "Аккаунт анонимизирован; персональные данные удалены.",
@@ -865,7 +897,7 @@ def user_detail(request: HttpRequest, user_id: UUID) -> TemplateResponse | HttpR
         messages.error(request, "Неизвестное действие.")
         return _user_action_redirect(user_id)
 
-    target = get_object_or_404(User, pk=user_id)
+    target = _customer_or_404(user_id)
     profile_obj = UserProfile.objects.filter(user=target).first()
     email = EmailAddress.objects.filter(user=target).first()
     return TemplateResponse(
@@ -896,15 +928,18 @@ def user_delete(request: HttpRequest, user_id: UUID) -> HttpResponseRedirect:
 
 @role_required(USERS_MANAGE)
 @require_GET
-def user_export(request: HttpRequest, user_id: UUID) -> JsonResponse:
-    """Download the same personal-data JSON the cabinet exposes (§2.16.2)."""
-    target = get_object_or_404(User, pk=user_id)
+def user_export(request: HttpRequest, user_id: UUID) -> JsonResponse | HttpResponseRedirect:
+    """Download personal data; TZ §2.16.1 requires step-up before export."""
+    target = _customer_or_404(user_id)
+    if not is_step_up_valid(request.session):
+        return _step_up_redirect(reverse("crm:user_export", args=[user_id]))
     response = JsonResponse(
         export_account_data(target),
         json_dumps_params={"ensure_ascii": False, "indent": 2},
     )
     response["Content-Disposition"] = 'attachment; filename="breaktime-account.json"'
     response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
     return response
 
 
