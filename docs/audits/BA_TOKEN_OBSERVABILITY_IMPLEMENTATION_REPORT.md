@@ -2,6 +2,8 @@
 
 **Дата:** 2026-11-23  
 **Статус:** **IMPLEMENTED / TESTS PASSING / INDEPENDENT REVIEW ACCEPT**  
+**Модели:** дизайн/реализация/проверки — `deepseek-flash[1m]`;
+независимый review — `code-reviewer` (`deepseek-v4-pro`).  
 **Цель:** metadata-only учёт model invocations без изменения поведения
 orchestrator, моделей, бюджета, числа агентов, VPS, Docker, сессий и прав.
 
@@ -109,8 +111,7 @@ diff не передавался). Findings:
 
 ## 8. Git
 
-- Commit: `feat(autonomy): add metadata-only invocation observability`
-  (hash — в `git log`; файл не может содержать собственный hash).
+- Commit: `a39d850` — `feat(autonomy): add metadata-only invocation observability`.
 - В коммит входят только `autonomy/`, `tests/unit/`, `docs/audits/`,
   `docs/tasks/TASK_HISTORY.md`, `docs/risks/RISK_REGISTER.md`,
   `docs/status/`, `docs/handoff/NOW.md`.
