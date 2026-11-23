@@ -560,6 +560,10 @@
         };
 
         async newSession() {
+            // The previous session is invalidated as soon as a new session is
+            // requested; do not leave its in-flight requests hanging until
+            // their individual timeouts.
+            this.cancelPending();
             const payload = await this.request("ba:newSession", {}, DEFAULT_REQUEST_TIMEOUT);
             if (!isUuid(payload?.sessionId) || typeof payload?.seed !== "string") {
                 throw new Error("BA_SDK_INVALID_SESSION");
@@ -577,10 +581,16 @@
         }
 
         exit() {
-            if (this.state === "active" || this.state === "init" || this.state === "finished") {
-                this.send("ba:exit", {});
+            try {
+                if (this.state === "active" || this.state === "init" || this.state === "finished") {
+                    this.send("ba:exit", {});
+                }
+            } finally {
+                this.state = "exited";
+                // Session close is terminal for pending work: settle it now
+                // rather than waiting for each request timeout.
+                this.cancelPending();
             }
-            this.state = "exited";
         }
 
         fail(code, message) {
@@ -632,6 +642,20 @@
                     this.parentOrigin,
                 );
             });
+        }
+
+        /* Settle every in-flight request immediately and clear its timer.
+         * Reuses E_TIMEOUT: cancellation is terminal for the request and game
+         * retry logic already recognises E_TIMEOUT.
+         */
+        cancelPending() {
+            for (const pending of this.pending.values()) {
+                global.clearTimeout(pending.timer);
+                const error = new Error("BA_SDK_CANCELLED");
+                error.code = "E_TIMEOUT";
+                pending.reject(error);
+            }
+            this.pending.clear();
         }
 
         checkRate() {
@@ -730,6 +754,8 @@
                     this.sessionId = data.payload.sessionId;
                     this.session = data.payload;
                 }
+                // Anything still in flight belongs to the superseded session.
+                this.cancelPending();
                 pending.resolve(data.payload);
                 return;
             }
