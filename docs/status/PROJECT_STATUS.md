@@ -179,6 +179,17 @@ mypy/makemigrations; после добавления host mypy и постоян
 `updated_at`/`last_credited_at`; concurrent result insert может дать
 ProtectedError и retry (данные не теряются); live beat NOT TESTED.
 
+## 0.10. Slug 301 redirects — 2026-11-23
+
+`ARCADE-CATALOG-SLUG-301-001` — **COMPLETED / AI HQ REVIEWER ACCEPT**
+(`cf0936c`). Добавлен `GameSlugHistory` (миграция `catalog.0011`) и запись
+старого slug при изменении `Game.slug`/`GameTranslation.slug`; старый URL
+отдаёт постоянный 301 на текущий canonical URL, неизвестный/неопубликованный
+slug — 404. 5 новых integration tests + migration guard; ruff/mypy clean;
+полный suite **1033 tests: 1025 passed, 8 skipped, exit 0**. Остатки:
+нет отдельного negative-теста cross-language old slug; `FALLBACK_LANGUAGE_CODE`
+дублируется с SEO/sitemap; concurrent `get_or_create` race не тестировался.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

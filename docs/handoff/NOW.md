@@ -377,6 +377,11 @@ migration guard; targeted ruff/mypy clean; full suite **1028/1020/8**. QA toolin
 (host mypy, migration guard). Остатки: no purge indexes, ProtectedError
 race retry, live beat NOT TESTED.
 
+`ARCADE-CATALOG-SLUG-301-001` — **COMPLETED / AI HQ REVIEWER ACCEPT**
+(`cf0936c`): slug-history registry + 301 для старых URL, 5 tests +
+migration guard, full suite **1033/1025/8**. Остатки: cross-language
+negative test, shared fallback constant, concurrent get_or_create race.
+
 ## Модели
 
 - План/ревью: `architect`, `code-reviewer`, `security-auditor` /

@@ -674,3 +674,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEWER ACCEPT**; product/staging/prod не заявляются |
 | Остаток | no index on purge timestamps; concurrent result insert → ProtectedError/retry; live beat NOT TESTED |
 | Источник | commit `8e42426`; QA/reviewer evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-CATALOG-SLUG-301-001 — slug history / 301
+
+| Поле | Значение |
+|---|---|
+| Тип | Product/SEO implementation via AI HQ; migration added |
+| Результат | `cf0936c`: `GameSlugHistory` + запись старого slug при изменении Game/GameTranslation; game_detail 301 на canonical, unknown 404 |
+| Проверки | 5 slug tests; migration guard; catalog public/SEO 16 tests; ruff/mypy clean; full suite 1033/1025/8 exit 0; AI HQ reviewer accept |
+| Статус | **COMPLETED / AI HQ REVIEWER ACCEPT**; product/staging/prod не заявляются |
+| Остаток | cross-language negative redirect test absent; `FALLBACK_LANGUAGE_CODE` duplicated with SEO/sitemap; concurrent get_or_create race not tested |
+| Источник | commit `cf0936c`; `.autonomy/evidence/qa-26588089-*.json`, reviewer evidence |

@@ -1259,3 +1259,18 @@ BA-AUDIT-001 (COMPLETED, первичный файл не найден)
 - **Остаток:** no indexes on purge timestamps; concurrent result insert →
   ProtectedError/retry; live beat NOT TESTED.
 - **Commit:** `8e42426`.
+
+
+### ARCADE-CATALOG-SLUG-301-001 — slug history + 301 (AI HQ)
+
+- **Результат:** `cf0936c`; `GameSlugHistory` (catalog.0011), запись старого
+  slug на save Game/GameTranslation; старый URL → 301 canonical, неизвестный
+  → 404; multi-change chain разрешается в текущий slug.
+- **Проверки:** 5 slug tests; migration guard; catalog public/SEO 16 tests;
+  ruff/mypy clean; full suite **1033 tests: 1025 passed, 8 skipped, exit 0**;
+  AI HQ reviewer accept.
+- **Стоимость AI HQ (journal):** developer 2.763 + QA 0.723 + reviewer 1.362
+  ≈ 4.848 USD (attempt 1).
+- **Остаток:** cross-language negative redirect test absent; shared fallback
+  constant duplication; concurrent get_or_create race not tested.
+- **Commit:** `cf0936c`.
