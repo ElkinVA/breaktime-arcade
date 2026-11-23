@@ -298,6 +298,18 @@ pagination chrome. 5 targeted tests + catalog regression; full suite
 HTTP/nginx/staging NOT TESTED; неиспользуемый context-key `games` оставлен
 для обратной совместимости (informational).
 
+## 0.20. App F race/idempotency tests — 2026-11-23
+
+`ARCADE-APPF-RACE-TESTS-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`7af18bb`, test-only). Добавлены 8 тестов: параллельные `submit_result`
+(ровно один лучший `LeaderboardEntry`, без дублей/потерь), конкурентные
+рейтинговые голоса с лимитами ≤1/24h и ≤5/30d + UNIQUE(game,user), storage
+со stale If-Match/ETag и конкурентной записью JSONB, повтор
+Idempotency-Key. Targeted 8/8; миграций нет; full suite **1103 tests:
+1095 passed, 8 skipped, exit 0**. Остаток: тесты service-level, HTTP/CSRF/
+throttle/ETag round-trip остаётся на существующих integration-тестах;
+live browser/staging NOT TESTED.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

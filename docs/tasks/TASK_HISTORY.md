@@ -1407,3 +1407,15 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Остаток:** live HTTP/nginx/staging NOT TESTED; context-key `games`
   сохранён для обратной совместимости (informational).
 - **Commit:** `0c4e64d`.
+
+### ARCADE-APPF-RACE-TESTS-001 — App F race/idempotency tests (AI HQ)
+
+- **Результат:** `7af18bb`, test-only; 8 тестов на параллельные результаты
+  (один лучший LeaderboardEntry без дублей), рейтинговые лимиты
+  ≤1/24h/≤5/30d + UNIQUE(game,user), storage stale If-Match/ETag и
+  конкурентный JSONB, повтор Idempotency-Key.
+- **Проверки:** targeted 8/8 на main; ruff clean; миграций нет; AI HQ
+  reviewer accept; full suite **1103/1095/8**.
+- **Остаток:** service-level scope; HTTP/CSRF/throttle/ETag round-trip
+  покрыт существующими integration-тестами; live browser/staging NOT TESTED.
+- **Commit:** `7af18bb`.

@@ -388,6 +388,11 @@ titles, missing alt, incomplete translations, per-language summary; 11 tests;
 full suite **1044/1036/8**. Остаток: large-catalog performance/staging/prod
 NOT TESTED.
 
+`ARCADE-APPF-RACE-TESTS-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
+(`7af18bb`, test-only): 8 тестов на конкурентный result/leaderboard, rating
+limits, storage If-Match и Idempotency-Key; full suite **1103/1095/8**.
+Остаток: service-level scope; live browser/staging NOT TESTED.
+
 `ARCADE-CATALOG-GENRE-PAGINATION-001` — **COMPLETED / AI HQ REVIEW ACCEPT**
 (`0c4e64d`): genre page использует общий paginate/clamp/canonical/noindex,
 сохраняет sort/filters; 5 targeted tests; full suite **1095/1087/8**.

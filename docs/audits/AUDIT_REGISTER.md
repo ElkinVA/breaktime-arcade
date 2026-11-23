@@ -794,3 +794,15 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
 | Остаток | live HTTP/nginx/staging NOT TESTED; unused `games` context key informational |
 | Источник | commit `0c4e64d`; evidence в `.autonomy/evidence/` |
+
+
+## ARCADE-APPF-RACE-TESTS-001 — App F concurrency/idempotency tests
+
+| Поле | Значение |
+|---|---|
+| Тип | Test coverage via AI HQ; test-only, no migrations |
+| Результат | `7af18bb`: 8 tests — concurrent result/leaderboard, rating limits + unique, storage If-Match/ETag race, Idempotency-Key replay |
+| Проверки | targeted 8/8 on main; ruff clean; reviewer accept; full suite 1103/1095/8 exit 0 |
+| Статус | **COMPLETED / AI HQ REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | service-level scope; HTTP round-trip and live browser/staging NOT TESTED |
+| Источник | commit `7af18bb`; evidence в `.autonomy/evidence/` |

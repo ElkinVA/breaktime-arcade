@@ -48,6 +48,9 @@ ambiguity.
   (`ARCADE-CRM-USERS-001`, `4095ed8` + fixes). R-049 follow-ups now abort
   open SDK sessions on block and clear tombstone credentials
   (`a9e7d2b`, `08ab9c7`); narrow create_session race remains.
+- App F concurrency/idempotency coverage: result/leaderboard races, rating
+  limits, storage If-Match and Idempotency-Key (`ARCADE-APPF-RACE-TESTS-001`,
+  `7af18bb`).
 - Catalog genre pages: paginated with sort/filter persistence and
   canonical/noindex parity (`ARCADE-CATALOG-GENRE-PAGINATION-001`,
   `0c4e64d`).
