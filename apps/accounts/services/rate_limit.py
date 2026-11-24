@@ -15,6 +15,7 @@ import logging
 from dataclasses import dataclass
 
 from django.core.cache import caches
+from django_redis.exceptions import ConnectionInterrupted  # type: ignore[import-untyped]
 from redis.exceptions import RedisError
 
 from apps.core.net import normalize_ip
@@ -23,7 +24,9 @@ logger = logging.getLogger(__name__)
 
 # ValueError covers a foreign writer storing a non-integer at a counter key:
 # treat it as a failed limit check (fail closed) instead of a 500.
-CacheError = (RedisError, OSError, ValueError)
+# ConnectionInterrupted is django-redis's wrapper for transport failures and
+# does not inherit RedisError.
+CacheError = (RedisError, ConnectionInterrupted, OSError, ValueError)
 
 LOGIN_ACCOUNT_LIMIT = 5
 LOGIN_IP_FAILURE_LIMIT = 60
@@ -31,7 +34,8 @@ TWO_FACTOR_ACCOUNT_LIMIT = 10
 TWO_FACTOR_IP_FAILURE_LIMIT = 30
 PASSWORD_RESET_ACCOUNT_LIMIT = 3
 PASSWORD_RESET_IP_LIMIT = 20
-REGISTRATION_IP_LIMIT = 3
+REGISTRATION_DEVICE_LIMIT = 3
+REGISTRATION_IP_LIMIT = 30
 
 
 @dataclass(frozen=True)
@@ -176,23 +180,44 @@ def password_reset_attempt(email: str, ip: str | None) -> LimitDecision:
     )
 
 
-def registration_attempt(ip: str | None) -> LimitDecision:
-    """Reserve one registration slot for the client IP."""
-    key = f"auth:register:ip:{_ip_hash(ip)}"
+def registration_device(csrf_token: str | None, ip: str | None) -> str:
+    """Interim device key for registration (Приложение E).
+
+    The CSRF cookie is the only stable per-browser identifier available on the
+    public registration form; clearing it falls back to the per-IP bucket, and
+    the IP cap still bounds rotation. A dedicated signed device cookie would
+    need a cookie-policy/legal update and is left as an owner decision.
+    """
+    if csrf_token:
+        return f"cookie:{csrf_token}"
+    return f"nocookie:{normalize_ip(ip or 'unknown')}"
+
+
+def registration_attempt(device: str, ip: str | None) -> LimitDecision:
+    """Reserve one registration slot for the device and the client IP."""
+    device_key = f"auth:register:device:{_hash(device)}"
+    ip_key = f"auth:register:ip:{_ip_hash(ip)}"
     try:
-        attempts = _increment(key, 86400)
+        device_attempts = _increment(device_key, 86400)
+        ip_attempts = _increment(ip_key, 86400)
     except CacheError as exc:
         return _unavailable("registration", exc)
-    return LimitDecision(attempts <= REGISTRATION_IP_LIMIT)
+    return LimitDecision(
+        device_attempts <= REGISTRATION_DEVICE_LIMIT and ip_attempts <= REGISTRATION_IP_LIMIT
+    )
 
 
-def release_registration(ip: str | None) -> None:
+def release_registration(device: str, ip: str | None) -> None:
     """Return a reserved slot when the form is invalid or saving failed."""
-    key = f"auth:register:ip:{_ip_hash(ip)}"
+    keys = (
+        f"auth:register:device:{_hash(device)}",
+        f"auth:register:ip:{_ip_hash(ip)}",
+    )
     try:
         cache = _cache()
-        if int(cache.get(key) or 0) > 0:
-            cache.decr(key)
+        for key in keys:
+            if int(cache.get(key) or 0) > 0:
+                cache.decr(key)
     except CacheError as exc:
         logger.error(
             "security.rate_limit.release_failed",

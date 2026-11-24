@@ -56,8 +56,8 @@ def bypass_rate_limits(monkeypatch: pytest.MonkeyPatch) -> None:
     """Rate limits проверяются отдельно; здесь не смешиваем их с account flow."""
     from apps.accounts.services.rate_limit import ALLOWED
 
-    monkeypatch.setattr("apps.accounts.views.registration_attempt", lambda ip: ALLOWED)
-    monkeypatch.setattr("apps.accounts.views.release_registration", lambda ip: None)
+    monkeypatch.setattr("apps.accounts.views.registration_attempt", lambda device, ip: ALLOWED)
+    monkeypatch.setattr("apps.accounts.views.release_registration", lambda device, ip: None)
     monkeypatch.setattr("apps.accounts.views.login_attempt", lambda login, ip: ALLOWED)
     monkeypatch.setattr("apps.accounts.views.record_login_ip_failure", lambda ip: None)
     monkeypatch.setattr("apps.accounts.views.clear_login_attempts", lambda login: None)
@@ -80,6 +80,34 @@ def payload(**overrides: object) -> dict[str, object]:
     }
     data.update(overrides)
     return data
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_registration_view_releases_slot_for_invalid_form(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    released: list[str] = []
+    monkeypatch.setattr(
+        "apps.accounts.views.release_registration",
+        lambda device, ip: released.append(device),
+    )
+    response = Client().post("/en/auth/register/", payload(login=""))
+    assert response.status_code == 200
+    assert len(released) == 1
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_registration_view_keeps_slot_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    released: list[str] = []
+    monkeypatch.setattr(
+        "apps.accounts.views.release_registration",
+        lambda device, ip: released.append(device),
+    )
+    response = Client().post("/en/auth/register/", payload())
+    assert response.status_code == 302
+    assert released == []
 
 
 @pytest.mark.django_db

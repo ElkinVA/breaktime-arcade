@@ -65,6 +65,7 @@ from apps.accounts.services.rate_limit import (
     record_login_ip_failure,
     record_two_factor_ip_failure,
     registration_attempt,
+    registration_device,
     release_registration,
     two_factor_attempt,
 )
@@ -133,7 +134,11 @@ def register(request: HttpRequest) -> HttpResponse:
     form = RegistrationForm(request.POST or None)
     unavailable = False
     if request.method == "POST":
-        decision = registration_attempt(_ip(request))
+        device = registration_device(
+            request.COOKIES.get(settings.CSRF_COOKIE_NAME),
+            _ip(request),
+        )
+        decision = registration_attempt(device, _ip(request))
         if decision.unavailable:
             unavailable = True
             messages.error(request, "Сервис регистрации временно недоступен. Попробуйте позже.")
@@ -144,7 +149,7 @@ def register(request: HttpRequest) -> HttpResponse:
             try:
                 user = form.save(ip=_ip(request))
             except (ValidationError, IntegrityError) as exc:
-                release_registration(_ip(request))
+                release_registration(device, _ip(request))
                 error = str(exc) if isinstance(exc, ValidationError) else "Аккаунт уже существует."
                 form.add_error(None, error)
             else:
@@ -161,7 +166,7 @@ def register(request: HttpRequest) -> HttpResponse:
                 messages.success(request, "Аккаунт создан.")
                 return redirect("account:profile")
         else:
-            release_registration(_ip(request))
+            release_registration(device, _ip(request))
     return render(
         request,
         "accounts/register.html",

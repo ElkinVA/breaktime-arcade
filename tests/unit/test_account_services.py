@@ -6,7 +6,7 @@ import pytest
 from django.core.cache import caches
 from django.core.exceptions import ValidationError
 from django.test import override_settings
-from redis.exceptions import RedisError
+from django_redis.exceptions import ConnectionInterrupted
 
 from apps.accounts.services import rate_limit
 from apps.accounts.services.nickname import nickname_skeleton, normalize_nickname
@@ -16,6 +16,7 @@ from apps.accounts.services.rate_limit import (
     password_reset_attempt,
     record_login_ip_failure,
     registration_attempt,
+    registration_device,
     release_registration,
     two_factor_attempt,
 )
@@ -29,7 +30,7 @@ LOCMEM_CACHES = {
 class _FailingCache:
     def __getattr__(self, name: str):
         def fail(*args: object, **kwargs: object) -> None:
-            raise RedisError("throttle backend down")
+            raise ConnectionInterrupted("throttle backend down")
 
         return fail
 
@@ -67,21 +68,41 @@ def test_login_ip_failure_limit_is_enforced() -> None:
 
 
 @override_settings(CACHES=LOCMEM_CACHES)
-def test_registration_limit_is_ip_scoped() -> None:
-    assert registration_attempt("198.51.100.1").allowed
-    assert registration_attempt("198.51.100.1").allowed
-    assert registration_attempt("198.51.100.1").allowed
-    assert not registration_attempt("198.51.100.1").allowed
-    assert registration_attempt("198.51.100.2").allowed
+def test_registration_limit_is_device_and_ip_scoped() -> None:
+    assert registration_attempt("device-a", "198.51.100.1").allowed
+    assert registration_attempt("device-a", "198.51.100.1").allowed
+    assert registration_attempt("device-a", "198.51.100.1").allowed
+    assert not registration_attempt("device-a", "198.51.100.1").allowed
+    assert registration_attempt("device-b", "198.51.100.1").allowed
+
+
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_registration_ip_limit_is_thirty_per_day() -> None:
+    assert registration_attempt("device-0", "198.51.100.4").allowed
+    for index in range(1, 30):
+        assert registration_attempt(f"device-{index}", "198.51.100.4").allowed
+    assert not registration_attempt("device-31", "198.51.100.4").allowed
 
 
 @override_settings(CACHES=LOCMEM_CACHES)
 def test_registration_limit_aggregates_ipv6_by_64() -> None:
-    assert registration_attempt("2001:db8:0:1::1").allowed
-    assert registration_attempt("2001:db8:0:1::1").allowed
-    assert registration_attempt("2001:db8:0:1::1").allowed
-    assert not registration_attempt("2001:db8:0:1::2").allowed
-    assert registration_attempt("2001:db8:0:2::1").allowed
+    for index in range(30):
+        assert registration_attempt(f"device-{index}", "2001:db8:0:1::1").allowed
+    assert not registration_attempt("device-31", "2001:db8:0:1::2").allowed
+    assert registration_attempt("device-31", "2001:db8:0:2::1").allowed
+
+
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_registration_ip_buckets_collapse_ipv4_mapped() -> None:
+    for index in range(30):
+        assert registration_attempt(f"device-{index}", "203.0.113.77").allowed
+    assert not registration_attempt("device-30", "::ffff:203.0.113.77").allowed
+
+
+def test_registration_device_uses_csrf_cookie_or_ip_fallback() -> None:
+    assert registration_device("token", "203.0.113.1") == "cookie:token"
+    assert registration_device(None, "2001:db8::1") == registration_device(None, "2001:db8::2")
+    assert registration_device(None, "203.0.113.1") != registration_device(None, "203.0.113.2")
 
 
 @override_settings(CACHES=LOCMEM_CACHES)
@@ -101,12 +122,12 @@ def test_password_reset_ip_limit_is_enforced() -> None:
 
 @override_settings(CACHES=LOCMEM_CACHES)
 def test_registration_slot_is_released_for_invalid_form() -> None:
-    assert registration_attempt("198.51.100.3").allowed
-    assert registration_attempt("198.51.100.3").allowed
-    assert registration_attempt("198.51.100.3").allowed
-    release_registration("198.51.100.3")
-    assert registration_attempt("198.51.100.3").allowed
-    assert not registration_attempt("198.51.100.3").allowed
+    assert registration_attempt("device-release", "198.51.100.3").allowed
+    assert registration_attempt("device-release", "198.51.100.3").allowed
+    assert registration_attempt("device-release", "198.51.100.3").allowed
+    release_registration("device-release", "198.51.100.3")
+    assert registration_attempt("device-release", "198.51.100.3").allowed
+    assert not registration_attempt("device-release", "198.51.100.3").allowed
 
 
 @override_settings(CACHES=LOCMEM_CACHES)
@@ -132,7 +153,7 @@ def test_security_limits_fail_closed_when_cache_is_unavailable(
         login_attempt("alice", "203.0.113.1"),
         two_factor_attempt("user-1", "203.0.113.1"),
         password_reset_attempt("alice@example.com", "203.0.113.1"),
-        registration_attempt("203.0.113.1"),
+        registration_attempt("device", "203.0.113.1"),
     )
     assert all(decision.unavailable and not decision.allowed for decision in decisions)
 

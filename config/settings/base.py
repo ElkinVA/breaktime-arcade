@@ -148,6 +148,9 @@ CACHES = {
         "TIMEOUT": 300,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            # JSON keeps integer counters INCR-compatible; the default pickle
+            # serializer makes django-redis fall back to non-atomic GET/SET.
+            "SERIALIZER": "django_redis.serializers.json.JSONSerializer",
             # A blackholed host must fail the limit check, not stall requests.
             "SOCKET_CONNECT_TIMEOUT": 1,
             "SOCKET_TIMEOUT": 1,
