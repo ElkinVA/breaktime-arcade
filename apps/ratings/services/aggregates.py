@@ -50,6 +50,23 @@ def recalculate(game) -> GameRatingAggregate:
     return aggregate
 
 
+def recalculate_user_ratings(user) -> None:
+    """Recalculate every game the user voted on, in deterministic lock order.
+
+    Advisory locks are taken per game and held until commit, so all callers
+    must acquire them in the same order to avoid a multi-key deadlock. The
+    caller must hold a database transaction; in autocommit the locks would be
+    released after each statement and no longer protect the recalculation.
+    """
+    from apps.catalog.models import Game
+
+    game_ids = sorted(
+        set(GameRatingVote.objects.filter(user=user).values_list("game_id", flat=True))
+    )
+    for game in Game.objects.filter(pk__in=game_ids).order_by("pk"):
+        recalculate(game)
+
+
 def summaries(game_ids: Iterable[UUID]) -> dict[UUID, dict[str, object]]:
     """Return average/count summaries for many games in a single query."""
     ids = list(dict.fromkeys(game_ids))

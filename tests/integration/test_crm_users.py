@@ -174,6 +174,7 @@ def test_non_owner_staff_gets_403_everywhere(role: str) -> None:
     assert client.get(reverse("crm:user_detail", args=[target.id])).status_code == 403
     assert client.get(reverse("crm:user_export", args=[target.id])).status_code == 403
     assert client.post(reverse("crm:user_block", args=[target.id])).status_code == 403
+    assert client.post(reverse("crm:user_unblock", args=[target.id])).status_code == 403
     assert client.post(reverse("crm:user_delete", args=[target.id])).status_code == 403
 
 
@@ -1292,6 +1293,8 @@ def test_mutations_reject_missing_csrf_token() -> None:
     _step_up(client)
 
     response = client.post(reverse("crm:user_block", args=[target.id]))
+    assert response.status_code == 403
+    response = client.post(reverse("crm:user_unblock", args=[target.id]))
     assert response.status_code == 403
     response = client.post(reverse("crm:user_delete", args=[target.id]), {"confirm_delete": "yes"})
     assert response.status_code == 403

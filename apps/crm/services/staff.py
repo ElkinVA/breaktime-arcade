@@ -21,6 +21,7 @@ from apps.accounts.models import StaffRole, User
 from apps.crm.models import AdminAuditLog
 from apps.crm.permissions import USERS_MANAGE, has_capability, valid_roles
 from apps.crm.services.audit import record_audit
+from apps.ratings.services.aggregates import recalculate_user_ratings
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,6 +142,8 @@ def set_staff_active(
         target.is_active = is_active
         target.updated_at = timezone.now()
         target.save(update_fields=["is_active", "updated_at"])
+        # §2.9 item 4 also covers staff accounts (they may hold votes).
+        recalculate_user_ratings(target)
         audit = record_audit(
             actor=actor,
             action=(

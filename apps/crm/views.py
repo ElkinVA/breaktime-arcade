@@ -918,7 +918,7 @@ def _change_block(request: HttpRequest, user_id: UUID, *, is_active: bool) -> Ht
             messages.error(request, "Аккаунт не найден.")
             return redirect("crm:users")
         if result.reason == "already_deleted":
-            messages.error(request, "Аккаунт уже удалён и не может быть разблокирован.")
+            messages.error(request, "Аккаунт удалён и не может быть изменён.")
         elif result.reason == "self_target":
             messages.error(request, "Нельзя изменить блокировку собственной учётной записи.")
         else:

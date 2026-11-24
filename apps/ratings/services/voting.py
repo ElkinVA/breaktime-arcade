@@ -10,6 +10,7 @@ from uuid import UUID
 from django.db import connection, transaction
 from django.utils import timezone
 
+from apps.accounts.models import User
 from apps.catalog.models import Game
 from apps.gameplay.models import UserGamePlaytime
 from apps.gameplay.services.sessions import SessionError
@@ -95,6 +96,11 @@ def vote(request, game_id: str, value: int) -> dict[str, object]:
         raise SessionError("E_RATE_LIMIT", "Too many ratings today", 429)
 
     with transaction.atomic():
+        # Serialize with CRM block/unblock (both take the User row first) and
+        # re-check the flag inside the transaction: a block committed after
+        # the early check must still reject the vote.
+        if not User.objects.select_for_update().filter(pk=user.pk, is_active=True).exists():
+            raise SessionError("E_AUTH_REQUIRED", "Authentication required", 403)
         _lock_vote(game.id, user.id)
         existing = GameRatingVote.objects.select_for_update().filter(game=game, user=user).first()
         if existing is not None and existing.value == value and existing.is_valid:
@@ -136,8 +142,10 @@ def vote(request, game_id: str, value: int) -> dict[str, object]:
 
 def remove_user_ratings(user) -> None:
     """Account deletion removes votes and recalculates affected aggregates."""
-    game_ids = list(GameRatingVote.objects.filter(user=user).values_list("game_id", flat=True))
+    game_ids = sorted(
+        set(GameRatingVote.objects.filter(user=user).values_list("game_id", flat=True))
+    )
     with transaction.atomic():
         GameRatingVote.objects.filter(user=user).delete()
-        for game in Game.objects.filter(id__in=game_ids):
+        for game in Game.objects.filter(id__in=game_ids).order_by("pk"):
             recalculate(game)

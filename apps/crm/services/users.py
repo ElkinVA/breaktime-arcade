@@ -28,6 +28,7 @@ from apps.accounts.services import profile as profile_service
 from apps.crm.models import AdminAuditLog
 from apps.crm.services.audit import record_audit
 from apps.gameplay.models import GameResult, GameSession, LeaderboardEntry
+from apps.ratings.services.aggregates import recalculate_user_ratings
 
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
 _FALSE_VALUES = frozenset({"0", "false", "no", "off"})
@@ -197,6 +198,9 @@ def _set_user_active(
             # §2.16.2: a block must also cut off the SDK sessions and unused
             # launch tickets that were issued while the account was active.
             _revoke_open_sessions(target)
+        # §2.9 item 4: blocked votes disappear from aggregates immediately and
+        # return on unblock. The votes themselves stay in the database.
+        recalculate_user_ratings(target)
         audit = record_audit(
             actor=actor,
             action=(
