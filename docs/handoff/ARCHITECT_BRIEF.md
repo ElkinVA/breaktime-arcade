@@ -53,7 +53,11 @@ ambiguity.
 - Session creation, submit_result, heartbeat and storage writes are
   serialized with block/anonymise via a User row lock
   (`ARCADE-SESSION-RACE-001`/`LOCK-ORDER-001`/`STORAGE-LOCK-ORDER-001`);
-  R-056 closed.
+  R-056 closed. Abandoned ACTIVE sessions lazily expire and are swept by a
+  5-min beat task (`ARCADE-SESSION-LIFECYCLE-001`, `7da168a`); GET /play no
+  longer creates a session and the player creates it via API
+  (`ARCADE-SESSION-PLAY-001`, `35ae98f`); final heartbeat precedes submit
+  and pagehide sends a close beacon.
 - AI HQ P0: developer/QA checks run only through five exact trusted sandbox
   commands (no wildcard), source-root is task-bound, host-exec surfaces are
   protected, commit file set is Git-derived, reviewer has no Bash

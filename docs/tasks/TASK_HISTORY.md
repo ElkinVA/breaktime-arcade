@@ -1488,6 +1488,44 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-SESSION-LIFECYCLE-001 — abandoned ACTIVE sessions
+
+- **Результат:** `7da168a`; `_is_stale`/`_expire_locked`; lazy expiry in
+  create/activate under advisory lock; two-phase session-row locks before
+  play-credit; 5-min beat task `expire_stale_sessions`; popularity credit
+  idempotent.
+- **Проверки:** 46 session tests incl. create-sweep vs beat-task race with
+  `credited_ms=20_000`; ruff/mypy clean; reviewer accept after lock-cycle fix;
+  full suite **1137/1129/8**.
+- **Остаток:** live beat/Redis, staging NOT TESTED; fixed `current` midnight
+  bucketing negligible.
+
+### ARCADE-SESSION-PLAY-001 — no session on GET /play
+
+- **Результат:** `35ae98f`; GET renders shell only (CSRF/runtime base, no
+  session/`ba_anon`/context/ticket); player.js creates+activates via existing
+  API, then creates HostBridge and sets iframe src with `&s=`; create error
+  visible in `player-status`; e2e waits for async src.
+- **Проверки:** play tests 3/3; JS 31/31; native reviewer reject → e2e fix →
+  accept; full suite **1137/1129/8**.
+- **Остаток:** real Playwright E2E/staging NOT TESTED.
+
+### ARCADE-SESSION-HEARTBEAT-SUBMIT-001 — final heartbeat
+
+- **Результат:** `f7a3779`; final heartbeat awaited before result; 410
+  surfaces immediately; transient failure still attempts result; Idempotency-
+  Key unchanged.
+- **Проверки:** JS 31/31 incl. transient/expired branches; reviewer accept.
+
+### ARCADE-SESSION-PAGEHIDE-001 — close on pagehide
+
+- **Результат:** pagehide `fetch(..., keepalive:true)` с `X-CSRFToken`;
+  sendBeacon оставлен fallback без fetch (form CSRF не принимается close API);
+  close идемпотентен.
+- **Проверки:** JS 31/31; reviewer delta accept; full suite **1137/1129/8**.
+- **Остаток:** browser may kill page without pagehide; live E2E NOT TESTED.
+- **Commit:** `cb92702`.
+
 ### AI-HQ-CI-001 — CI quality gate restoration
 
 - **Результат:** `a0aa34b`; добавлен `redis-throttle` service и

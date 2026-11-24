@@ -4,10 +4,11 @@
 
 ## Актуальная сводка автономного цикла (2026-11-24)
 
-- HEAD `45a69f1` (A2) после `1f46062` (A1) и `a0aa34b` (CI); `origin/main`
-  синхронизирован после push; рабочее дерево чистое.
-- Последний полный gate: **1132 tests: 1124 passed, 8 skipped, exit 0**;
-  JS **26/26**; mypy 381 файл clean.
+- HEAD `cb92702` (B1d) после `35ae98f` (B1b), `f7a3779` (B1c), `7da168a`
+  (B1a), A2/A1/CI; `origin/main` синхронизирован после push; рабочее дерево
+  чистое.
+- Последний полный gate: **1137 tests: 1129 passed, 8 skipped, exit 0**;
+  JS **31/31**; mypy 381 файл clean.
 - AI HQ: 26 прежних COMPLETED + AI-HQ-CI-001 (CI run NOT VERIFIED) +
   AI-HQ-A1 (security accept); 5 BLOCKED. Cost accounting — только фактический
   modelUsage, не stop-condition; см. `.autonomy/state.json`.

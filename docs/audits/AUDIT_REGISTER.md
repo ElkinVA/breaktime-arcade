@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-SESSION-LIFECYCLE-001 / PLAY-001 / HEARTBEAT-SUBMIT-001 / PAGEHIDE-001
+
+| Поле | Значение |
+|---|---|
+| Тип | Product session lifecycle / player UX; independent code review |
+| Результат | `7da168a`: lazy stale expiry + 5-min beat + two-phase locks; `35ae98f`: GET shell, player creates session; `f7a3779`: final heartbeat; pagehide keepalive close |
+| Проверки | 46 session tests incl. sweep vs beat race; play 3/3; JS 31/31; reviewer accept (B1b after e2e fix); full suite 1137/1129/8 exit 0 |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT**; product/staging/prod не заявляются |
+| Остаток | real Playwright E2E, live beat/Redis and staging NOT TESTED; browser kill may skip pagehide |
+| Источник | commits `7da168a`, `35ae98f`, `f7a3779`, `cb92702` |
+
 ## AI-HQ-CI-001 — CI quality gate
 
 | Поле | Значение |

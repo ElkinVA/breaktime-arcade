@@ -497,6 +497,37 @@ malformed-review tests; full suite **1132 tests: 1124 passed, 8 skipped,
 exit 0**. Остатки: QA/reviewer всё ещё доверенные модели (M1), очень большой
 diff может исчерпать argv/context (fail-closed), R-040.
 
+## 0.36. Game session lifecycle — 2026-11-24
+
+**B1a** `ARCADE-SESSION-LIFECYCLE-001` (`7da168a`) — **COMPLETED /
+CODE-REVIEW ACCEPT**: stale ACTIVE sessions (idle >30 мин или
+`max_session_seconds`) лениво истекают при create/activate до проверки cap;
+двухфазный захват session locks исключает deadlock с play-credit; beat task
+каждые 5 минут идемпотентно истекает и начисляет popularity credit; при
+истечении/close кредит не дублируется. 46 session tests, включая
+create-sweep vs beat-task race.
+
+**B1b** `ARCADE-SESSION-PLAY-001` (`35ae98f`) — **COMPLETED / CODE-REVIEW
+ACCEPT**: `GET /play/` больше не создаёт/активирует сессию и не ставит
+`ba_anon`; страница — shell с CSRF/runtime base. Player.js создаёт и
+активирует сессию через существующий POST API, только затем создаёт
+HostBridge и ставит iframe `src` с `&s=<sessionId>`; ticket остаётся в памяти
+родителя; ошибка create видна в `player-status`. Play-тесты 3/3; e2e ожидание
+async `src` исправлено, реальный Playwright E2E **NOT TESTED**.
+
+**B1c** `ARCADE-SESSION-HEARTBEAT-SUBMIT-001` (`f7a3779`) — **COMPLETED /
+CODE-REVIEW ACCEPT**: перед submit отправляется финальный heartbeat; 410
+всплывает сразу, транзиентный сбой не блокирует попытку result, Idempotency-
+Key не изменён.
+
+**B1d** `ARCADE-SESSION-PAGEHIDE-001` (`cb92702`) — pagehide отправляет best-effort close
+через same-origin `fetch(..., keepalive:true)` с `X-CSRFToken`; sendBeacon
+оставлен только fallback без fetch, потому что form-encoded CSRF не проходит
+DRF-аутентификацию close API. Close идемпотентен. JS **31/31**; полный Python
+suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/Redis
+и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
+браузера.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не
