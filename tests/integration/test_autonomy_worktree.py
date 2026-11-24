@@ -121,7 +121,19 @@ class FakeRunner:
         target.write_text("candidate\n", encoding="utf-8")
         return self._result(
             "developer",
-            json.dumps({"status": "done", "files": [CHANGE]}),
+            json.dumps(
+                {
+                    "status": "done",
+                    "files": [CHANGE],
+                    "self_check": {
+                        "spec_reviewed": True,
+                        "scope_reviewed": True,
+                        "tests_run": ["targeted"],
+                        "localization_reviewed": True,
+                        "known_limits": [],
+                    },
+                }
+            ),
             "deepseek-flash[1m]",
         )
 
