@@ -353,5 +353,33 @@ if (frame) {
         }
     });
 
+    function closeOnPageHide() {
+        if (!sessionId) {
+            return;
+        }
+        const url = `/api/v1/sessions/${sessionId}/close`;
+        // sendBeacon cannot attach the CSRF header required by the API;
+        // keepalive fetch is the reliable same-origin close on pagehide.
+        if (typeof fetch === "function") {
+            void fetch(url, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "X-CSRFToken": csrf },
+                keepalive: true,
+            }).catch(() => {
+                /* pagehide close is best-effort */
+            });
+            return;
+        }
+        if (typeof navigator.sendBeacon === "function") {
+            navigator.sendBeacon(
+                url,
+                new URLSearchParams({ csrfmiddlewaretoken: csrf }),
+            );
+        }
+    }
+
+    window.addEventListener("pagehide", closeOnPageHide);
+
     void start();
 }

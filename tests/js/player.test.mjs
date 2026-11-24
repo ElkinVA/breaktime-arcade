@@ -44,14 +44,22 @@ globalThis.setInterval = () => 0;
 
 let createCount = 0;
 globalThis.fetch = async (url, options = {}) => {
-    fetchCalls.push({ url, method: options.method || "GET" });
+    fetchCalls.push({
+        url,
+        method: options.method || "GET",
+        headers: options.headers || {},
+        keepalive: options.keepalive === true,
+    });
     const response = (status, payload, headers = {}) => ({
         status,
         ok: status >= 200 && status < 300,
         headers: { get: (name) => headers[name] ?? null },
         json: async () => payload,
     });
-    if (url.endsWith(`/sessions/${OLD_SESSION}/close`)) {
+    if (
+        url.endsWith(`/sessions/${OLD_SESSION}/close`) ||
+        url.endsWith(`/sessions/${NEW_SESSION}/close`)
+    ) {
         return response(204, null);
     }
     if (url.endsWith("/api/v1/sessions")) {
@@ -208,6 +216,19 @@ test("a transient final heartbeat failure still attempts the result", async () =
     );
     assert.ok(resultIndex >= 0, "result is attempted after a transient heartbeat failure");
     heartbeatMode = "ok";
+});
+
+test("pagehide sends a best-effort close request", () => {
+    const before = fetchCalls.length;
+    const pageHide = listeners.get("pagehide");
+    assert.equal(typeof pageHide, "function");
+    pageHide();
+    const closeCall = fetchCalls
+        .slice(before)
+        .find((call) => call.url.endsWith(`/sessions/${NEW_SESSION}/close`));
+    assert.ok(closeCall, "close request was sent on pagehide");
+    assert.equal(closeCall.headers["X-CSRFToken"], "csrf-token");
+    assert.equal(closeCall.keepalive, true);
 });
 
 test("an expired final heartbeat skips the result", async () => {
