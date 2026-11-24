@@ -63,6 +63,7 @@ function deferred() {
     return { promise, resolve, reject };
 }
 
+let createCount = 0;
 globalThis.fetch = async (url, options = {}) => {
     fetchCalls.push({
         url,
@@ -95,10 +96,16 @@ globalThis.fetch = async (url, options = {}) => {
         return response(204, null);
     }
     if (url.endsWith("/api/v1/sessions")) {
+        const sessionId = createCount++ === 0 ? OLD_SESSION : NEW_SESSION;
         return response(201, {
-            sessionId: NEW_SESSION,
+            sessionId,
             ticket: "ticket-value",
             expires_at: "2026-11-23T00:00:00Z",
+        });
+    }
+    if (url.includes(`/sessions/${OLD_SESSION}/activate`)) {
+        return response(200, {
+            context: { sessionId: OLD_SESSION, seed: "old-seed", mode: "guest" },
         });
     }
     if (url.includes(`/sessions/${NEW_SESSION}/activate`)) {
@@ -120,8 +127,18 @@ globalThis.fetch = async (url, options = {}) => {
 
 await import("../../static/src/js/player.js");
 
-const messageHandler = listeners.get("message");
-assert.equal(typeof messageHandler, "function");
+async function waitForMessageHandler() {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+        const handler = listeners.get("message");
+        if (typeof handler === "function") {
+            return handler;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    throw new Error("player message handler did not start");
+}
+
+const messageHandler = await waitForMessageHandler();
 
 function envelope(type, sessionId, requestId, payload = {}) {
     return { source: "ba-sdk", protocol: 1, type, requestId, sessionId, payload };

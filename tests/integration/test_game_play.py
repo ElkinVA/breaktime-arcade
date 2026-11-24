@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-import html
-import json
-
 import pytest
 from django.test import Client
 from django.utils import timezone
 
-from apps.accounts.services.anonymous import COOKIE_NAME
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.gameplay.models import GameSession
 
@@ -39,25 +35,23 @@ def _game(*, with_version: bool = True) -> Game:
 
 
 @pytest.mark.django_db
-def test_play_page_activates_guest_session_and_embeds_runtime() -> None:
+def test_play_page_does_not_create_or_embed_a_session() -> None:
     game = _game()
     client = Client()
     response = client.get("/en/games/play-runtime/play/")
 
     assert response.status_code == 200
-    body = html.unescape(response.content.decode())
+    body = response.content.decode()
     assert "game-frame" in body
     assert "play-runtime.games.test" in body
     assert "/v/abcdef1234567890" + "0" * 48 + "/index.html" in body
-    assert "#p=https%3A%2F%2Fportal.test%3A8443&s=" in body
+    assert "#p=https%3A%2F%2Fportal.test%3A8443" in body
+    assert "&s=" not in body
+    assert "data-context=" not in body
+    assert "data-session-id=" not in body
     assert response["Cache-Control"] == "no-store"
-    assert COOKIE_NAME in response.cookies
-
-    session = GameSession.objects.get(game=game)
-    assert session.state == GameSession.STATE_ACTIVE
-    assert session.subject_type == GameSession.SUBJECT_ANON
-    assert f"&s={session.id}" in body
-    assert '"sessionId":' in body
+    assert "ba_anon" not in response.cookies
+    assert not GameSession.objects.filter(game=game).exists()
 
 
 @pytest.mark.django_db
@@ -68,16 +62,11 @@ def test_play_page_requires_current_version() -> None:
 
 
 @pytest.mark.django_db
-def test_play_context_json_is_public_and_camel_case() -> None:
+def test_play_shell_has_no_session_or_ticket_material() -> None:
     _game()
     response = Client().get("/en/games/play-runtime/play/")
     assert response.status_code == 200
-    raw_body = response.content.decode()
-    marker = 'data-context="'
-    start = raw_body.index(marker) + len(marker)
-    end = raw_body.index('"', start)
-    context = json.loads(html.unescape(raw_body[start:end]))
-    assert context["sessionId"]
-    assert context["gameId"] == "play_runtime"
-    assert context["mode"] == "guest"
-    assert "ticket" not in context
+    body = response.content.decode()
+    assert "ticket" not in body
+    assert "sessionId" not in body
+    assert not GameSession.objects.exists()

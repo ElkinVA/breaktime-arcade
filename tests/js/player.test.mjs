@@ -42,6 +42,7 @@ globalThis.window = {
 };
 globalThis.setInterval = () => 0;
 
+let createCount = 0;
 globalThis.fetch = async (url, options = {}) => {
     fetchCalls.push({ url, method: options.method || "GET" });
     const response = (status, payload, headers = {}) => ({
@@ -54,10 +55,16 @@ globalThis.fetch = async (url, options = {}) => {
         return response(204, null);
     }
     if (url.endsWith("/api/v1/sessions")) {
+        const sessionId = createCount++ === 0 ? OLD_SESSION : NEW_SESSION;
         return response(201, {
-            sessionId: NEW_SESSION,
+            sessionId,
             ticket: "ticket-value",
             expires_at: "2026-11-23T00:00:00Z",
+        });
+    }
+    if (url.includes(`/sessions/${OLD_SESSION}/activate`)) {
+        return response(200, {
+            context: { sessionId: OLD_SESSION, seed: "old-seed", mode: "guest" },
         });
     }
     if (url.includes(`/sessions/${NEW_SESSION}/activate`)) {
@@ -88,8 +95,19 @@ globalThis.fetch = async (url, options = {}) => {
 
 await import("../../static/src/js/player.js");
 
-const messageHandler = listeners.get("message");
-assert.equal(typeof messageHandler, "function");
+async function waitForMessageHandler() {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+        const handler = listeners.get("message");
+        if (typeof handler === "function") {
+            return handler;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    throw new Error("player message handler did not start");
+}
+
+const messageHandler = await waitForMessageHandler();
+assert.equal(frame.src, `${frame.dataset.src}&s=${OLD_SESSION}`);
 
 function envelope(type, sessionId, requestId, payload = {}) {
     return {
@@ -108,8 +126,12 @@ await messageHandler({
     data: envelope("ba:hello", OLD_SESSION, crypto.randomUUID()),
 });
 await new Promise((resolve) => setTimeout(resolve, 0));
+const initialContext = posted.find((data) => data.type === "ba:context");
+assert.ok(initialContext, "initial context is sent after create/activate");
+assert.equal(initialContext.sessionId, OLD_SESSION);
 
 test("newSession closes the old session before creating the next one", async () => {
+    const before = fetchCalls.length;
     await messageHandler({
         source: frame.contentWindow,
         origin: ORIGIN,
@@ -117,9 +139,12 @@ test("newSession closes the old session before creating the next one", async () 
     });
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    const closeIndex = fetchCalls.findIndex((call) => call.url.endsWith("/close"));
+    const closeIndex = fetchCalls.findIndex(
+        (call, index) => index >= before && call.url.endsWith("/close"),
+    );
     const createIndex = fetchCalls.findIndex(
-        (call) => call.url.endsWith("/api/v1/sessions") && call.method === "POST",
+        (call, index) =>
+            index >= before && call.url.endsWith("/api/v1/sessions") && call.method === "POST",
     );
     assert.ok(closeIndex >= 0, "old session close was requested");
     assert.ok(createIndex > closeIndex, "new session is created after close");

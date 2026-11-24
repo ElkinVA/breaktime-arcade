@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import secrets
-from types import SimpleNamespace
 from urllib.parse import quote, urlparse
 
 from django.conf import settings
@@ -19,7 +16,6 @@ from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 
-from apps.accounts.services.anonymous import COOKIE_NAME
 from apps.catalog.models import GameAsset, Genre, GenreTranslation
 from apps.catalog.services.catalog import (
     card_items,
@@ -43,15 +39,6 @@ from apps.catalog.services.pagination import (
 from apps.catalog.services.popularity import popularity
 from apps.catalog.services.seo import catalog_seo, game_seo
 from apps.catalog.services.slugs import canonical_game_path, resolve_old_slug
-from apps.gameplay.api.throttling import (
-    GuestIpRateThrottle,
-    SubjectScopedRateThrottle,
-)
-from apps.gameplay.services.sessions import (
-    SessionError,
-    activate_session,
-    create_session,
-)
 from apps.i18n.services.language_registry import get_active_language_codes_safely
 from apps.leaderboards.services.queries import get_leaderboard, get_personal_section
 from apps.ratings.services.aggregates import summary as rating_summary
@@ -219,16 +206,8 @@ def _runtime_origin(host_label: str) -> str:
     return f"https://{host}{suffix}"
 
 
-def _session_create_allowed(request: HttpRequest) -> bool:
-    """Apply the same subject/IP session limits as the public API."""
-    view = SimpleNamespace(throttle_scope="sessions", kwargs={})
-    return all(
-        throttle.allow_request(request, view)
-        for throttle in (SubjectScopedRateThrottle(), GuestIpRateThrottle())
-    )
-
-
 def game_play(request: HttpRequest, slug: str) -> TemplateResponse:
+    """Render the player shell; session creation is a separate POST API call."""
     game = (
         published_games()
         .select_related("current_version")
@@ -238,21 +217,11 @@ def game_play(request: HttpRequest, slug: str) -> TemplateResponse:
     )
     if game is None or game.current_version is None:
         raise Http404("game is not available")
-    if not _session_create_allowed(request):
-        response = TemplateResponse(
-            request,
-            "gameplay/play.html",
-            {
-                "title": game.technical_id,
-                "game": game,
-                "error_code": "E_RATE_LIMIT",
-                "error_message": "Too many sessions",
-            },
-        )
-        response.status_code = 429
-        response["Cache-Control"] = "no-store"
-        return response
-
+    version = game.current_version
+    runtime_url = (
+        f"{_runtime_origin(game.host_label)}/v/{version.runtime_hash}/index.html"
+        f"#p={quote(settings.PORTAL_ORIGIN, safe='')}"
+    )
     response = TemplateResponse(
         request,
         "gameplay/play.html",
@@ -261,55 +230,11 @@ def game_play(request: HttpRequest, slug: str) -> TemplateResponse:
             "game": game,
             "game_id": game.technical_id,
             "csrf_token": get_token(request),
+            "runtime_url": runtime_url,
+            "portal_origin": settings.PORTAL_ORIGIN.rstrip("/"),
         },
     )
     response["Cache-Control"] = "no-store"
-    binding_nonce = secrets.token_urlsafe(32)
-    try:
-        session, ticket, _expires_at = create_session(
-            request,
-            response,
-            game_id=game.technical_id,
-        )
-        cookie = response.cookies.get(COOKIE_NAME)
-        if cookie is not None:
-            request.COOKIES[COOKIE_NAME] = cookie.value
-        context = activate_session(
-            request,
-            session.id,
-            ticket=ticket,
-            binding_nonce=binding_nonce,
-        )
-    except SessionError as exc:
-        response.status_code = exc.status
-        context_data = response.context_data or {}
-        context_data.update(
-            {
-                "title": game.technical_id,
-                "error_code": exc.code,
-                "error_message": exc.message,
-                "context_json": "{}",
-            }
-        )
-        response.context_data = context_data
-        return response
-
-    version = game.current_version
-    runtime_url = (
-        f"{_runtime_origin(game.host_label)}/v/{version.runtime_hash}/index.html"
-        f"#p={quote(settings.PORTAL_ORIGIN, safe='')}&s={context['sessionId']}"
-    )
-    context_data = response.context_data or {}
-    context_data.update(
-        {
-            "context": context,
-            "context_json": json.dumps(context, separators=(",", ":"), ensure_ascii=False),
-            "runtime_url": runtime_url,
-            "session_id": context["sessionId"],
-            "portal_origin": settings.PORTAL_ORIGIN.rstrip("/"),
-        }
-    )
-    response.context_data = context_data
     return response
 
 

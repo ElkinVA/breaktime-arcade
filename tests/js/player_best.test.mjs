@@ -41,22 +41,51 @@ globalThis.window = {
 };
 globalThis.setInterval = () => 0;
 
+function response(status, payload) {
+    return {
+        status,
+        ok: status >= 200 && status < 300,
+        headers: { get: () => null },
+        json: async () => payload,
+    };
+}
+
 globalThis.fetch = async (url) => {
+    if (url.endsWith("/api/v1/sessions")) {
+        return response(201, {
+            sessionId: SESSION,
+            ticket: "ticket-value",
+            expires_at: "2026-11-23T00:00:00Z",
+        });
+    }
+    if (url.includes(`/sessions/${SESSION}/activate`)) {
+        return response(200, {
+            context: { sessionId: SESSION, seed: "seed", mode: "guest" },
+        });
+    }
+    if (url.endsWith(`/sessions/${SESSION}/heartbeat`)) {
+        return response(204, null);
+    }
     if (url.endsWith("/api/v1/games/archer/me/best")) {
-        return {
-            status: 200,
-            ok: true,
-            headers: { get: () => null },
-            json: async () => bestResponse,
-        };
+        return response(200, bestResponse);
     }
     throw new Error(`unexpected fetch: ${url}`);
 };
 
 await import("../../static/src/js/player.js");
 
-const messageHandler = listeners.get("message");
-assert.equal(typeof messageHandler, "function");
+async function waitForMessageHandler() {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+        const handler = listeners.get("message");
+        if (typeof handler === "function") {
+            return handler;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    throw new Error("player message handler did not start");
+}
+
+const messageHandler = await waitForMessageHandler();
 
 function envelope(type, payload, requestId = crypto.randomUUID()) {
     return { source: "ba-sdk", protocol: 1, type, requestId, sessionId: SESSION, payload };

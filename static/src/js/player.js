@@ -3,13 +3,13 @@ import { HostBridge } from "./host_protocol.js";
 
 const frame = document.getElementById("game-frame");
 if (frame) {
-    const context = JSON.parse(frame.dataset.context || "{}");
     const gameId = frame.dataset.gameId;
     const csrf = frame.dataset.csrf || "";
     const runtimeUrl = frame.dataset.src;
     const iframeOrigin = new URL(runtimeUrl).origin;
-    let sessionId = frame.dataset.sessionId;
-    let currentContext = context;
+    let sessionId = "";
+    let currentContext = {};
+    let bridge = null;
     const submissionKeys = new Map();
 
     function headers(extra = {}) {
@@ -83,7 +83,6 @@ if (frame) {
         );
         sessionId = createdPayload.sessionId;
         currentContext = activated.payload.context;
-        bridge.setSession(sessionId);
         return { sessionId, seed: currentContext.seed, context: currentContext };
     }
 
@@ -265,6 +264,7 @@ if (frame) {
             await closeSession();
             submissionKeys.delete(previousSession);
             const created = await createSession();
+            bridge.setSession(sessionId);
             bridge.sendSession(requestId, created);
         } catch (error) {
             bridge.sendError(requestId, error.code || "E_INTERNAL", error.message);
@@ -272,6 +272,9 @@ if (frame) {
     }
 
     async function closeSession() {
+        if (!sessionId) {
+            return;
+        }
         try {
             await api(`/api/v1/sessions/${sessionId}/close`, {
                 method: "POST",
@@ -297,28 +300,52 @@ if (frame) {
         }, 30000);
     }
 
-    const bridge = new HostBridge({
-        iframe: frame,
-        iframeOrigin,
-        sessionId,
-        onMessage(type, payload, requestId) {
-            if (type === "ba:hello") {
-                bridge.sendContext(currentContext, requestId);
-            } else if (type === "ba:submit") {
-                void submitResult(requestId, payload);
-            } else if (type === "ba:leaderboard") {
-                void leaderboard(requestId, payload);
-            } else if (type === "ba:storage") {
-                void storage(requestId, payload);
-            } else if (type === "ba:newSession") {
-                void newSession(requestId);
-            } else if (type === "ba:exit") {
-                void closeSession();
-            }
-        },
-    });
+    function showPlayerError(message) {
+        const status = document.getElementById("player-status");
+        if (status) {
+            status.hidden = false;
+            status.textContent = message;
+        }
+    }
+
+    function createBridge() {
+        return new HostBridge({
+            iframe: frame,
+            iframeOrigin,
+            sessionId,
+            onMessage(type, payload, requestId) {
+                if (type === "ba:hello") {
+                    bridge.sendContext(currentContext, requestId);
+                } else if (type === "ba:submit") {
+                    void submitResult(requestId, payload);
+                } else if (type === "ba:leaderboard") {
+                    void leaderboard(requestId, payload);
+                } else if (type === "ba:storage") {
+                    void storage(requestId, payload);
+                } else if (type === "ba:newSession") {
+                    void newSession(requestId);
+                } else if (type === "ba:exit") {
+                    void closeSession();
+                }
+            },
+        });
+    }
+
+    async function start() {
+        try {
+            const created = await createSession();
+            bridge = createBridge();
+            startHeartbeat();
+            frame.src = `${runtimeUrl}&s=${encodeURIComponent(created.sessionId)}`;
+        } catch (error) {
+            showPlayerError(error.message || "Не удалось начать игру");
+        }
+    }
 
     document.addEventListener("visibilitychange", () => {
+        if (!bridge) {
+            return;
+        }
         if (document.visibilityState === "visible") {
             bridge.sendResume({});
         } else {
@@ -326,6 +353,5 @@ if (frame) {
         }
     });
 
-    startHeartbeat();
-    frame.src = runtimeUrl;
+    void start();
 }

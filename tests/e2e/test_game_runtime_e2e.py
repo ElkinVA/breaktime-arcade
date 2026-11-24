@@ -10,6 +10,7 @@ Requires the dev stack and a runtime probe:
 from __future__ import annotations
 
 import os
+import re
 
 import pytest
 from playwright.sync_api import Browser, Page, expect, sync_playwright
@@ -69,7 +70,12 @@ def test_probe_handshake_and_storage_relay(page: Page) -> None:
 
 def test_probe_rejects_mismatched_portal_origin(page: Page) -> None:
     page.goto(f"{BASE_URL}/en/games/probe/play/", wait_until="domcontentloaded")
-    runtime_url = page.locator("#game-frame").get_attribute("src")
+    frame_locator = page.locator("#game-frame")
+    # Session creation is asynchronous now; wait for the player to set src.
+    expect(frame_locator).to_have_attribute(
+        "src", re.compile(r"^https://probe\.games\.test"), timeout=15000
+    )
+    runtime_url = frame_locator.get_attribute("src")
     assert runtime_url is not None
     bad_url = runtime_url.replace(
         "p=https%3A%2F%2Fportal.test%3A8443",
