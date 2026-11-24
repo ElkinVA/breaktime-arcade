@@ -146,7 +146,12 @@ CACHES = {
         "LOCATION": env("REDIS_THROTTLE_URL", "redis://redis-throttle:6379/0"),
         "KEY_PREFIX": "ba-throttle",
         "TIMEOUT": 300,
-        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            # A blackholed host must fail the limit check, not stall requests.
+            "SOCKET_CONNECT_TIMEOUT": 1,
+            "SOCKET_TIMEOUT": 1,
+        },
     },
 }
 

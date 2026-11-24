@@ -58,15 +58,15 @@ from apps.accounts.services.profile import (
     update_settings,
 )
 from apps.accounts.services.rate_limit import (
-    clear_login_failures,
-    login_allowed,
-    password_reset_allowed,
-    record_login_failure,
-    record_password_reset,
-    record_registration,
-    record_two_factor_failure,
-    registration_allowed,
-    two_factor_allowed,
+    clear_login_attempts,
+    clear_two_factor_attempts,
+    login_attempt,
+    password_reset_attempt,
+    record_login_ip_failure,
+    record_two_factor_ip_failure,
+    registration_attempt,
+    release_registration,
+    two_factor_attempt,
 )
 from apps.accounts.services.tokens import consume_token, invalidate_tokens
 from apps.accounts.services.two_factor import (
@@ -131,18 +131,23 @@ def register(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
         return redirect("account:profile")
     form = RegistrationForm(request.POST or None)
+    unavailable = False
     if request.method == "POST":
-        if not registration_allowed(_ip(request)):
+        decision = registration_attempt(_ip(request))
+        if decision.unavailable:
+            unavailable = True
+            messages.error(request, "Сервис регистрации временно недоступен. Попробуйте позже.")
+        elif not decision.allowed:
             messages.error(request, "Слишком много попыток регистрации. Попробуйте позже.")
         elif form.is_valid():
             form.language_code = getattr(request, "LANGUAGE_CODE", "en")
             try:
                 user = form.save(ip=_ip(request))
             except (ValidationError, IntegrityError) as exc:
+                release_registration(_ip(request))
                 error = str(exc) if isinstance(exc, ValidationError) else "Аккаунт уже существует."
                 form.add_error(None, error)
             else:
-                record_registration(_ip(request))
                 if EmailAddress.objects.filter(user=user).exists():
                     try:
                         send_verification_email(user, request)
@@ -155,6 +160,8 @@ def register(request: HttpRequest) -> HttpResponse:
                 auth_login(request, user)
                 messages.success(request, "Аккаунт создан.")
                 return redirect("account:profile")
+        else:
+            release_registration(_ip(request))
     return render(
         request,
         "accounts/register.html",
@@ -163,6 +170,7 @@ def register(request: HttpRequest) -> HttpResponse:
             "terms_url": settings.LEGAL_TERMS_URL,
             "privacy_url": settings.LEGAL_PRIVACY_URL,
         },
+        status=503 if unavailable else 200,
     )
 
 
@@ -172,7 +180,13 @@ def login_view(request: HttpRequest) -> HttpResponse:
     form = LoginForm(request, data=request.POST or None)
     if request.method == "POST":
         username = request.POST.get("username", "")
-        if not login_allowed(username, _ip(request)):
+        decision = login_attempt(username, _ip(request))
+        allowed = decision.allowed
+        unavailable = decision.unavailable
+        if unavailable:
+            messages.error(request, "Сервис входа временно недоступен. Попробуйте позже.")
+            return render(request, "accounts/login.html", {"form": form}, status=503)
+        if not allowed:
             messages.error(request, "Слишком много попыток входа. Попробуйте позже.")
         elif form.is_valid():
             user = form.get_user()
@@ -183,7 +197,7 @@ def login_view(request: HttpRequest) -> HttpResponse:
                     user, "backend", "django.contrib.auth.backends.ModelBackend"
                 )
                 request.session["2fa_next"] = _safe_next(request, reverse("account:profile"))
-                clear_login_failures(username, _ip(request))
+                clear_login_attempts(username)
                 record_login_event(
                     event=LoginEvent.EVENT_PASSWORD_OK,
                     user=user,
@@ -193,7 +207,7 @@ def login_view(request: HttpRequest) -> HttpResponse:
                     return redirect("accounts:two_factor_setup")
                 return redirect("accounts:two_factor_verify")
             auth_login(request, user)
-            clear_login_failures(username, _ip(request))
+            clear_login_attempts(username)
             record_login_event(
                 event=LoginEvent.EVENT_LOGIN_SUCCESS,
                 user=user,
@@ -201,7 +215,7 @@ def login_view(request: HttpRequest) -> HttpResponse:
             )
             return redirect(_safe_next(request, reverse("account:profile")))
         else:
-            record_login_failure(username, _ip(request))
+            record_login_ip_failure(_ip(request))
             record_login_event(
                 event=LoginEvent.EVENT_LOGIN_FAILED,
                 subject=username,
@@ -224,7 +238,11 @@ def two_factor_verify(request: HttpRequest) -> HttpResponse:
         return redirect("accounts:two_factor_setup")
     form = TwoFactorCodeForm(request.POST or None)
     if request.method == "POST":
-        if not two_factor_allowed(str(user.pk), _ip(request)):
+        decision = two_factor_attempt(str(user.pk), _ip(request))
+        if decision.unavailable:
+            form.add_error(None, "Сервис проверки кода временно недоступен. Попробуйте позже.")
+            return render(request, "accounts/two_factor_verify.html", {"form": form}, status=503)
+        if not decision.allowed:
             form.add_error(None, "Слишком много попыток. Попробуйте позже.")
         elif form.is_valid():
             if verify_totp(user, str(form.cleaned_data["code"])):
@@ -233,8 +251,9 @@ def two_factor_verify(request: HttpRequest) -> HttpResponse:
                     user=user,
                     ip=_ip(request),
                 )
+                clear_two_factor_attempts(str(user.pk))
                 return redirect(_finish_2fa_login(request, user))
-            record_two_factor_failure(str(user.pk), _ip(request))
+            record_two_factor_ip_failure(_ip(request))
             record_login_event(
                 event=LoginEvent.EVENT_2FA_FAILED,
                 user=user,
@@ -250,7 +269,11 @@ def two_factor_recovery(request: HttpRequest) -> HttpResponse:
         return redirect("accounts:login")
     form = RecoveryCodeForm(request.POST or None)
     if request.method == "POST":
-        if not two_factor_allowed(str(user.pk), _ip(request)):
+        decision = two_factor_attempt(str(user.pk), _ip(request))
+        if decision.unavailable:
+            form.add_error(None, "Сервис проверки кода временно недоступен. Попробуйте позже.")
+            return render(request, "accounts/two_factor_recovery.html", {"form": form}, status=503)
+        if not decision.allowed:
             form.add_error(None, "Слишком много попыток. Попробуйте позже.")
         elif form.is_valid():
             if verify_recovery_code(user, str(form.cleaned_data["code"])):
@@ -260,9 +283,10 @@ def two_factor_recovery(request: HttpRequest) -> HttpResponse:
                     user=user,
                     ip=_ip(request),
                 )
+                clear_two_factor_attempts(str(user.pk))
                 messages.warning(request, "Использован резервный код. Сгенерируйте новый набор.")
                 return redirect(_finish_2fa_login(request, user))
-            record_two_factor_failure(str(user.pk), _ip(request))
+            record_two_factor_ip_failure(_ip(request))
             record_login_event(
                 event=LoginEvent.EVENT_2FA_FAILED,
                 user=user,
@@ -280,7 +304,13 @@ def two_factor_owner_recovery(request: HttpRequest) -> HttpResponse:
         return redirect("accounts:two_factor_verify")
     form = RecoveryCodeForm(request.POST or None)
     if request.method == "POST":
-        if not two_factor_allowed(str(user.pk), _ip(request)):
+        decision = two_factor_attempt(str(user.pk), _ip(request))
+        if decision.unavailable:
+            form.add_error(None, "Сервис проверки кода временно недоступен. Попробуйте позже.")
+            return render(
+                request, "accounts/two_factor_owner_recovery.html", {"form": form}, status=503
+            )
+        if not decision.allowed:
             form.add_error(None, "Слишком много попыток. Попробуйте позже.")
         elif form.is_valid():
             if verify_owner_recovery_code(user, str(form.cleaned_data["code"])):
@@ -290,13 +320,19 @@ def two_factor_owner_recovery(request: HttpRequest) -> HttpResponse:
                     ip=_ip(request),
                 )
                 logger.warning("account.2fa.owner_recovery_used", extra={"user_id": str(user.pk)})
+                clear_two_factor_attempts(str(user.pk))
                 disable_totp(user)
                 messages.warning(
                     request,
                     "Использован офлайн-код владельца. Настройте 2FA заново.",
                 )
                 return redirect("accounts:two_factor_setup")
-            record_two_factor_failure(str(user.pk), _ip(request))
+            record_two_factor_ip_failure(_ip(request))
+            record_login_event(
+                event=LoginEvent.EVENT_2FA_FAILED,
+                user=user,
+                ip=_ip(request),
+            )
             form.add_error(None, "Неверный код владельца.")
     return render(request, "accounts/two_factor_owner_recovery.html", {"form": form})
 
@@ -449,8 +485,11 @@ def password_reset_request(request: HttpRequest) -> HttpResponse:
     form = PasswordResetRequestForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         email = str(form.cleaned_data["email"])
-        if password_reset_allowed(email, _ip(request)):
-            record_password_reset(email, _ip(request))
+        decision = password_reset_attempt(email, _ip(request))
+        if decision.unavailable:
+            messages.error(request, "Сервис восстановления временно недоступен. Попробуйте позже.")
+            return render(request, "accounts/password_reset.html", {"form": form}, status=503)
+        if decision.allowed:
             target = find_verified_email(email)
             if target is not None:
                 try:

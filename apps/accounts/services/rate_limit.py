@@ -1,88 +1,200 @@
-"""Простые субъектные лимиты регистрации/входа/восстановления."""
+"""Атомарные субъектные лимиты регистрации/входа/восстановления.
+
+Счётчики живут в выделенном Redis ``throttle`` (noeviction), а не в общем
+LRU-кэше: вытеснение ключей не должно ослаблять защиту от перебора.
+
+Для аутентификации отказ throttle-backend означает fail-closed: без счётчиков
+нельзя гарантировать ограничение попыток, поэтому вход/2FA/восстановление/
+регистрация отвечают нейтральной ошибкой, а не пропускают запрос.
+"""
 
 from __future__ import annotations
 
-import contextlib
 import hashlib
 import logging
+from dataclasses import dataclass
 
-from django.core.cache import cache
+from django.core.cache import caches
 from redis.exceptions import RedisError
+
+from apps.core.net import normalize_ip
 
 logger = logging.getLogger(__name__)
 
-CacheError = (RedisError, OSError)
+# ValueError covers a foreign writer storing a non-integer at a counter key:
+# treat it as a failed limit check (fail closed) instead of a 500.
+CacheError = (RedisError, OSError, ValueError)
+
+LOGIN_ACCOUNT_LIMIT = 5
+LOGIN_IP_FAILURE_LIMIT = 60
+TWO_FACTOR_ACCOUNT_LIMIT = 10
+TWO_FACTOR_IP_FAILURE_LIMIT = 30
+PASSWORD_RESET_ACCOUNT_LIMIT = 3
+PASSWORD_RESET_IP_LIMIT = 20
+REGISTRATION_IP_LIMIT = 3
+
+
+@dataclass(frozen=True)
+class LimitDecision:
+    """Result of an atomic reservation; ``unavailable`` means fail-closed."""
+
+    allowed: bool
+    unavailable: bool = False
+
+
+ALLOWED = LimitDecision(True)
+DENIED = LimitDecision(False)
+UNAVAILABLE = LimitDecision(False, True)
+
+
+def _cache():
+    return caches["throttle"]
 
 
 def _hash(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()[:32]
 
 
-def _count(key: str, timeout: int) -> int:
-    try:
-        value = cache.get(key)
-        return int(value or 0)
-    except CacheError as exc:
-        logger.warning("account.rate_limit.cache_failed", exc_info=exc)
-        return 0
+def _ip_hash(ip: str | None) -> str:
+    return _hash(normalize_ip(ip or "unknown"))
 
 
-def _hit(key: str, timeout: int) -> int:
-    try:
-        cache.add(key, 0, timeout)
-        return int(cache.incr(key))
-    except CacheError as exc:
-        logger.warning("account.rate_limit.cache_failed", exc_info=exc)
-        return 0
+def _increment(key: str, timeout: int) -> int:
+    """Atomically increment a fixed-window counter and return the new value."""
+    cache = _cache()
+    cache.add(key, 0, timeout)
+    value = int(cache.incr(key))
+    if value == 1:
+        # Cover the add/incr race where the key expired between the two calls:
+        # Redis INCR on a missing key creates a counter without a TTL. If the
+        # repair itself fails, drop the key so a later attempt cannot inherit
+        # a counter that would never expire.
+        try:
+            cache.touch(key, timeout)
+        except CacheError:
+            try:
+                cache.delete(key)
+            except CacheError:
+                logger.error("security.rate_limit.ttl_repair_failed", exc_info=True)
+            raise
+    return value
 
 
-def login_allowed(login: str, ip: str | None) -> bool:
+def _read(key: str) -> int:
+    return int(_cache().get(key) or 0)
+
+
+def _delete(key: str) -> None:
+    _cache().delete(key)
+
+
+def _unavailable(scope: str, exc: Exception) -> LimitDecision:
+    logger.error(
+        "security.rate_limit.cache_failed",
+        extra={"scope": scope, "error": type(exc).__name__, "fail_closed": True},
+    )
+    return UNAVAILABLE
+
+
+def login_attempt(login: str, ip: str | None) -> LimitDecision:
+    """Reserve one login attempt for the account; IP counts failures only."""
     account_key = f"auth:login:account:{_hash(login.lower())}"
-    ip_key = f"auth:login:ip:{_hash(ip or 'unknown')}"
-    return _count(account_key, 900) < 5 and _count(ip_key, 900) < 60
+    ip_key = f"auth:login:ip:{_ip_hash(ip)}"
+    try:
+        attempts = _increment(account_key, 900)
+        ip_failures = _read(ip_key)
+    except CacheError as exc:
+        return _unavailable("login", exc)
+    return LimitDecision(attempts <= LOGIN_ACCOUNT_LIMIT and ip_failures < LOGIN_IP_FAILURE_LIMIT)
 
 
-def record_login_failure(login: str, ip: str | None) -> None:
-    _hit(f"auth:login:account:{_hash(login.lower())}", 900)
-    _hit(f"auth:login:ip:{_hash(ip or 'unknown')}", 900)
+def record_login_ip_failure(ip: str | None) -> None:
+    try:
+        _increment(f"auth:login:ip:{_ip_hash(ip)}", 900)
+    except CacheError as exc:
+        logger.error(
+            "security.rate_limit.record_failed",
+            extra={"scope": "login_ip", "error": type(exc).__name__},
+        )
 
 
-def clear_login_failures(login: str, ip: str | None) -> None:
-    # Успешный вход сбрасывает только счётчик аккаунта. IP-счётчик общий
-    # для всех аккаунтов за NAT и не должен обнуляться одним валидным входом.
-    del ip
-    key = f"auth:login:account:{_hash(login.lower())}"
-    with contextlib.suppress(RedisError, OSError):
-        cache.delete(key)
+def clear_login_attempts(login: str) -> None:
+    try:
+        _delete(f"auth:login:account:{_hash(login.lower())}")
+    except CacheError as exc:
+        logger.error(
+            "security.rate_limit.clear_failed",
+            extra={"scope": "login", "error": type(exc).__name__},
+        )
 
 
-def registration_allowed(ip: str | None) -> bool:
-    return _count(f"auth:register:ip:{_hash(ip or 'unknown')}", 86400) < 3
-
-
-def record_registration(ip: str | None) -> None:
-    _hit(f"auth:register:ip:{_hash(ip or 'unknown')}", 86400)
-
-
-def two_factor_allowed(user_id: str, ip: str | None) -> bool:
-    return (
-        _count(f"auth:2fa:account:{_hash(user_id)}", 900) < 10
-        and _count(f"auth:2fa:ip:{_hash(ip or 'unknown')}", 900) < 30
+def two_factor_attempt(user_id: str, ip: str | None) -> LimitDecision:
+    """Reserve one 2FA code attempt for the account; IP counts failures only."""
+    account_key = f"auth:2fa:account:{_hash(user_id)}"
+    ip_key = f"auth:2fa:ip:{_ip_hash(ip)}"
+    try:
+        attempts = _increment(account_key, 900)
+        ip_failures = _read(ip_key)
+    except CacheError as exc:
+        return _unavailable("two_factor", exc)
+    return LimitDecision(
+        attempts <= TWO_FACTOR_ACCOUNT_LIMIT and ip_failures < TWO_FACTOR_IP_FAILURE_LIMIT
     )
 
 
-def record_two_factor_failure(user_id: str, ip: str | None) -> None:
-    _hit(f"auth:2fa:account:{_hash(user_id)}", 900)
-    _hit(f"auth:2fa:ip:{_hash(ip or 'unknown')}", 900)
+def record_two_factor_ip_failure(ip: str | None) -> None:
+    try:
+        _increment(f"auth:2fa:ip:{_ip_hash(ip)}", 900)
+    except CacheError as exc:
+        logger.error(
+            "security.rate_limit.record_failed",
+            extra={"scope": "two_factor_ip", "error": type(exc).__name__},
+        )
 
 
-def password_reset_allowed(email: str, ip: str | None) -> bool:
-    return (
-        _count(f"auth:reset:account:{_hash(email.lower())}", 3600) < 3
-        and _count(f"auth:reset:ip:{_hash(ip or 'unknown')}", 3600) < 20
+def clear_two_factor_attempts(user_id: str) -> None:
+    try:
+        _delete(f"auth:2fa:account:{_hash(user_id)}")
+    except CacheError as exc:
+        logger.error(
+            "security.rate_limit.clear_failed",
+            extra={"scope": "two_factor", "error": type(exc).__name__},
+        )
+
+
+def password_reset_attempt(email: str, ip: str | None) -> LimitDecision:
+    """Reserve one reset request; every request counts, successful or not."""
+    account_key = f"auth:reset:account:{_hash(email.casefold())}"
+    ip_key = f"auth:reset:ip:{_ip_hash(ip)}"
+    try:
+        account_requests = _increment(account_key, 3600)
+        ip_requests = _increment(ip_key, 3600)
+    except CacheError as exc:
+        return _unavailable("password_reset", exc)
+    return LimitDecision(
+        account_requests <= PASSWORD_RESET_ACCOUNT_LIMIT and ip_requests <= PASSWORD_RESET_IP_LIMIT
     )
 
 
-def record_password_reset(email: str, ip: str | None) -> None:
-    _hit(f"auth:reset:account:{_hash(email.lower())}", 3600)
-    _hit(f"auth:reset:ip:{_hash(ip or 'unknown')}", 3600)
+def registration_attempt(ip: str | None) -> LimitDecision:
+    """Reserve one registration slot for the client IP."""
+    key = f"auth:register:ip:{_ip_hash(ip)}"
+    try:
+        attempts = _increment(key, 86400)
+    except CacheError as exc:
+        return _unavailable("registration", exc)
+    return LimitDecision(attempts <= REGISTRATION_IP_LIMIT)
+
+
+def release_registration(ip: str | None) -> None:
+    """Return a reserved slot when the form is invalid or saving failed."""
+    key = f"auth:register:ip:{_ip_hash(ip)}"
+    try:
+        cache = _cache()
+        if int(cache.get(key) or 0) > 0:
+            cache.decr(key)
+    except CacheError as exc:
+        logger.error(
+            "security.rate_limit.release_failed",
+            extra={"scope": "registration", "error": type(exc).__name__},
+        )

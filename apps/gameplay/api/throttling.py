@@ -13,7 +13,6 @@ throttle работает fail-open: падение Redis не должно ло
 
 from __future__ import annotations
 
-import ipaddress
 import logging
 import time
 
@@ -26,6 +25,7 @@ from rest_framework.throttling import (  # type: ignore[import-untyped]
 
 from apps.accounts.services.anonymous import get_anonymous_identity
 from apps.catalog.models import Game
+from apps.core.net import normalize_ip
 from apps.gameplay.models import GameSession
 
 logger = logging.getLogger(__name__)
@@ -36,17 +36,7 @@ _last_failure_log = 0.0
 
 def _client_ip(request) -> str:
     """Client IP; IPv6 aggregated to /64 (Приложение E)."""
-    raw = request.META.get("REMOTE_ADDR") or "unknown"
-    try:
-        address = ipaddress.ip_address(raw)
-    except ValueError:
-        return raw
-    if isinstance(address, ipaddress.IPv6Address):
-        # IPv4-mapped addresses must share the IPv4 bucket, not the whole ::/64.
-        if address.ipv4_mapped is not None:
-            return str(address.ipv4_mapped)
-        return str(ipaddress.ip_network(f"{address}/64", strict=False).network_address)
-    return str(address)
+    return normalize_ip(request.META.get("REMOTE_ADDR") or "unknown")
 
 
 def _subject_ident(request) -> str:
@@ -69,7 +59,13 @@ class ThrottleCacheMixin:
 
 
 class ResilientThrottleMixin:
-    """Fail-open on throttle backend outage; availability over strictness."""
+    """Handle throttle backend outages according to the operation's policy.
+
+    Public game traffic fails open (availability), while abuse-intake scopes
+    set ``fail_open = False`` so a Redis outage cannot remove their limit.
+    """
+
+    fail_open = True
 
     def allow_request(self, request, view) -> bool:
         global _last_failure_log
@@ -82,9 +78,19 @@ class ResilientThrottleMixin:
                 _last_failure_log = now
                 logger.error(
                     "throttle.cache_failed",
-                    extra={"scope": getattr(self, "scope", None), "error": type(exc).__name__},
+                    extra={
+                        "scope": getattr(self, "scope", None),
+                        "error": type(exc).__name__,
+                        "fail_closed": not self.fail_open,
+                    },
                 )
-            return True
+            if self.fail_open:
+                return True
+            # DRF's check_throttles() calls wait() on a denied throttle; it
+            # expects history to exist even when the cache lookup failed.
+            self.history: list[float] = []
+            self.now = time.time()
+            return False
 
 
 class SubjectScopedRateThrottle(ThrottleCacheMixin, ResilientThrottleMixin, ScopedRateThrottle):
@@ -131,6 +137,13 @@ class ReportsIpRateThrottle(IpRateThrottle):
     """Complaints: 30/day per IP (Приложение E); catches guest rotation."""
 
     scope = "reports_ip"
+    fail_open = False
+
+
+class ReportsSubjectRateThrottle(SubjectScopedRateThrottle):
+    """Complaints: 5/day per subject; fail closed during a throttle outage."""
+
+    fail_open = False
 
 
 class SessionScopedRateThrottle(ThrottleCacheMixin, ResilientThrottleMixin, SimpleRateThrottle):

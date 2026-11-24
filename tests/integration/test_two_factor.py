@@ -4,13 +4,14 @@ import time
 
 import pyotp
 import pytest
-from django.core.cache import cache
+from django.core.cache import cache, caches
 from django.test import Client, override_settings
 
 from apps.accounts.models import LoginEvent, OwnerRecoveryCode, RecoveryCode, User
 
 LOCMEM_CACHES = {
     "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    "throttle": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
 }
 PASSWORD = "correct horse battery staple"
 
@@ -18,8 +19,10 @@ PASSWORD = "correct horse battery staple"
 @pytest.fixture(autouse=True)
 def clear_cache() -> None:
     cache.clear()
+    caches["throttle"].clear()
     yield
     cache.clear()
+    caches["throttle"].clear()
 
 
 def _staff(login: str = "staff") -> User:

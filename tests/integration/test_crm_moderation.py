@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+from unittest.mock import PropertyMock, patch
 
 import pyotp
 import pytest
@@ -14,10 +15,12 @@ from django.test import Client, RequestFactory, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
+from redis.exceptions import RedisError
 
 from apps.accounts.models import StaffRole, User
 from apps.catalog.models import Game, GameTranslation, Genre
 from apps.crm.models import AdminAuditLog
+from apps.gameplay.api import throttling
 from apps.i18n.models import Language
 from apps.moderation.models import Complaint
 from apps.moderation.services.complaints import (
@@ -480,6 +483,35 @@ def test_report_subject_and_ip_limits_match_appendix_e() -> None:
         caches["throttle"].delete(ip_key)
     assert blocked_ip.status_code == 429
     assert blocked_ip.json()["code"] == "E_RATE_LIMIT"
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_report_throttle_fails_closed_when_backend_is_unavailable() -> None:
+    game = _game("report_fail_closed_game")
+    guest = Client()
+    token = _csrf(guest)
+    payload = json.dumps(
+        {
+            "game_id": game.technical_id,
+            "category": Complaint.CATEGORY_SPAM,
+            "subject": "Спам",
+        }
+    )
+    with patch.object(
+        throttling.ThrottleCacheMixin,
+        "cache",
+        new_callable=PropertyMock,
+        side_effect=RedisError("throttle backend down"),
+    ):
+        response = guest.post(
+            "/api/v1/reports",
+            data=payload,
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+    assert response.status_code == 429
+    assert response.json()["code"] == "E_RATE_LIMIT"
 
 
 @pytest.mark.django_db

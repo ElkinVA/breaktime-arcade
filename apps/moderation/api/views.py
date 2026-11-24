@@ -2,7 +2,8 @@
 
 Guests may report a published game or a rating; the authenticated account is
 stored as the reporter when present. CSRF is enforced for both session-auth and
-anonymous writes, and the subject-scoped throttle prevents complaint flooding.
+anonymous writes, and subject/IP throttles fail closed during a throttle-cache
+outage so a Redis failure cannot remove complaint limits.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from rest_framework.views import APIView  # type: ignore[import-untyped]
 
 from apps.accounts.models import User
 from apps.catalog.models import Game
-from apps.gameplay.api.throttling import ReportsIpRateThrottle, SubjectScopedRateThrottle
+from apps.gameplay.api.throttling import ReportsIpRateThrottle, ReportsSubjectRateThrottle
 from apps.gameplay.api.views import CsrfEnforcedSessionAuthentication
 from apps.moderation.api.serializers import ComplaintCreateSerializer
 from apps.moderation.services.complaints import create_complaint
@@ -27,7 +28,7 @@ def _invalid_request(message: str = "Invalid request") -> Response:
 class ComplaintCreateView(APIView):
     authentication_classes = [CsrfEnforcedSessionAuthentication]
     permission_classes = [AllowAny]
-    throttle_classes = [SubjectScopedRateThrottle, ReportsIpRateThrottle]
+    throttle_classes = [ReportsSubjectRateThrottle, ReportsIpRateThrottle]
     throttle_scope = "reports"
 
     def post(self, request):

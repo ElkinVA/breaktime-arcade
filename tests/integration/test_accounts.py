@@ -7,7 +7,7 @@ import pyotp
 import pytest
 from django.contrib.auth import authenticate
 from django.core import mail
-from django.core.cache import cache
+from django.core.cache import cache, caches
 from django.http import HttpResponse
 from django.test import Client, RequestFactory, override_settings
 from django.utils import timezone
@@ -38,26 +38,33 @@ from apps.accounts.tasks import anonymize_due_accounts
 
 LOCMEM_CACHES = {
     "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    "throttle": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
 }
 
 
 @pytest.fixture(autouse=True)
 def clear_cache() -> None:
     cache.clear()
+    caches["throttle"].clear()
     yield
     cache.clear()
+    caches["throttle"].clear()
 
 
 @pytest.fixture(autouse=True)
 def bypass_rate_limits(monkeypatch: pytest.MonkeyPatch) -> None:
     """Rate limits проверяются отдельно; здесь не смешиваем их с account flow."""
-    monkeypatch.setattr("apps.accounts.views.registration_allowed", lambda ip: True)
-    monkeypatch.setattr("apps.accounts.views.record_registration", lambda ip: None)
-    monkeypatch.setattr("apps.accounts.views.login_allowed", lambda login, ip: True)
-    monkeypatch.setattr("apps.accounts.views.record_login_failure", lambda login, ip: None)
-    monkeypatch.setattr("apps.accounts.views.clear_login_failures", lambda login, ip: None)
-    monkeypatch.setattr("apps.accounts.views.password_reset_allowed", lambda email, ip: True)
-    monkeypatch.setattr("apps.accounts.views.record_password_reset", lambda email, ip: None)
+    from apps.accounts.services.rate_limit import ALLOWED
+
+    monkeypatch.setattr("apps.accounts.views.registration_attempt", lambda ip: ALLOWED)
+    monkeypatch.setattr("apps.accounts.views.release_registration", lambda ip: None)
+    monkeypatch.setattr("apps.accounts.views.login_attempt", lambda login, ip: ALLOWED)
+    monkeypatch.setattr("apps.accounts.views.record_login_ip_failure", lambda ip: None)
+    monkeypatch.setattr("apps.accounts.views.clear_login_attempts", lambda login: None)
+    monkeypatch.setattr("apps.accounts.views.two_factor_attempt", lambda user_id, ip: ALLOWED)
+    monkeypatch.setattr("apps.accounts.views.record_two_factor_ip_failure", lambda ip: None)
+    monkeypatch.setattr("apps.accounts.views.clear_two_factor_attempts", lambda user_id: None)
+    monkeypatch.setattr("apps.accounts.views.password_reset_attempt", lambda email, ip: ALLOWED)
 
 
 def payload(**overrides: object) -> dict[str, object]:
@@ -151,6 +158,34 @@ def test_login_logout_and_profile_require_authentication() -> None:
     logout = client.post("/en/auth/logout/")
     assert logout.status_code == 302
     assert client.get("/en/account/").status_code == 302
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_login_fails_closed_when_throttle_cache_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from apps.accounts.services.rate_limit import UNAVAILABLE
+
+    monkeypatch.setattr("apps.accounts.views.login_attempt", lambda login, ip: UNAVAILABLE)
+    client = Client()
+    response = client.post(
+        "/en/auth/login/",
+        {"username": "alice", "password": "correct horse battery staple"},
+    )
+    assert response.status_code == 503
+    assert not response.wsgi_request.user.is_authenticated
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_login_fails_closed_for_empty_username_too(monkeypatch: pytest.MonkeyPatch) -> None:
+    from apps.accounts.services.rate_limit import UNAVAILABLE
+
+    monkeypatch.setattr("apps.accounts.views.login_attempt", lambda login, ip: UNAVAILABLE)
+    client = Client()
+    response = client.post("/en/auth/login/", {"username": "", "password": "x"})
+    assert response.status_code == 503
 
 
 @pytest.mark.django_db
