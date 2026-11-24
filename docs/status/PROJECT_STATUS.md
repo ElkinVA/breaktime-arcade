@@ -528,6 +528,34 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.41. Safe rollback and publication history — 2026-11-24
+
+`ARCADE-ROLLBACK-SAFE-001` (`ecfb419`) — **COMPLETED / SECURITY-AUDITOR
+ACCEPT**: `publish_version` и `rollback_version` пишут append-only
+`AdminAuditLog` в одной транзакции с переключением `current_version`
+(actor/IP, before/after); CRM-view и wizard больше не пишут второй audit.
+Rollback разрешён только на версию, которая уже фигурирует в истории
+публикаций, проходит validation (0 blockers) и autotest, и совпадает по
+score direction/schemaVersion с фактической текущей опубликованной версией
+(manifest, не import-time поля `Game`). Статус игры сохраняется:
+published/hidden/archived допустимы, hidden/archived не перепубликуются,
+draft/review отклоняются; rollback никогда не выставляет `published`.
+Новые причины: `V_NOT_PUBLISHED`, `V_GAME_NOT_PUBLISHED`,
+`V_SCORE_RULES_CHANGED`. 12 rollback tests + обновлённые CRM audit/step-up
+тесты; полный suite **1177 tests: 1164 passed, 13 skipped, exit 0** на
+свежей БД; ruff/format/mypy clean (382). Модели: реализация —
+`deepseek-flash[1m]`, review — `security-auditor` (`deepseek-v4-pro`,
+text-only), reject → delta accept; ложная syntax-находка (PEP 758)
+опровергнута `ast.parse` и реальным импортом на Python 3.14.10.
+Остатки: concurrency publish-vs-rollback test заблокирован
+`ARCADE-TEST-DB-SEED-001` (row locking корректен по static review);
+публикации до появления CRM-аудита и dev `probe_seed` не дают истории —
+rollback консервативно блокируется; будущий scheduled-publish task обязан
+вызывать `publish_version`; смена score rules требует owner-решения об
+эпохе и сейчас блокируется; live staging NOT TESTED. Один полный прогон
+упал 1165 errors из-за `DuplicateDatabase`/`ObjectInUse` после
+остановленного предыдущего прогона; после очистки сессий gate зелёный.
+
 ## 0.40. Registration limits and real-Redis atomicity — 2026-11-24
 
 `ARCADE-REGISTRATION-LIMITS-001` (`bbfdcaf`) — **IMPLEMENTED /

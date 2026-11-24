@@ -4,16 +4,17 @@
 
 ## Актуальная сводка автономного цикла (2026-11-24)
 
-- HEAD `bbfdcaf` (registration limits) после `de08292` (auth throttling),
-  `b953419` (throttle scopes), `1fc0e97` (result verification),
-  `cb92702` (B1d), `35ae98f` (B1b), `f7a3779` (B1c), `7da168a` (B1a),
-  A2/A1/CI; этот docs-коммит обновляет реестры, затем `origin/main`
-  синхронизируется push.
-- Последний полный gate: **1166 tests: 1153 passed, 13 skipped, exit 0** на
-  свежей БД; JS **31/31**; ruff/format clean, mypy 382 файла clean. Первый
-  reuse-DB прогон ранее дал 20 translation-seed failures — дефект тестовой
-  БД (частичный reseed после transaction flush), не кода; открыт
-  `ARCADE-TEST-DB-SEED-001`.
+- HEAD `ecfb419` (safe rollback) после `bbfdcaf` (registration limits),
+  `de08292` (auth throttling), `b953419` (throttle scopes), `1fc0e97`
+  (result verification), `cb92702` (B1d), `35ae98f` (B1b), `f7a3779`
+  (B1c), `7da168a` (B1a), A2/A1/CI; этот docs-коммит обновляет реестры,
+  затем `origin/main` синхронизируется push.
+- Последний полный gate: **1177 tests: 1164 passed, 13 skipped, exit 0** на
+  свежей БД; JS **31/31**; ruff/format clean, mypy 382 файла clean. Один
+  прогон упал 1165 errors из-за `DuplicateDatabase`/`ObjectInUse` после
+  остановленного предыдущего прогона — инфраструктурный артефакт; после
+  очистки сессий gate зелёный. Первый reuse-DB прогон ранее дал 20
+  translation-seed failures — открыт `ARCADE-TEST-DB-SEED-001`.
 - AI HQ: 26 прежних COMPLETED + AI-HQ-CI-001 (CI run NOT VERIFIED) +
   AI-HQ-A1 (security accept); 5 BLOCKED. Cost accounting — только фактический
   modelUsage, не stop-condition; см. `.autonomy/state.json`.
@@ -30,6 +31,10 @@
   IP-failure burst race, CSRF device rotation, hard 30/day без challenge,
   authenticated sessions_ip exemption, heartbeat invalid-id buckets,
   DRF counters non-atomic.
+- P0/P1 publication safety (`ecfb419`): publish/rollback audit атомарен с
+  переключением; rollback только на ранее опубликованную версию с
+  validation/autotest/score gates; hidden/archived сохраняются
+  (`ARCADE-ROLLBACK-SAFE-001`); security-auditor reject → delta accept.
 - P0 A1/A2 закрыли прикладные host-exec каналы и доверие к worktree:
   exact sandbox commands, task-bound source-root, protected surfaces,
   immutable candidate до QA, чистый QA SHA, полный diff, strict verdicts,
@@ -54,9 +59,12 @@
   `propose` → отфильтровать задачи, требующие schema/contract/infra/E2E →
   `run --max-tasks 1`; после каждой задачи обновить реестры, PROJECT_STATUS
   и этот файл. Не запускать schema/contract/infra изменения без решения
-  владельца. Следующий P0/P1-срез — Stage C: §4.2 safe rollback
-  (history/validation/score rules, schema-free через audit), затем §4.3
-  autotest split и §4.1 import isolation с owner-анализом схемы/ТЗ.
+  владельца. Следующий независимый P1-срез — §5.1 CRM block/unblock:
+  явные идемпотентные действия вместо toggle, audit и конкурентные
+  проверки. Stage C §4.1 (import isolation) и §4.3 (browser autotest gate)
+  требуют owner-решения: schema/TS-конфликт и блокировка публикаций без
+  браузерного runner; подготовить варианты и не менять контракты/схему без
+  согласования.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**

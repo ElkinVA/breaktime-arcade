@@ -1488,6 +1488,41 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-ROLLBACK-SAFE-001 — безопасный rollback и история публикаций
+
+- **Первопричина:** `rollback_version` переключал `current_version` на
+  произвольную версию и выставлял статус `published`, обходя validation,
+  autotest и проверку score rules; история фактических публикаций
+  отсутствовала (audit писал только CRM-view).
+- **Результат:** `publish_version` и `rollback_version` пишут append-only
+  `AdminAuditLog` в той же транзакции, что и переключение, с actor/IP и
+  before/after; повторных audit-записей из CRM больше нет. Rollback требует:
+  target ранее публиковался (история), validation blockers = 0,
+  autotest passed, score direction/schemaVersion совпадают с фактической
+  текущей опубликованной версией (manifest, не import-time поля `Game`);
+  статус игры — published/hidden/archived, причём статус не меняется
+  (hidden/archived не перепубликуются), draft/review отклоняются. Ошибки —
+  `V_NOT_PUBLISHED`, `V_GAME_NOT_PUBLISHED`, `V_SCORE_RULES_CHANGED`,
+  `V_VALIDATION_BLOCKED`, `V_AUTOTEST_FAILED`.
+- **Проверки:** 12 rollback tests (never-published, blockers, autotest,
+  score rules включая import-time mutation, hidden/archived, draft/review,
+  foreign game, string schemaVersion) + обновлённые CRM audit/step-up тесты;
+  полный suite **1177 tests: 1164 passed, 13 skipped, exit 0** на свежей БД;
+  ruff/format/mypy clean (382). Security-auditor: **reject → delta accept**;
+  ложная syntax-находка (PEP 758) опровергнута `ast.parse` и реальным
+  импортом на Python 3.14.10.
+- **Остатки:** concurrency publish-vs-rollback test заблокирован
+  `ARCADE-TEST-DB-SEED-001` (row locking корректен, static review); аудит
+  публикаций до появления CRM-аудита (и dev `probe_seed`) не даёт истории —
+  rollback консервативно блокируется; будущий scheduled-publish task обязан
+  вызывать `publish_version`; смена score rules требует owner-решения об
+  эпохе (сейчас блокируется); live staging NOT TESTED. Один полный прогон
+  упал 1165 errors из-за `DuplicateDatabase`/`ObjectInUse` после
+  остановленного предыдущего прогона — после очистки сессий gate зелёный.
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `security-auditor`
+  (`deepseek-v4-pro`, text-only), reject + delta accept.
+- **Commit:** `ecfb419`.
+
 ### ARCADE-REGISTRATION-LIMITS-001 — device + IP registration limits
 
 - **Первопричина:** регистрация ограничивалась 3/сутки только по IP: это

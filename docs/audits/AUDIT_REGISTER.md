@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-ROLLBACK-SAFE-001 — publication history and safe rollback
+
+| Поле | Значение |
+|---|---|
+| Тип | P0/P1 publication safety; security-auditor reject → delta accept |
+| Результат | publish/rollback audit пишется атомарно с переключением; rollback только на ранее опубликованную версию, с validation/autotest и score rules текущей версии; hidden/archived сохраняются, draft/review отклоняются; CRM не дублирует audit |
+| Проверки | 12 rollback tests + CRM audit/step-up; полный suite **1177 tests: 1164 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean (382); ложная PEP 758 syntax-находка опровергнута исполнением |
+| Статус | **COMPLETED / SECURITY-AUDITOR ACCEPT**; live staging not tested |
+| Остаток | concurrency test blocked by TEST-DB-SEED; pre-audit/direct publications без истории блокируются; future scheduled-publish must call publish_version; score-rule epoch — owner decision |
+| Источник | commit `ecfb419`; модели: implement — `deepseek-flash[1m]`, review — `security-auditor` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-REGISTRATION-LIMITS-001 — device + IP registration limits
 
 | Поле | Значение |

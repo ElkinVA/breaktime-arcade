@@ -67,6 +67,11 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- Publication safety: publish/rollback audit rows are written atomically
+  with the version switch; rollback only targets previously published
+  versions with green validation/autotest and matching score rules, and
+  preserves hidden/archived status (`ARCADE-ROLLBACK-SAFE-001`, `ecfb419`).
+  Import isolation and browser-autotest gating remain owner-gated.
 - Account throttling: login/2FA/reset/registration counters use the
   dedicated noeviction throttle cache with a JSON serializer (atomic INCR);
   security-critical limits fail closed (`ARCADE-AUTH-THROTTLE-001`,
