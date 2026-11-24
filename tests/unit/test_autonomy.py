@@ -9,6 +9,7 @@ from autonomy.orchestrator import (
     _commit_staged,
     _developer_files,
     _parse_json,
+    _reviewer_verdict,
     _safe_file,
     _stage_task,
     _unstage,
@@ -349,3 +350,17 @@ def test_parse_json_prefers_outer_contract_after_prose() -> None:
     parsed = _parse_json(text)
     assert parsed["verdict"] == "accept"
     assert parsed["findings"][0]["summary"] == "nested"
+
+
+def test_reviewer_verdict_is_strict_and_fail_closed() -> None:
+    assert _reviewer_verdict('{"verdict":"accept","findings":[]}')["verdict"] == "accept"
+    assert (
+        _reviewer_verdict('```json\n{"verdict":"reject","findings":[]}\n```')["verdict"] == "reject"
+    )
+    for malformed in (
+        '{"verdict":"accept","findings": [',
+        '{"verdict":"accept"}',
+        'prose {"verdict":"accept","findings":[]}',
+        "",
+    ):
+        assert _reviewer_verdict(malformed)["verdict"] == "reject"

@@ -84,11 +84,17 @@ class FakeRunner:
         *,
         verdict: str = "accept",
         before_verdict: Callable[[], None] | None = None,
+        review_result: str | None = None,
     ) -> None:
         self.verdict = verdict
         self.before_verdict = before_verdict
+        self.review_result = review_result
         self.calls: list[str] = []
         self.reviewed_head: str | None = None
+        self.developer_cwd: Path | None = None
+        self.qa_cwd: Path | None = None
+        self.qa_head: str | None = None
+        self.qa_status: str | None = None
         self.architect_cwd: Path | None = None
 
     def _result(self, role: str, result: str, model: str) -> RunResult:
@@ -116,6 +122,7 @@ class FakeRunner:
 
     def developer(self, prompt: str, cwd: Path | None = None, **_: object) -> RunResult:
         assert cwd is not None
+        self.developer_cwd = cwd
         target = cwd / CHANGE
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text("candidate\n", encoding="utf-8")
@@ -138,7 +145,11 @@ class FakeRunner:
         )
 
     def qa(self, prompt: str, cwd: Path | None = None, **_: object) -> RunResult:
-        del prompt, cwd
+        del prompt
+        assert cwd is not None
+        self.qa_cwd = cwd
+        self.qa_head = _git(cwd, "rev-parse", "HEAD")
+        self.qa_status = _git(cwd, "status", "--porcelain")
         return self._result("qa", '{"status":"pass"}', "deepseek-flash")
 
     def reviewer(self, prompt: str, cwd: Path | None = None, **_: object) -> RunResult:
@@ -149,7 +160,9 @@ class FakeRunner:
             self.before_verdict()
         return self._result(
             "reviewer",
-            json.dumps({"verdict": self.verdict, "findings": []}),
+            self.review_result
+            if self.review_result is not None
+            else json.dumps({"verdict": self.verdict, "findings": []}),
             "deepseek-v4-pro",
         )
 
@@ -168,6 +181,10 @@ def test_worktree_accept_commits_candidate_and_fast_forwards(
     candidate = report["candidate"]
     assert candidate and candidate != base
     assert runner.reviewed_head == candidate
+    # QA ran on the exact candidate SHA in a separate clean worktree.
+    assert runner.qa_head == candidate
+    assert runner.qa_status == ""
+    assert runner.qa_cwd is not None and runner.qa_cwd != runner.developer_cwd
     # The candidate was really committed in the isolated worktree and merged
     # into main as a single fast-forward commit.
     assert _git(root, "rev-parse", "HEAD") == candidate
@@ -198,6 +215,23 @@ def test_worktree_reject_discards_candidate_and_keeps_main_unchanged(
     assert not (root / CHANGE).exists()
     assert store.get(TASK_ID).status == READY  # type: ignore[union-attr]
     assert store.get(TASK_ID).worktree is None  # type: ignore[union-attr]
+    assert not any(worktrees.iterdir())
+
+
+def test_malformed_reviewer_json_never_merges(
+    git_repo: tuple[Path, Path, Path],
+) -> None:
+    root, worktrees, state_dir = git_repo
+    base = _git(root, "rev-parse", "HEAD")
+    store = _store(state_dir)
+    runner = FakeRunner(review_result='{"verdict":"accept","findings": [')
+
+    report = Orchestrator(runner, store, worktrees=True).run_once(propose=False)
+
+    assert report["status"] == "retry", report
+    assert report["review"]["verdict"] == "reject"
+    assert _git(root, "rev-parse", "HEAD") == base
+    assert not (root / CHANGE).exists()
     assert not any(worktrees.iterdir())
 
 

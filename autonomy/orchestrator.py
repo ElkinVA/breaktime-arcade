@@ -171,9 +171,9 @@ def _assert_main_clean() -> None:
         raise MergeGateError(f"main worktree is dirty: {status[:800]}")
 
 
-def _create_worktree(task: Task) -> tuple[Path, str]:
+def _create_worktree(task: Task, base: str | None = None) -> tuple[Path, str]:
     _assert_main_clean()
-    base = _head()
+    base = base or _head()
     path = WORKTREE_ROOT / f"{task.id}-{uuid.uuid4().hex[:12]}" / "ba"
     path.parent.mkdir(parents=True, exist_ok=True)
     # Keep basename "ba": project hooks derive the sibling repo from ROOT.name
@@ -191,6 +191,12 @@ def _remove_worktree(path: Path) -> None:
     if parent != WORKTREE_ROOT and parent.is_relative_to(WORKTREE_ROOT) and parent.is_dir():
         with contextlib.suppress(OSError):
             parent.rmdir()
+
+
+def _discard_worktrees(*paths: Path | None) -> None:
+    for path in paths:
+        if path is not None:
+            _remove_worktree(path)
 
 
 def _cleanup_worktrees() -> None:
@@ -239,12 +245,45 @@ def _safe_file(name: str, root: Path | None = None) -> Path:
     return path
 
 
-def _qa_passed(qa: RunResult) -> bool:
+def _strict_json_object(value: str) -> dict[str, Any] | None:
+    """Parse one complete JSON object; never repair or guess."""
+    text = value.strip()
+    if text.startswith("```") and text.endswith("```"):
+        text = text[3:-3].strip()
+        if text.startswith("json"):
+            text = text[4:].lstrip()
     try:
-        parsed = _parse_json(qa.result)
-    except (ValueError, json.JSONDecodeError):  # fmt: skip
-        return False
-    return parsed.get("status") == "pass"
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _qa_passed(qa: RunResult) -> bool:
+    parsed = _strict_json_object(qa.result)
+    return parsed is not None and parsed.get("status") == "pass"
+
+
+def _reviewer_verdict(value: str) -> dict[str, Any]:
+    """Require a complete reviewer verdict; malformed output is a reject."""
+    parsed = _strict_json_object(value)
+    if (
+        parsed is None
+        or parsed.get("verdict") not in {"accept", "reject"}
+        or not isinstance(parsed.get("findings"), list)
+    ):
+        return {
+            "verdict": "reject",
+            "findings": [
+                {
+                    "severity": "blocker",
+                    "file": "reviewer",
+                    "summary": "Malformed or incomplete review JSON",
+                    "scenario": "Review must be one valid JSON object with verdict and findings.",
+                }
+            ],
+        }
+    return parsed
 
 
 def _validate_self_check(developer: RunResult) -> None:
@@ -360,9 +399,9 @@ def _git_diff(files: list[str], *, base: str, candidate: str | None, root: Path)
     try:
         if candidate:
             result = _git(["diff", base, candidate, "--", *files], cwd=root, check=False)
-            return result.stdout[-40000:]
+            return result.stdout
         result = _git(["diff", "--", *files], cwd=root, check=False)
-        return result.stdout[-40000:]
+        return result.stdout
     except FileNotFoundError:
         return "[git unavailable in this runtime]"
 
@@ -734,6 +773,7 @@ class Orchestrator:
     def _run_isolated(self, task: Task, tracker: BudgetTracker | None = None) -> dict[str, Any]:
         tracker = tracker or BudgetTracker(self.budget)
         worktree: Path | None = None
+        qa_worktree: Path | None = None
         base: str | None = None
         try:
             worktree, base = _create_worktree(task)
@@ -745,6 +785,11 @@ class Orchestrator:
             files = _changed_files(worktree)
             self._account(task.id, developer, tracker)
             self._guard(tracker)
+            # Commit the candidate before QA; QA runs in a clean worktree at
+            # exactly this SHA and cannot modify the code under test.
+            candidate = _commit_candidate(task, files, worktree)
+            self.store.set_candidate(task.id, candidate)
+            qa_worktree, _ = _create_worktree(task, base=candidate)
             self.store.transition(
                 task.id,
                 QA,
@@ -753,15 +798,16 @@ class Orchestrator:
                 evidence=developer.evidence_path,
             )
             qa = self.runner.qa(
-                _qa_prompt(task, developer), cwd=worktree, context=self._context(task)
+                _qa_prompt(task, developer), cwd=qa_worktree, context=self._context(task)
             )
             self._account(task.id, qa, tracker)
             self._guard(tracker)
             if not _qa_passed(qa):
                 self.store.record_qa_failure(task.id)
-                _remove_worktree(worktree)
+                _discard_worktrees(worktree, qa_worktree)
                 self.store.set_worktree(task.id, None, None)
                 worktree = None
+                qa_worktree = None
                 retried = self.store.retry(task.id, f"QA: {qa.result[:4000]}")
                 return {
                     "status": "retry" if retried and retried.status == READY else "blocked",
@@ -771,8 +817,6 @@ class Orchestrator:
             self.store.transition(
                 task.id, REVIEW, session_id=qa.session_id, model=qa.model, evidence=qa.evidence_path
             )
-            candidate = _commit_candidate(task, files, worktree)
-            self.store.set_candidate(task.id, candidate)
             review = self.runner.reviewer(
                 _reviewer_prompt(
                     task,
@@ -780,15 +824,16 @@ class Orchestrator:
                     qa,
                     _git_diff(files, base=base, candidate=candidate, root=worktree),
                 ),
-                cwd=worktree,
+                cwd=qa_worktree,
                 context=self._context(task),
             )
             self._account(task.id, review, tracker)
-            verdict = _parse_json(review.result)
+            verdict = _reviewer_verdict(review.result)
             if verdict.get("verdict") != "accept":
-                _remove_worktree(worktree)
+                _discard_worktrees(worktree, qa_worktree)
                 self.store.set_worktree(task.id, None, None)
                 worktree = None
+                qa_worktree = None
                 self.store.record_review_rejection(task.id)
                 retried = self.store.retry(task.id, json.dumps(verdict, ensure_ascii=False)[:4000])
                 return {
@@ -804,8 +849,9 @@ class Orchestrator:
                 model=review.model,
                 evidence=review.evidence_path,
             )
-            _remove_worktree(worktree)
+            _discard_worktrees(worktree, qa_worktree)
             worktree = None
+            qa_worktree = None
             return {
                 "status": "completed",
                 "task": task.id,
@@ -818,16 +864,14 @@ class Orchestrator:
         except BudgetReached as exc:
             # A budget stop is a safe boundary between model calls: discard
             # the candidate, release the task and let the next run retry it.
-            if worktree is not None:
-                _remove_worktree(worktree)
+            _discard_worktrees(worktree, qa_worktree)
             self.store.release(task.id, f"BUDGET:{exc.stop.reason}")
             return exc.stop.to_report(task=task.id)
         except MergeGateError as exc:
             # Dirty main, moved base or a failed fast-forward cannot be fixed
             # by rerunning the task: discard the candidate and block with the
             # concrete git reason instead of burning the retry budget.
-            if worktree is not None:
-                _remove_worktree(worktree)
+            _discard_worktrees(worktree, qa_worktree)
             self.store.set_worktree(task.id, None, None)
             reason = f"MERGE_GATE: {exc}"
             self.store.transition(task.id, BLOCKED, blocked_reason=reason, error=reason)
@@ -838,8 +882,7 @@ class Orchestrator:
                 "error": f"{type(exc).__name__}: {exc}",
             }
         except Exception as exc:  # noqa: BLE001 - task boundary is fail-closed
-            if worktree is not None:
-                _remove_worktree(worktree)
+            _discard_worktrees(worktree, qa_worktree)
             retried = self.store.retry(task.id, f"{type(exc).__name__}: {exc}")
             return {
                 "status": "retry" if retried and retried.status == READY else "blocked",
@@ -896,7 +939,7 @@ class Orchestrator:
                 context=self._context(task),
             )
             self._account(task.id, review, tracker)
-            verdict = _parse_json(review.result)
+            verdict = _reviewer_verdict(review.result)
             if verdict.get("verdict") != "accept":
                 if staged:
                     _unstage(files)
