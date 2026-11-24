@@ -57,7 +57,9 @@ ambiguity.
 - AI HQ P0: developer/QA checks run only through five exact trusted sandbox
   commands (no wildcard), source-root is task-bound, host-exec surfaces are
   protected, commit file set is Git-derived, reviewer has no Bash
-  (`AI-HQ-A1`, `1f46062`); OS sandbox R-040 remains.
+  (`AI-HQ-A1`, `1f46062`); candidate is committed before QA, QA runs on the
+  exact clean SHA, diff is full and verdicts are strict (`AI-HQ-A2`,
+  `45a69f1`). OS sandbox R-040 and model trust remain.
 - App F concurrency/idempotency coverage: result/leaderboard races, rating
   limits, storage If-Match and Idempotency-Key (`ARCADE-APPF-RACE-TESTS-001`,
   `7af18bb`).

@@ -1520,6 +1520,20 @@ tests: 1056 passed, 8 skipped, exit 0**.
   CLI не проверена.
 - **Commit:** `1f46062`.
 
+### AI-HQ-A2 — immutable candidate QA and strict verdicts
+
+- **Результат:** `45a69f1`; candidate commit создаётся до QA и записывается в
+  state; QA — в отдельном чистом worktree на точном SHA, без права
+  редактирования; reviewer получает полный diff; `_reviewer_verdict`/
+  `_qa_passed` строгие (malformed/prose/truncated → reject); коммитимый набор
+  из Git, каждый путь через `_safe_file`; merge только после QA pass и
+  reviewer accept; все failure-пути удаляют оба worktree.
+- **Проверки:** 23 affected tests; QA SHA/clean/separate, malformed reviewer
+  never merges; full suite **1132/1124/8**; security-auditor accept.
+- **Остаток:** QA/reviewer model trust, очень большой diff может исчерпать
+  argv/context (fail-closed), R-040.
+- **Commit:** `45a69f1`.
+
 ### ARCADE-ARTIFACTS-STREAMING-001 — artifact streaming + ZIP hash (AI HQ)
 
 - **Результат:** `8d22aee` + fixes `167ece6`; original ZIP SHA-256 проверяется

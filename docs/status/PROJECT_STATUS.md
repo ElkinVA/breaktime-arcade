@@ -484,6 +484,19 @@ OS-sandbox, полный suite вместо targeted на каждый запу�
 `apps/` исполняется в web-контейнере с секретами (осознанная модель),
 динамическая семантика exact-match CLI не проверена.
 
+## 0.35. AI HQ A2 — immutable candidate QA — 2026-11-24
+
+**AI-HQ-A2** (`45a69f1`) — **COMPLETED / SECURITY-AUDITOR ACCEPT**.
+Developer changes коммитятся в candidate до QA; QA запускается в отдельном
+чистом worktree на точном candidate SHA, не может редактировать код; reviewer
+получает полный diff без 40k-усечения; QA/reviewer JSON строгий (malformed →
+reject, не merge); коммитимый набор выводится из Git, а не из отчёта
+developer; merge только после QA pass и reviewer accept; при любом сбое оба
+worktree удаляются, main не меняется. 23 affected tests; strict-verdict и
+malformed-review tests; full suite **1132 tests: 1124 passed, 8 skipped,
+exit 0**. Остатки: QA/reviewer всё ещё доверенные модели (M1), очень большой
+diff может исчерпать argv/context (fail-closed), R-040.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

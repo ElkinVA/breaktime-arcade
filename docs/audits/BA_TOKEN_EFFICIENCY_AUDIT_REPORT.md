@@ -117,7 +117,9 @@ planning call, ещё до чтения кода и tool results.
 - `_developer_prompt` — acceptance + previous error (до 4 000 chars).
 - `_qa_prompt` — developer.result до 8 000 chars.
 - `_reviewer_prompt` — developer/QA до 8 000 chars каждый + diff до 40 000
-  chars.
+  chars. **Обновление 2026-11-24 (AI-HQ-A2):** cap снят, reviewer получает
+  полный candidate diff; QA проверяет immutable candidate SHA в отдельном
+  worktree, а не хвост/предыдущее состояние.
 - `_architect_prompt` — JSON состояния очереди; architect-agent обязан
   читать четыре крупных документа и код.
 - `StateStore.record_usage` агрегирует usage по task; `metrics.py` считает
@@ -128,9 +130,10 @@ planning call, ещё до чтения кода и tool results.
 
 ### 2.5. Жизненный цикл задачи и передачи контекста
 
-- `orchestrator._run_isolated`: worktree → Developer → QA → Reviewer →
-  fast-forward merge; состояние/usage пишутся в `StateStore`; `recover_running`
-  восстанавливает RUNNING/QA/REVIEW после падения.
+- `orchestrator._run_isolated`: worktree → Developer → candidate commit →
+  QA на точном SHA в чистом worktree → Reviewer → fast-forward merge
+  (порядок обновлён AI-HQ-A2); состояние/usage пишутся в `StateStore`;
+  `recover_running` восстанавливает RUNNING/QA/REVIEW после падения.
 - Каждая роль — отдельный `claude -p` invocation; **`--resume` не
   используется**, поэтому между ролями передаётся не полная история, а
   срезы: developer.result до 8k, QA result до 8k, diff до 40k.

@@ -889,6 +889,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Остаток | R-040 OS-sandbox; full-suite-only runs; apps/ in web container; CLI exact-match semantics not dynamically verified |
 | Источник | commit `1f46062` |
 
+## AI-HQ-A2 — immutable candidate QA
+
+| Поле | Значение |
+|---|---|
+| Тип | P0 control-plane integrity; security-auditor review |
+| Результат | `45a69f1`: commit candidate before QA, clean QA worktree at exact SHA, full diff, strict QA/reviewer JSON, Git-derived files, merge only after both gates |
+| Проверки | 23 affected tests; malformed reviewer never merges; full suite 1132/1124/8 exit 0; security accept |
+| Статус | **COMPLETED / SECURITY-AUDITOR ACCEPT**; product/staging/prod не заявляются |
+| Остаток | QA/reviewer model trust; huge diff argv/context; R-040 |
+| Источник | commit `45a69f1` |
+
 ## ARCADE-ARTIFACTS-STREAMING-001 — artifact streaming + ZIP hash
 
 | Поле | Значение |

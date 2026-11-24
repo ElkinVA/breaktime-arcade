@@ -4,17 +4,18 @@
 
 ## Актуальная сводка автономного цикла (2026-11-24)
 
-- HEAD `1f46062` (A1) после `a0aa34b` (CI); `origin/main` синхронизирован
-  после push; рабочее дерево чистое.
-- Последний полный gate: **1130 tests: 1122 passed, 8 skipped, exit 0**;
+- HEAD `45a69f1` (A2) после `1f46062` (A1) и `a0aa34b` (CI); `origin/main`
+  синхронизирован после push; рабочее дерево чистое.
+- Последний полный gate: **1132 tests: 1124 passed, 8 skipped, exit 0**;
   JS **26/26**; mypy 381 файл clean.
 - AI HQ: 26 прежних COMPLETED + AI-HQ-CI-001 (CI run NOT VERIFIED) +
   AI-HQ-A1 (security accept); 5 BLOCKED. Cost accounting — только фактический
   modelUsage, не stop-condition; см. `.autonomy/state.json`.
-- P0 A1 закрыл прикладные host-exec каналы: exact sandbox commands,
-  task-bound source-root, protected surfaces, Git-derived commit file set.
-  Остаток R-040 (OS-sandbox) и продуктовый `apps/` в web-контейнере —
-  осознанная модель.
+- P0 A1/A2 закрыли прикладные host-exec каналы и доверие к worktree:
+  exact sandbox commands, task-bound source-root, protected surfaces,
+  immutable candidate до QA, чистый QA SHA, полный diff, strict verdicts,
+  Git-derived commit file set. Остаток R-040 (OS-sandbox), model-trust QA/
+  reviewer и продуктовый `apps/` в web-контейнере.
 - Безопасная READY-очередь исчерпана. Открыто нужны решения владельца:
   scheduled-publish schema, retention indexes, Docker assets stage,
   R-054 expiresAt/alias, R-055 DRAFT schemas, live E2E, R-036 Phase 2.
