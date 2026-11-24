@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-CRM-BLOCK-IDEMPOTENT-001 — explicit block/unblock
+
+| Поле | Значение |
+|---|---|
+| Тип | P1 CRM account safety (§5.1); security-auditor review |
+| Результат | явные идемпотентные block/unblock вместо toggle; no-op без audit; реальный переход — audit + revoke SDK-сессий; toggle-маршруты удалены; race-тесты переведены на block_user |
+| Проверки | 27 `test_crm_users`; полный suite **1178 tests: 1165 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean (382); security-auditor **accept**, findings informational/minor |
+| Статус | **COMPLETED / SECURITY-AUDITOR ACCEPT**; live staging not tested |
+| Остаток | rating aggregates exclusion — next ARCADE-RATINGS-BLOCK-001; no-op revoke legacy window; activate/heartbeat is_active; tombstone wording; unblock 403/CSRF test |
+| Источник | commit `88c2a64`; модели: implement — `deepseek-flash[1m]`, review — `security-auditor` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-ROLLBACK-SAFE-001 — publication history and safe rollback
 
 | Поле | Значение |

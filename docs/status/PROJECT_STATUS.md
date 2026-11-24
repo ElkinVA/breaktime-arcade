@@ -528,6 +528,31 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.42. Explicit CRM block/unblock — 2026-11-24
+
+`ARCADE-CRM-BLOCK-IDEMPOTENT-001` (`88c2a64`) — **COMPLETED /
+SECURITY-AUDITOR ACCEPT**: `/block/` и `/unblock/` больше не вызывают один
+toggle. `_set_user_active` под User row lock выставляет запрошенное
+состояние: повторный block не разблокирует, повторный unblock не блокирует,
+no-op не пишет audit и не повторяет revoke; реальный переход сохраняет
+прежний audit `USER_BLOCKED`/`USER_UNBLOCKED` и отзыв SDK-сессий/билетов при
+блокировке, tombstone/self guards сохранены. Detail POST принимает только
+явные `block`/`unblock`/`delete`; маршруты `toggle/` и `toggle-block/`
+удалены. 27 `test_crm_users` (идемпотентность, ровно один audit,
+authentication flip, tombstone, block-vs-submit/anonymise/storage/
+create-session races); полный suite **1178 tests: 1165 passed, 13 skipped,
+exit 0** на свежей БД (прогон ~65 мин из-за нагрузки); ruff/format/mypy
+clean (382). Модели: реализация — `deepseek-flash[1m]`, review —
+`security-auditor` (`deepseek-v4-pro`, text-only), **accept**.
+Остатки: оценки заблокированных исключаются из денормализованного агрегата
+только фильтром чтения/ночным пересчётом — следующая задача
+`ARCADE-RATINGS-BLOCK-001`; no-op block не повторяет revoke
+(теоретическое legacy-окно); `activate_session`/`heartbeat` не
+перепроверяют `is_active` под lock (отдельный legacy-срез); tombstone-
+сообщение для block сформулировано как «разблокировать»; unblock не входит
+в 403/CSRF матрицу; step-up для block не требуется по §2.16.1; live staging
+NOT TESTED.
+
 ## 0.41. Safe rollback and publication history — 2026-11-24
 
 `ARCADE-ROLLBACK-SAFE-001` (`ecfb419`) — **COMPLETED / SECURITY-AUDITOR

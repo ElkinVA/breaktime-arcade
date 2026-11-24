@@ -4,17 +4,17 @@
 
 ## Актуальная сводка автономного цикла (2026-11-24)
 
-- HEAD `ecfb419` (safe rollback) после `bbfdcaf` (registration limits),
-  `de08292` (auth throttling), `b953419` (throttle scopes), `1fc0e97`
-  (result verification), `cb92702` (B1d), `35ae98f` (B1b), `f7a3779`
-  (B1c), `7da168a` (B1a), A2/A1/CI; этот docs-коммит обновляет реестры,
-  затем `origin/main` синхронизируется push.
-- Последний полный gate: **1177 tests: 1164 passed, 13 skipped, exit 0** на
-  свежей БД; JS **31/31**; ruff/format clean, mypy 382 файла clean. Один
-  прогон упал 1165 errors из-за `DuplicateDatabase`/`ObjectInUse` после
-  остановленного предыдущего прогона — инфраструктурный артефакт; после
-  очистки сессий gate зелёный. Первый reuse-DB прогон ранее дал 20
-  translation-seed failures — открыт `ARCADE-TEST-DB-SEED-001`.
+- HEAD `88c2a64` (CRM block/unblock) после `ecfb419` (safe rollback),
+  `bbfdcaf` (registration limits), `de08292` (auth throttling), `b953419`
+  (throttle scopes), `1fc0e97` (result verification), `cb92702` (B1d),
+  `35ae98f` (B1b), `f7a3779` (B1c), `7da168a` (B1a), A2/A1/CI; этот
+  docs-коммит обновляет реестры, затем `origin/main` синхронизируется push.
+- Последний полный gate: **1178 tests: 1165 passed, 13 skipped, exit 0** на
+  свежей БД (прогон ~65 мин из-за нагрузки); JS **31/31**; ruff/format
+  clean, mypy 382 файла clean. Один прогон ранее упал 1165 errors из-за
+  `DuplicateDatabase`/`ObjectInUse` после остановленного предыдущего
+  прогона — инфраструктурный артефакт; после очистки сессий gate зелёный.
+  Reuse-DB translation-seed issue — открыт `ARCADE-TEST-DB-SEED-001`.
 - AI HQ: 26 прежних COMPLETED + AI-HQ-CI-001 (CI run NOT VERIFIED) +
   AI-HQ-A1 (security accept); 5 BLOCKED. Cost accounting — только фактический
   modelUsage, не stop-condition; см. `.autonomy/state.json`.
@@ -35,6 +35,10 @@
   переключением; rollback только на ранее опубликованную версию с
   validation/autotest/score gates; hidden/archived сохраняются
   (`ARCADE-ROLLBACK-SAFE-001`); security-auditor reject → delta accept.
+- P1 CRM accounts (`88c2a64`): block/unblock явные идемпотентные, no-op без
+  audit, toggle-маршруты удалены (`ARCADE-CRM-BLOCK-IDEMPOTENT-001`).
+  Остаток: немедленное исключение оценок заблокированных — следующий
+  `ARCADE-RATINGS-BLOCK-001`.
 - P0 A1/A2 закрыли прикладные host-exec каналы и доверие к worktree:
   exact sandbox commands, task-bound source-root, protected surfaces,
   immutable candidate до QA, чистый QA SHA, полный diff, strict verdicts,
@@ -59,12 +63,9 @@
   `propose` → отфильтровать задачи, требующие schema/contract/infra/E2E →
   `run --max-tasks 1`; после каждой задачи обновить реестры, PROJECT_STATUS
   и этот файл. Не запускать schema/contract/infra изменения без решения
-  владельца. Следующий независимый P1-срез — §5.1 CRM block/unblock:
-  явные идемпотентные действия вместо toggle, audit и конкурентные
-  проверки. Stage C §4.1 (import isolation) и §4.3 (browser autotest gate)
-  требуют owner-решения: schema/TS-конфликт и блокировка публикаций без
-  браузерного runner; подготовить варианты и не менять контракты/схему без
-  согласования.
+  владельца. Следующий независимый P1-срез — `ARCADE-RATINGS-BLOCK-001`
+  (немедленный пересчёт оценок при block/unblock, recheck `is_active` под
+  User-lock в vote, конкурентный тест), затем §5.3 audit events.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**

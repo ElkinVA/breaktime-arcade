@@ -67,6 +67,10 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- CRM customer accounts: explicit idempotent block/unblock with audit and
+  session revocation replaces the toggle; repeated actions are no-ops
+  (`ARCADE-CRM-BLOCK-IDEMPOTENT-001`, `88c2a64`). Immediate rating-aggregate
+  exclusion on block remains the next ratings slice.
 - Publication safety: publish/rollback audit rows are written atomically
   with the version switch; rollback only targets previously published
   versions with green validation/autotest and matching score rules, and

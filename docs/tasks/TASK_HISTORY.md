@@ -1488,6 +1488,35 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-CRM-BLOCK-IDEMPOTENT-001 — явные block/unblock
+
+- **Первопричина:** маршруты `/block/` и `/unblock/` вызывали один toggle;
+  повторный block разблокировал аккаунт, а устаревшая форма могла изменить
+  состояние в противоположную сторону.
+- **Результат:** `_set_user_active` под `select_for_update` User выставляет
+  запрошенное состояние; повторный block/unblock — no-op (`changed=False`,
+  без audit и без повторного отзыва сессий), реальный переход пишет прежний
+  `USER_BLOCKED`/`USER_UNBLOCKED` audit, отзывает SDK-сессии/билеты при
+  block и сохраняет tombstone/self guards. Detail POST принимает только
+  явные `block`/`unblock`/`delete`; маршруты `toggle/` и `toggle-block/`
+  удалены.
+- **Проверки:** 27 `test_crm_users` (идемпотентность, ровно один audit,
+  authentication flip, tombstone, block-vs-submit/anonymise/storage/
+  create-session races); полный suite **1178 tests: 1165 passed, 13 skipped,
+  exit 0** на свежей БД (прогон занял ~65 мин из-за нагрузки); ruff/format/
+  mypy clean (382). Security-auditor **accept**, только informational/minor.
+- **Остатки:** оценки заблокированных не исключаются из денормализованного
+  агрегата немедленно (только фильтр чтения/ночной пересчёт) — следующая
+  задача `ARCADE-RATINGS-BLOCK-001`; no-op block не повторяет revoke
+  (теоретическое legacy-окно); `activate_session`/`heartbeat` не
+  перепроверяют `is_active` под lock (legacy-окно, отдельный срез);
+  сообщение tombstone для block сформулировано как «разблокировать»;
+  unblock не входит в 403/CSRF матрицу тестов; step-up не требуется по
+  §2.16.1. Live staging NOT TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `security-auditor`
+  (`deepseek-v4-pro`, text-only).
+- **Commit:** `88c2a64`.
+
 ### ARCADE-ROLLBACK-SAFE-001 — безопасный rollback и история публикаций
 
 - **Первопричина:** `rollback_version` переключал `current_version` на
