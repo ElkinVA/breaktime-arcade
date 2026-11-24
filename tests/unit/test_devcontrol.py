@@ -600,7 +600,9 @@ def test_sandbox_copy_excludes_secrets(tmp_path: Path) -> None:
     assert ".env" not in files
     assert ".env.staging" not in files
     assert not any(path.startswith((".git/", "certs/", "creds/")) for path in files)
-    assert not any(path.startswith("docs/") for path in files)
+    # Operational documentation is part of the sandbox allowlist; secrets are not.
+    assert any(path.startswith("docs/status/") for path in files)
+    assert not any(path.startswith("docs/spec/") for path in files)
     assert ".claude/settings.json" in files
     assert any(path.startswith(".claude/agents/") for path in files)
     assert any(path.startswith(".claude/hooks/") for path in files)
@@ -628,6 +630,59 @@ def test_sandbox_compose_is_isolated(tmp_path: Path) -> None:
     assert "no-new-privileges:true" in document
     assert "docker.sock" not in document
     assert "cap_drop: [ALL]" in document
+
+
+def test_sandbox_source_root_accepts_only_isolated_worktrees(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from devcontrol.sandbox import run_tests as sandbox
+
+    project = tmp_path / "project"
+    worktrees = project / ".autonomy" / "worktrees"
+    worktree = worktrees / "TASK" / "ba"
+    worktree.mkdir(parents=True)
+    gitdir = project / ".git" / "worktrees" / "TASK"
+    gitdir.mkdir(parents=True)
+    (worktree / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
+    other = worktrees / "OTHER" / "ba"
+    other.mkdir(parents=True)
+    other_gitdir = project / ".git" / "worktrees" / "OTHER"
+    other_gitdir.mkdir(parents=True)
+    (other / ".git").write_text(f"gitdir: {other_gitdir}\n", encoding="utf-8")
+    monkeypatch.setattr(sandbox, "PROJECT_ROOT", project)
+    monkeypatch.setattr(sandbox, "WORKTREE_ROOT", worktrees)
+    monkeypatch.setenv("BA_TASK_WORKTREE", str(worktree))
+
+    assert sandbox.validate_source_root(str(worktree)) == worktree.resolve()
+    assert sandbox.validate_source_root(None) == worktree.resolve()
+    with pytest.raises(sandbox.SandboxError):
+        sandbox.validate_source_root(str(other))
+    fake = worktrees / "FAKE" / "ba"
+    fake.mkdir(parents=True)
+    (fake / ".git").mkdir()
+    for bad in (
+        str(project),
+        str(tmp_path),
+        "/etc",
+        str(worktrees / ".." / ".."),
+        str(fake),
+    ):
+        with pytest.raises(sandbox.SandboxError):
+            sandbox.validate_source_root(bad)
+
+
+def test_sandbox_js_compose_is_isolated(tmp_path: Path) -> None:
+    from devcontrol.sandbox.run_tests import js_compose_document
+
+    document = js_compose_document("ba-sandbox-js", tmp_path / "code")
+    assert "node:22" in document
+    assert ":/app:ro" in document
+    assert "internal: true" in document
+    assert "read_only: true" in document
+    assert "no-new-privileges:true" in document
+    assert "cap_drop: [ALL]" in document
+    assert "DATABASE_URL" not in document
+    assert "TELEGRAM" not in document
 
 
 def test_parse_start_reference_and_chunking() -> None:

@@ -2,7 +2,7 @@
 name: autonomy-reviewer
 description: Pro independent reviewer for a bounded autonomous task; reads diff and evidence, never edits.
 model: deepseek-v4-pro
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob
 ---
 
 You are the independent Code Reviewer for one autonomous task. You may use

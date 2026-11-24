@@ -109,10 +109,34 @@ PROTECTED_PARTS = (
     "CLAUDE.md",
     ".git/",
     ".claude/settings",
+    ".claude/agents/",
     ".claude/hooks",
     "docs/spec/",
+    "docs/decisions/",
     "reports/",
-    "infra/nginx/staging.conf",
+    "autonomy/",
+    "devcontrol/",
+    "scripts/",
+    ".claude/skills/",
+    ".claude/commands/",
+    ".mcp.json",
+    ".github/",
+    "infra/",
+    "sdk/",
+    "schemas/",
+    "pyproject.toml",
+    "uv.lock",
+    "mypy.ini",
+    ".pre-commit-config.yaml",
+    ".dockerignore",
+    "Dockerfile",
+    "Makefile",
+    "package.json",
+    "package-lock.json",
+    "compose.yml",
+    "compose.dev-lite.yml",
+    "compose.staging.yml",
+    "compose.prod.yml",
 )
 
 
@@ -218,7 +242,7 @@ def _safe_file(name: str, root: Path | None = None) -> Path:
 def _qa_passed(qa: RunResult) -> bool:
     try:
         parsed = _parse_json(qa.result)
-    except ValueError, json.JSONDecodeError:
+    except (ValueError, json.JSONDecodeError):  # fmt: skip
         return False
     return parsed.get("status") == "pass"
 
@@ -246,11 +270,27 @@ def _validate_self_check(developer: RunResult) -> None:
         raise RuntimeError("developer self_check localization_reviewed must be boolean")
 
 
+def _changed_files(root: Path) -> list[str]:
+    """Derive the changed-file set from Git, not from the developer report."""
+    tracked = _git(["diff", "--name-only", "-z", "HEAD"], cwd=root)
+    untracked = _git(["ls-files", "--others", "--exclude-standard", "-z"], cwd=root)
+    names = {name for name in (tracked.stdout + untracked.stdout).split("\0") if name}
+    files: list[str] = []
+    for name in sorted(names):
+        if name.startswith("/") or ".." in name.split("/"):
+            raise RuntimeError(f"git reported an unsafe path: {name}")
+        _safe_file(name, root)
+        files.append(name)
+    if not files:
+        raise RuntimeError("developer changed no files; refusing an empty change")
+    return files
+
+
 def _developer_files(developer: RunResult, root: Path | None = None) -> list[str]:
     root = root or ROOT
     try:
         parsed = _parse_json(developer.result)
-    except ValueError, json.JSONDecodeError:
+    except (ValueError, json.JSONDecodeError):  # fmt: skip
         return []
     raw = parsed.get("files")
     if not isinstance(raw, list):
@@ -343,30 +383,51 @@ def _architect_prompt(store: StateStore) -> str:
     )
 
 
+def _sandbox_command() -> str:
+    """Trusted main-checkout runner; the worktree is only a copy source."""
+    return f"{ROOT / '.venv/bin/python'} {ROOT / 'devcontrol/sandbox/run_tests.py'}"
+
+
+def _sandbox_commands() -> list[str]:
+    command = _sandbox_command()
+    return [
+        f"{command} --source-root . --tool pytest --timeout 1800",
+        (
+            f"{command} --source-root . --tool pytest "
+            "tests/integration/test_migrations_check.py --timeout 1800"
+        ),
+        f"{command} --source-root . --tool ruff --timeout 1800",
+        f"{command} --source-root . --tool mypy --timeout 1800",
+        f"{command} --source-root . --tool js --timeout 1800",
+    ]
+
+
 def _developer_prompt(task: Task) -> str:
+    commands = "\n".join(f"- `{item}`" for item in _sandbox_commands())
     return (
         f"Task ID: {task.id}\nTitle: {task.title}\n"
         f"Acceptance criteria:\n- " + "\n- ".join(task.acceptance) + "\n"
         "Implement exactly this task in the isolated worktree. The worktree has no "
-        ".env: do not run make test/check there. Use "
-        "`python3 devcontrol/sandbox/run_tests.py ...` for tests and "
-        "/home/elkinva/projects/ba/.venv/bin/python -m ruff/mypy for lint. Do not "
-        "change game features. Complete the mandatory self-check against the ТЗ, "
-        "scope, tests and localization/regressions; include its fields in the JSON. "
+        ".env: do not run make test/check there. Do not run host pytest, mypy, ruff "
+        "or npm. Run checks only with one of these exact commands, with no extra "
+        f"arguments, shell chaining, redirection or wildcards:\n{commands}\n"
+        "Do not change game features. Complete the mandatory self-check against the "
+        "ТЗ, scope, tests and localization/regressions; include its fields in the JSON. "
         + (f"Previous failure to address:\n{task.last_error[:4000]}\n" if task.last_error else "")
         + "Return the strict JSON report from your instructions."
     )
 
 
 def _qa_prompt(task: Task, developer: RunResult) -> str:
+    commands = "\n".join(f"- `{item}`" for item in _sandbox_commands())
     return (
         f"Task ID: {task.id}\nTitle: {task.title}\n"
         f"Acceptance criteria:\n- " + "\n- ".join(task.acceptance) + "\n"
         f"Developer report:\n{developer.result[:8000]}\n"
-        "The worktree has no .env: do not run make test/check there. Run tests via "
-        "`python3 devcontrol/sandbox/run_tests.py ...`; run targeted pytest with "
-        "/home/elkinva/projects/ba/.venv/bin/python when the sandbox would skip "
-        "git-dependent tests. Return the strict JSON QA report."
+        "The worktree has no .env: do not run make test/check there. Do not run host "
+        "pytest, mypy, ruff or npm. Run checks only with one of these exact commands, "
+        f"with no extra arguments, shell chaining, redirection or wildcards:\n{commands}\n"
+        "Return the strict JSON QA report."
     )
 
 
@@ -681,6 +742,7 @@ class Orchestrator:
                 _developer_prompt(task), cwd=worktree, context=self._context(task)
             )
             _validate_self_check(developer)
+            files = _changed_files(worktree)
             self._account(task.id, developer, tracker)
             self._guard(tracker)
             self.store.transition(
@@ -709,7 +771,6 @@ class Orchestrator:
             self.store.transition(
                 task.id, REVIEW, session_id=qa.session_id, model=qa.model, evidence=qa.evidence_path
             )
-            files = _developer_files(developer, worktree)
             candidate = _commit_candidate(task, files, worktree)
             self.store.set_candidate(task.id, candidate)
             review = self.runner.reviewer(
@@ -793,6 +854,7 @@ class Orchestrator:
         try:
             developer = self.runner.developer(_developer_prompt(task), context=self._context(task))
             _validate_self_check(developer)
+            files = _changed_files(ROOT) if self.commit else _developer_files(developer)
             self._account(task.id, developer, tracker)
             self._guard(tracker)
             self.store.transition(
@@ -816,7 +878,6 @@ class Orchestrator:
             self.store.transition(
                 task.id, REVIEW, session_id=qa.session_id, model=qa.model, evidence=qa.evidence_path
             )
-            files = _developer_files(developer)
             base = _head() if self.commit else "no-git-test"
             candidate: str | None = None
             if self.commit:

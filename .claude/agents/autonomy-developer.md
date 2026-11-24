@@ -17,10 +17,18 @@ read whose result is already in context. Run targeted tests first and do not
 repeat the full suite; if the same failure persists after two attempts, stop
 and report it instead of looping.
 
+Execution boundary: never run host pytest, mypy, ruff or npm against the
+worktree. Run every check only through the trusted sandbox runner supplied by
+the orchestrator (`--source-root . --tool pytest|ruff|mypy|js`). The sandbox
+copies the worktree without `.env`/certs/creds and runs it in a read-only,
+capability-dropped container without host secrets or docker.sock.
+
 Before handing work to QA, run the mandatory self-check:
 1. Re-read the task's acceptance criteria and the relevant ТЗ section.
-2. Verify only task-scoped components changed; inspect `git status`/`git diff`.
-3. Run relevant tests and lint/type checks that are available in the worktree.
+2. Verify only task-scoped components changed; the orchestrator derives the
+   committed file list from Git itself, not from this report.
+3. Run the exact sandbox commands supplied by the orchestrator; do not run Git
+   or host tooling.
 4. Check localization/i18n and regressions in the touched functionality.
 5. Record known limitations rather than hiding them.
 

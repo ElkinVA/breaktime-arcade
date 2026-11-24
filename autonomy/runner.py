@@ -135,6 +135,10 @@ class ClaudeRunner:
         started_at = datetime.now(UTC).isoformat()
         invocation_id = str(uuid.uuid4())
         child_env = build_child_env()
+        if cwd is not None:
+            # Bind the sandbox runner to this task's worktree; an agent cannot
+            # point --source-root at another task or the main checkout.
+            child_env["BA_TASK_WORKTREE"] = str(Path(cwd).resolve())
         owner_pid = os.getpid()
         finished = False
 
@@ -447,6 +451,29 @@ class ClaudeRunner:
             context=context,
         )
 
+    def _sandbox_command(self) -> str:
+        """Absolute path to the trusted sandbox runner and interpreter."""
+        return f"{self.root / '.venv/bin/python'} {self.root / 'devcontrol/sandbox/run_tests.py'}"
+
+    def _sandbox_tools(self) -> list[str]:
+        """Exact, non-wildcard sandbox invocations available to a role.
+
+        ``Bash(prefix:*)`` matches any command that merely starts with the
+        prefix, so shell chaining after it would escape the sandbox. The
+        allowlist therefore contains only four complete commands.
+        """
+        base = self._sandbox_command()
+        return [
+            f"Bash({base} --source-root . --tool pytest --timeout 1800)",
+            (
+                f"Bash({base} --source-root . --tool pytest "
+                "tests/integration/test_migrations_check.py --timeout 1800)"
+            ),
+            f"Bash({base} --source-root . --tool ruff --timeout 1800)",
+            f"Bash({base} --source-root . --tool mypy --timeout 1800)",
+            f"Bash({base} --source-root . --tool js --timeout 1800)",
+        ]
+
     def developer(
         self,
         prompt: str,
@@ -465,13 +492,7 @@ class ClaudeRunner:
                 "Glob",
                 "Edit",
                 "Write",
-                "Bash(python3 devcontrol/sandbox/run_tests.py:*)",
-                "Bash(/home/elkinva/projects/ba/.venv/bin/python -m ruff:*)",
-                "Bash(/home/elkinva/projects/ba/.venv/bin/python -m mypy:*)",
-                "Bash(/home/elkinva/projects/ba/.venv/bin/python -m pytest:*)",
-                "Bash(npm run test:js:*)",
-                "Bash(git status:*)",
-                "Bash(git diff:*)",
+                *self._sandbox_tools(),
             ],
             permission_mode="acceptEdits",
             cwd=self._worktree_cwd("developer", cwd),
@@ -494,12 +515,7 @@ class ClaudeRunner:
                 "Read",
                 "Grep",
                 "Glob",
-                "Bash(python3 devcontrol/sandbox/run_tests.py:*)",
-                "Bash(/home/elkinva/projects/ba/.venv/bin/python -m ruff:*)",
-                "Bash(/home/elkinva/projects/ba/.venv/bin/python -m mypy:*)",
-                "Bash(/home/elkinva/projects/ba/.venv/bin/python -m pytest:*)",
-                "Bash(npm run test:js:*)",
-                "Bash(git diff:*)",
+                *self._sandbox_tools(),
             ],
             permission_mode="acceptEdits",
             cwd=self._worktree_cwd("qa", cwd),
@@ -518,7 +534,7 @@ class ClaudeRunner:
             model=REVIEWER_MODEL,
             agent="autonomy-reviewer",
             prompt=prompt,
-            allowed_tools=["Read", "Grep", "Glob", "Bash(git diff:*)"],
+            allowed_tools=["Read", "Grep", "Glob"],
             permission_mode="plan",
             cwd=self._worktree_cwd("reviewer", cwd),
             context=context,

@@ -231,6 +231,7 @@ def test_runner_passes_filtered_env_and_validated_cwd(
     env = captured["env"]
     assert isinstance(env, dict)
     assert env["ANTHROPIC_AUTH_TOKEN"] == "model-token"
+    assert env["BA_TASK_WORKTREE"] == str(worktree.resolve())
     for key in SECRET_ENV:
         assert key not in env, f"{key} leaked into the child environment"
 
@@ -239,10 +240,17 @@ def test_runner_passes_filtered_env_and_validated_cwd(
     assert argv[0] == "claude"
     assert argv[argv.index("--agent") + 1] == "autonomy-developer"
     assert argv[argv.index("--permission-mode") + 1] == "acceptEdits"
+    tools = argv[argv.index("--allowedTools") + 1]
+    base = f"{project / '.venv/bin/python'} {project / 'devcontrol/sandbox/run_tests.py'}"
+    for tool in ("pytest", "ruff", "mypy", "js"):
+        assert f"Bash({base} --source-root . --tool {tool} --timeout 1800)" in tools
     assert (
-        "Bash(python3 devcontrol/sandbox/run_tests.py:*)" in argv[argv.index("--allowedTools") + 1]
-    )
-    assert "Bash(npm run test:js:*)" in argv[argv.index("--allowedTools") + 1]
+        f"Bash({base} --source-root . --tool pytest "
+        "tests/integration/test_migrations_check.py --timeout 1800)"
+    ) in tools
+    assert ":*" not in tools
+    for forbidden in ("-m pytest", "-m mypy", "-m ruff", "npm run test:js"):
+        assert forbidden not in tools
 
 
 @pytest.mark.parametrize("role", ["architect", "developer", "qa", "reviewer"])
@@ -295,8 +303,18 @@ def test_permission_modes_and_tools_are_preserved(
 
     qa = calls["autonomy-qa"]
     assert qa[qa.index("--permission-mode") + 1] == "acceptEdits"
-    assert "Bash(npm run test:js:*)" in qa[qa.index("--allowedTools") + 1]
+    qa_tools = qa[qa.index("--allowedTools") + 1]
+    base = f"{project / '.venv/bin/python'} {project / 'devcontrol/sandbox/run_tests.py'}"
+    for tool in ("pytest", "ruff", "mypy", "js"):
+        assert f"Bash({base} --source-root . --tool {tool} --timeout 1800)" in qa_tools
+    assert (
+        f"Bash({base} --source-root . --tool pytest "
+        "tests/integration/test_migrations_check.py --timeout 1800)"
+    ) in qa_tools
+    assert ":*" not in qa_tools
+    for forbidden in ("-m pytest", "-m mypy", "-m ruff", "npm run test:js"):
+        assert forbidden not in qa_tools
 
     reviewer = calls["autonomy-reviewer"]
     assert reviewer[reviewer.index("--permission-mode") + 1] == "plan"
-    assert reviewer[reviewer.index("--allowedTools") + 1] == ("Read,Grep,Glob,Bash(git diff:*)")
+    assert reviewer[reviewer.index("--allowedTools") + 1] == "Read,Grep,Glob"

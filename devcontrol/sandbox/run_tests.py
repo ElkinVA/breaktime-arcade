@@ -21,10 +21,15 @@ import uuid
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+WORKTREE_ROOT = PROJECT_ROOT / ".autonomy" / "worktrees"
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from devcontrol.config import default_runtime_dir  # noqa: E402
+
+NODE_IMAGE = (
+    "node:22-bookworm-slim@sha256:66cb8ef75184df13dc0dcf866330488996b485d404db60555756865300ced4a5"
+)
 
 ALLOWED_ROOTS = (
     ".claude/agents",
@@ -118,7 +123,46 @@ def cleanup_stale_projects() -> None:
         )
 
 
-def validate_path(value: str | None) -> str | None:
+def validate_source_root(value: str | None) -> Path:
+    """Return the trusted project root or a validated isolated worktree.
+
+    The agent-facing trusted runner is invoked from the main checkout with
+    ``--source-root .`` (its cwd is a task worktree). Only real worktrees
+    below ``.autonomy/worktrees`` are accepted; arbitrary host paths, the main
+    checkout and symlink escapes are rejected before any file is copied.
+    """
+    task_root = os.environ.get("BA_TASK_WORKTREE")
+    if not value and task_root:
+        value = task_root
+    if not value:
+        return PROJECT_ROOT
+    candidate = Path(value)
+    if not candidate.is_absolute():
+        candidate = Path.cwd() / candidate
+    root = candidate.resolve()
+    if root == PROJECT_ROOT.resolve() or not root.is_relative_to(WORKTREE_ROOT.resolve()):
+        raise SandboxError("source root must be an isolated .autonomy worktree")
+    if task_root and root != Path(task_root).resolve():
+        raise SandboxError("source root does not match the assigned task worktree")
+    if root.is_symlink() or not root.is_dir():
+        raise SandboxError("source root must be a real directory")
+    git_marker = root / ".git"
+    if git_marker.is_symlink() or not git_marker.is_file():
+        raise SandboxError("source root is not a linked git worktree")
+    try:
+        marker = git_marker.read_text(encoding="utf-8").strip()
+    except OSError:
+        raise SandboxError("source root git metadata is unreadable") from None
+    if not marker.startswith("gitdir:"):
+        raise SandboxError("source root is not a linked git worktree")
+    git_dir = Path(marker.split(":", 1)[1].strip()).resolve()
+    expected_root = (PROJECT_ROOT / ".git" / "worktrees").resolve()
+    if not git_dir.is_relative_to(expected_root):
+        raise SandboxError("source root git metadata points outside the main repository")
+    return root
+
+
+def validate_path(value: str | None, source_root: Path = PROJECT_ROOT) -> str | None:
     if not value:
         return None
     node = value.split("::", 1)[0]
@@ -127,17 +171,17 @@ def validate_path(value: str | None) -> str | None:
         raise SandboxError("path must be relative and must not contain '..'")
     if not path.parts or path.parts[0] not in {"tests", "apps"}:
         raise SandboxError("test path must start with tests/ or apps/")
-    if not (PROJECT_ROOT / path).exists():
+    if not (source_root / path).exists():
         raise SandboxError(f"test path does not exist: {path}")
     if value.count("::") > 1:
         raise SandboxError("only one ::node selector is allowed")
     return value
 
 
-def project_files() -> list[Path]:
+def project_files(source_root: Path = PROJECT_ROOT) -> list[Path]:
     proc = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-        cwd=PROJECT_ROOT,
+        cwd=source_root,
         capture_output=True,
         text=True,
         check=True,
@@ -147,25 +191,27 @@ def project_files() -> list[Path]:
         if not name:
             continue
         rel = Path(name)
+        if rel.is_absolute() or ".." in rel.parts:
+            continue
         if rel.name == ".env" or (rel.name.startswith(".env.") and rel.name not in SAFE_ENV_FILES):
             continue
         if any(part in FORBIDDEN_PARTS for part in rel.parts):
             continue
         if not any(name == root or name.startswith(root + "/") for root in ALLOWED_ROOTS):
             continue
-        source = PROJECT_ROOT / rel
+        source = source_root / rel
         if not source.is_file() or source.is_symlink():
             continue
         files.append(rel)
     return files
 
 
-def copy_project(code_dir: Path) -> int:
+def copy_project(code_dir: Path, source_root: Path = PROJECT_ROOT) -> int:
     count = 0
-    for rel in project_files():
+    for rel in project_files(source_root):
         destination = code_dir / rel
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(PROJECT_ROOT / rel, destination)
+        shutil.copy2(source_root / rel, destination)
         count += 1
     for name in ("staticfiles", "media", "var"):
         (code_dir / name).mkdir(mode=0o755, exist_ok=True)
@@ -289,13 +335,55 @@ networks:
 """
 
 
+def js_compose_document(project: str, code_dir: Path) -> str:
+    """Node-only test sandbox: no Python services, secrets or external network."""
+    return f"""name: {project}
+services:
+  test:
+    image: {NODE_IMAGE}
+    user: "1000:1000"
+    working_dir: /app
+    environment:
+      HOME: /tmp
+      NODE_ENV: test
+    command: ["/bin/sh", "-c", "node --test tests/js/*.test.mjs"]
+    volumes:
+      - {json.dumps(str(code_dir) + ":/app:ro")}
+    networks: [testnet]
+    read_only: true
+    tmpfs:
+      - "/tmp:rw,size=256m,mode=1777"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128
+    mem_limit: 1g
+    cpus: "1.0"
+    stop_grace_period: 10s
+
+networks:
+  testnet:
+    internal: true
+"""
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run BA tests in a secret-free Docker sandbox")
     parser.add_argument("path", nargs="?", help="tests/... or apps/... path (optional)")
+    parser.add_argument(
+        "--source-root",
+        help="trusted isolated worktree below .autonomy/worktrees (agent use)",
+    )
+    parser.add_argument(
+        "--tool",
+        choices=("pytest", "ruff", "mypy", "js"),
+        default="pytest",
+        help="check to run inside the sandbox",
+    )
     parser.add_argument("--timeout", type=int, default=900)
     args = parser.parse_args(argv)
     try:
-        test_path = validate_path(args.path)
+        source_root = validate_source_root(args.source_root)
+        test_path = validate_path(args.path, source_root)
     except SandboxError as exc:
         print(f"sandbox: {exc}", file=sys.stderr)
         return 2
@@ -304,7 +392,14 @@ def main(argv: list[str] | None = None) -> int:
     code_dir = sandbox_dir / "code"
     compose_path = sandbox_dir / "compose.yml"
     project = f"ba-sandbox-{uuid.uuid4().hex[:12]}"
-    command = ["pytest", "-q", test_path] if test_path else ["pytest", "-q"]
+    if args.tool == "pytest":
+        command = ["pytest", "-q", test_path] if test_path else ["pytest", "-q"]
+    elif args.tool == "ruff":
+        command = ["/bin/sh", "-c", "ruff check . && ruff format --check ."]
+    elif args.tool == "mypy":
+        command = ["mypy"]
+    else:
+        command = ["/bin/sh", "-c", "node --test tests/js/*.test.mjs"]
     lock_fd: int | None = None
     try:
         lock_fd = acquire_lock()
@@ -314,11 +409,14 @@ def main(argv: list[str] | None = None) -> int:
         sandbox_root.chmod(0o700)
         sandbox_dir.mkdir(mode=0o700)
         code_dir.mkdir(mode=0o700)
-        copied = copy_project(code_dir)
-        compose_path.write_text(compose_document(project, code_dir, command), encoding="utf-8")
+        copied = copy_project(code_dir, source_root)
+        if args.tool == "js":
+            compose_path.write_text(js_compose_document(project, code_dir), encoding="utf-8")
+        else:
+            compose_path.write_text(compose_document(project, code_dir, command), encoding="utf-8")
         print(
-            f"sandbox: {project}, {copied} files, no .env/certs/creds, "
-            f"internal network, test-only DB/Redis",
+            f"sandbox: {project}, {copied} files, source={source_root}, tool={args.tool}, "
+            f"no .env/certs/creds, internal network, test-only services",
             file=sys.stderr,
         )
         proc = subprocess.run(

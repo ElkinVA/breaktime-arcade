@@ -254,7 +254,27 @@ def test_safe_file_rejects_protected_and_escaping_paths(tmp_path: Path, monkeypa
     safe.parent.mkdir(parents=True)
     safe.write_text("x")
     assert _safe_file("tests/unit/test_x.py") == safe
-    for name in (".env", ".claude/settings.json", "../outside.py", "/etc/hosts"):
+    for name in (
+        ".env",
+        ".claude/settings.json",
+        ".claude/agents/autonomy-developer.md",
+        "autonomy/orchestrator.py",
+        "devcontrol/sandbox/run_tests.py",
+        "scripts/generate_host_schemas.py",
+        ".github/workflows/ci.yml",
+        "docs/decisions/ADR-APPF-001.md",
+        ".claude/skills/ba-create-report/create_report.py",
+        ".pre-commit-config.yaml",
+        ".dockerignore",
+        "Dockerfile",
+        "Makefile",
+        "package.json",
+        "sdk/1.1.0/ba-sdk.js",
+        "schemas/messages/ba_submit.json",
+        "pyproject.toml",
+        "../outside.py",
+        "/etc/hosts",
+    ):
         with pytest.raises(RuntimeError):
             _safe_file(name)
 
