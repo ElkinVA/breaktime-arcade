@@ -522,6 +522,219 @@ def test_publish_and_rollback_switch_current_version(pipeline_env: Path) -> None
     assert game.published_at == published_at
 
 
+def _version_for(
+    game: Game,
+    semver: str,
+    *,
+    blockers: int = 0,
+    autotest: bool = True,
+    direction: str = "higher_is_better",
+    schema_version: object = 1,
+) -> GameVersion:
+    return GameVersion.objects.create(
+        game=game,
+        semver=semver,
+        package_hash="9" * 64,
+        runtime_hash="8" * 64,
+        sdk_version="1.1.0",
+        size_bytes=1024,
+        manifest={
+            "id": game.technical_id,
+            "score": {"direction": direction, "schemaVersion": schema_version},
+        },
+        supported_languages=["en"],
+        validation_report={"ok": blockers == 0, "summary": {"blocker": blockers}},
+        e2e_report={"passed": autotest},
+    )
+
+
+@pytest.mark.django_db
+def test_rollback_rejects_never_published_version(pipeline_env: Path) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    assert publish_version(game, first.version).ok
+    candidate = _version_for(game, "2.0.0")
+
+    result = rollback_version(game, candidate)
+
+    assert not result.ok
+    assert result.reason == "V_NOT_PUBLISHED"
+    game.refresh_from_db()
+    assert game.current_version_id == first.version.id
+
+
+@pytest.mark.django_db
+def test_rollback_rejects_validation_blockers(pipeline_env: Path) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    assert publish_version(game, first.version).ok
+    blocked = _version_for(game, "2.0.0", blockers=1)
+    assert publish_version(game, blocked, force=True).ok
+    assert publish_version(game, _version_for(game, "3.0.0")).ok
+
+    result = rollback_version(game, blocked)
+
+    assert not result.ok
+    assert result.reason == "V_VALIDATION_BLOCKED"
+
+
+@pytest.mark.django_db
+def test_rollback_rejects_failed_autotest(pipeline_env: Path) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    assert publish_version(game, first.version).ok
+    failed = _version_for(game, "2.0.0", autotest=False)
+    assert publish_version(game, failed, force=True).ok
+    assert publish_version(game, _version_for(game, "3.0.0")).ok
+
+    result = rollback_version(game, failed)
+
+    assert not result.ok
+    assert result.reason == "V_AUTOTEST_FAILED"
+
+
+@pytest.mark.django_db
+def test_rollback_rejects_changed_score_rules(pipeline_env: Path) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    assert publish_version(game, first.version).ok
+    lower = _version_for(game, "2.0.0", direction="lower_is_better")
+    assert publish_version(game, lower).ok
+    assert publish_version(game, _version_for(game, "3.0.0")).ok
+
+    result = rollback_version(game, lower)
+
+    assert not result.ok
+    assert result.reason == "V_SCORE_RULES_CHANGED"
+
+
+@pytest.mark.django_db
+def test_rollback_preserves_hidden_status(pipeline_env: Path) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    assert publish_version(game, first.version).ok
+    second = _version_for(game, "2.0.0")
+    assert publish_version(game, second).ok
+    game.status = Game.STATUS_HIDDEN
+    game.save(update_fields=["status"])
+
+    result = rollback_version(game, first.version)
+
+    assert result.ok
+    game.refresh_from_db()
+    assert game.current_version_id == first.version.id
+    assert game.status == Game.STATUS_HIDDEN
+
+
+@pytest.mark.django_db
+def test_rollback_rejects_draft_game(pipeline_env: Path) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    assert publish_version(game, first.version).ok
+    game.status = Game.STATUS_DRAFT
+    game.save(update_fields=["status"])
+
+    result = rollback_version(game, first.version)
+
+    assert not result.ok
+    assert result.reason == "V_GAME_NOT_PUBLISHED"
+
+
+@pytest.mark.django_db
+def test_rollback_compares_rules_with_published_version_not_game_fields(
+    pipeline_env: Path,
+) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    assert publish_version(game, first.version).ok
+    lower = _version_for(game, "2.0.0", direction="lower_is_better")
+    assert publish_version(game, lower).ok
+    # An unpublished import may rewrite Game.score_* before publish; rollback
+    # must still compare against the actual current version's rules.
+    game.score_direction = "higher_is_better"
+    game.save(update_fields=["score_direction"])
+
+    result = rollback_version(game, first.version)
+
+    assert not result.ok
+    assert result.reason == "V_SCORE_RULES_CHANGED"
+
+
+@pytest.mark.django_db
+def test_rollback_preserves_archived_status(pipeline_env: Path) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    assert publish_version(game, first.version).ok
+    assert publish_version(game, _version_for(game, "2.0.0")).ok
+    game.status = Game.STATUS_ARCHIVED
+    game.save(update_fields=["status"])
+
+    result = rollback_version(game, first.version)
+
+    assert result.ok
+    game.refresh_from_db()
+    assert game.status == Game.STATUS_ARCHIVED
+
+
+@pytest.mark.django_db
+def test_rollback_rejects_review_status(pipeline_env: Path) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    assert publish_version(game, first.version).ok
+    game.status = Game.STATUS_REVIEW
+    game.save(update_fields=["status"])
+
+    result = rollback_version(game, first.version)
+
+    assert not result.ok
+    assert result.reason == "V_GAME_NOT_PUBLISHED"
+
+
+@pytest.mark.django_db
+def test_rollback_rejects_version_from_another_game(pipeline_env: Path) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    foreign_game = Game.objects.create(
+        technical_id="foreign_game",
+        host_label="foreign-game.games.test",
+        slug="foreign-game",
+        primary_genre=game.primary_genre,
+    )
+    foreign = _version_for(foreign_game, "1.0.0")
+
+    result = rollback_version(game, foreign)
+
+    assert not result.ok
+    assert result.reason == "V_VERSION_NOT_IN_GAME"
+
+
+@pytest.mark.django_db
+def test_rollback_accepts_string_schema_version_like_importer(pipeline_env: Path) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    assert publish_version(game, first.version).ok
+    # The importer coerces a non-numeric schemaVersion to 1; int("2") would be 2,
+    # so this string case discriminates the shared coercion from plain int().
+    string_schema = _version_for(game, "2.0.0", schema_version="2")
+    assert publish_version(game, string_schema).ok
+    assert publish_version(game, _version_for(game, "3.0.0")).ok
+
+    result = rollback_version(game, string_schema)
+
+    assert result.ok
+
+
 @pytest.mark.django_db
 def test_publish_blocks_without_green_autotest(pipeline_env: Path) -> None:
     first = _run(pipeline_env, _package())

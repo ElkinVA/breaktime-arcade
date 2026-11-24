@@ -528,6 +528,9 @@ def test_publish_and_rollback_require_step_up_on_game_card() -> None:
     )
     game.current_version = new
     game.save(update_fields=["current_version"])
+    from apps.pipeline.services.publishing import publish_version
+
+    assert publish_version(game, new).ok
     secret = pyotp.random_base32()
     _staff, client = _staff_client(secret)
 

@@ -321,8 +321,9 @@ def test_publish_and_rollback_are_audited_and_log_is_immutable() -> None:
     owner = _staff("publish_owner", StaffRole.OWNER)
     game = _game("audited_game", versions=2)
     old_version, new_version = list(game.versions.order_by("semver"))
-    game.current_version = old_version
-    game.save(update_fields=["current_version"])
+    from apps.pipeline.services.publishing import publish_version
+
+    assert publish_version(game, old_version, actor=owner).ok
     client = _client(owner)
     _elevate(client)
 
@@ -333,7 +334,10 @@ def test_publish_and_rollback_are_audited_and_log_is_immutable() -> None:
     assert response.status_code == 302
     game.refresh_from_db()
     assert game.current_version_id == new_version.id
-    published = AdminAuditLog.objects.get(action=AdminAuditLog.ACTION_GAME_PUBLISHED)
+    published = AdminAuditLog.objects.filter(
+        action=AdminAuditLog.ACTION_GAME_PUBLISHED,
+        after_data__current_version_id=str(new_version.id),
+    ).get()
     assert published.actor_id == owner.id
     assert published.object_type == "game"
     assert published.object_id == game.id

@@ -160,6 +160,11 @@ _ACTION_ERRORS = {
     "V_VERSION_NOT_IN_GAME": "Версия не принадлежит этой игре.",
     "V_VALIDATION_BLOCKED": "Публикация заблокирована отчётом валидации.",
     "V_AUTOTEST_FAILED": "Автотест версии не пройден.",
+    "V_NOT_PUBLISHED": "Откат возможен только на ранее опубликованную версию.",
+    "V_GAME_NOT_PUBLISHED": "Откат недоступен для игры в текущем статусе.",
+    "V_SCORE_RULES_CHANGED": (
+        "Правила счёта отличаются; требуется решение владельца об эпохе рекордов."
+    ),
     "VERSION_NOT_FOUND": "Версия не найдена.",
 }
 
@@ -381,26 +386,12 @@ def game_publish(request: HttpRequest, game_id: UUID) -> HttpResponseRedirect:
             return _step_up_redirect(reverse("crm:game_detail", args=[game.id]))
         return redirect("crm:game_detail", game_id=game.id)
 
-    before = {
-        "status": game.status,
-        "current_version_id": str(game.current_version_id) if game.current_version_id else None,
-    }
-    with transaction.atomic():
-        result = publish_version(game, version)
-        if result.ok:
-            record_audit(
-                actor=_staff_user(request),
-                action=AdminAuditLog.ACTION_GAME_PUBLISHED,
-                object_type="game",
-                object_id=game.id,
-                before=before,
-                after={
-                    "status": game.status,
-                    "current_version_id": str(version.id),
-                    "semver": version.semver,
-                },
-                ip=request.META.get("REMOTE_ADDR"),
-            )
+    result = publish_version(
+        game,
+        version,
+        actor=_staff_user(request),
+        ip=request.META.get("REMOTE_ADDR"),
+    )
     if result.ok:
         messages.success(request, f"Версия {version.semver} опубликована.")
     else:
@@ -428,26 +419,12 @@ def game_rollback(request: HttpRequest, game_id: UUID) -> HttpResponseRedirect:
             return _step_up_redirect(reverse("crm:game_detail", args=[game.id]))
         return redirect("crm:game_detail", game_id=game.id)
 
-    before = {
-        "status": game.status,
-        "current_version_id": str(game.current_version_id) if game.current_version_id else None,
-    }
-    with transaction.atomic():
-        result = rollback_version(game, version)
-        if result.ok:
-            record_audit(
-                actor=_staff_user(request),
-                action=AdminAuditLog.ACTION_GAME_ROLLED_BACK,
-                object_type="game",
-                object_id=game.id,
-                before=before,
-                after={
-                    "status": game.status,
-                    "current_version_id": str(version.id),
-                    "semver": version.semver,
-                },
-                ip=request.META.get("REMOTE_ADDR"),
-            )
+    result = rollback_version(
+        game,
+        version,
+        actor=_staff_user(request),
+        ip=request.META.get("REMOTE_ADDR"),
+    )
     if result.ok:
         messages.success(request, f"Выполнен откат к версии {version.semver}.")
     else:
@@ -712,30 +689,16 @@ def wizard_publish(request: HttpRequest, draft_id: UUID) -> TemplateResponse | H
                 error = _ACTION_ERRORS["VERSION_NOT_FOUND"]
             else:
                 game = draft.game
-                before = {
-                    "status": game.status,
-                    "current_version_id": (
-                        str(game.current_version_id) if game.current_version_id else None
-                    ),
-                }
                 with transaction.atomic():
-                    result = publish_version(game, version)
+                    result = publish_version(
+                        game,
+                        version,
+                        actor=_staff_user(request),
+                        ip=request.META.get("REMOTE_ADDR"),
+                    )
                     if result.ok:
                         draft.status = GameImportDraft.STATUS_PUBLISHED
                         draft.save(update_fields=["status", "updated_at"])
-                        record_audit(
-                            actor=_staff_user(request),
-                            action=AdminAuditLog.ACTION_GAME_PUBLISHED,
-                            object_type="game",
-                            object_id=game.id,
-                            before=before,
-                            after={
-                                "status": game.status,
-                                "current_version_id": str(version.id),
-                                "semver": version.semver,
-                            },
-                            ip=request.META.get("REMOTE_ADDR"),
-                        )
                 if result.ok:
                     messages.success(request, f"Версия {version.semver} опубликована.")
                     return redirect("crm:game_detail", game_id=game.id)

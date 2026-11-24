@@ -234,7 +234,9 @@ def test_publish_and_rollback_are_post_only_and_switch_current_version() -> None
     game = _game(technical_id="action_game", status=Game.STATUS_PUBLISHED)
     old = _version(game, "1.0.0", autotest_passed=True)
     new = _version(game, "2.0.0", autotest_passed=True)
-    _set_current(game, new)
+    from apps.pipeline.services.publishing import publish_version
+
+    assert publish_version(game, new).ok
     client = _staff_client()
     _elevate_step_up(client)
 
