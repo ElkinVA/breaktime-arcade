@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-RATINGS-BLOCK-001 — blocked votes excluded immediately
+
+| Поле | Значение |
+|---|---|
+| Тип | P1 ratings/account integrity (TS §2.9 п.4); security-auditor review after delta |
+| Результат | recalc всех игр пользователя при block/unblock/staff transition/delete в детерминированном game-id порядке; vote() берёт User-lock и повторно проверяет is_active; голоса остаются в БД и возвращаются при unblock |
+| Проверки | 5 test_ratings_block + 30 related; полный suite **1183 tests: 1170 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean (382); security-auditor **accept** (delta: ordering-тест на non-monotonic UUID) |
+| Статус | **COMPLETED / SECURITY-AUDITOR ACCEPT**; live staging not tested |
+| Остаток | thread race test blocked by TEST-DB-SEED; nightly recalc/backfill — ARCADE-RATINGS-NIGHTLY-001; O(votes) block cost; session is_active residuals |
+| Источник | commit `766029e`; модели: implement — `deepseek-flash[1m]`, review — `security-auditor` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-CRM-BLOCK-IDEMPOTENT-001 — explicit block/unblock
 
 | Поле | Значение |

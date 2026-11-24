@@ -1488,6 +1488,36 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-RATINGS-BLOCK-001 — оценки заблокированных исключаются сразу
+
+- **Первопричина:** агрегаты оценок фильтруют `user__is_active=True` при
+  пересчёте, но block/unblock не пересчитывали затронутые игры; голос
+  заблокированного оставался в денормализованном агрегате до следующего
+  голоса/ночной задачи. `vote()` проверял `is_active` только вне транзакции.
+- **Результат:** `recalculate_user_ratings(user)` пересчитывает все игры
+  пользователя в детерминированном порядке `game_id` (advisory locks
+  берутся по возрастанию, multi-game deadlock исключён); helper вызывается
+  при block/unblock, staff activation/deactivation и удалении аккаунта.
+  `vote()` внутри транзакции берёт User row lock и повторно проверяет
+  `is_active` до advisory lock, поэтому block, закоммиченный после быстрой
+  проверки, всё равно отклоняет голос. Голоса остаются в БД и возвращаются
+  при unblock.
+- **Проверки:** 5 `test_ratings_block` (немедленное исключение/восстановление,
+  детерминированный порядок на non-monotonic UUID, stale-active отказ,
+  unblock не-голосовавшего, recalculate-фильтр); 30 related CRM/ratings;
+  полный suite **1183 tests: 1170 passed, 13 skipped, exit 0** на свежей БД;
+  ruff/format/mypy clean (382). Security-auditor: **accept** после delta;
+  ordering-тест усилен non-monotonic UUIDv4.
+- **Остатки:** thread-based block-vs-vote race test отложен из-за
+  `ARCADE-TEST-DB-SEED-001`; ночная задача/backfill для уже существующих
+  заблокированных и дрейфа — `ARCADE-RATINGS-NIGHTLY-001`; тяжёлый
+  multi-game block делает O(votes) запросов под lock (редкая staff-
+  операция); session-domain `activate_session`/`heartbeat` is_active
+  остаётся отдельным residual; live staging NOT TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `security-auditor`
+  (`deepseek-v4-pro`, text-only).
+- **Commit:** `766029e`.
+
 ### ARCADE-CRM-BLOCK-IDEMPOTENT-001 — явные block/unblock
 
 - **Первопричина:** маршруты `/block/` и `/unblock/` вызывали один toggle;

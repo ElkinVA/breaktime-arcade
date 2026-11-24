@@ -67,6 +67,10 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- Ratings/account integrity: blocked users' votes leave all rating
+  aggregates immediately and return on unblock; vote() rechecks is_active
+  under the User row lock; multi-game recalc is ordered by game id
+  (`ARCADE-RATINGS-BLOCK-001`, `766029e`). Nightly recalc/backfill remains.
 - CRM customer accounts: explicit idempotent block/unblock with audit and
   session revocation replaces the toggle; repeated actions are no-ops
   (`ARCADE-CRM-BLOCK-IDEMPOTENT-001`, `88c2a64`). Immediate rating-aggregate

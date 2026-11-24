@@ -528,6 +528,29 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.43. Blocked votes excluded immediately — 2026-11-25
+
+`ARCADE-RATINGS-BLOCK-001` (`766029e`) — **COMPLETED / SECURITY-AUDITOR
+ACCEPT**: `recalculate_user_ratings(user)` пересчитывает все игры
+пользователя в детерминированном порядке `game_id`, поэтому multi-game
+advisory locks берутся по возрастанию и block/unblock, staff
+activation/deactivation и удаление аккаунта не могут образовать
+deadlock-цикл. Helper вызывается на каждом реальном переходе `is_active`;
+`vote()` внутри транзакции берёт User row lock и повторно проверяет
+`is_active` до advisory lock, поэтому block, закоммиченный после быстрой
+проверки, отклоняет голос. Оценки остаются в БД и возвращаются в агрегат
+при unblock (TS §2.9 п.4). 5 `test_ratings_block` (исключение/восстановление,
+детерминированный порядок на non-monotonic UUIDv4, stale-active отказ,
+unblock не-голосовавшего, recalculate-фильтр) + 30 related CRM/ratings;
+полный suite **1183 tests: 1170 passed, 13 skipped, exit 0** на свежей БД;
+ruff/format/mypy clean (382). Модели: реализация — `deepseek-flash[1m]`,
+review — `security-auditor` (`deepseek-v4-pro`, text-only), **accept** после
+delta. Остатки: thread-based block-vs-vote race test отложен из-за
+`ARCADE-TEST-DB-SEED-001`; ночной пересчёт и deploy-backfill для уже
+заблокированных — `ARCADE-RATINGS-NIGHTLY-001`; block тяжёлого
+голосовавшего — O(votes) запросов под lock; `activate_session`/`heartbeat`
+is_active — session residual; live staging NOT TESTED.
+
 ## 0.42. Explicit CRM block/unblock — 2026-11-24
 
 `ARCADE-CRM-BLOCK-IDEMPOTENT-001` (`88c2a64`) — **COMPLETED /
