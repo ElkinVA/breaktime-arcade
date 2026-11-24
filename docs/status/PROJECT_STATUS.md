@@ -457,6 +457,33 @@ passed, 8 skipped, exit 0**. Остаток: browser/staging E2E NOT TESTED.
 копируются, node:22-slim без python3). Drift уже ловится parity-тестом и
 `check:schemas`; изменение Dockerfile вне согласованного scope.
 
+## 0.34. AI HQ P0 foundation — 2026-11-24
+
+**AI-HQ-CI-001** (`a0aa34b`) — **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT;
+GitHub CI run NOT VERIFIED** (нет `gh`/токена в среде). Добавлены
+`redis-throttle` service и `REDIS_THROTTLE_URL` в CI, ruff/mypy расширены на
+`autonomy/` и `scripts/`, исправлен `self_check` в FakeRunner, обновлён
+sandbox-copy тест, добавлен отдельный диагностический coverage step с
+`COVERAGE_FILE=.coverage.autonomy`. Локально: 38 affected tests, mypy 381
+файл clean, coverage autonomy/devcontrol 73 %.
+
+**AI-HQ-A1** (`1f46062`) — **COMPLETED / SECURITY-AUDITOR ACCEPT** после
+трёх раундов. Developer/QA больше не могут запускать host
+pytest/mypy/ruff/npm: разрешены только пять точных команд trusted
+main-checkout раннера (`--source-root . --tool pytest|pytest
+migrations_check|ruff|mypy|js --timeout 1800`), без wildcard и shell-чейнинга.
+Раннер принимает только реальный linked worktree под `.autonomy/worktrees`,
+требует `BA_TASK_WORKTREE`, проверяет `.git`-файл/gitdir, копирует без
+`.env/certs/creds`; JS запускается в node-only read-only контейнере, Python —
+в прежнем secret-free контейнере. `_changed_files` выводит коммитимый набор
+из Git, а не из отчёта разработчика; `PROTECTED_PARTS` закрывает
+autonomy/devcontrol/scripts/agents/skills/workflows/infra/sdk/schemas/
+Dockerfile/Makefile/package/pre-commit/compose; reviewer лишён Bash.
+Full suite **1130 tests: 1122 passed, 8 skipped, exit 0**. Остатки: R-040
+OS-sandbox, полный suite вместо targeted на каждый запуск, продуктовый
+`apps/` исполняется в web-контейнере с секретами (осознанная модель),
+динамическая семантика exact-match CLI не проверена.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

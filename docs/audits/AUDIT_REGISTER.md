@@ -868,6 +868,27 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## AI-HQ-CI-001 — CI quality gate
+
+| Поле | Значение |
+|---|---|
+| Тип | CI/test infrastructure; independent code review |
+| Результат | `a0aa34b`: redis-throttle service/env, ruff/mypy autonomy+scripts, self_check FakeRunner, sandbox-copy test, diagnostic coverage step |
+| Проверки | 38 affected tests; mypy 381 files; ruff clean; autonomy/devcontrol coverage 73 %; review accept + delta |
+| Статус | **IMPLEMENTED / REVIEW ACCEPT; GitHub CI run NOT VERIFIED** (нет gh/токена) |
+| Источник | commit `a0aa34b` |
+
+## AI-HQ-A1 — trusted sandbox-only agent checks
+
+| Поле | Значение |
+|---|---|
+| Тип | P0 security hardening of autonomy control plane; security-auditor review |
+| Результат | `1f46062`: five exact sandbox commands (no wildcard), task-bound source-root, `.git`/gitdir validation, node-only JS sandbox, Git-derived changed files, protected host-exec surfaces, reviewer no Bash |
+| Проверки | 69 affected tests; JS 26/26; source-root smoke 41/41; full suite 1130/1122/8 exit 0; security verdict accept after 3 rounds |
+| Статус | **COMPLETED / SECURITY-AUDITOR ACCEPT**; product/staging/prod не заявляются |
+| Остаток | R-040 OS-sandbox; full-suite-only runs; apps/ in web container; CLI exact-match semantics not dynamically verified |
+| Источник | commit `1f46062` |
+
 ## ARCADE-ARTIFACTS-STREAMING-001 — artifact streaming + ZIP hash
 
 | Поле | Значение |

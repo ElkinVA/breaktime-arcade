@@ -1488,6 +1488,38 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### AI-HQ-CI-001 — CI quality gate restoration
+
+- **Результат:** `a0aa34b`; добавлен `redis-throttle` service и
+  `REDIS_THROTTLE_URL`, ruff/mypy охватывают `autonomy/` и `scripts/`,
+  FakeRunner возвращает обязательный `self_check`, sandbox-copy тест
+  соответствует allowlist, добавлен отдельный diagnostic coverage step с
+  `COVERAGE_FILE=.coverage.autonomy`.
+- **Проверки:** 38 affected tests; mypy 381 файл; ruff clean; autonomy/
+  devcontrol coverage 73 %.
+- **Review:** code-reviewer **accept** + delta accept.
+- **Остаток:** фактический GitHub Actions run **NOT VERIFIED** — в среде нет
+  `gh`/токена; YAML разобран, локальные эквивалентные проверки зелёные.
+- **Commit:** `a0aa34b`.
+
+### AI-HQ-A1 — trusted sandbox-only agent checks
+
+- **Результат:** `1f46062`; удалены host pytest/mypy/ruff/npm из allowlist
+  developer/QA, оставлены пять точных команд trusted main-checkout
+  sandbox runner (без `:*`); `--source-root` принимает только linked
+  worktree, привязан к `BA_TASK_WORKTREE`, проверяет `.git`-файл/gitdir;
+  JS — node-only read-only sandbox; `_changed_files` берёт коммитимый набор
+  из Git; `PROTECTED_PARTS` закрывает контрольную плоскость и host-exec
+  поверхности; reviewer лишён Bash.
+- **Security review:** три раунда; blocker wildcard-чейнинга, host-exec
+  поверхности и SyntaxError устранены; финальный verdict — **accept**.
+- **Проверки:** 69 affected tests; JS 26/26; source-root smoke 41/41; full
+  suite **1130/1122/8, exit 0**.
+- **Остаток:** R-040 (OS-sandbox), полный suite вместо targeted,
+  продуктовый `apps/` в web-контейнере, динамическая exact-match семантика
+  CLI не проверена.
+- **Commit:** `1f46062`.
+
 ### ARCADE-ARTIFACTS-STREAMING-001 — artifact streaming + ZIP hash (AI HQ)
 
 - **Результат:** `8d22aee` + fixes `167ece6`; original ZIP SHA-256 проверяется

@@ -54,6 +54,10 @@ ambiguity.
   serialized with block/anonymise via a User row lock
   (`ARCADE-SESSION-RACE-001`/`LOCK-ORDER-001`/`STORAGE-LOCK-ORDER-001`);
   R-056 closed.
+- AI HQ P0: developer/QA checks run only through five exact trusted sandbox
+  commands (no wildcard), source-root is task-bound, host-exec surfaces are
+  protected, commit file set is Git-derived, reviewer has no Bash
+  (`AI-HQ-A1`, `1f46062`); OS sandbox R-040 remains.
 - App F concurrency/idempotency coverage: result/leaderboard races, rating
   limits, storage If-Match and Idempotency-Key (`ARCADE-APPF-RACE-TESTS-001`,
   `7af18bb`).
