@@ -4,12 +4,12 @@
 
 ## Актуальная сводка автономного цикла (2026-11-24)
 
-- HEAD `b953419` (throttle scopes) после `1fc0e97` (result verification),
-  `cb92702` (B1d), `35ae98f` (B1b), `f7a3779` (B1c), `7da168a` (B1a),
-  A2/A1/CI; этот docs-коммит обновляет реестры, затем `origin/main`
-  синхронизируется push.
-- Последний полный gate: **1147 tests: 1134 passed, 13 skipped, exit 0** на
-  свежей БД; JS **31/31**; ruff/format clean, mypy 381 файл clean. Первый
+- HEAD `de08292` (auth throttling) после `b953419` (throttle scopes),
+  `1fc0e97` (result verification), `cb92702` (B1d), `35ae98f` (B1b),
+  `f7a3779` (B1c), `7da168a` (B1a), A2/A1/CI; этот docs-коммит обновляет
+  реестры, затем `origin/main` синхронизируется push.
+- Последний полный gate: **1159 tests: 1146 passed, 13 skipped, exit 0** на
+  свежей БД; JS **31/31**; ruff/format clean, mypy 382 файла clean. Первый
   reuse-DB прогон ранее дал 20 translation-seed failures — дефект тестовой
   БД (частичный reseed после transaction flush), не кода; открыт
   `ARCADE-TEST-DB-SEED-001`.
@@ -19,11 +19,14 @@
 - P0 result integrity (`1fc0e97`): verification-profile results without
   `eventLog`/`seed` are quarantined and excluded from the leaderboard
   (`ARCADE-RESULT-VERIFICATION-001`); security-auditor accept, delta accept.
-- P0 throttling (`b953419`): create/activate/close разделены по scope;
-  results IP 1200/ч; complaints 5/сутки + 30/сутки IP
-  (`ARCADE-THROTTLE-001`); security-auditor accept. Остатки — authenticated
-  sessions_ip exemption, heartbeat invalid-id buckets, reports fail-open,
-  нет socket timeouts, challenge O4, DRF counters non-atomic.
+- P0 throttling (`b953419` + `de08292`): session scopes разделены; results
+  IP 1200/ч; complaints 5/сутки + 30/сутки IP; account counters в
+  noeviction cache, атомарные login/2FA/reset, fail-closed auth+complaints,
+  IPv6 /64, socket timeouts (`ARCADE-THROTTLE-001`,
+  `ARCADE-AUTH-THROTTLE-001`); security-auditor accept + delta accept.
+  Остатки — account-lockout DoS policy, IP-failure burst race,
+  touch-repair без Lua, authenticated sessions_ip exemption, heartbeat
+  invalid-id buckets, challenge O4, DRF counters non-atomic.
 - P0 A1/A2 закрыли прикладные host-exec каналы и доверие к worktree:
   exact sandbox commands, task-bound source-root, protected surfaces,
   immutable candidate до QA, чистый QA SHA, полный diff, strict verdicts,
@@ -46,10 +49,10 @@
   `propose` → отфильтровать задачи, требующие schema/contract/infra/E2E →
   `run --max-tasks 1`; после каждой задачи обновить реестры, PROJECT_STATUS
   и этот файл. Не запускать schema/contract/infra изменения без решения
-  владельца. Следующий P0-срез — `ARCADE-AUTH-THROTTLE-001` (§3.4:
-  атомарные login/2FA/reset, dedicated throttle cache, fail-closed для
-  security-critical лимитов и complaints, socket timeouts), затем
-  `ARCADE-REGISTRATION-LIMITS-001` (device 3/сутки + IP 30/сутки).
+  владельца. Следующий P0-срез — `ARCADE-REGISTRATION-LIMITS-001`
+  (§3.4: device key 3/сутки + IP 30/сутки, release слотов, тесты
+  cookie/ротации), затем Stage C §4.1–§4.3 (импорт/публикация/rollback/
+  autotest) с анализом schema-free части.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**

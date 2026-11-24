@@ -66,8 +66,11 @@ ambiguity.
   `45a69f1`). OS sandbox R-040 and model trust remain.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
-  subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`). Account-login
-  atomicity/fail-closed and registration device limits remain.
+  subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- Account throttling: login/2FA/reset/registration counters use the
+  dedicated noeviction throttle cache; account attempts are atomic and
+  security-critical limits fail closed (`ARCADE-AUTH-THROTTLE-001`,
+  `de08292`). Registration device key (3/day device + 30/day IP) remains.
 - Result integrity: verification-profile results missing `eventLog` or a
   non-empty `seed` are quarantined and never enter the leaderboard
   (`ARCADE-RESULT-VERIFICATION-001`, `1fc0e97`); empty-event heuristic

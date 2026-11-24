@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-AUTH-THROTTLE-001 — atomic account limits, fail-closed
+
+| Поле | Значение |
+|---|---|
+| Тип | P0 auth/abuse protection; security-auditor initial + delta review |
+| Результат | account counters в выделенном `throttle` (noeviction, socket timeouts 1 s); атомарный reserve login 5/15 мин и 2FA 10/15 мин до Argon2; success очищает account; IP failures 60/15 и 30/15; reset 3/ч + 20/ч; registration slot reserve/release; auth и complaints fail-closed, games fail-open; IPv6 /64; casefold reset; owner-recovery audit |
+| Проверки | 43 targeted; полный suite **1159 tests: 1146 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean (382); security-auditor **accept**, delta **accept**, new bypass none |
+| Статус | **COMPLETED / SECURITY-AUDITOR ACCEPT**; live Redis/load/staging not tested |
+| Остаток | account-lockout DoS policy; IP-failure burst race; touch-repair без Lua; malformed 2FA IP; shared unknown-IP; registration device key — T3; challenge O4 |
+| Источник | commit `de08292`; модели: implement — `deepseek-flash[1m]`, review — `security-auditor` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-THROTTLE-001 — session scopes, results/report IP caps
 
 | Поле | Значение |

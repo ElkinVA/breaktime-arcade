@@ -528,6 +528,33 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.39. Account security throttling — 2026-11-24
+
+`ARCADE-AUTH-THROTTLE-001` (`de08292`) — **COMPLETED / SECURITY-AUDITOR
+ACCEPT**: счётчики входа/2FA/восстановления/регистрации переведены с общего
+allkeys-lru cache на выделенный `throttle` (noeviction) с socket timeouts
+1 s. `login_attempt`/`two_factor_attempt` атомарно резервируют попытку до
+аутентификации (Argon2) — 5/15 мин и 10/15 мин на аккаунт; успех очищает
+аккаунтный счётчик; IP считает только неудачи (60/15 и 30/15). Password
+reset — 3/ч на аккаунт и 20/ч на IP, каждый запрос; регистрация резервирует
+слот 3/сутки на IP (device key — следующая задача) и возвращает его при
+невалидной форме или ошибке сохранения. Security-critical лимиты (auth и
+complaints) при отказе Redis fail-closed: нейтральный 503 для форм и 429
+`E_RATE_LIMIT` для complaints; публичные игровые лимиты остаются fail-open.
+IPv6 агрегируется /64 общим helper'ом `apps/core/net.py`; reset-бакет
+использует `casefold`; неудачный owner-recovery пишет `EVENT_2FA_FAILED`.
+43 targeted tests (20-поточный login cap, IPv6 /64, 2FA/reset IP-лимиты,
+release, fail-closed формы/complaints); полный suite
+**1159 tests: 1146 passed, 13 skipped, exit 0** на свежей БД; ruff/format/
+mypy clean (382 файла). Модели: реализация — `deepseek-flash[1m]`, review —
+`security-auditor` (`deepseek-v4-pro`, text-only), initial + delta accept.
+Остатки: account-lockout DoS — свойство выбранной политики; IP-failure
+счётчики неатомарны (кратковременный burst overshoot); TTL-repair через
+best-effort delete без Lua; malformed 2FA не увеличивает IP-failures; shared
+unknown-IP bucket только при misconfigured deployment; device key регистрации
+(`ARCADE-REGISTRATION-LIMITS-001`); challenge O4; live Redis/load/staging
+NOT TESTED.
+
 ## 0.38. Game API throttling scopes — 2026-11-24
 
 `ARCADE-THROTTLE-001` (`b953419`) — **COMPLETED / SECURITY-AUDITOR ACCEPT**:

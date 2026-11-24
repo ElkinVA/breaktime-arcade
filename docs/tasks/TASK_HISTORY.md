@@ -1488,6 +1488,38 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-AUTH-THROTTLE-001 — атомарные account limits, fail-closed
+
+- **Первопричина:** счётчики входа/2FA/восстановления жили в общем
+  allkeys-lru cache; проверка лимита выполнялась до записи неудачи, поэтому
+  параллельные попытки могли превысить лимит; при отказе Redis счётчики
+  fail-open. Регистрация ограничивалась только IP, IPv6 не агрегировался.
+- **Результат:** счётчики переведены в выделенный `throttle` (noeviction) с
+  socket timeouts 1 s. `login_attempt`/`two_factor_attempt` атомарно
+  резервируют попытку до Argon2 (5/15 мин, 10/15 мин на аккаунт); успех
+  очищает аккаунтный счётчик; IP считает только неудачи (60/15, 30/15).
+  Password reset — 3/ч на аккаунт + 20/ч на IP, каждый запрос. Регистрация
+  резервирует слот 3/сутки на IP и возвращает его при невалидной форме или
+  ошибке сохранения. Auth и complaints fail-closed (нейтральный 503 / 429
+  `E_RATE_LIMIT`), публичные игровые лимиты остаются fail-open. IPv6 /64
+  вынесен в `apps/core/net.py`; reset-бакет использует `casefold`; неудачный
+  owner-recovery пишет `EVENT_2FA_FAILED`.
+- **Проверки:** 43 targeted (20-поточный login cap, IPv6 /64, 2FA/reset
+  IP-лимиты, release, fail-closed формы/complaints); полный suite
+  **1159 tests: 1146 passed, 13 skipped, exit 0** на свежей БД;
+  ruff/format/mypy clean (382 файла). Security-auditor: initial **accept**,
+  delta **accept**, новых обходов нет.
+- **Остатки:** account-lockout DoS — свойство выбранной политики (5 попыток
+  могут временно заблокировать известный логин); IP-failure счётчики
+  неатомарны (кратковременный overshoot при burst); TTL-repair через
+  best-effort delete, без Lua; malformed 2FA не увеличивает IP-failures;
+  shared unknown-IP bucket только при misconfigured deployment; device key
+  регистрации — `ARCADE-REGISTRATION-LIMITS-001`; challenge O4; live
+  Redis/load/staging NOT TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `security-auditor`
+  (`deepseek-v4-pro`, text-only), два прохода.
+- **Commit:** `de08292`.
+
 ### ARCADE-THROTTLE-001 — отдельные session scopes и IP-лимиты
 
 - **Первопричина:** create, activate и close использовали общий scope
