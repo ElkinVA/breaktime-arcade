@@ -20,7 +20,11 @@ class Verdict:
 
 def _profile(game, version) -> dict[str, Any]:
     verification = (version.manifest or {}).get("verification")
-    if isinstance(verification, dict) and isinstance(verification.get("profile"), dict):
+    if (
+        isinstance(verification, dict)
+        and isinstance(verification.get("profile"), dict)
+        and verification["profile"]
+    ):
         return cast(dict[str, Any], verification["profile"])
     if isinstance(game.verification_profile, dict):
         return cast(dict[str, Any], game.verification_profile)
@@ -35,15 +39,20 @@ def verify(
     value: int,
     duration_ms: int,
     is_test: bool,
+    seed: str | None = None,
 ) -> Verdict:
     """Apply declared bounds; suspicious results are quarantined, not deleted."""
     if is_test:
         return Verdict(True, GameResult.TRUST_CLIENT_REPORTED, (), False)
     profile = _profile(game, version)
-    if not profile or not isinstance(event_log, dict):
+    if not profile:
         return Verdict(True, GameResult.TRUST_CLIENT_REPORTED, (), False)
+    if not isinstance(event_log, dict):
+        return Verdict(False, GameResult.TRUST_CLIENT_REPORTED, ("missing_event_log",), True)
 
     flags: list[str] = []
+    if not seed:
+        flags.append("missing_seed")
     seconds = max(duration_ms, 1000) / 1000
     max_points = profile.get("maxPointsPerSecond")
     if isinstance(max_points, (int, float)) and max_points > 0 and value / seconds > max_points:

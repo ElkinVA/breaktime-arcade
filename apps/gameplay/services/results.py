@@ -143,7 +143,9 @@ def submit_result(
         if account is None or not account.is_active:
             raise SessionError("E_SESSION_INVALID", "Account is not available", 403)
 
-        if seed is not None and seed != session.seed:
+        # A blank seed reaches verifier quarantine (missing_seed) instead of
+        # being rejected as a mismatch; both outcomes are fail-closed.
+        if seed and seed != session.seed:
             raise SessionError("E_MESSAGE_INVALID", "Seed does not match the session", 400)
         if event_log is not None:
             if not isinstance(event_log, dict):
@@ -194,6 +196,7 @@ def submit_result(
             value=value,
             duration_ms=duration_ms,
             is_test=is_test,
+            seed=seed,
         )
         epoch = game.leaderboard_epoch
         response: dict[str, object] = {

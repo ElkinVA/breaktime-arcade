@@ -520,6 +520,7 @@ def test_verifier_marks_suspicious_result_quarantined() -> None:
         key="verifier-suspicious",
         value=100,
         duration_ms=30_000,
+        seed=session.seed,
         event_log={
             "v": 1,
             "seed": session.seed,
@@ -561,6 +562,7 @@ def test_verifier_accepts_valid_heuristic_result() -> None:
         key="verifier-valid",
         value=10,
         duration_ms=30_000,
+        seed=session.seed,
         event_log={
             "v": 1,
             "seed": session.seed,
@@ -574,6 +576,92 @@ def test_verifier_accepts_valid_heuristic_result() -> None:
     assert result.is_quarantined is False
     assert result.trust_level == GameResult.TRUST_HEURISTIC_VALIDATED
     assert LeaderboardEntry.objects.filter(game=game, user=user).exists()
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_profile_result_without_eventlog_is_quarantined() -> None:
+    verification = {
+        "profile": {"maxPointsPerSecond": 10, "maxIdleGapMs": 1000},
+        "eventKinds": ["start"],
+        "eventSchema": {"type": "object"},
+    }
+    game = _game(technical_id="missing_log_game", verification=verification)
+    user = User.objects.create_user(login="missing_log", password="correct horse battery staple")
+    client, csrf = _client(user)
+    session_id = _ready_session(client, csrf, game)
+
+    response = _result(client, csrf, session_id, key="missing-log", value=10)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "quarantined"
+    result = GameResult.objects.get(session_id=session_id)
+    assert result.is_quarantined is True
+    assert "missing_event_log" in result.verifier_flags["flags"]
+    assert not LeaderboardEntry.objects.filter(game=game, user=user).exists()
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_profile_result_without_seed_is_quarantined() -> None:
+    verification = {
+        "profile": {"maxPointsPerSecond": 10, "maxIdleGapMs": 1000},
+        "eventKinds": ["start"],
+        "eventSchema": {"type": "object"},
+    }
+    game = _game(technical_id="missing_seed_game", verification=verification)
+    user = User.objects.create_user(login="missing_seed", password="correct horse battery staple")
+    client, csrf = _client(user)
+    session_id = _ready_session(client, csrf, game)
+    session = GameSession.objects.get(pk=session_id)
+
+    response = _result(
+        client,
+        csrf,
+        session_id,
+        key="missing-seed",
+        value=10,
+        event_log={"v": 1, "seed": session.seed, "events": [{"t": 0, "k": "start", "d": {}}]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "quarantined"
+    result = GameResult.objects.get(session_id=session_id)
+    assert result.is_quarantined is True
+    assert "missing_seed" in result.verifier_flags["flags"]
+    assert not LeaderboardEntry.objects.filter(game=game, user=user).exists()
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_profile_result_with_blank_seed_is_quarantined() -> None:
+    verification = {
+        "profile": {"maxPointsPerSecond": 10, "maxIdleGapMs": 1000},
+        "eventKinds": ["start"],
+        "eventSchema": {"type": "object"},
+    }
+    game = _game(technical_id="blank_seed_game", verification=verification)
+    user = User.objects.create_user(login="blank_seed", password="correct horse battery staple")
+    client, csrf = _client(user)
+    session_id = _ready_session(client, csrf, game)
+    session = GameSession.objects.get(pk=session_id)
+
+    response = _result(
+        client,
+        csrf,
+        session_id,
+        key="blank-seed",
+        value=10,
+        seed="",
+        event_log={"v": 1, "seed": session.seed, "events": [{"t": 0, "k": "start", "d": {}}]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "quarantined"
+    result = GameResult.objects.get(session_id=session_id)
+    assert result.is_quarantined is True
+    assert "missing_seed" in result.verifier_flags["flags"]
+    assert not LeaderboardEntry.objects.filter(game=game, user=user).exists()
 
 
 @pytest.mark.django_db
