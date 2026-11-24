@@ -368,10 +368,15 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.core.exceptions.api_exception_handler",
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
     "DEFAULT_THROTTLE_RATES": {
-        # §2.12 / Приложение E: subject primary, IP secondary (600/hour).
+        # §2.12 / Приложение E: subject primary, IP secondary.
+        # Создание сессий ограничено 30/час; activate/close имеют отдельные
+        # бакеты с той же ставкой, чтобы не расходовать лимит создания.
         "sessions": "30/hour",
         "sessions_ip": "600/hour",
+        "sessions_activate": "30/hour",
+        "sessions_close": "30/hour",
         "results": "60/hour",
+        "results_ip": "1200/hour",
         "heartbeat": "3/min",
         "storage": "600/hour",
         "storage_session": "60/min",
@@ -379,7 +384,9 @@ REST_FRAMEWORK = {
         "leaderboard_read": "120/min",
         "rating": "20/day",
         "rating_read": "120/min",
-        "reports": "20/day",
+        # Жалобы: 5/сутки на субъект, 30/сутки на IP (Приложение E).
+        "reports": "5/day",
+        "reports_ip": "30/day",
     },
     "UNAUTHENTICATED_USER": "django.contrib.auth.models.AnonymousUser",
 }

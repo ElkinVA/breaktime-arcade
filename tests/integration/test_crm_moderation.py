@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import time
 
 import pyotp
 import pytest
+from django.core.cache import caches
 from django.db import connection
 from django.middleware.csrf import get_token
 from django.test import Client, RequestFactory, override_settings
@@ -433,6 +435,51 @@ def test_public_report_intake_records_subject_reporter_and_target() -> None:
     )
     assert unknown.status_code == 400
     assert unknown.json()["code"] == "E_INVALID_REQUEST"
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_report_subject_and_ip_limits_match_appendix_e() -> None:
+    game = _game("report_limits_game")
+    reporter = _user("report_limits_reporter")
+    client = _client(reporter)
+    token = _csrf(client)
+    payload = json.dumps(
+        {
+            "game_id": game.technical_id,
+            "category": Complaint.CATEGORY_SPAM,
+            "subject": "Спам",
+        }
+    )
+    subject_key = f"throttle_reports_user:{reporter.id}"
+    try:
+        caches["throttle"].set(subject_key, [time.time()] * 5, timeout=86400)
+        blocked_subject = client.post(
+            "/api/v1/reports",
+            data=payload,
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+    finally:
+        caches["throttle"].delete(subject_key)
+    assert blocked_subject.status_code == 429
+    assert blocked_subject.json()["code"] == "E_RATE_LIMIT"
+
+    guest = Client()
+    guest_token = _csrf(guest)
+    ip_key = "throttle_reports_ip:127.0.0.1"
+    try:
+        caches["throttle"].set(ip_key, [time.time()] * 30, timeout=86400)
+        blocked_ip = guest.post(
+            "/api/v1/reports",
+            data=payload,
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=guest_token,
+        )
+    finally:
+        caches["throttle"].delete(ip_key)
+    assert blocked_ip.status_code == 429
+    assert blocked_ip.json()["code"] == "E_RATE_LIMIT"
 
 
 @pytest.mark.django_db

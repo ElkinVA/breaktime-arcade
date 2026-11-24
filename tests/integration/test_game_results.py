@@ -335,6 +335,23 @@ def test_result_throttle_returns_structured_error() -> None:
 
 @pytest.mark.django_db
 @override_settings(CACHES=LOCMEM_CACHES)
+def test_result_ip_throttle_returns_structured_error() -> None:
+    game = _game(technical_id="throttle_ip_result_game")
+    user = User.objects.create_user(login="peter_ip", password="correct horse battery staple")
+    client, csrf = _client(user)
+    session_id = _ready_session(client, csrf, game)
+    key = "throttle_results_ip:127.0.0.1"
+    try:
+        caches["throttle"].set(key, [time.time()] * 1200, timeout=3600)
+        response = _result(client, csrf, session_id)
+    finally:
+        caches["throttle"].delete(key)
+    assert response.status_code == 429
+    assert response.json()["code"] == "E_RATE_LIMIT"
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
 def test_preview_result_is_test_and_not_on_leaderboard() -> None:
     game = _game(technical_id="preview_result_game")
     user = User.objects.create_user(login="rita", password="correct horse battery staple")

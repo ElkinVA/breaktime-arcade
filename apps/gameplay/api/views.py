@@ -14,6 +14,7 @@ from apps.gameplay.api.serializers import (
 )
 from apps.gameplay.api.throttling import (
     GuestIpRateThrottle,
+    ResultsIpRateThrottle,
     SessionScopedRateThrottle,
     SubjectScopedRateThrottle,
 )
@@ -83,7 +84,7 @@ class SessionActivateView(APIView):
     authentication_classes = [CsrfEnforcedSessionAuthentication]
     permission_classes = [AllowAny]
     throttle_classes = [SubjectScopedRateThrottle]
-    throttle_scope = "sessions"
+    throttle_scope = "sessions_activate"
 
     def post(self, request, session_id: UUID):
         serializer = SessionActivateSerializer(data=request.data)
@@ -122,7 +123,7 @@ class SessionCloseView(APIView):
     authentication_classes = [CsrfEnforcedSessionAuthentication]
     permission_classes = [AllowAny]
     throttle_classes = [SubjectScopedRateThrottle]
-    throttle_scope = "sessions"
+    throttle_scope = "sessions_close"
 
     def post(self, request, session_id: UUID):
         try:
@@ -135,7 +136,7 @@ class SessionCloseView(APIView):
 class SessionResultView(APIView):
     authentication_classes = [CsrfEnforcedSessionAuthentication]
     permission_classes = [AllowAny]
-    throttle_classes = [SubjectScopedRateThrottle]
+    throttle_classes = [SubjectScopedRateThrottle, ResultsIpRateThrottle]
     throttle_scope = "results"
 
     def post(self, request, session_id: UUID):

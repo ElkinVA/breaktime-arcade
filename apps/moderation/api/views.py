@@ -13,7 +13,7 @@ from rest_framework.views import APIView  # type: ignore[import-untyped]
 
 from apps.accounts.models import User
 from apps.catalog.models import Game
-from apps.gameplay.api.throttling import SubjectScopedRateThrottle
+from apps.gameplay.api.throttling import ReportsIpRateThrottle, SubjectScopedRateThrottle
 from apps.gameplay.api.views import CsrfEnforcedSessionAuthentication
 from apps.moderation.api.serializers import ComplaintCreateSerializer
 from apps.moderation.services.complaints import create_complaint
@@ -27,7 +27,7 @@ def _invalid_request(message: str = "Invalid request") -> Response:
 class ComplaintCreateView(APIView):
     authentication_classes = [CsrfEnforcedSessionAuthentication]
     permission_classes = [AllowAny]
-    throttle_classes = [SubjectScopedRateThrottle]
+    throttle_classes = [SubjectScopedRateThrottle, ReportsIpRateThrottle]
     throttle_scope = "reports"
 
     def post(self, request):

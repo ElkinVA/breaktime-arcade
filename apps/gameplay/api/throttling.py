@@ -109,6 +109,30 @@ class GuestIpRateThrottle(ThrottleCacheMixin, ResilientThrottleMixin, SimpleRate
         return f"throttle_sessions_ip:{_client_ip(request)}"
 
 
+class IpRateThrottle(ThrottleCacheMixin, ResilientThrottleMixin, SimpleRateThrottle):
+    """Secondary IP cap for operations whose primary key is the subject.
+
+    The bucket is shared by every subject behind the same client IP (IPv6 is
+    aggregated to /64 in ``_client_ip``). Used with per-scope subclasses so a
+    secondary limit never consumes the primary subject bucket.
+    """
+
+    def get_cache_key(self, request, view):
+        return f"throttle_{self.scope}:{_client_ip(request)}"
+
+
+class ResultsIpRateThrottle(IpRateThrottle):
+    """Results: 1200/hour per IP (Приложение E)."""
+
+    scope = "results_ip"
+
+
+class ReportsIpRateThrottle(IpRateThrottle):
+    """Complaints: 30/day per IP (Приложение E); catches guest rotation."""
+
+    scope = "reports_ip"
+
+
 class SessionScopedRateThrottle(ThrottleCacheMixin, ResilientThrottleMixin, SimpleRateThrottle):
     """Heartbeat bucket: 3/min per session (Приложение E), not per subject."""
 

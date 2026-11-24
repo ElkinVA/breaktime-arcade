@@ -913,8 +913,47 @@ def test_rate_limits_match_appendix_e() -> None:
 
     rates = settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]
     assert rates["sessions"] == "30/hour"
+    assert rates["sessions_activate"] == "30/hour"
+    assert rates["sessions_close"] == "30/hour"
     assert rates["sessions_ip"] == "600/hour"
+    assert rates["results"] == "60/hour"
+    assert rates["results_ip"] == "1200/hour"
     assert rates["heartbeat"] == "3/min"
+    assert rates["reports"] == "5/day"
+    assert rates["reports_ip"] == "30/day"
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_create_activate_and_close_have_separate_throttle_buckets() -> None:
+    game = _game(technical_id="scope_split_game")
+    user = User.objects.create_user(login="scope_split", password="correct horse battery staple")
+    client, csrf = _client(user)
+    created = _create(client, csrf, game)
+    session_id = str(created["sessionId"])
+    create_key = f"throttle_sessions_user:{user.id}"
+    activate_key = f"throttle_sessions_activate_user:{user.id}"
+    close_key = f"throttle_sessions_close_user:{user.id}"
+    try:
+        caches["throttle"].set(create_key, [time.time()] * 30, timeout=3600)
+        blocked = client.post(
+            API,
+            data=json.dumps({"game_id": game.technical_id}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=csrf,
+        )
+        assert blocked.status_code == 429
+        assert _activate(client, csrf, session_id, str(created["ticket"])).status_code == 200
+        closed = client.post(f"{API}/{session_id}/close", HTTP_X_CSRFTOKEN=csrf)
+        assert closed.status_code == 204
+
+        caches["throttle"].set(activate_key, [time.time()] * 30, timeout=3600)
+        assert _activate(client, csrf, session_id, str(created["ticket"])).status_code == 429
+        caches["throttle"].set(close_key, [time.time()] * 30, timeout=3600)
+        assert client.post(f"{API}/{session_id}/close", HTTP_X_CSRFTOKEN=csrf).status_code == 429
+    finally:
+        for key in (create_key, activate_key, close_key):
+            caches["throttle"].delete(key)
 
 
 def test_client_ip_middleware_trusts_only_proxy_networks() -> None:
