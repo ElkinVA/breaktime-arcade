@@ -1488,6 +1488,24 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-RESULT-VERIFICATION-001 — missing eventLog/seed quarantine
+
+- **Результат:** при непустом verification profile отсутствие `eventLog`
+  (flag `missing_event_log`) или непустого `seed` (`missing_seed`) даёт
+  quarantined verdict и исключает LeaderboardEntry; пустой seed больше не
+  превращается в seed mismatch, а идёт в quarantine. `_profile` игнорирует
+  пустой manifest-profile, не маскируя game-level profile.
+- **Проверки:** 25 result tests (missing log/seed, blank seed, valid path);
+  полный suite **1144 tests: 1131 passed, 13 skipped, exit 0** на свежей БД;
+  ruff/format/mypy clean; security-auditor accept с minor, minor и delta
+  (blank seed, empty-profile precedence) подтверждены повторным review.
+- **Остаток:** heuristic baseline допускает пустой `events` при совпадающем
+  seed; live staging NOT TESTED. Первый reuse-DB прогон дал 20
+  translation-seed failures — тестовая БД, не код (см. PROJECT_STATUS §0.37).
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `security-auditor`
+  (`deepseek-v4-pro`, text-only).
+- **Commit:** `1fc0e97`.
+
 ### ARCADE-SESSION-LIFECYCLE-001 — abandoned ACTIVE sessions
 
 - **Результат:** `7da168a`; `_is_stale`/`_expire_locked`; lazy expiry in

@@ -528,6 +528,29 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.37. Result verification bypass — 2026-11-24
+
+`ARCADE-RESULT-VERIFICATION-001` (`1fc0e97`) — **COMPLETED /
+SECURITY-AUDITOR ACCEPT**: при непустом `verification.profile` результат без
+`eventLog` получает `missing_event_log`, без непустого `seed` — `missing_seed`;
+оба варианта quarantined, `LeaderboardEntry` не создаётся. Пустой manifest-
+profile больше не маскирует game-level profile. Валидные `eventLog`+`seed`
+по-прежнему получают heuristic-validated; игры без профиля сохраняют
+client-reported политику; `leaderboard_only_verified` не изменён.
+25 targeted result tests (missing log, missing/blank seed, valid path);
+полный suite **1144 tests: 1131 passed, 13 skipped, exit 0** на свежей БД;
+ruff/format/mypy clean. Модели: реализация — `deepseek-flash[1m]`,
+независимый review — `security-auditor` (`deepseek-v4-pro`, text-only).
+Остатки: heuristic baseline допускает пустой `events` при совпадающем seed;
+live staging NOT TESTED.
+
+Примечание о тестовой БД: первый прогон с `--reuse-db` дал 20 падений
+catalog/home/profile из-за отсутствующих i18n seed-строк — transaction-тесты
+делают flush, а `tests/conftest.py` восстанавливает только миграции
+0002/0003. На свежей БД полный suite зелёный; это дефект тестовой
+инфраструктуры, не продуктового кода. Отдельная задача — расширить reseed
+на все i18n seed-миграции.
+
 ## 1. Текущий статус
 
 **Проект находится в состоянии каркаса, не MVP.** Этап 0 формально **не

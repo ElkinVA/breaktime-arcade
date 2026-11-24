@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-RESULT-VERIFICATION-001 — missing eventLog/seed quarantine
+
+| Поле | Значение |
+|---|---|
+| Тип | P0 result integrity/security; security-auditor review |
+| Результат | verification-profile results missing eventLog or non-empty seed are quarantined; no LeaderboardEntry; blank seed reaches quarantine; empty manifest profile does not mask game profile |
+| Проверки | 25 targeted result tests; full suite **1144 tests: 1131 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean; security-auditor accept, delta (blank seed + empty-profile precedence) accept — no new bypass |
+| Статус | **COMPLETED / SECURITY-AUDITOR ACCEPT**; product/staging not claimed |
+| Остаток | empty `events` heuristic gap; staging/live not tested |
+| Источник | commit `1fc0e97`; модели: implement — `deepseek-flash[1m]`, review — `security-auditor` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-SESSION-LIFECYCLE-001 / PLAY-001 / HEARTBEAT-SUBMIT-001 / PAGEHIDE-001
 
 | Поле | Значение |

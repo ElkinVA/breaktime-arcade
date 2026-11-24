@@ -64,6 +64,10 @@ ambiguity.
   (`AI-HQ-A1`, `1f46062`); candidate is committed before QA, QA runs on the
   exact clean SHA, diff is full and verdicts are strict (`AI-HQ-A2`,
   `45a69f1`). OS sandbox R-040 and model trust remain.
+- Result integrity: verification-profile results missing `eventLog` or a
+  non-empty `seed` are quarantined and never enter the leaderboard
+  (`ARCADE-RESULT-VERIFICATION-001`, `1fc0e97`); empty-event heuristic
+  remains a gap.
 - App F concurrency/idempotency coverage: result/leaderboard races, rating
   limits, storage If-Match and Idempotency-Key (`ARCADE-APPF-RACE-TESTS-001`,
   `7af18bb`).

@@ -4,22 +4,33 @@
 
 ## Актуальная сводка автономного цикла (2026-11-24)
 
-- HEAD `cb92702` (B1d) после `35ae98f` (B1b), `f7a3779` (B1c), `7da168a`
-  (B1a), A2/A1/CI; `origin/main` синхронизирован после push; рабочее дерево
-  чистое.
-- Последний полный gate: **1137 tests: 1129 passed, 8 skipped, exit 0**;
-  JS **31/31**; mypy 381 файл clean.
+- HEAD `1fc0e97` (result verification) после `cb92702` (B1d), `35ae98f`
+  (B1b), `f7a3779` (B1c), `7da168a` (B1a), A2/A1/CI; этот docs-коммит
+  обновляет реестры, затем `origin/main` синхронизируется push.
+- Последний полный gate: **1144 tests: 1131 passed, 13 skipped, exit 0** на
+  свежей БД; JS **31/31**; ruff/format clean, mypy 381 файл clean. Первый
+  reuse-DB прогон дал 20 translation-seed failures — дефект тестовой БД
+  (частичный reseed после transaction flush), не кода.
 - AI HQ: 26 прежних COMPLETED + AI-HQ-CI-001 (CI run NOT VERIFIED) +
   AI-HQ-A1 (security accept); 5 BLOCKED. Cost accounting — только фактический
   modelUsage, не stop-condition; см. `.autonomy/state.json`.
+- P0 result integrity (`1fc0e97`): verification-profile results without
+  `eventLog`/`seed` are quarantined and excluded from the leaderboard
+  (`ARCADE-RESULT-VERIFICATION-001`); security-auditor accept, delta accept.
 - P0 A1/A2 закрыли прикладные host-exec каналы и доверие к worktree:
   exact sandbox commands, task-bound source-root, protected surfaces,
   immutable candidate до QA, чистый QA SHA, полный diff, strict verdicts,
   Git-derived commit file set. Остаток R-040 (OS-sandbox), model-trust QA/
   reviewer и продуктовый `apps/` в web-контейнере.
-- Безопасная READY-очередь исчерпана. Открыто нужны решения владельца:
-  scheduled-publish schema, retention indexes, Docker assets stage,
-  R-054 expiresAt/alias, R-055 DRAFT schemas, live E2E, R-036 Phase 2.
+- Безопасная READY-очередь прежнего реестра исчерпана; owner-директива
+  2026-11-24 задаёт новую P0/P1-очередь: §3.4 throttle scopes и account
+  limits, §4.1 изоляция импорта черновика, §4.2 безопасный rollback,
+  §4.3 разделение autotest, §5 CRM/backup/ZIP, §6 rank/Content-Length.
+  Работать по этапам B→C→D, не смешивая с schema/public-contract
+  изменениями без владельца.
+- Открыто нужны решения владельца: scheduled-publish schema, retention
+  indexes, Docker assets stage, R-054 expiresAt/alias, R-055 DRAFT schemas,
+  live E2E, R-036 Phase 2.
 - BLOCKED: `ARCADE-ACCOUNTS-E2E-002`, `ARCADE-CRM-E2E-001`,
   `ARCADE-RETENTION-HARDENING-001`, `ARCADE-SCHEDULED-PUBLISH-001`,
   `ARCADE-RUNTIME-BUILD-SCHEMAS-001`.
@@ -27,7 +38,9 @@
   `propose` → отфильтровать задачи, требующие schema/contract/infra/E2E →
   `run --max-tasks 1`; после каждой задачи обновить реестры, PROJECT_STATUS
   и этот файл. Не запускать schema/contract/infra изменения без решения
-  владельца. Следующий P0-срез — candidate commit до QA + строгий verdict.
+  владельца. Следующий P0-срез — `ARCADE-THROTTLE-001` (§3.4: отдельные
+  scopes create/activate/close, IP-лимиты results/reports, затем
+  `ARCADE-AUTH-THROTTLE-001`).
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**
