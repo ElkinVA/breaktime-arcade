@@ -8,6 +8,7 @@ const ORIGIN = "https://game.test";
 const listeners = new Map();
 const fetchCalls = [];
 const posted = [];
+let heartbeatMode = "ok";
 const frame = {
     dataset: {
         context: JSON.stringify({ sessionId: OLD_SESSION, seed: "old-seed", mode: "guest" }),
@@ -64,6 +65,24 @@ globalThis.fetch = async (url, options = {}) => {
             context: { sessionId: NEW_SESSION, seed: "new-seed", mode: "guest" },
         });
     }
+    if (url.endsWith(`/sessions/${NEW_SESSION}/heartbeat`)) {
+        if (heartbeatMode === "transient") {
+            return response(500, { code: "E_INTERNAL", message: "temporary" });
+        }
+        if (heartbeatMode === "expired") {
+            return response(410, { code: "E_SESSION_EXPIRED", message: "expired" });
+        }
+        return response(204, null);
+    }
+    if (url.endsWith(`/sessions/${NEW_SESSION}/result`)) {
+        return response(200, {
+            status: "saved",
+            rank: 1,
+            is_personal_best: true,
+            is_record: true,
+            trust_level: "client_reported",
+        });
+    }
     throw new Error(`unexpected fetch: ${url}`);
 };
 
@@ -108,4 +127,78 @@ test("newSession closes the old session before creating the next one", async () 
     const sessionMessage = posted.findLast((data) => data.type === "ba:session");
     assert.ok(sessionMessage, "host sends the new session");
     assert.equal(sessionMessage.sessionId, NEW_SESSION);
+});
+
+async function switchToNewSession() {
+    await messageHandler({
+        source: frame.contentWindow,
+        origin: ORIGIN,
+        data: envelope("ba:newSession", NEW_SESSION, crypto.randomUUID()),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+}
+
+async function submit(value = 10) {
+    await messageHandler({
+        source: frame.contentWindow,
+        origin: ORIGIN,
+        data: envelope("ba:submit", NEW_SESSION, crypto.randomUUID(), {
+            value,
+            durationMs: 30000,
+            seed: "new-seed",
+            eventLog: { v: 1, seed: "new-seed", events: [] },
+        }),
+    });
+}
+
+test("submit sends a final heartbeat before the result", async () => {
+    heartbeatMode = "ok";
+    await switchToNewSession();
+    const before = fetchCalls.length;
+
+    await submit();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const heartbeatIndex = fetchCalls.findIndex(
+        (call, index) =>
+            index >= before && call.url.endsWith(`/sessions/${NEW_SESSION}/heartbeat`),
+    );
+    const resultIndex = fetchCalls.findIndex(
+        (call, index) => index >= before && call.url.endsWith(`/sessions/${NEW_SESSION}/result`),
+    );
+    assert.ok(heartbeatIndex >= 0, "final heartbeat was sent");
+    assert.ok(resultIndex > heartbeatIndex, "result is sent after the final heartbeat");
+});
+
+test("a transient final heartbeat failure still attempts the result", async () => {
+    heartbeatMode = "transient";
+    await switchToNewSession();
+    const before = fetchCalls.length;
+
+    await submit();
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    const resultIndex = fetchCalls.findIndex(
+        (call, index) => index >= before && call.url.endsWith(`/sessions/${NEW_SESSION}/result`),
+    );
+    assert.ok(resultIndex >= 0, "result is attempted after a transient heartbeat failure");
+    heartbeatMode = "ok";
+});
+
+test("an expired final heartbeat skips the result", async () => {
+    heartbeatMode = "expired";
+    await switchToNewSession();
+    const before = fetchCalls.length;
+
+    await submit();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const resultIndex = fetchCalls.findIndex(
+        (call, index) => index >= before && call.url.endsWith(`/sessions/${NEW_SESSION}/result`),
+    );
+    assert.equal(resultIndex, -1, "result is not sent after an expired heartbeat");
+    const error = posted.findLast((data) => data.type === "ba:error");
+    assert.ok(error, JSON.stringify(posted.slice(-4)));
+    assert.equal(error.payload.code, "E_SESSION_EXPIRED");
+    heartbeatMode = "ok";
 });

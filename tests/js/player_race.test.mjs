@@ -85,6 +85,12 @@ globalThis.fetch = async (url, options = {}) => {
         oldStorages.push(pending);
         return pending.promise;
     }
+    if (
+        url.endsWith(`/sessions/${OLD_SESSION}/heartbeat`) ||
+        url.endsWith(`/sessions/${NEW_SESSION}/heartbeat`)
+    ) {
+        return response(204, null);
+    }
     if (url.endsWith(`/sessions/${OLD_SESSION}/close`)) {
         return response(204, null);
     }

@@ -92,6 +92,19 @@ if (frame) {
         const idempotencyKey = submissionKeys.get(requestSession) || crypto.randomUUID();
         submissionKeys.set(requestSession, idempotencyKey);
         try {
+            // Final heartbeat closes the 30s credit gap before the server
+            // compares duration_ms with credited_ms. A transient failure is
+            // retried; an expired session is surfaced immediately.
+            try {
+                await api(`/api/v1/sessions/${requestSession}/heartbeat`, {
+                    method: "POST",
+                    headers: headers(),
+                });
+            } catch (error) {
+                if (error.status === 410) {
+                    throw error;
+                }
+            }
             const { payload: result } = await api(
                 `/api/v1/sessions/${requestSession}/result`,
                 {
