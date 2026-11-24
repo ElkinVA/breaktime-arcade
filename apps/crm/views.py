@@ -116,12 +116,13 @@ from apps.crm.services.taxonomy import (
 from apps.crm.services.users import (
     MIN_SEARCH_LENGTH,
     UserFilters,
+    block_user,
     current_leaderboard_entries,
     delete_customer,
     parse_user_filters,
     recent_results,
     search_users,
-    toggle_user_active,
+    unblock_user,
 )
 from apps.crm.services.version_downloads import (
     REPORT_FORMATS,
@@ -900,12 +901,13 @@ def _user_action_redirect(user_id: UUID) -> HttpResponseRedirect:
     return redirect("crm:user_detail", user_id=user_id)
 
 
-def _toggle_block(request: HttpRequest, user_id: UUID) -> HttpResponseRedirect:
+def _change_block(request: HttpRequest, user_id: UUID, *, is_active: bool) -> HttpResponseRedirect:
     actor = _staff_user(request)
     if actor is None:
         messages.error(request, _STEP_UP_ERRORS["not_staff"])
         return redirect("crm:users")
-    result = toggle_user_active(
+    service = unblock_user if is_active else block_user
+    result = service(
         actor=actor,
         target_id=user_id,
         ip=request.META.get("REMOTE_ADDR"),
@@ -918,10 +920,15 @@ def _toggle_block(request: HttpRequest, user_id: UUID) -> HttpResponseRedirect:
         if result.reason == "already_deleted":
             messages.error(request, "Аккаунт уже удалён и не может быть разблокирован.")
         elif result.reason == "self_target":
-            messages.error(request, "Нельзя заблокировать собственную учётную запись.")
+            messages.error(request, "Нельзя изменить блокировку собственной учётной записи.")
         else:
             messages.error(request, "Операция недоступна.")
-    elif result.is_active:
+    elif not result.changed:
+        messages.info(
+            request,
+            "Аккаунт уже разблокирован." if is_active else "Аккаунт уже заблокирован.",
+        )
+    elif is_active:
         messages.success(request, "Аккаунт разблокирован; изменение записано в журнал.")
     else:
         messages.success(request, "Аккаунт заблокирован; изменение записано в журнал.")
@@ -975,8 +982,10 @@ def user_detail(request: HttpRequest, user_id: UUID) -> TemplateResponse | HttpR
     """
     if request.method == "POST":
         action = str(request.POST.get("action") or "")
-        if action in {"block", "unblock", "toggle"}:
-            return _toggle_block(request, user_id)
+        if action == "block":
+            return _change_block(request, user_id, is_active=False)
+        if action == "unblock":
+            return _change_block(request, user_id, is_active=True)
         if action == "delete":
             return _delete_user(request, user_id)
         messages.error(request, "Неизвестное действие.")
@@ -1001,8 +1010,14 @@ def user_detail(request: HttpRequest, user_id: UUID) -> TemplateResponse | HttpR
 
 @role_required(USERS_MANAGE)
 @require_POST
-def user_toggle_block(request: HttpRequest, user_id: UUID) -> HttpResponseRedirect:
-    return _toggle_block(request, user_id)
+def user_block(request: HttpRequest, user_id: UUID) -> HttpResponseRedirect:
+    return _change_block(request, user_id, is_active=False)
+
+
+@role_required(USERS_MANAGE)
+@require_POST
+def user_unblock(request: HttpRequest, user_id: UUID) -> HttpResponseRedirect:
+    return _change_block(request, user_id, is_active=True)
 
 
 @role_required(USERS_MANAGE)

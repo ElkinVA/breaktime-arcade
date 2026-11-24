@@ -49,6 +49,7 @@ class UserActionResult:
     reason: str = ""
     is_active: bool | None = None
     audit: AdminAuditLog | None = None
+    changed: bool = True
 
 
 def parse_bool(raw: Any) -> bool | None:
@@ -167,14 +168,15 @@ def _revoke_open_sessions(user: User) -> int:
     return revoked
 
 
-def toggle_user_active(
+def _set_user_active(
     *,
     actor: User,
     target_id: UUID,
+    is_active: bool,
     ip: str | None = None,
     reason: str = "",
 ) -> UserActionResult:
-    """Block/unblock a customer account and append an audit row atomically."""
+    """Idempotently set the customer's active flag and audit real changes."""
     with transaction.atomic():
         target = User.objects.select_for_update().filter(pk=target_id, is_staff=False).first()
         if target is None:
@@ -185,11 +187,13 @@ def toggle_user_active(
             # An anonymised tombstone must never become an authenticatable
             # account again through the customer block/unblock screen.
             return UserActionResult(ok=False, reason="already_deleted")
+        if target.is_active == is_active:
+            return UserActionResult(ok=True, is_active=is_active, changed=False)
         before = {"is_active": target.is_active}
-        target.is_active = not target.is_active
+        target.is_active = is_active
         target.updated_at = timezone.now()
         target.save(update_fields=["is_active", "updated_at"])
-        if not target.is_active:
+        if not is_active:
             # §2.16.2: a block must also cut off the SDK sessions and unused
             # launch tickets that were issued while the account was active.
             _revoke_open_sessions(target)
@@ -197,17 +201,42 @@ def toggle_user_active(
             actor=actor,
             action=(
                 AdminAuditLog.ACTION_USER_BLOCKED
-                if not target.is_active
+                if not is_active
                 else AdminAuditLog.ACTION_USER_UNBLOCKED
             ),
             object_type="user",
             object_id=target.pk,
             before=before,
-            after={"is_active": target.is_active},
+            after={"is_active": is_active},
             reason=reason,
             ip=ip,
         )
-    return UserActionResult(ok=True, is_active=target.is_active, audit=audit)
+    return UserActionResult(
+        ok=True,
+        is_active=is_active,
+        audit=audit,
+        changed=True,
+    )
+
+
+def block_user(
+    *,
+    actor: User,
+    target_id: UUID,
+    ip: str | None = None,
+    reason: str = "",
+) -> UserActionResult:
+    return _set_user_active(actor=actor, target_id=target_id, is_active=False, ip=ip, reason=reason)
+
+
+def unblock_user(
+    *,
+    actor: User,
+    target_id: UUID,
+    ip: str | None = None,
+    reason: str = "",
+) -> UserActionResult:
+    return _set_user_active(actor=actor, target_id=target_id, is_active=True, ip=ip, reason=reason)
 
 
 def deletion_window_elapsed(requested_at: datetime | None) -> bool:
@@ -283,6 +312,7 @@ __all__ = [
     "MIN_SEARCH_LENGTH",
     "UserActionResult",
     "UserFilters",
+    "block_user",
     "current_leaderboard_entries",
     "delete_customer",
     "deletion_window_elapsed",
@@ -290,5 +320,5 @@ __all__ = [
     "parse_user_filters",
     "recent_results",
     "search_users",
-    "toggle_user_active",
+    "unblock_user",
 ]

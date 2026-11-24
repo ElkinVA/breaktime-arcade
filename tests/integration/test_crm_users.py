@@ -273,7 +273,7 @@ def test_detail_renders_results_and_leaderboard_without_secrets() -> None:
 
 
 @pytest.mark.django_db
-def test_block_and_unblock_toggle_active_audit_and_authentication() -> None:
+def test_block_and_unblock_are_explicit_audited_and_authenticate() -> None:
     owner = _staff("owner", StaffRole.OWNER)
     target = _customer("target", "Target")
     client = _client(owner)
@@ -297,6 +297,42 @@ def test_block_and_unblock_toggle_active_audit_and_authentication() -> None:
         action=AdminAuditLog.ACTION_USER_UNBLOCKED, object_id=target.id
     ).exists()
     assert Client().login(username=target.login, password=PASSWORD) is True
+
+
+@pytest.mark.django_db
+def test_repeated_block_does_not_unblock_and_is_not_audited_twice() -> None:
+    owner = _staff("owner", StaffRole.OWNER)
+    target = _customer("target", "Target")
+    client = _client(owner)
+
+    assert client.post(reverse("crm:user_block", args=[target.id])).status_code == 302
+    again = client.post(reverse("crm:user_block", args=[target.id]))
+    assert again.status_code == 302
+    target.refresh_from_db()
+    assert target.is_active is False
+    assert (
+        AdminAuditLog.objects.filter(
+            action=AdminAuditLog.ACTION_USER_BLOCKED, object_id=target.id
+        ).count()
+        == 1
+    )
+
+    assert client.post(reverse("crm:user_unblock", args=[target.id])).status_code == 302
+    second_unblock = client.post(reverse("crm:user_unblock", args=[target.id]))
+    assert second_unblock.status_code == 302
+    target.refresh_from_db()
+    assert target.is_active is True
+    assert (
+        AdminAuditLog.objects.filter(
+            action=AdminAuditLog.ACTION_USER_UNBLOCKED, object_id=target.id
+        ).count()
+        == 1
+    )
+
+    first = crm_users.block_user(actor=owner, target_id=target.id)
+    second = crm_users.block_user(actor=owner, target_id=target.id)
+    assert first.ok and first.changed is True and first.audit is not None
+    assert second.ok and second.changed is False and second.audit is None
 
 
 def _session(
@@ -464,7 +500,7 @@ def test_concurrent_submit_result_racing_block_cannot_persist(monkeypatch) -> No
 
     def block_worker() -> None:
         try:
-            result = crm_users.toggle_user_active(actor=owner, target_id=target.id)
+            result = crm_users.block_user(actor=owner, target_id=target.id)
             assert result.ok
         finally:
             connections.close_all()
@@ -631,7 +667,7 @@ def test_concurrent_submit_result_racing_block_revoke_cannot_deadlock(monkeypatc
 
     def block_worker() -> None:
         try:
-            result = crm_users.toggle_user_active(actor=owner, target_id=target.id)
+            result = crm_users.block_user(actor=owner, target_id=target.id)
             assert result.ok
         finally:
             connections.close_all()
@@ -805,7 +841,7 @@ def test_concurrent_put_storage_racing_block_cannot_write(monkeypatch, existing:
 
     def block_worker() -> None:
         try:
-            result = crm_users.toggle_user_active(actor=owner, target_id=target.id)
+            result = crm_users.block_user(actor=owner, target_id=target.id)
             assert result.ok
         finally:
             connections.close_all()
@@ -970,7 +1006,7 @@ def test_concurrent_create_session_racing_block_creates_no_open_session(monkeypa
 
     def block_worker() -> None:
         try:
-            result = crm_users.toggle_user_active(actor=owner, target_id=target.id)
+            result = crm_users.block_user(actor=owner, target_id=target.id)
             assert result.ok
         finally:
             connections.close_all()
