@@ -4,11 +4,12 @@
 
 ## Актуальная сводка автономного цикла (2026-11-24)
 
-- HEAD `de08292` (auth throttling) после `b953419` (throttle scopes),
-  `1fc0e97` (result verification), `cb92702` (B1d), `35ae98f` (B1b),
-  `f7a3779` (B1c), `7da168a` (B1a), A2/A1/CI; этот docs-коммит обновляет
-  реестры, затем `origin/main` синхронизируется push.
-- Последний полный gate: **1159 tests: 1146 passed, 13 skipped, exit 0** на
+- HEAD `bbfdcaf` (registration limits) после `de08292` (auth throttling),
+  `b953419` (throttle scopes), `1fc0e97` (result verification),
+  `cb92702` (B1d), `35ae98f` (B1b), `f7a3779` (B1c), `7da168a` (B1a),
+  A2/A1/CI; этот docs-коммит обновляет реестры, затем `origin/main`
+  синхронизируется push.
+- Последний полный gate: **1166 tests: 1153 passed, 13 skipped, exit 0** на
   свежей БД; JS **31/31**; ruff/format clean, mypy 382 файла clean. Первый
   reuse-DB прогон ранее дал 20 translation-seed failures — дефект тестовой
   БД (частичный reseed после transaction flush), не кода; открыт
@@ -19,14 +20,16 @@
 - P0 result integrity (`1fc0e97`): verification-profile results without
   `eventLog`/`seed` are quarantined and excluded from the leaderboard
   (`ARCADE-RESULT-VERIFICATION-001`); security-auditor accept, delta accept.
-- P0 throttling (`b953419` + `de08292`): session scopes разделены; results
-  IP 1200/ч; complaints 5/сутки + 30/сутки IP; account counters в
-  noeviction cache, атомарные login/2FA/reset, fail-closed auth+complaints,
-  IPv6 /64, socket timeouts (`ARCADE-THROTTLE-001`,
-  `ARCADE-AUTH-THROTTLE-001`); security-auditor accept + delta accept.
-  Остатки — account-lockout DoS policy, IP-failure burst race,
-  touch-repair без Lua, authenticated sessions_ip exemption, heartbeat
-  invalid-id buckets, challenge O4, DRF counters non-atomic.
+- P0/P1 throttling (`b953419` + `de08292` + `bbfdcaf`): session scopes
+  разделены; results IP 1200/ч; complaints 5/сутки + 30/сутки IP; account
+  counters в noeviction cache, атомарные login/2FA/reset, fail-closed
+  auth+complaints, IPv6 /64, socket timeouts; registration device 3/сутки +
+  IP 30/сутки; JSON-сериализатор throttle-кэша восстановил атомарный INCR
+  на реальном Redis (`ARCADE-THROTTLE-001`, `ARCADE-AUTH-THROTTLE-001`,
+  `ARCADE-REGISTRATION-LIMITS-001`). Остатки — account-lockout DoS policy,
+  IP-failure burst race, CSRF device rotation, hard 30/day без challenge,
+  authenticated sessions_ip exemption, heartbeat invalid-id buckets,
+  DRF counters non-atomic.
 - P0 A1/A2 закрыли прикладные host-exec каналы и доверие к worktree:
   exact sandbox commands, task-bound source-root, protected surfaces,
   immutable candidate до QA, чистый QA SHA, полный diff, strict verdicts,
@@ -41,7 +44,9 @@
 - Открыто нужны решения владельца: scheduled-publish schema, retention
   indexes, Docker assets stage, R-054 expiresAt/alias, R-055 DRAFT schemas,
   live E2E, R-036 Phase 2; challenge/PoW после IP-порогов (owner O4) и
-  политика `sessions_ip` для authenticated пользователей.
+  политика `sessions_ip` для authenticated пользователей; signed device
+  cookie + cookie policy и семантика «жёсткого блока 100» для регистрации
+  (`ARCADE-OWNER-THROTTLE-DIVERGENCE-001`).
 - BLOCKED: `ARCADE-ACCOUNTS-E2E-002`, `ARCADE-CRM-E2E-001`,
   `ARCADE-RETENTION-HARDENING-001`, `ARCADE-SCHEDULED-PUBLISH-001`,
   `ARCADE-RUNTIME-BUILD-SCHEMAS-001`.
@@ -49,10 +54,9 @@
   `propose` → отфильтровать задачи, требующие schema/contract/infra/E2E →
   `run --max-tasks 1`; после каждой задачи обновить реестры, PROJECT_STATUS
   и этот файл. Не запускать schema/contract/infra изменения без решения
-  владельца. Следующий P0-срез — `ARCADE-REGISTRATION-LIMITS-001`
-  (§3.4: device key 3/сутки + IP 30/сутки, release слотов, тесты
-  cookie/ротации), затем Stage C §4.1–§4.3 (импорт/публикация/rollback/
-  autotest) с анализом schema-free части.
+  владельца. Следующий P0/P1-срез — Stage C: §4.2 safe rollback
+  (history/validation/score rules, schema-free через audit), затем §4.3
+  autotest split и §4.1 import isolation с owner-анализом схемы/ТЗ.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**

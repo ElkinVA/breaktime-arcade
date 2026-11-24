@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-REGISTRATION-LIMITS-001 — device + IP registration limits
+
+| Поле | Значение |
+|---|---|
+| Тип | P1 abuse/NAT protection; security-auditor reject → delta accept |
+| Результат | device 3/сутки (CSRF-derived interim key, IP fallback) + IP 30/сутки; reserve/release вокруг формы; IPv6 /64 и IPv4-mapped; throttle cache JSON serializer делает INCR атомарным на реальном Redis; ConnectionInterrupted fail-closed |
+| Проверки | 49 targeted + real-Redis конкурентный тест (29 seed + 20 потоков → ровно один allowed); полный suite **1166 tests: 1153 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean (382) |
+| Статус | **IMPLEMENTED / SECURITY-AUDITOR ACCEPT; OWNER DECISION REQUIRED** (device cookie, challenge/100) |
+| Остаток | CSRF device rotation (~1/token-cycle); hard 30/day без challenge и блока 100; denied attempts keep slots (NAT burst DoS); release TOCTOU; production trusted-proxy allowlist; live load/staging not tested |
+| Источник | commit `bbfdcaf`; модели: implement — `deepseek-flash[1m]`, review — `security-auditor` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-AUTH-THROTTLE-001 — atomic account limits, fail-closed
 
 | Поле | Значение |

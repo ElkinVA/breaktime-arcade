@@ -1488,6 +1488,39 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-REGISTRATION-LIMITS-001 — device + IP registration limits
+
+- **Первопричина:** регистрация ограничивалась 3/сутки только по IP: это
+  блокировало общий NAT/CGNAT и не соответствовало Приложению E (3/сутки на
+  устройство + 30/сутки на IP). Проверка не была атомарной на реальном Redis.
+- **Результат:** `registration_attempt(device, ip)` резервирует device
+  (3/сутки) и IP (30/сутки); device key — хэш CSRF-cookie с fallback
+  `nocookie:<normalized IP>`; слоты возвращаются при невалидной форме/ошибке
+  сохранения и сохраняются при успехе. IPv6 /64 и IPv4-mapped collapse
+  применяются к device/IP ключам.
+- **Находка review (блокирующая, исправлена):** throttle-кэш использовал
+  pickle-сериализатор django-redis, поэтому INCR на реальном Redis падал в
+  неатомарный GET/SET и конкурентный burst превышал IP-лимит. Добавлен
+  `SERIALIZER: django_redis.serializers.json.JSONSerializer`; это также
+  закрывает real-Redis неатомарность пакета `de08292`. `ConnectionInterrupted`
+  включён в fail-closed; добавлен real-Redis тест (29 seed + 20 потоков →
+  ровно один allowed) и view-lifecycle тесты reserve/release.
+- **Проверки:** 49 targeted (device/IP, IPv6 /64, IPv4-mapped, release/keep,
+  fail-closed с реальным типом исключения, real-Redis atomicity); полный
+  suite **1166 tests: 1153 passed, 13 skipped, exit 0** на свежей БД;
+  ruff/format/mypy clean (382). Security-auditor: **reject → delta accept**.
+- **Остатки / owner:** device key через CSRF ротируется при login —
+  фактический device-лимит ~1/token-cycle, cookie clearing обходится;
+  binding-контроль — атомарный IP 30/сутки. Appendix E требует challenge
+  после 3 и жёсткий блок 100 — не реализованы (owner O4), сейчас hard 30;
+  denied attempts сохраняют слоты, поэтому burst может временно блокировать
+  NAT; release get/decr TOCTOU; production trusted-proxy allowlist;
+  signed device cookie требует cookie-policy/legal — **OWNER APPROVAL
+  REQUIRED**. Live load/staging NOT TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `security-auditor`
+  (`deepseek-v4-pro`, text-only), reject + delta accept.
+- **Commit:** `bbfdcaf`.
+
 ### ARCADE-AUTH-THROTTLE-001 — атомарные account limits, fail-closed
 
 - **Первопричина:** счётчики входа/2FA/восстановления жили в общем

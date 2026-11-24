@@ -68,9 +68,12 @@ ambiguity.
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
 - Account throttling: login/2FA/reset/registration counters use the
-  dedicated noeviction throttle cache; account attempts are atomic and
+  dedicated noeviction throttle cache with a JSON serializer (atomic INCR);
   security-critical limits fail closed (`ARCADE-AUTH-THROTTLE-001`,
-  `de08292`). Registration device key (3/day device + 30/day IP) remains.
+  `de08292`). Registration enforces device 3/day + IP 30/day, but the
+  CSRF-derived device key rotates on login and the Appendix E challenge/
+  hard-block-100 semantics remain owner decisions
+  (`ARCADE-REGISTRATION-LIMITS-001`, `bbfdcaf`).
 - Result integrity: verification-profile results missing `eventLog` or a
   non-empty `seed` are quarantined and never enter the leaderboard
   (`ARCADE-RESULT-VERIFICATION-001`, `1fc0e97`); empty-event heuristic

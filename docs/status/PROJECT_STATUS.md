@@ -528,6 +528,34 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.40. Registration limits and real-Redis atomicity — 2026-11-24
+
+`ARCADE-REGISTRATION-LIMITS-001` (`bbfdcaf`) — **IMPLEMENTED /
+SECURITY-AUDITOR ACCEPT; OWNER DECISION REQUIRED**: регистрация ограничена
+device 3/сутки + IP 30/сутки (было 3/сутки только по IP). Device key —
+хэш CSRF-cookie с fallback `nocookie:<normalized IP>`; слот резервируется до
+валидации и возвращается при невалидной форме/ошибке сохранения,
+сохраняется при успехе. IPv6 /64 и IPv4-mapped collapse применяются к
+device/IP ключам. Review обнаружил блокирующий дефект: pickle-сериализатор
+throttle-кэша ломал атомарный INCR на реальном Redis, django-redis
+переходил на неатомарный GET/SET; добавлен JSON-сериализатор (закрывает
+также real-Redis неатомарность `de08292`), `ConnectionInterrupted` включён
+в fail-closed, добавлен real-Redis конкурентный тест (29 seed + 20 потоков
+→ ровно один allowed) и view-lifecycle тесты reserve/release.
+49 targeted; полный suite **1166 tests: 1153 passed, 13 skipped, exit 0**
+на свежей БД; ruff/format/mypy clean (382). Модели: реализация —
+`deepseek-flash[1m]`, review — `security-auditor` (`deepseek-v4-pro`,
+text-only), reject → delta accept.
+
+**OWNER DECISION REQUIRED — расхождения с Приложением E:** (1) device key
+через CSRF ротируется при login, поэтому 3/сутки на устройство фактически
+~1/token-cycle; строгий device-лимит требует signed device cookie и
+обновления cookie policy/legal. (2) Appendix E требует challenge после 3 и
+жёсткий блок 100; реализован hard 30/day без challenge, а denied attempts
+сохраняют слоты — burst может временно блокировать NAT. Binding-контроль
+сейчас — атомарный IP 30/сутки. Остатки: release get/decr TOCTOU;
+production trusted-proxy allowlist; live load/staging NOT TESTED.
+
 ## 0.39. Account security throttling — 2026-11-24
 
 `ARCADE-AUTH-THROTTLE-001` (`de08292`) — **COMPLETED / SECURITY-AUDITOR
