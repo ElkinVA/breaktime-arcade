@@ -10,6 +10,7 @@ from __future__ import annotations
 from apps.gameplay.services.retention import (
     cleanup_gameplay_retention as cleanup_gameplay_retention_service,
 )
+from apps.gameplay.services.sessions import expire_stale_sessions
 from celery import shared_task
 
 
@@ -17,3 +18,9 @@ from celery import shared_task
 def cleanup_gameplay_retention() -> dict[str, int]:
     """Purge old sessions, play credits and expired guest storage."""
     return cleanup_gameplay_retention_service()
+
+
+@shared_task(name="apps.gameplay.tasks.expire_stale_sessions")
+def expire_stale_game_sessions() -> int:
+    """Expire abandoned ACTIVE sessions so they do not consume the play cap."""
+    return expire_stale_sessions()

@@ -23,9 +23,20 @@ from apps.accounts.services.anonymous import COOKIE_NAME
 from apps.accounts.services.profile import anonymize_user
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.gameplay.api import throttling
-from apps.gameplay.models import GamePlayCredit, GameSession, UserGamePlaytime
+from apps.gameplay.models import (
+    GameDailyStats,
+    GamePlayCredit,
+    GameSession,
+    UserGamePlaytime,
+)
 from apps.gameplay.services.results import submit_result
-from apps.gameplay.services.sessions import SessionError, activate_session, heartbeat
+from apps.gameplay.services.sessions import (
+    SessionError,
+    activate_session,
+    create_session,
+    expire_stale_sessions,
+    heartbeat,
+)
 
 LOCMEM_CACHES = {
     "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
@@ -136,6 +147,9 @@ def _run_parallel(workers: list) -> list[str]:
         except SessionError as exc:
             with lock:
                 outcomes.append(exc.code)
+        except Exception as exc:  # noqa: BLE001 - a deadlock must fail the test
+            with lock:
+                outcomes.append(f"{type(exc).__name__}: {exc}")
         else:
             with lock:
                 outcomes.append("ok")
@@ -1020,3 +1034,143 @@ def test_parallel_first_heartbeats_do_not_break_playtime_upsert() -> None:
     assert outcomes == ["ok", "ok"]
     playtime = UserGamePlaytime.objects.get(user=user, game=game)
     assert playtime.verified_seconds == 60
+
+
+@pytest.mark.django_db
+def test_stale_active_sessions_do_not_block_create() -> None:
+    client, csrf = _client()
+    game = _game()
+    active_ids: list[str] = []
+    for _index in range(3):
+        created = _create(client, csrf, game)
+        response = _activate(client, csrf, str(created["sessionId"]), str(created["ticket"]))
+        assert response.status_code == 200
+        active_ids.append(str(created["sessionId"]))
+
+    stale_id = active_ids[0]
+    GameSession.objects.filter(pk=stale_id).update(
+        last_heartbeat_at=timezone.now() - timedelta(seconds=31 * 60)
+    )
+
+    created = _create(client, csrf, game)
+    assert created["sessionId"]
+    stale = GameSession.objects.get(pk=stale_id)
+    assert stale.state == GameSession.STATE_EXPIRED
+    assert (
+        GameSession.objects.filter(
+            subject_type=GameSession.SUBJECT_ANON,
+            game=game,
+            state=GameSession.STATE_ACTIVE,
+        ).count()
+        == 2
+    )
+
+
+@pytest.mark.django_db
+def test_stale_active_sessions_do_not_block_activation() -> None:
+    client, csrf = _client()
+    game = _game()
+    tickets = [(_create(client, csrf, game)) for _index in range(4)]
+    for created in tickets[:2]:
+        response = _activate(client, csrf, str(created["sessionId"]), str(created["ticket"]))
+        assert response.status_code == 200
+    third = _activate(client, csrf, str(tickets[2]["sessionId"]), str(tickets[2]["ticket"]))
+    assert third.status_code == 200
+    GameSession.objects.filter(pk=str(tickets[0]["sessionId"])).update(
+        last_heartbeat_at=timezone.now() - timedelta(seconds=31 * 60)
+    )
+
+    fourth = _activate(client, csrf, str(tickets[3]["sessionId"]), str(tickets[3]["ticket"]))
+    assert fourth.status_code == 200
+    assert GameSession.objects.get(pk=str(tickets[0]["sessionId"])).state == (
+        GameSession.STATE_EXPIRED
+    )
+
+
+@pytest.mark.django_db
+def test_expire_stale_sessions_task_is_idempotent() -> None:
+    client, csrf = _client()
+    game = _game()
+    created = _create(client, csrf, game)
+    assert (
+        _activate(client, csrf, str(created["sessionId"]), str(created["ticket"])).status_code
+        == 200
+    )
+    GameSession.objects.filter(pk=str(created["sessionId"])).update(
+        last_heartbeat_at=timezone.now() - timedelta(seconds=31 * 60)
+    )
+
+    assert expire_stale_sessions() == 1
+    assert GameSession.objects.get(pk=str(created["sessionId"])).state == (
+        GameSession.STATE_EXPIRED
+    )
+    assert expire_stale_sessions() == 0
+
+
+@pytest.mark.django_db
+def test_expire_stale_sessions_records_popularity_credit_once() -> None:
+    client, csrf = _client()
+    game = _game()
+    created = _create(client, csrf, game)
+    response = _activate(client, csrf, str(created["sessionId"]), str(created["ticket"]))
+    assert response.status_code == 200
+    session = GameSession.objects.get(pk=str(created["sessionId"]))
+    now = timezone.now()
+    GameSession.objects.filter(pk=session.pk).update(
+        activated_at=now - timedelta(seconds=120),
+        last_heartbeat_at=now - timedelta(seconds=120),
+        max_session_seconds=60,
+        credited_ms=20_000,
+    )
+
+    assert expire_stale_sessions() == 1
+    assert GamePlayCredit.objects.filter(
+        game=game,
+        subject_type=GameSession.SUBJECT_ANON,
+        subject_id=session.subject_id,
+    ).exists()
+    stats = GameDailyStats.objects.get(game=game)
+    assert stats.sessions == 1
+    assert stats.completions == 0
+
+    assert expire_stale_sessions() == 0
+    stats.refresh_from_db()
+    assert stats.sessions == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_create_sweep_and_beat_task_do_not_deadlock() -> None:
+    game = _game()
+    user = User.objects.create_user(login="sweep_race_user")
+    old = timezone.now() - timedelta(seconds=31 * 60)
+    [
+        GameSession.objects.create(
+            game=game,
+            game_version=game.current_version,
+            subject_type=GameSession.SUBJECT_USER,
+            subject_id=user.id,
+            mode=GameSession.MODE_USER,
+            state=GameSession.STATE_ACTIVE,
+            seed=f"race-{index}",
+            max_session_seconds=1800,
+            credited_ms=20_000,
+            activated_at=old,
+            last_heartbeat_at=old,
+        )
+        for index in range(2)
+    ]
+    barrier = threading.Barrier(2)
+
+    def sweep() -> None:
+        request = _user_request(user)
+        response = HttpResponse()
+        barrier.wait(timeout=10)
+        create_session(request, response, game_id=game.technical_id)
+
+    def beat_task() -> None:
+        barrier.wait(timeout=10)
+        expire_stale_sessions()
+
+    outcomes = _run_parallel([sweep, beat_task])
+    assert len(outcomes) == 2, outcomes
+    assert all(outcome == "ok" for outcome in outcomes), outcomes

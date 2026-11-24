@@ -40,6 +40,52 @@ MAX_SESSION_SECONDS = 7200
 MAX_HEARTBEAT_DELTA_MS = 45_000
 
 
+def _is_stale(session: GameSession, current: datetime) -> bool:
+    """Whether an ACTIVE session exceeded idle or max-duration limits."""
+    last = session.last_heartbeat_at or session.activated_at or session.created_at
+    max_duration = (
+        session.activated_at is not None
+        and (current - session.activated_at).total_seconds() > session.max_session_seconds
+    )
+    return max_duration or (current - last).total_seconds() > IDLE_TIMEOUT_SECONDS
+
+
+def _expire_locked(session: GameSession, current: datetime) -> None:
+    """Mark a locked ACTIVE session expired and record its popularity credit."""
+    from apps.gameplay.services.popularity import credit_session
+
+    session.state = GameSession.STATE_EXPIRED
+    session.save(update_fields=["state", "updated_at"])
+    credit_session(
+        session,
+        duration_ms=session.credited_ms,
+        completed=False,
+        now=current,
+    )
+
+
+def _expire_stale_for_subject(
+    subject_type: str,
+    subject_id: UUID,
+    game_id: UUID,
+    current: datetime,
+) -> int:
+    """Expire stale ACTIVE sessions under the caller's subject/game lock."""
+    sessions = GameSession.objects.select_for_update().filter(
+        subject_type=subject_type,
+        subject_id=subject_id,
+        game_id=game_id,
+        state=GameSession.STATE_ACTIVE,
+    )
+    # Two-phase locking: acquire every session row lock before touching the
+    # shared play-credit row. Credit-first-per-row could deadlock with a
+    # concurrent heartbeat holding another session and waiting for credit.
+    stale_sessions = [session for session in sessions if _is_stale(session, current)]
+    for session in stale_sessions:
+        _expire_locked(session, current)
+    return len(stale_sessions)
+
+
 class SessionError(Exception):
     def __init__(self, code: str, message: str, status: int = 400) -> None:
         self.code = code
@@ -144,6 +190,8 @@ def create_session(
             if account is None or not account.is_active:
                 raise SessionError("E_SESSION_INVALID", "Account is not available", 403)
         _lock_subject_game(subject_type, subject_id, game.id)
+        # Expire abandoned ACTIVE rows before enforcing the cap.
+        _expire_stale_for_subject(subject_type, subject_id, game.id, current)
         # Unactivated tickets never reach ``expired`` on their own; forget them
         # lazily so a subject cannot accumulate rows without ever activating.
         GameSession.objects.filter(
@@ -242,6 +290,12 @@ def activate_session(
             # advisory lock as creation. Creation-time counting alone is not
             # enough: tickets issued at 2 active could otherwise activate to 4.
             _lock_subject_game(session.subject_type, session.subject_id, session.game_id)
+            _expire_stale_for_subject(
+                session.subject_type,
+                session.subject_id,
+                session.game_id,
+                current,
+            )
             active = GameSession.objects.filter(
                 subject_type=session.subject_type,
                 subject_id=session.subject_id,
@@ -295,22 +349,8 @@ def heartbeat(
             raise SessionError("E_SESSION_INVALID", "Session is not active", 400)
 
         last = session.last_heartbeat_at or session.activated_at or session.created_at
-        max_duration = (
-            session.activated_at is not None
-            and (current - session.activated_at).total_seconds() > session.max_session_seconds
-        )
-        idle = (current - last).total_seconds() > IDLE_TIMEOUT_SECONDS
-        if max_duration or idle:
-            from apps.gameplay.services.popularity import credit_session
-
-            session.state = GameSession.STATE_EXPIRED
-            session.save(update_fields=["state", "updated_at"])
-            credit_session(
-                session,
-                duration_ms=session.credited_ms,
-                completed=False,
-                now=current,
-            )
+        if _is_stale(session, current):
+            _expire_locked(session, current)
             expired = True
         else:
             delta_ms = int(
@@ -362,6 +402,46 @@ def close_session(
             )
         session.state = GameSession.STATE_ABORTED
         session.save(update_fields=["state", "updated_at"])
+
+
+def expire_stale_sessions(now: datetime | None = None) -> int:
+    """Expire idle/max-duration ACTIVE sessions for the periodic cleanup task."""
+    from django.db.models import DateTimeField, Q
+    from django.db.models.expressions import RawSQL
+
+    current = _now(now)
+    candidates = (
+        GameSession.objects.filter(state=GameSession.STATE_ACTIVE)
+        .annotate(
+            max_deadline=RawSQL(
+                "activated_at + make_interval(secs => max_session_seconds)",
+                [],
+                output_field=DateTimeField(),
+            )
+        )
+        .filter(
+            Q(last_heartbeat_at__lt=current - timedelta(seconds=IDLE_TIMEOUT_SECONDS))
+            | Q(
+                last_heartbeat_at__isnull=True,
+                activated_at__lt=current - timedelta(seconds=IDLE_TIMEOUT_SECONDS),
+            )
+            | Q(max_deadline__lt=current)
+        )
+        .values_list("pk", flat=True)
+    )
+    expired = 0
+    for session_id in candidates.iterator():
+        with transaction.atomic():
+            session = (
+                GameSession.objects.select_for_update()
+                .filter(pk=session_id, state=GameSession.STATE_ACTIVE)
+                .first()
+            )
+            if session is None or not _is_stale(session, current):
+                continue
+            _expire_locked(session, current)
+            expired += 1
+    return expired
 
 
 def _credit_playtime(user_id: UUID, game_id: UUID, delta_ms: int) -> None:
