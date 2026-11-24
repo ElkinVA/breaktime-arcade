@@ -64,6 +64,10 @@ ambiguity.
   (`AI-HQ-A1`, `1f46062`); candidate is committed before QA, QA runs on the
   exact clean SHA, diff is full and verdicts are strict (`AI-HQ-A2`,
   `45a69f1`). OS sandbox R-040 and model trust remain.
+- Game API throttling: create/activate/close use separate subject buckets,
+  results have the Appendix E 1200/hour IP cap, and complaints are 5/day
+  subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`). Account-login
+  atomicity/fail-closed and registration device limits remain.
 - Result integrity: verification-profile results missing `eventLog` or a
   non-empty `seed` are quarantined and never enter the leaderboard
   (`ARCADE-RESULT-VERIFICATION-001`, `1fc0e97`); empty-event heuristic

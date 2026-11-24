@@ -1488,6 +1488,33 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-THROTTLE-001 — отдельные session scopes и IP-лимиты
+
+- **Первопричина:** create, activate и close использовали общий scope
+  `sessions` (30/час), поэтому активация и закрытие расходовали лимит
+  создания; results не имел вторичного IP-лимита; complaints ограничивались
+  20/сутки на субъект, что не соответствовало Приложению E и допускало
+  rotation гостевых identity.
+- **Результат:** create — `sessions` 30/ч + guest IP 600/ч; activate/close —
+  отдельные subject-бакеты 30/ч (ставка Приложения E для создания, 1:1 к
+  созданным сессиям); results — subject 60/ч + IP 1200/ч; complaints —
+  5/сутки subject + 30/сутки IP. IP-ключи используют `_client_ip` (IPv6 /64
+  и IPv4-mapped).
+- **Проверки:** 9 targeted (separate buckets в обе стороны, results IP,
+  report subject/IP); полный suite **1147 tests: 1134 passed, 13 skipped,
+  exit 0** на свежей БД; ruff/format/mypy clean. Security-auditor review
+  **accept**, блокирующих замечаний нет.
+- **Остатки:** authenticated users освобождены от `sessions_ip`
+  (pre-existing, решение владельца/challenge); heartbeat bucket по URL
+  session_id (pre-existing, invalid-id flood); reports fail-open при отказе
+  throttle-Redis (закрыть в ARCADE-AUTH-THROTTLE-001); нет socket timeouts
+  у throttle cache; challenge в Приложении E не реализован (owner O4);
+  DRF list-счётчики неатомарны (небольшой overshoot). Live Redis/NAT/staging
+  NOT TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `security-auditor`
+  (`deepseek-v4-pro`, text-only).
+- **Commit:** `b953419`.
+
 ### ARCADE-RESULT-VERIFICATION-001 — missing eventLog/seed quarantine
 
 - **Результат:** при непустом verification profile отсутствие `eventLog`

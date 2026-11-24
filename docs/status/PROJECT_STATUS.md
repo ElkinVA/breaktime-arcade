@@ -528,6 +528,29 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.38. Game API throttling scopes — 2026-11-24
+
+`ARCADE-THROTTLE-001` (`b953419`) — **COMPLETED / SECURITY-AUDITOR ACCEPT**:
+create/activate/close больше не делят бакет `sessions`. Create остаётся
+subject 30/ч + guest-IP 600/ч; activate и close получили отдельные
+subject-бакеты 30/ч (Приложение E не задаёт их ставку; активаций и закрытий
+не может быть больше созданий). Results получил вторичный IP-лимит 1200/ч
+(subject 60/ч). Complaints приведены к Приложению E: 5/сутки на субъект +
+30/сутки на IP вместо 20/сутки subject-only; IP-порог ограничивает rotation
+гостевых identity до нормативного значения. 9 targeted tests (включая
+seeded-bucket 429 в обе стороны и IP-лимиты); полный suite
+**1147 tests: 1134 passed, 13 skipped, exit 0** на свежей БД; ruff/format/
+mypy clean. Модели: реализация — `deepseek-flash[1m]`, review —
+`security-auditor` (`deepseek-v4-pro`, text-only).
+Остатки: authenticated users освобождены от `sessions_ip` (pre-existing;
+решение владельца или challenge); heartbeat bucket привязан к URL session_id
+и позволяет mint новые бакеты невалидными id; reports остаются fail-open при
+отказе throttle-Redis; у throttle cache нет socket timeouts; challenge
+Приложения E не реализован (owner O4); DRF list-счётчики неатомарны.
+Следующие задачи — `ARCADE-AUTH-THROTTLE-001` (атомарные login/2FA/reset,
+fail-closed) и `ARCADE-REGISTRATION-LIMITS-001` (device 3/сутки + IP
+30/сутки).
+
 ## 0.37. Result verification bypass — 2026-11-24
 
 `ARCADE-RESULT-VERIFICATION-001` (`1fc0e97`) — **COMPLETED /

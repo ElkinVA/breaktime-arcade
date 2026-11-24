@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-THROTTLE-001 — session scopes, results/report IP caps
+
+| Поле | Значение |
+|---|---|
+| Тип | P0 API abuse protection; security-auditor review |
+| Результат | create/activate/close разделены по scope (create 30/ч + guest IP 600/ч; activate/close — отдельные 30/ч); results subject 60/ч + IP 1200/ч; complaints 5/сутки subject + 30/сутки IP |
+| Проверки | 9 targeted; полный suite **1147 tests: 1134 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean; security-auditor **accept**, findings non-blocking |
+| Статус | **COMPLETED / SECURITY-AUDITOR ACCEPT**; live Redis/NAT/staging not tested |
+| Остаток | authenticated sessions_ip exemption; heartbeat invalid-id buckets; reports fail-open до AUTH-THROTTLE-001; нет throttle socket timeouts; challenge O4; DRF counters non-atomic |
+| Источник | commit `b953419`; модели: implement — `deepseek-flash[1m]`, review — `security-auditor` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-RESULT-VERIFICATION-001 — missing eventLog/seed quarantine
 
 | Поле | Значение |
