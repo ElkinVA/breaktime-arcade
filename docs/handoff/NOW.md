@@ -4,16 +4,18 @@
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 
-- HEAD `331a1a6` (CI E2E hardening) после `f17d239`, `3c997d6`,
-  `dba59fb`, `9fc9096`, `16dba6d`, AI HQ `f303b01`/`86b21d6`/`b3f42ce` и
-  прежней очереди `e136af8`…`1fc0e97`; этот docs-коммит обновляет реестры,
-  затем `origin/main` синхронизируется push.
+- HEAD `ef242eb` (player header UX) после `331a1a6`, `f17d239`,
+  `3c997d6`, `dba59fb`, `9fc9096`, `16dba6d`, AI HQ
+  `f303b01`/`86b21d6`/`b3f42ce` и прежней очереди `e136af8`…`1fc0e97`;
+  этот docs-коммит обновляет реестры, затем `origin/main` синхронизируется
+  push.
 - Последний полный Python gate: **1259 passed, 14 skipped, exit 0** на
-  reuse-DB без `--create-db` (10:04, HEAD `9fc9096`); ruff/format clean (485),
-  mypy clean (393). JS suite **31/31**. Первый прогон после browser runner
-  дал тот же редкий moderation step-up flake (прошёл 5/5 отдельно и 45/45
-  файлом); наблюдение, не исправление. Перед gate проверять отсутствие
-  orphaned pytest/test_ba.
+  reuse-DB без `--create-db` (8:08, код на `ef242eb`); ruff/format clean
+  (485), mypy clean (393). JS suite **31/31**, browser E2E **22/22**
+  (44.6 с). Первый прогон после browser runner дал тот же редкий
+  moderation step-up flake (прошёл 5/5 отдельно и 45/45 файлом);
+  наблюдение, не исправление. Перед gate проверять отсутствие orphaned
+  pytest/test_ba.
 - ZIP Redis isolation: `ARCADE-REDIS-BROKER-ISOLATION-001` (`9fc9096`) —
   **COMPLETED / code-review ACCEPT**; отдельный `redis-zip`, zip-worker не
   видит default broker; publisher-only app с explicit connection; live
@@ -32,7 +34,11 @@
   .env/БД/Redis/edge), единый deadline, prod требует `playwright=true`;
   live positive 3/3 и negative page error; prod-style image build OK.
   Staging browser gate выключен до browser-testable topology; prod nginx
-  game hosts/TLS и CI E2E остаются.
+  game hosts/TLS остаются owner deploy gate.
+- Player UX: `ARCADE-PLAYER-HEADER-001` (`ef242eb`) — локализованное
+  название игры в шапке, ограничение ширины и перенос на мобильном;
+  product acceptance pending. Локализация ошибок старта и продуктовая
+  restart-кнопка остаются.
 - AI HQ OS sandbox (`ARCADE-AI-HQ-OS-SANDBOX-001`, `f303b01`/`86b21d6`/
   `b3f42ce`) — **COMPLETED / security-auditor ACCEPT**; private user+mount
   namespace + Landlock, fail-closed 125; остатки abstract AF_UNIX/netns,

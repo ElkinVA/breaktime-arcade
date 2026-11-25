@@ -136,6 +136,10 @@ ambiguity.
   `probe-seed` now publishes as UID 10001 because root lacks DAC_OVERRIDE
   under `cap_drop: ALL` (`ARCADE-CI-BROWSER-E2E-001`,
   `ARCADE-GAME-E2E-CRITICAL-001`).
+- Player UX: the play header shows the localized game title (fallback
+  technical id), caps its width and wraps on mobile
+  (`ARCADE-PLAYER-HEADER-001`, `ef242eb`). Start-error localization and a
+  product restart control remain.
 - Test infrastructure: the reuse-DB fixture now reseeds every i18n
   `*_seed_*.py` migration after a transaction-test flush, discovered in
   migration order with fail-loud guards (`ARCADE-TEST-DB-SEED-001`,

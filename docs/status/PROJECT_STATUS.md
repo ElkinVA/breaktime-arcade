@@ -528,6 +528,17 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.62. Player header UX and final regression — 2026-11-25
+
+`ARCADE-PLAYER-HEADER-001` (`ef242eb`) — шапка плеера показывает
+локализованное название игры вместо `technical_id`, ограничивает ширину и
+переносится на мобильном. Проверки: `test_game_play` 3 passed, JS 31/31,
+полный suite **1259 passed, 14 skipped, exit 0** (8:08), browser E2E
+**22 passed** (44.6 с), ruff/format clean (485), mypy clean (393),
+production-style image build PASS (Playwright 1.65.1, Chromium, pytest
+отсутствует). Итоговая оценка готовности — `docs/status/FIRST_WORKING_VERSION.md`.
+Остаток: локализация ошибок старта и продуктовая restart-кнопка, UX-полировка.
+
 ## 0.61. CI browser E2E and probe seed — 2026-11-25
 
 `ARCADE-CI-BROWSER-E2E-001` (`dba59fb` + `3c997d6` + `331a1a6`) —

@@ -2349,3 +2349,14 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Проверки:** локальный `make e2e` **22 passed**; ruff clean.
 - **Статус:** COMPLETED / CODE-REVIEW ACCEPT (delta accept).
 - **Commit:** `f17d239`, `c1e3940`, `71a7274`.
+
+### ARCADE-PLAYER-HEADER-001 — название игры в шапке плеера
+
+- **Результат:** ссылка «назад» показывает локализованный `title` (fallback
+  `technical_id`), ограничена `max-w-[75%]`, шапка переносится на мобильном.
+- **Проверки:** `test_game_play` 3 passed; JS 31/31; полный suite
+  **1259 passed, 14 skipped, exit 0** (8:08); browser E2E **22 passed**
+  (44.6 с); ruff/format/mypy clean; production-style image build PASS.
+- **Остаток:** локализация ошибок старта и продуктовая restart-кнопка —
+  отдельная UX-задача; product acceptance owner.
+- **Commit:** `ef242eb`.
