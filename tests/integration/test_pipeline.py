@@ -24,6 +24,7 @@ from apps.pipeline.services.importer import import_package
 from apps.pipeline.services.publishing import publish_version
 from apps.pipeline.services.rollback import rollback_version
 from apps.pipeline.services.worker import cleanup_expired_jobs, cleanup_upload_jobs
+from apps.pipeline.validation.codes import V_PUBLISHED_UPDATE_BLOCKED
 
 
 @pytest.fixture
@@ -548,6 +549,53 @@ def _version_for(
         validation_report={"ok": blockers == 0, "summary": {"blocker": blockers}},
         e2e_report={"passed": autotest},
     )
+
+
+@pytest.mark.django_db
+def test_reimport_of_published_game_is_rejected_without_mutation(
+    pipeline_env: Path,
+) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    version = first.version
+    assert publish_version(game, version).ok
+    game.refresh_from_db()
+    fields_before = {
+        field: getattr(game, field)
+        for field in (
+            "score_direction",
+            "score_unit",
+            "score_min_value",
+            "score_max_value",
+            "score_schema_version",
+            "min_session_seconds",
+            "max_session_seconds",
+            "default_language",
+            "verification_profile",
+            "current_version_id",
+            "status",
+        )
+    }
+    translations_before = list(
+        game.translations.order_by("language__code").values_list("language__code", "name")
+    )
+    tags_before = sorted(game.tags.values_list("code", flat=True))
+    assets_before = sorted(game.assets.values_list("id", "file"))
+
+    second = _run(pipeline_env, _package(version="1.1.0", name="Renamed Game"))
+
+    assert second.status == "rejected"
+    assert any(item.code == V_PUBLISHED_UPDATE_BLOCKED for item in second.report.diagnostics)
+    game.refresh_from_db()
+    assert {field: getattr(game, field) for field in fields_before} == fields_before
+    assert (
+        list(game.translations.order_by("language__code").values_list("language__code", "name"))
+        == translations_before
+    )
+    assert sorted(game.tags.values_list("code", flat=True)) == tags_before
+    assert sorted(game.assets.values_list("id", "file")) == assets_before
+    assert GameVersion.objects.filter(game=game).count() == 1
 
 
 @pytest.mark.django_db

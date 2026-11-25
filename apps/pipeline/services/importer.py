@@ -75,6 +75,7 @@ from apps.pipeline.validation.codes import (
     V_ID_CONFLICT,
     V_ID_MISMATCH,
     V_LANG_UNKNOWN,
+    V_PUBLISHED_UPDATE_BLOCKED,
     V_SDK_INCOMPATIBLE,
     V_SDK_MISSING,
     V_VERSION_DUP,
@@ -344,6 +345,19 @@ def _import_package(
                     V_VERSION_DUP,
                     "Версия с таким semver уже существует",
                     meta={"semver": manifest.get("version")},
+                )
+            # §2.14: a published card must keep its public rules, metadata and
+            # assets until the new version is switched atomically. Draft
+            # isolation is not implemented yet, so reject the update instead
+            # of mutating the live game before publish.
+            if existing_game.status == Game.STATUS_PUBLISHED:
+                report.add(
+                    V_PUBLISHED_UPDATE_BLOCKED,
+                    "Обновление опубликованной игры временно заблокировано",
+                    hint=(
+                        "Дождитесь внедрения изоляции draft-импорта: текущий импорт "
+                        "изменяет карточку до публикации."
+                    ),
                 )
 
         if _has_blockers(report):
