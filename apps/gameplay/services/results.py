@@ -17,6 +17,7 @@ from django.db import connection, transaction
 from apps.accounts.models import AnonymousIdentity, User
 from apps.core.contracts import validate_eventlog_semantics
 from apps.gameplay.models import GameResult, GameSession, LeaderboardEntry
+from apps.gameplay.services.ranking import entry_rank
 from apps.gameplay.services.sessions import SessionError, _lock_account, _now
 from apps.gameplay.services.verifier import verify
 
@@ -45,21 +46,6 @@ def _is_better(
     if direction == "lower_is_better":
         return value < other_value or (value == other_value and achieved_at < other_at)
     return value > other_value or (value == other_value and achieved_at < other_at)
-
-
-def _rank(game, epoch: int, value: int, achieved_at: datetime, user_id: UUID) -> int:
-    entries = LeaderboardEntry.objects.filter(game=game, epoch=epoch, is_public=True)
-    # §2.11.3 tie-break: achieved_at ASC, then user_id ASC.
-    tie_break = entries.filter(value=value, achieved_at=achieved_at, user_id__lt=user_id)
-    if game.score_direction == "lower_is_better":
-        better = entries.filter(value__lt=value) | entries.filter(
-            value=value, achieved_at__lt=achieved_at
-        )
-    else:
-        better = entries.filter(value__gt=value) | entries.filter(
-            value=value, achieved_at__lt=achieved_at
-        )
-    return better.count() + tie_break.count() + 1
 
 
 def _subject(request, session: GameSession) -> tuple[str, User | None, AnonymousIdentity | None]:
@@ -273,7 +259,7 @@ def submit_result(
             rank_value, rank_at = value, achieved_at
             if not is_personal_best and previous is not None:
                 rank_value, rank_at = previous.value, previous.achieved_at
-            rank = _rank(game, epoch, rank_value, rank_at, user.id)
+            rank = entry_rank(game, epoch, rank_value, rank_at, user.id)
             response["rank"] = rank
             response["is_record"] = is_personal_best and rank == 1
             result.response = response

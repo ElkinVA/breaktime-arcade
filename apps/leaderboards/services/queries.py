@@ -17,6 +17,7 @@ from django.db.models import (
 from django.db.models.functions import Coalesce
 
 from apps.gameplay.models import GameResult, LeaderboardEntry
+from apps.gameplay.services.ranking import entry_rank
 
 PERSONAL_ATTEMPTS_LIMIT = 20
 
@@ -82,20 +83,6 @@ def _entry_payload(entry: LeaderboardEntry, rank: int) -> dict[str, Any]:
     }
 
 
-def _rank(game, epoch: int, value: int, achieved_at, user_id) -> int:
-    entries = LeaderboardEntry.objects.filter(game=game, epoch=epoch, is_public=True)
-    if game.score_direction == "lower_is_better":
-        better = entries.filter(value__lt=value) | entries.filter(
-            value=value, achieved_at__lt=achieved_at
-        )
-    else:
-        better = entries.filter(value__gt=value) | entries.filter(
-            value=value, achieved_at__lt=achieved_at
-        )
-    tie_break = entries.filter(value=value, achieved_at=achieved_at, user_id__lt=user_id)
-    return better.count() + tie_break.count() + 1
-
-
 def get_leaderboard(game, *, limit: int, user) -> dict[str, Any]:
     """TOP-N for the current epoch plus the subject's own row."""
     epoch = game.leaderboard_epoch
@@ -114,7 +101,7 @@ def get_leaderboard(game, *, limit: int, user) -> dict[str, Any]:
         own = queryset.filter(user=user).first()
         if own is not None:
             payload["me"] = _entry_payload(
-                own, _rank(game, epoch, own.value, own.achieved_at, own.user_id)
+                own, entry_rank(game, epoch, own.value, own.achieved_at, own.user_id)
             )
     return payload
 
@@ -128,7 +115,7 @@ def get_personal_best(game, user) -> dict[str, Any]:
     )
     if entry is None:
         return {"value": None, "achieved_at": None, "rank": None}
-    rank = _rank(game, epoch, entry.value, entry.achieved_at, entry.user_id)
+    rank = entry_rank(game, epoch, entry.value, entry.achieved_at, entry.user_id)
     return {
         "value": entry.value,
         "achieved_at": entry.achieved_at.isoformat(),
@@ -186,7 +173,7 @@ def get_personal_section(
     if entry is not None:
         best = {
             "value": entry.value,
-            "rank": _rank(game, epoch, entry.value, entry.achieved_at, entry.user_id),
+            "rank": entry_rank(game, epoch, entry.value, entry.achieved_at, entry.user_id),
             "achieved_at": entry.achieved_at,
         }
     return {"best": best, "attempts": get_personal_attempts(game, user, limit=limit)}
