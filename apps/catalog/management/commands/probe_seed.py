@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from django.core.management.base import BaseCommand
+import os
+
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from apps.catalog.models import Game, GameVersion, Genre
@@ -12,6 +15,8 @@ class Command(BaseCommand):
     help = "Create/refresh the test-only runtime probe game (not a product game)."
 
     def handle(self, *args, **options) -> None:
+        if not settings.DEBUG and not os.environ.get("PYTEST_CURRENT_TEST"):
+            raise CommandError("probe_seed is a dev-only diagnostic command")
         genre, _ = Genre.objects.get_or_create(code="probe")
         game, _ = Game.objects.get_or_create(
             technical_id="probe",
