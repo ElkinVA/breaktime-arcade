@@ -35,7 +35,8 @@ class SessionResultSerializer(serializers.Serializer):
         events = value.get("events", [])
         if not isinstance(events, list) or len(events) > MAX_EVENT_LOG_EVENTS:
             raise serializers.ValidationError("eventLog has too many events")
-        if len(json.dumps(value, separators=(",", ":"), ensure_ascii=False)) > MAX_EVENT_LOG_BYTES:
+        encoded = json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        if len(encoded) > MAX_EVENT_LOG_BYTES:
             raise serializers.ValidationError("eventLog is too large")
         schema_errors = validate_schema("eventlog.json", value)
         if schema_errors:
