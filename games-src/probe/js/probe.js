@@ -52,6 +52,15 @@
                 }
             });
 
+            document.getElementById("probe-restart").addEventListener("click", async () => {
+                try {
+                    const session = await ba.newSession();
+                    setStatus("restarted", JSON.stringify(session));
+                } catch (error) {
+                    setStatus("error", `${error.code || "E_INTERNAL"}: ${error.message}`);
+                }
+            });
+
             document.getElementById("probe-storage").addEventListener("click", async () => {
                 try {
                     await ba.storage.set("probe.v1", { n: 1 });

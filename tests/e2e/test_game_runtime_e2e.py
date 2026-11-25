@@ -9,6 +9,7 @@ Requires the dev stack and a runtime probe:
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import uuid
@@ -83,6 +84,20 @@ def test_probe_guest_submit_is_forbidden_and_leaderboard_survives(page: Page) ->
     frame.locator("#probe-leaderboard").click()
     expect(status).to_have_attribute("data-state", "leaderboard", timeout=10000)
     expect(status).to_contain_text('"entries"')
+
+
+def test_probe_restart_opens_a_new_session(page: Page) -> None:
+    page.goto(f"{BASE_URL}/en/games/probe/play/", wait_until="domcontentloaded")
+
+    frame = page.frame_locator("#game-frame")
+    status = frame.locator("#probe-status")
+    expect(status).to_have_attribute("data-state", "ready", timeout=15000)
+    old_context = frame.locator("#probe-context").inner_text()
+
+    frame.locator("#probe-restart").click()
+    expect(status).to_have_attribute("data-state", "restarted", timeout=15000)
+    new_session = json.loads(status.inner_text())["sessionId"]
+    assert f'"sessionId": "{new_session}"' not in old_context
 
 
 def test_probe_exit_keeps_the_portal_usable(page: Page) -> None:
