@@ -122,7 +122,6 @@ services:
         NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
         UV_VERSION: ${UV_VERSION:?задайте UV_VERSION в .env (make env)}
     restart: unless-stopped
-    env_file: [.env]
     user: "10001:10001"
     security_opt: ["no-new-privileges:true"]
     cap_drop: ["ALL"]
@@ -130,7 +129,13 @@ services:
     command: ["celery", "-A", "config", "worker", "-Q", "zip", "-n", "zip@%h",
               "--pool=prefork", "--concurrency=1", "--prefetch-multiplier=1",
               "--without-gossip", "--without-mingle", "-l", "info"]
+    # Least privilege: this process parses untrusted ZIPs, so it gets only an
+    # explicit non-secret allowlist instead of the full .env (database, mail,
+    # S3, backup and signing secrets are intentionally absent). Compose
+    # interpolation still reads .env/.env.staging for these named variables.
     environment:
+      DJANGO_SETTINGS_MODULE: "${DJANGO_SETTINGS_MODULE:-config.settings.prod}"
+      CELERY_BROKER_URL: "${CELERY_BROKER_URL:-redis://redis-broker:6379/2}"
       RUN_MIGRATIONS: "0"
       RUN_COLLECTSTATIC: "0"
       # Shared quota state/lock; must be writable here for artifact admission.
@@ -138,6 +143,12 @@ services:
       ZIP_STORAGE_QUOTA_BYTES: "${ZIP_STORAGE_QUOTA_BYTES:-2147483648}"
       ZIP_STORAGE_MIN_FREE_BYTES: "${ZIP_STORAGE_MIN_FREE_BYTES:-157286400}"
       ZIP_QUOTA_RESERVATION_TTL_SECONDS: "${ZIP_QUOTA_RESERVATION_TTL_SECONDS:-3600}"
+      # Non-secret hardening/retention knobs; defaults mirror base.py.
+      ZIP_DISK_RESERVE_BYTES: "${ZIP_DISK_RESERVE_BYTES:-157286400}"
+      ZIP_JOB_DEADLINE_SECONDS: "${ZIP_JOB_DEADLINE_SECONDS:-50}"
+      ZIP_JOB_MAX_BYTES: "${ZIP_JOB_MAX_BYTES:-125829120}"
+      ZIP_STAGING_TTL_SECONDS: "${ZIP_STAGING_TTL_SECONDS:-3600}"
+      ZIP_COMPLETED_TTL_SECONDS: "${ZIP_COMPLETED_TTL_SECONDS:-86400}"
     volumes:
       - zip_uploads:/var/ba/zip/uploads:ro
       - zip_artifacts:/var/ba/zip/artifacts

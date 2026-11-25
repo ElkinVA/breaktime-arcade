@@ -31,7 +31,8 @@ services:
       web: { condition: service_healthy }
 
   zip-worker:
-    env_file: [.env.staging]
+    # No env_file: base compose forwards only the explicit non-secret
+    # allowlist, interpolated from .env.staging by the staging wrapper.
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.staging
 

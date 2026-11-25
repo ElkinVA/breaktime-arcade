@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,41 @@ yaml = pytest.importorskip("yaml")
 
 ROOT = Path(__file__).resolve().parents[2]
 COMPOSE_FILES = ("compose.yml", "compose.dev-lite.yml", "compose.staging.yml")
+
+ZIP_WORKER_ENV = {
+    "DJANGO_SETTINGS_MODULE": "${DJANGO_SETTINGS_MODULE:-config.settings.prod}",
+    "CELERY_BROKER_URL": "${CELERY_BROKER_URL:-redis://redis-broker:6379/2}",
+    "RUN_MIGRATIONS": "0",
+    "RUN_COLLECTSTATIC": "0",
+    "ZIP_QUOTA_STATE_ROOT": "${ZIP_QUOTA_STATE_ROOT:-/var/ba/zip/quota}",
+    "ZIP_STORAGE_QUOTA_BYTES": "${ZIP_STORAGE_QUOTA_BYTES:-2147483648}",
+    "ZIP_STORAGE_MIN_FREE_BYTES": "${ZIP_STORAGE_MIN_FREE_BYTES:-157286400}",
+    "ZIP_QUOTA_RESERVATION_TTL_SECONDS": "${ZIP_QUOTA_RESERVATION_TTL_SECONDS:-3600}",
+    "ZIP_DISK_RESERVE_BYTES": "${ZIP_DISK_RESERVE_BYTES:-157286400}",
+    "ZIP_JOB_DEADLINE_SECONDS": "${ZIP_JOB_DEADLINE_SECONDS:-50}",
+    "ZIP_JOB_MAX_BYTES": "${ZIP_JOB_MAX_BYTES:-125829120}",
+    "ZIP_STAGING_TTL_SECONDS": "${ZIP_STAGING_TTL_SECONDS:-3600}",
+    "ZIP_COMPLETED_TTL_SECONDS": "${ZIP_COMPLETED_TTL_SECONDS:-86400}",
+}
+SECRET_NAME = re.compile(
+    r"(?i)(password|secret|token|passphrase|dsn|hmac|signing|credential|access[_-]?key|api[_-]?key)"
+)
+SECRET_ENV_NAMES = {
+    "ANON_SIGNING_KEY",
+    "BACKUP_PASSPHRASE",
+    "BACKUP_TARGET_URI",
+    "DATABASE_URL",
+    "DJANGO_SECRET_KEY",
+    "EMAIL_PASSWORD",
+    "NICKNAME_HMAC_KEY",
+    "POSTGRES_PASSWORD",
+    "S3_ACCESS_KEY",
+    "S3_SECRET_KEY",
+    "SENTRY_DSN",
+    "SESSION_BINDING_KEY",
+    "TOTP_ISSUER",
+}
+INTERPOLATION = re.compile(r"^\$\{[A-Z_]+:-(?P<default>.*)\}$")
 
 # The secret-free sandbox runner copies only application/test roots, so these
 # infrastructure files are absent there. CI/`make test` run from the repository
@@ -21,6 +57,19 @@ pytestmark = pytest.mark.skipif(
 
 def _load(name: str) -> dict[str, Any]:
     return yaml.safe_load((ROOT / name).read_text(encoding="utf-8"))
+
+
+def _default(value: str) -> str:
+    match = INTERPOLATION.fullmatch(value)
+    assert match is not None, value
+    return match.group("default")
+
+
+def _int_product(expression: str) -> int:
+    result = 1
+    for factor in expression.split("*"):
+        result *= int(factor.strip())
+    return result
 
 
 def test_zip_worker_isolation() -> None:
@@ -50,6 +99,57 @@ def test_zip_worker_isolation() -> None:
         "zip-volume-init": {"condition": "service_completed_successfully"},
         "redis-broker": {"condition": "service_healthy"},
     }
+
+
+def test_zip_worker_has_no_env_file_and_exact_allowlist() -> None:
+    service = _load("compose.yml")["services"]["zip-worker"]
+
+    assert "env_file" not in service
+    assert service["environment"] == ZIP_WORKER_ENV
+
+
+def test_zip_worker_environment_has_no_secret_names() -> None:
+    environment = _load("compose.yml")["services"]["zip-worker"]["environment"]
+
+    assert not set(environment) & SECRET_ENV_NAMES
+    assert not [name for name in environment if SECRET_NAME.search(name)]
+
+
+def test_zip_worker_env_defaults_match_settings() -> None:
+    source = (ROOT / "config/settings/base.py").read_text(encoding="utf-8")
+    environment = _load("compose.yml")["services"]["zip-worker"]["environment"]
+
+    for name, value in ZIP_WORKER_ENV.items():
+        if name in {"RUN_MIGRATIONS", "RUN_COLLECTSTATIC", "ZIP_QUOTA_STATE_ROOT"}:
+            continue
+        if name == "DJANGO_SETTINGS_MODULE":
+            assert _default(value) == "config.settings.prod"
+            continue
+        if name == "CELERY_BROKER_URL":
+            assert _default(value) == "redis://redis-broker:6379/2"
+            assert '"redis://redis-broker:6379/2"' in source
+            continue
+        match = re.search(rf'env_int\("{name}", ([^)\n]+)\)', source)
+        assert match is not None, name
+        expression = match.group(1).strip()
+        if expression == "ZIP_DISK_RESERVE_BYTES":
+            assert _default(value) == _default(environment["ZIP_DISK_RESERVE_BYTES"])
+        else:
+            assert int(_default(value)) == _int_product(expression)
+
+
+def test_zip_quota_environment_matches_web_exactly() -> None:
+    data = _load("compose.yml")
+    web = data["services"]["web"]["environment"]
+    zip_worker = data["services"]["zip-worker"]["environment"]
+
+    for name in (
+        "ZIP_QUOTA_STATE_ROOT",
+        "ZIP_STORAGE_QUOTA_BYTES",
+        "ZIP_STORAGE_MIN_FREE_BYTES",
+        "ZIP_QUOTA_RESERVATION_TTL_SECONDS",
+    ):
+        assert zip_worker[name] == web[name]
 
 
 def test_regular_worker_does_not_consume_zip() -> None:
@@ -129,14 +229,16 @@ def test_system_wide_quota_is_shared_and_configured() -> None:
 
 def test_dev_lite_and_staging_overlays() -> None:
     dev = _load("compose.dev-lite.yml")
-    assert dev["services"]["zip-worker"]["environment"]["DJANGO_SETTINGS_MODULE"] == (
-        "config.settings.dev"
-    )
+    dev_zip = dev["services"]["zip-worker"]
+    assert dev_zip["environment"]["DJANGO_SETTINGS_MODULE"] == "config.settings.dev"
+    assert "env_file" not in dev_zip
     assert "default,celery" in dev["services"]["worker"]["command"]
 
     staging = _load("compose.staging.yml")
     staging_zip = staging["services"]["zip-worker"]
-    assert staging_zip["env_file"] == [".env.staging"]
-    # The staging overlay must not weaken base isolation.
+    assert "env_file" not in staging_zip
+    assert staging_zip["environment"]["DJANGO_SETTINGS_MODULE"] == "config.settings.staging"
+    # The staging overlay must not weaken base isolation or widen the env.
     for key in ("networks", "security_opt", "cap_drop", "read_only", "tmpfs", "volumes", "user"):
         assert key not in staging_zip
+    assert set(staging_zip["environment"]) == {"DJANGO_SETTINGS_MODULE"}
