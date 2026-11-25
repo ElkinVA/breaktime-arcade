@@ -994,6 +994,20 @@ def test_schedule_publish_blocks_validation_errors(pipeline_env: Path) -> None:
 
 
 @pytest.mark.django_db
+def test_schedule_publish_blocks_failed_autotest(pipeline_env: Path) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None
+    blocked = _version_for(first.game, "2.0.0", autotest=False)
+
+    result = schedule_publish(first.game, blocked, timezone.now())
+
+    assert not result.ok
+    assert result.reason == "V_AUTOTEST_FAILED"
+    first.game.refresh_from_db()
+    assert first.game.publish_at is None
+
+
+@pytest.mark.django_db
 def test_publish_blocks_without_green_autotest(pipeline_env: Path) -> None:
     first = _run(pipeline_env, _package())
     assert first.game is not None and first.version is not None
