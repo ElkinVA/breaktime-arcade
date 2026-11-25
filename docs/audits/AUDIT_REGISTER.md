@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-RANK-NONPB-001 — rank for non-personal-best results
+
+| Поле | Значение |
+|---|---|
+| Тип | §6.7 leaderboard semantics; code-reviewer ACCEPT + delta ACCEPT |
+| Результат | non-PB rank uses the user's existing best row; PB uses the new result; `is_record = is_personal_best and rank == 1`; aligns with read-side me.rank/myBest |
+| Проверки | 29 result tests (added PB-not-first and lower-is-better non-PB), 19 leaderboard/profile/race tests; полный suite **1236 tests: 1223 passed, 13 skipped, exit 0**; ruff/format/mypy clean (387) |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT**; browser E2E/staging NOT TESTED |
+| Остаток | tie-with-own-best test; duplicated `_rank`; previous row not filtered by `is_public` → `ARCADE-LEADERBOARD-RANK-UNIFY-001` |
+| Источник | commits `df8cad6`, `910f268`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-EVENTLOG-BYTES-001 — UTF-8 eventLog limit
 
 | Поле | Значение |

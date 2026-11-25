@@ -67,6 +67,11 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- Leaderboard rank: a non-personal-best submit returns the position of the
+  user's existing best row, not the hypothetical position of the worse run;
+  `is_record` is true only for a personal best that is also #1
+  (`ARCADE-RANK-NONPB-001`, `df8cad6`/`910f268`). `_rank` duplication and an
+  `is_public` filter remain in a follow-up.
 - Result payload: the eventLog 2 MiB limit is enforced on UTF-8 bytes, and
   lone surrogates now yield a structured validation error in both the
   serializer and semantic validator (`ARCADE-EVENTLOG-BYTES-001`,

@@ -528,6 +528,25 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.55. Rank for non-personal-best results — 2026-11-25
+
+`ARCADE-RANK-NONPB-001` (`df8cad6` + `910f268`) — **COMPLETED /
+CODE-REVIEW ACCEPT**: при non-PB сабмите больше не возвращается
+гипотетическая позиция более слабого прогона (она учитывала собственный
+лучший результат пользователя как «лучше»). Rank теперь описывает
+единственную строку пользователя в leaderboard: при non-PB — позицию
+существующего лучшего результата, при PB — позицию нового. `is_record`
+истинно только для нового личного рекорда, который также #1, поэтому NEW
+HIGH SCORE не появляется за более слабый прогон. Семантика совпадает с
+read-side `me.rank`/`myBest`. Проверки: 29 result tests (добавлены
+PB-not-first и lower-is-better non-PB), 19 leaderboard/profile/race tests;
+полный suite **1236 tests: 1223 passed, 13 skipped, exit 0**; ruff/format/
+mypy clean (387). Модели: реализация — `deepseek-flash[1m]`, review —
+`code-reviewer` (`deepseek-v4-pro`, text-only), ACCEPT + delta ACCEPT.
+Остатки: нет tie-с-best теста, `_rank` дублируется в results/queries,
+`previous` не фильтруется по `is_public` — follow-up
+`ARCADE-LEADERBOARD-RANK-UNIFY-001`; browser E2E/staging NOT TESTED.
+
 ## 0.54. eventLog UTF-8 byte limit — 2026-11-25
 
 `ARCADE-EVENTLOG-BYTES-001` (`ea47229` + `0a0dbfb`) — **COMPLETED /

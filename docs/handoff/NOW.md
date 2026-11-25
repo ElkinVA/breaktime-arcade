@@ -4,16 +4,17 @@
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 
-- HEAD `0a0dbfb` (eventLog Unicode delta) после `ea47229`, `a81ec48`
-  (player API timeout), `24d9979` (submit/restart race), `4c5dd02`,
-  `b24ff78`, `006aaca`, `e8e0175`, `1cbbec3`, `d90af22`, `1c19af5`,
-  `f6680ed`, `995f5d2`, `8e5f507`, `34f237f` (orphan runtime), `03aaf0f`
-  (concurrent import), `1687517` (ZIP reaper), `26d8075` (email reset),
-  `cdb567a` (restore-check), `ab62a7d` + `116efbd`, `766029e`, `88c2a64`,
-  `ecfb419`, `bbfdcaf`, `de08292`, `b953419`, `1fc0e97`, B1/CI; этот
-  docs-коммит обновляет реестры, затем `origin/main` синхронизируется push.
-- Последний полный Python gate: **1234 tests: 1221 passed, 13 skipped,
-  exit 0** на reuse-DB без `--create-db` (8:02, HEAD `0a0dbfb`);
+- HEAD `910f268` (rank edge tests) после `df8cad6` (rank non-PB),
+  `0a0dbfb` (eventLog Unicode delta), `ea47229`, `a81ec48` (player API
+  timeout), `24d9979` (submit/restart race), `4c5dd02`, `b24ff78`,
+  `006aaca`, `e8e0175`, `1cbbec3`, `d90af22`, `1c19af5`, `f6680ed`,
+  `995f5d2`, `8e5f507`, `34f237f` (orphan runtime), `03aaf0f` (concurrent
+  import), `1687517` (ZIP reaper), `26d8075` (email reset), `cdb567a`
+  (restore-check), `ab62a7d` + `116efbd`, `766029e`, `88c2a64`, `ecfb419`,
+  `bbfdcaf`, `de08292`, `b953419`, `1fc0e97`, B1/CI; этот docs-коммит
+  обновляет реестры, затем `origin/main` синхронизируется push.
+- Последний полный Python gate: **1236 tests: 1223 passed, 13 skipped,
+  exit 0** на reuse-DB без `--create-db` (8:34, HEAD `910f268`);
   ruff/format clean, mypy 387 файлов clean. JS suite **31/31**, `check:js`
   clean на `a81ec48`. Reuse-DB issue `ARCADE-TEST-DB-SEED-001` закрыт; перед
   gate проверять отсутствие orphaned pytest/test_ba-сессий. Один редкий
@@ -38,6 +39,11 @@
   IP-failure burst race, CSRF device rotation, hard 30/day без challenge,
   authenticated sessions_ip exemption, heartbeat invalid-id buckets,
   DRF counters non-atomic.
+- P1 rank (`df8cad6` + `910f268`): для non-PB результата rank — место
+  лучшей строки пользователя (не гипотетическое место прогона), `is_record`
+  только для PB-#1; добавлены PB-not-first и lower-is-better тесты; review
+  ACCEPT (`ARCADE-RANK-NONPB-001`). Остатки — объединение `_rank` и
+  `is_public`-фильтр (`ARCADE-LEADERBOARD-RANK-UNIFY-001`).
 - P1 result payload (`ea47229` + `0a0dbfb`): eventLog лимит 2 MiB считается
   в UTF-8 байтах; lone surrogate даёт структурированную 400-ошибку, не 500
   (`ARCADE-EVENTLOG-BYTES-001`); review ACCEPT, delta ACCEPT. Остатки —
@@ -119,13 +125,15 @@
   и этот файл. Не запускать schema/contract/infra изменения без решения
   владельца. `ARCADE-RUNTIME-ORPHAN-001`,
   `ARCADE-ZIP-WORKER-SECRETS-001` и `ARCADE-RATINGS-NIGHTLY-001`
-  завершены. Следующий независимый P1-срез — §6 bounded game/API fixes
-  (Neon Snake restart/seed, Archer RNG particles, SDK schema/serializer
-  alignment, score type, rank semantics, player error messages) либо
-  остаточное §5.5 hardening (Redis ACL/queue isolation, async import,
-  retention отклонённых ZIP, quota-directory consistency); §5.3 audit events
-  требует owner-решения по choices-миграции, score type — публичный контракт.
-  Stage C §4.1/§4.3 — owner-gated.
+  завершены. Остаточные §6-пункты: Neon Snake restart/seed и Archer RNG
+  particles (нужен browser/game E2E), SDK schema/serializer alignment и
+  score type (публичный контракт/owner), player error messages (i18n-строки
+  требуют data-миграции). Остаточное §5.5 hardening — Redis ACL/queue
+  isolation, async import, retention отклонённых ZIP, quota-directory
+  consistency. §5.3 audit events требует owner-решения по choices-миграции.
+  `ARCADE-LEADERBOARD-RANK-UNIFY-001`, `ARCADE-SUBMIT-RESTART-HARDENING-001`
+  и `ARCADE-EVENTLOG-BYTES-001` residuals — мелкие follow-up. Stage C
+  §4.1/§4.3 — owner-gated.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**

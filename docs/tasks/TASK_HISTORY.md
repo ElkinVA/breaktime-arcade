@@ -1488,6 +1488,30 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-RANK-NONPB-001 — rank при non-personal-best результате
+
+- **Первопричина:** owner-аудит §6.7. При non-PB сабмите возвращалась
+  гипотетическая позиция более слабого прогона, причём собственный лучший
+  результат пользователя учитывался как «лучше». Best 100 + прогон 50 давал
+  rank 2, хотя в leaderboard пользователь оставался #1.
+- **Результат:** при `is_personal_best=False` rank считается по существующей
+  лучшей строке пользователя (`previous.value`/`achieved_at`); при PB — по
+  новому результату, как раньше. `is_record = is_personal_best and rank == 1`,
+  поэтому NEW HIGH SCORE не показывается за более слабый прогон. Семантика
+  совпадает с read-side `me.rank`/`myBest`.
+- **Проверки:** 29 result tests; добавлены PB-not-first (rank 2, is_record
+  false) и lower-is-better non-PB (rank лучшей строки); 19
+  leaderboard/profile/race tests; полный suite **1236 tests: 1223 passed,
+  13 skipped, exit 0**; ruff/format/mypy clean (387). Code-reviewer:
+  **ACCEPT**, delta **ACCEPT**. Follow-up: `ARCADE-LEADERBOARD-RANK-UNIFY-001`
+  (дублирование `_rank`, is_public-фильтр).
+- **Остатки:** tie-с-собственным-лучшим тест не добавлен; дублирование
+  `_rank`; `previous` без фильтра `is_public`; browser E2E/staging NOT
+  TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; review —
+  `code-reviewer` (`deepseek-v4-pro`, text-only).
+- **Commit:** `df8cad6`, `910f268`.
+
 ### ARCADE-EVENTLOG-BYTES-001 — байтовый лимит eventLog
 
 - **Первопричина:** §2.12.7 требует лимит eventLog в байтах, а сериализатор
