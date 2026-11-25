@@ -186,11 +186,9 @@ test("stale submit responses and retries never cross a session boundary", async 
     const oldCalls = fetchCalls.filter((call) =>
         call.url.endsWith(`/sessions/${OLD_SESSION}/result`),
     );
-    assert.equal(oldCalls.length, 2);
+    assert.equal(oldCalls.length, 1, "submissions for one session are serialized");
     const firstKey = oldCalls[0].headers["Idempotency-Key"];
-    const secondKey = oldCalls[1].headers["Idempotency-Key"];
     assert.ok(firstKey, "submit carries an idempotency key");
-    assert.equal(firstKey, secondKey, "retries within one session reuse the key");
 
     await messageHandler({
         source: frame.contentWindow,
@@ -200,8 +198,12 @@ test("stale submit responses and retries never cross a session boundary", async 
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     assert.ok(
-        posted.some((data) => data.type === "ba:session" && data.sessionId === NEW_SESSION),
-        "the new session reached the iframe",
+        !posted.some((data) => data.type === "ba:session" && data.sessionId === NEW_SESSION),
+        "restart must wait for the in-flight submission",
+    );
+    assert.ok(
+        !fetchCalls.some((call) => call.url.endsWith(`/sessions/${OLD_SESSION}/close`)),
+        "the old session is not closed before its result settles",
     );
 
     oldSubmits[0].resolve(
@@ -213,23 +215,44 @@ test("stale submit responses and retries never cross a session boundary", async 
             trust_level: "client_reported",
         }),
     );
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    assert.equal(
+        fetchCalls.filter((call) => call.url.endsWith(`/sessions/${OLD_SESSION}/result`)).length,
+        2,
+        "the queued submission starts after the first one settles",
+    );
+    const secondKey = fetchCalls
+        .filter((call) => call.url.endsWith(`/sessions/${OLD_SESSION}/result`))[1]
+        .headers["Idempotency-Key"];
+    assert.equal(firstKey, secondKey, "retries within one session reuse the key");
+    assert.ok(
+        !posted.some((data) => data.type === "ba:session" && data.sessionId === NEW_SESSION),
+        "restart still waits for the second in-flight submission",
+    );
+    assert.ok(
+        posted.some((data) => data.type === "ba:result" && data.requestId === firstRequest),
+        "the old round result is delivered before the switch",
+    );
+
     const staleError = new Error("old session expired");
     staleError.status = 400;
     staleError.code = "E_SESSION_EXPIRED";
     oldSubmits[1].reject(staleError);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    assert.ok(
+        posted.some((data) => data.type === "ba:session" && data.sessionId === NEW_SESSION),
+        "the new session reached the iframe after submissions settled",
+    );
+    assert.ok(
+        posted.some((data) => data.type === "ba:error" && data.requestId === secondRequest),
+        "the old round error is delivered before the switch",
+    );
+
     oldLeaderboards[0].resolve(response(200, { entries: [], me: null }));
     oldStorages[0].resolve(response(200, { data: {}, revision: 0 }));
     await new Promise((resolve) => setTimeout(resolve, 20));
-
-    assert.equal(
-        posted.filter(
-            (data) =>
-                (data.type === "ba:result" || data.type === "ba:error") &&
-                (data.requestId === firstRequest || data.requestId === secondRequest),
-        ).length,
-        0,
-        "stale success/error must not be posted to the new round",
-    );
     assert.equal(
         posted.filter(
             (data) =>

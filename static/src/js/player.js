@@ -11,6 +11,8 @@ if (frame) {
     let currentContext = {};
     let bridge = null;
     const submissionKeys = new Map();
+    const submissionChains = new Map();
+    let sessionSwitch = Promise.resolve();
 
     function headers(extra = {}) {
         return {
@@ -86,8 +88,39 @@ if (frame) {
         return { sessionId, seed: currentContext.seed, context: currentContext };
     }
 
-    async function submitResult(requestId, payload) {
+    function submitResult(requestId, payload) {
         const requestSession = sessionId;
+        const previous = submissionChains.get(requestSession) || Promise.resolve();
+        const promise = previous
+            .catch(() => undefined)
+            .then(() => submitResultFor(requestSession, requestId, payload));
+        submissionChains.set(requestSession, promise);
+        promise
+            .finally(() => {
+                if (submissionChains.get(requestSession) === promise) {
+                    submissionChains.delete(requestSession);
+                }
+            })
+            .catch(() => undefined);
+        return promise;
+    }
+
+    async function waitForSubmission(targetSession) {
+        // A submission can arrive while we await an earlier one, so re-check
+        // the chain instead of awaiting only the promise seen at entry.
+        for (;;) {
+            const pending = submissionChains.get(targetSession);
+            if (!pending) {
+                return;
+            }
+            await pending.catch(() => undefined);
+            if (submissionChains.get(targetSession) === pending) {
+                return;
+            }
+        }
+    }
+
+    async function submitResultFor(requestSession, requestId, payload) {
         const idempotencyKey = submissionKeys.get(requestSession) || crypto.randomUUID();
         submissionKeys.set(requestSession, idempotencyKey);
         try {
@@ -255,13 +288,25 @@ if (frame) {
         }
     }
 
-    async function newSession(requestId) {
+    function newSession(requestId) {
+        // Serialize restarts: two quick newSession messages must not both
+        // close the same session and create two replacements.
+        sessionSwitch = sessionSwitch
+            .catch(() => undefined)
+            .then(() => performNewSession(requestId));
+        return sessionSwitch;
+    }
+
+    async function performNewSession(requestId) {
         try {
             // Finish the previous active session before opening the next one.
             // Otherwise guest replays accumulate active sessions and hit the
-            // three-session cap.
+            // three-session cap. An in-flight result for that session must
+            // settle first: closing it early would turn a valid submission
+            // into E_SESSION_EXPIRED and lose the score.
             const previousSession = sessionId;
-            await closeSession();
+            await waitForSubmission(previousSession);
+            await closeSession(previousSession);
             submissionKeys.delete(previousSession);
             const created = await createSession();
             bridge.setSession(sessionId);
@@ -271,12 +316,18 @@ if (frame) {
         }
     }
 
-    async function closeSession() {
-        if (!sessionId) {
+    async function exitSession() {
+        const current = sessionId;
+        await waitForSubmission(current);
+        await closeSession(current);
+    }
+
+    async function closeSession(targetSession = sessionId) {
+        if (!targetSession) {
             return;
         }
         try {
-            await api(`/api/v1/sessions/${sessionId}/close`, {
+            await api(`/api/v1/sessions/${targetSession}/close`, {
                 method: "POST",
                 headers: headers(),
                 retry: false,
@@ -325,7 +376,7 @@ if (frame) {
                 } else if (type === "ba:newSession") {
                     void newSession(requestId);
                 } else if (type === "ba:exit") {
-                    void closeSession();
+                    void exitSession();
                 }
             },
         });
