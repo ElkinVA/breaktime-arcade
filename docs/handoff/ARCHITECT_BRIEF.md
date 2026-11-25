@@ -67,6 +67,9 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- API robustness: malformed/negative Content-Length returns 400 and
+  oversized returns 413, never 500 (`ARCADE-CONTENT-LENGTH-001`,
+  `ab62a7d`). Restore-check hardening is the next P1 slice.
 - Ratings/account integrity: blocked users' votes leave all rating
   aggregates immediately and return on unblock; vote() rechecks is_active
   under the User row lock; multi-game recalc is ordered by game id

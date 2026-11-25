@@ -528,6 +528,28 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.44. Malformed Content-Length — 2026-11-25
+
+`ARCADE-CONTENT-LENGTH-001` (`ab62a7d`) — **COMPLETED / CODE-REVIEW ACCEPT**:
+`SessionResultView` больше не парсит `CONTENT_LENGTH` незащищённым `int()`.
+Отсутствующий/пустой заголовок трактуется как 0, нечисловой/отрицательный —
+400 `E_INVALID_REQUEST`, превышение лимита — 413 `E_PAYLOAD_TOO_LARGE`;
+except-кортеж parenthesized с `# fmt: skip`, чтобы форматтер не переписал
+его в PEP 758-форму. Unit-тесты покрывают missing/empty/0/MAX/5000 digits,
+non-numeric, negative и oversized; dispatch-level интеграционный тест
+проверяет реальный authenticated/CSRF запрос к result-маршруту с
+некорректным заголовком. Полный suite **1188 tests: 1175 passed,
+13 skipped, exit 0** на свежей БД; ruff/format/mypy clean (382). Модели:
+реализация — `deepseek-flash[1m]`, review — `code-reviewer`
+(`deepseek-v4-pro`, text-only), reject → delta accept. Попутно исправлен
+независимый time-flake `test_credit_window_counts_unique_once_per_30_minutes`
+(`116efbd`): фиксированное UTC-полдне вместо `timezone.now()`, иначе прогон
+через полночь UTC разносил кредиты по двум строкам `GameDailyStats`.
+Остатки: `int()` лоялен к пробелам/`+`/подчёркиваниям/unicode-цифрам (как
+Django/DRF), не 500; chunked/без Content-Length отклоняется DRF
+(pre-existing); 413 через dispatch не тестировался; live gunicorn/nginx
+NOT TESTED.
+
 ## 0.43. Blocked votes excluded immediately — 2026-11-25
 
 `ARCADE-RATINGS-BLOCK-001` (`766029e`) — **COMPLETED / SECURITY-AUDITOR

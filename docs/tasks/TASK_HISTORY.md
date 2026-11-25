@@ -1488,6 +1488,30 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-CONTENT-LENGTH-001 — malformed Content-Length → 400
+
+- **Первопричина:** `SessionResultView` парсил `CONTENT_LENGTH` через
+  незащищённый `int()`, поэтому нечисловое/отрицательное значение давало
+  500 вместо клиентской ошибки.
+- **Результат:** `_content_length` трактует отсутствующий/пустой заголовок
+  как 0, нечисловой/отрицательный — `None` → 400 `E_INVALID_REQUEST`;
+  превышение лимита остаётся 413 `E_PAYLOAD_TOO_LARGE`. Except-кортеж
+  parenthesized с `# fmt: skip`, чтобы форматтер не переписал его в
+  PEP 758-форму.
+- **Проверки:** unit-тесты границ (missing/empty/0/MAX/5000 digits,
+  non-numeric, negative, oversized 413) + dispatch-level интеграционный
+  тест с authenticated/CSRF запросом к реальному result-маршруту;
+  полный suite **1188 tests: 1175 passed, 13 skipped, exit 0** на свежей БД;
+  ruff/format/mypy clean (382). Code-reviewer: **reject → delta accept**
+  (ложная syntax-находка опровергнута, dispatch-тест добавлен).
+- **Остатки:** `int()` остаётся лояльным к пробелам/`+`/подчёркиваниям/
+  unicode-цифрам (как Django/DRF), не 500; chunked/без Content-Length
+  отклоняется DRF (pre-existing); 413 через dispatch не тестировался
+  (CSRF парсит body; 413 покрыт view-level).
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `code-reviewer`
+  (`deepseek-v4-pro`, text-only).
+- **Commit:** `ab62a7d`; test-flake fix `116efbd`.
+
 ### ARCADE-RATINGS-BLOCK-001 — оценки заблокированных исключаются сразу
 
 - **Первопричина:** агрегаты оценок фильтруют `user__is_active=True` при

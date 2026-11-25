@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-CONTENT-LENGTH-001 — malformed header returns 400/413
+
+| Поле | Значение |
+|---|---|
+| Тип | P1 API robustness (§6 п.9); code-reviewer reject → delta accept |
+| Результат | defensive `_content_length`: missing/empty → 0, non-numeric/negative → 400 E_INVALID_REQUEST, > MAX → 413; except pinned `# fmt: skip` |
+| Проверки | unit boundaries + dispatch-level authenticated/CSRF 400; full suite **1188 tests: 1175 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean (382) |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT**; live HTTP/gunicorn not tested |
+| Остаток | int() leniency like Django/DRF; chunked/no-header rejected by DRF (pre-existing); 413 dispatch not exercised (view-level) |
+| Источник | commit `ab62a7d`; test-flake fix `116efbd`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-RATINGS-BLOCK-001 — blocked votes excluded immediately
 
 | Поле | Значение |
