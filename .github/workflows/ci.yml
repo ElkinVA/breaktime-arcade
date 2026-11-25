@@ -113,18 +113,20 @@ jobs:
         with:
           python-version: "3.14"
           enable-cache: true
-      - name: Install mkcert and NSS tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libnss3-tools
-          curl -fsSL -o /tmp/mkcert \
-            https://github.com/FiloSottile/mkcert/releases/download/v1.4.4/mkcert-v1.4.4-linux-amd64
-          chmod +x /tmp/mkcert
-          sudo mv /tmp/mkcert /usr/local/bin/mkcert
       - run: uv sync --frozen
       - run: uv run playwright install --with-deps chromium
       - run: make env
-      - run: sudo -E make certs
+      - name: Generate self-signed test certificates
+        run: |
+          mkdir -p certs
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout certs/portal.test-key.pem -out certs/portal.test.pem \
+            -subj "/CN=portal.test" -addext "subjectAltName=DNS:portal.test"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout certs/games.test-key.pem -out certs/games.test.pem \
+            -subj "/CN=*.games.test" \
+            -addext "subjectAltName=DNS:*.games.test,DNS:games.test"
+          chmod 644 certs/*.pem
       - run: echo "127.0.0.1 portal.test" | sudo tee -a /etc/hosts
       - run: make build
       - run: make up
