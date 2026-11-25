@@ -31,12 +31,16 @@ def _is_transaction_test(item: pytest.Item | None) -> bool:
 
 
 def _i18n_seeders() -> list[Callable[[Any, Any], None]]:
+    paths = sorted(_I18N_MIGRATIONS_DIR.glob("[0-9]*_seed_*.py"))
+    if not paths:
+        raise RuntimeError(f"no i18n seed migrations found in {_I18N_MIGRATIONS_DIR}")
     seeders: list[Callable[[Any, Any], None]] = []
-    for path in sorted(_I18N_MIGRATIONS_DIR.glob("[0-9]*_seed_*.py")):
+    for path in paths:
         module = importlib.import_module(f"apps.i18n.migrations.{path.stem}")
         seed = getattr(module, "seed_languages", None) or getattr(module, "seed_strings", None)
-        if seed is not None:
-            seeders.append(seed)
+        if seed is None:
+            raise RuntimeError(f"{path.name} defines neither seed_languages nor seed_strings")
+        seeders.append(seed)
     return seeders
 
 
