@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-SUBMIT-RESTART-001 — result submission vs restart race
+
+| Поле | Значение |
+|---|---|
+| Тип | §6.1 player/SDK race; code-reviewer ACCEPT |
+| Результат | per-session submit chain with shared Idempotency-Key; newSession/exit await chain (with re-check for late submits) before close; restarts serialized; per-attempt 10 s AbortSignal timeout; stale leaderboard/storage still dropped |
+| Проверки | JS **31/31**, `check:js` clean, player contract 4 passed; race test pins no close/create before both queued submits settle, key reuse, stale drops; full Python suite was green on previous Python commit |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT**; real browser E2E/staging NOT TESTED |
+| Остаток | hardening follow-up: exit vs pending newSession, exit/two-restart/late-submit tests, silent boundary submit drop, unreachable `exited` state |
+| Источник | commits `24d9979`, `a81ec48`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-RATINGS-NIGHTLY-001 — nightly rating aggregate recalc
 
 | Поле | Значение |

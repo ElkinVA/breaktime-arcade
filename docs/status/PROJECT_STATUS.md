@@ -528,6 +528,24 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.53. Player submit/restart race — 2026-11-25
+
+`ARCADE-SUBMIT-RESTART-001` (`24d9979` + `a81ec48`) — **COMPLETED /
+CODE-REVIEW ACCEPT**: игра больше не может запустить следующую сессию,
+пока результат предыдущей в пути. Сабмиты одной сессии сериализуются
+promise-chain с общим `Idempotency-Key`; `newSession`/`exit` ждут
+завершения chain (с перепроверкой, если submit пришёл во время ожидания)
+и только затем закрывают сессию/создают новую; два перезапуска
+сериализуются. Каждая API-попытка ограничена `AbortSignal.timeout(10s)`,
+поэтому зависшая сеть не блокирует restart навсегда. Старые
+leaderboard/storage-ответы по-прежнему отбрасываются после смены сессии.
+Проверки: обновлённый `player_race` (JS **31/31**), `check:js` clean,
+player contract 4 passed. Модели: реализация — `deepseek-flash[1m]`,
+review — `code-reviewer` (`deepseek-v4-pro`, text-only), ACCEPT. Остатки
+вынесены в `ARCADE-SUBMIT-RESTART-HARDENING-001` (exit vs pending
+newSession, тесты exit/двойного restart/позднего submit, молчаливый дроп
+граничного submit); реальный browser E2E и staging NOT TESTED.
+
 ## 0.52. Nightly rating aggregate recalc — 2026-11-25
 
 `ARCADE-RATINGS-NIGHTLY-001` (`006aaca` + `b24ff78` + `4c5dd02`) —

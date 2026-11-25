@@ -4,16 +4,18 @@
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 
-- HEAD `4c5dd02` (ratings nightly N1) после `b24ff78`, `006aaca`,
-  `e8e0175`, `1cbbec3`, `d90af22`, `1c19af5`, `f6680ed`, `995f5d2`,
-  `8e5f507`, `34f237f` (orphan runtime), `03aaf0f` (concurrent import),
-  `1687517` (ZIP reaper), `26d8075` (email reset), `cdb567a`
-  (restore-check), `ab62a7d` + `116efbd`, `766029e`, `88c2a64`,
-  `ecfb419`, `bbfdcaf`, `de08292`, `b953419`, `1fc0e97`, B1/CI; этот
-  docs-коммит обновляет реестры, затем `origin/main` синхронизируется push.
-- Последний полный gate: **1230 tests: 1217 passed, 13 skipped, exit 0** на
-  reuse-DB без `--create-db` (8:00); ruff/format clean, mypy 387 файлов
-  clean. N1-тест добавлен после gate и проверен targeted (12 nightly tests).
+- HEAD `a81ec48` (player API timeout) после `24d9979` (submit/restart
+  race), `4c5dd02`, `b24ff78`, `006aaca`, `e8e0175`, `1cbbec3`, `d90af22`,
+  `1c19af5`, `f6680ed`, `995f5d2`, `8e5f507`, `34f237f` (orphan runtime),
+  `03aaf0f` (concurrent import), `1687517` (ZIP reaper), `26d8075`
+  (email reset), `cdb567a` (restore-check), `ab62a7d` + `116efbd`,
+  `766029e`, `88c2a64`, `ecfb419`, `bbfdcaf`, `de08292`, `b953419`,
+  `1fc0e97`, B1/CI; этот docs-коммит обновляет реестры, затем
+  `origin/main` синхронизируется push.
+- Последний полный Python gate: **1230 tests: 1217 passed, 13 skipped,
+  exit 0** на reuse-DB без `--create-db` (8:00, HEAD `b24ff78`); после него
+  добавлен только N1-тест и JS-only изменения. ruff/format clean, mypy 387
+  файлов clean. JS suite **31/31**, `check:js` clean на `a81ec48`.
   Reuse-DB issue `ARCADE-TEST-DB-SEED-001` закрыт; перед gate проверять
   отсутствие orphaned pytest/test_ba-сессий. Один редкий step-up флейк
   moderation не воспроизведён — наблюдение, не исправление.
@@ -37,6 +39,11 @@
   IP-failure burst race, CSRF device rotation, hard 30/day без challenge,
   authenticated sessions_ip exemption, heartbeat invalid-id buckets,
   DRF counters non-atomic.
+- P1 player (`24d9979` + `a81ec48`): submit/restart — сабмиты одной сессии
+  сериализованы, `newSession`/`exit` ждут chain перед закрытием, перезапуски
+  сериализованы, каждая API-попытка с 10 s timeout; JS 31/31; code-reviewer
+  ACCEPT (`ARCADE-SUBMIT-RESTART-001`). Остатки — hardening follow-up;
+  browser E2E/staging NOT TESTED.
 - P1 ratings (`006aaca` + `b24ff78` + `4c5dd02`): ночной пересчёт
   агрегатов оценок — union голосов/агрегатов, pk order, транзакция+advisory
   lock на игру, skip-if-unchanged, per-game failure isolation; daily beat
@@ -109,11 +116,13 @@
   и этот файл. Не запускать schema/contract/infra изменения без решения
   владельца. `ARCADE-RUNTIME-ORPHAN-001`,
   `ARCADE-ZIP-WORKER-SECRETS-001` и `ARCADE-RATINGS-NIGHTLY-001`
-  завершены. Следующий независимый P1-срез — остаточное §5.5 hardening
-  (Redis ACL/queue isolation, async import, retention отклонённых ZIP,
-  quota-directory consistency) либо §6 bounded game/API fixes; §5.3 audit
-  events требует owner-решения по choices-миграции. Stage C §4.1/§4.3 —
-  owner-gated.
+  завершены. Следующий независимый P1-срез — §6 bounded game/API fixes
+  (Neon Snake restart/seed, Archer RNG particles, SDK schema/serializer
+  alignment, eventLog byte-size, score type, rank semantics, player error
+  messages) либо остаточное §5.5 hardening (Redis ACL/queue isolation,
+  async import, retention отклонённых ZIP, quota-directory consistency);
+  §5.3 audit events требует owner-решения по choices-миграции. Stage C
+  §4.1/§4.3 — owner-gated.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**

@@ -1488,6 +1488,34 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-SUBMIT-RESTART-001 — гонка submit и перезапуска игры
+
+- **Первопричина:** игра могла запросить новую сессию, пока результат
+  предыдущей ещё отправлялся. `newSession` сразу закрывал старую сессию,
+  поэтому поздний результат получал `E_SESSION_EXPIRED` и очки терялись;
+  два быстрых перезапуска могли дважды закрыть одну сессию.
+- **Результат:** сабмиты одной сессии сериализуются через promise-chain с
+  общим `Idempotency-Key`; `newSession`/`exit` ждут завершения всех
+  сабмитов (с перепроверкой chain, если новый submit пришёл во время
+  ожидания) и только затем закрывают сессию/создают новую; перезапуски
+  сериализуются через `sessionSwitch`. Каждая API-попытка ограничена
+  `AbortSignal.timeout(10s)`, чтобы зависшая сеть не блокировала restart
+  навсегда. Старые leaderboard/storage-ответы по-прежнему не пересекают
+  границу сессии.
+- **Проверки:** обновлённый `player_race` пиннит: второй submit ждёт первый;
+  `newSession` не закрывает старую и не создаёт новую сессию до settle
+  обоих сабмитов; ключ идемпотентности переиспользуется; stale
+  leaderboard/storage не публикуются. JS **31/31**, `check:js` clean,
+  player contract 4 passed. Code-reviewer: **ACCEPT**; minor-1 (timeout)
+  исправлен в `a81ec48`.
+- **Остатки:** `ARCADE-SUBMIT-RESTART-HARDENING-001` — exit во время
+  pending newSession (лишняя сессия), нет тестов на exit/два restart/
+  поздний submit, молчаливый дроп граничного submit, `exited` state
+  недостижим; реальный browser E2E и staging NOT TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; review —
+  `code-reviewer` (`deepseek-v4-pro`, text-only).
+- **Commit:** `24d9979`, `a81ec48`.
+
 ### ARCADE-RATINGS-NIGHTLY-001 — ночной пересчёт агрегатов оценок
 
 - **Первопричина:** ТЗ §2.9 требует пересчёта агрегатов по изменению голосов

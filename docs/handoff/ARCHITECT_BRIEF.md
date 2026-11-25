@@ -67,6 +67,11 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- Player: result submissions are serialized per session and share an
+  idempotency key; `newSession`/`exit` await the chain before closing, so a
+  restart cannot abort an in-flight result; restarts are serialized and each
+  API attempt times out after 10 s (`ARCADE-SUBMIT-RESTART-001`, `24d9979`/
+  `a81ec48`). JS 31/31; exit/pending-restart edge cases are a follow-up.
 - Ratings: a daily task and `recalculate_ratings --dry-run/--limit` command
   recompute all vote/aggregate games in pk order, one transaction and one
   advisory lock per game, skip unchanged rows, and isolate per-game failures
