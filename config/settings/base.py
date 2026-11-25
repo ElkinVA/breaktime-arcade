@@ -319,6 +319,12 @@ CELERY_TASK_ANNOTATIONS = {
         "soft_time_limit": 240,
         "time_limit": 300,
     },
+    "apps.ratings.tasks.recalculate_rating_aggregates": {
+        "acks_late": True,
+        "reject_on_worker_lost": True,
+        "soft_time_limit": 2400,
+        "time_limit": 3000,
+    },
 }
 CELERY_BEAT_SCHEDULE: dict[str, dict[str, object]] = {
     "backup-full-daily": {
@@ -383,6 +389,11 @@ CELERY_BEAT_SCHEDULE: dict[str, dict[str, object]] = {
     },
     "pipeline-cleanup-orphan-runtimes": {
         "task": "apps.pipeline.tasks.cleanup_orphan_runtimes",
+        "schedule": 60 * 60 * 24,
+        "options": {"expires": 60 * 60},
+    },
+    "ratings-nightly-recalc": {
+        "task": "apps.ratings.tasks.recalculate_rating_aggregates",
         "schedule": 60 * 60 * 24,
         "options": {"expires": 60 * 60},
     },
