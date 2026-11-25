@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import re
+import uuid
 
 import pytest
 from playwright.sync_api import Browser, Page, expect, sync_playwright
@@ -66,6 +67,70 @@ def test_probe_handshake_and_storage_relay(page: Page) -> None:
     frame.locator("#probe-bad").click()
     expect(status).to_have_attribute("data-state", "host-error", timeout=10000)
     expect(status).to_contain_text("E_MESSAGE_INVALID")
+
+
+def test_probe_guest_submit_is_forbidden_and_leaderboard_survives(page: Page) -> None:
+    page.goto(f"{BASE_URL}/en/games/probe/play/", wait_until="domcontentloaded")
+
+    frame = page.frame_locator("#game-frame")
+    status = frame.locator("#probe-status")
+    expect(status).to_have_attribute("data-state", "ready", timeout=15000)
+
+    frame.locator("#probe-submit").click()
+    expect(status).to_have_attribute("data-state", "submitted", timeout=10000)
+    expect(status).to_contain_text("E_GUEST_FORBIDDEN")
+
+    frame.locator("#probe-leaderboard").click()
+    expect(status).to_have_attribute("data-state", "leaderboard", timeout=10000)
+    expect(status).to_contain_text('"entries"')
+
+
+def test_probe_exit_keeps_the_portal_usable(page: Page) -> None:
+    page.goto(f"{BASE_URL}/en/games/probe/play/", wait_until="domcontentloaded")
+
+    frame = page.frame_locator("#game-frame")
+    status = frame.locator("#probe-status")
+    expect(status).to_have_attribute("data-state", "ready", timeout=15000)
+
+    frame.locator("#probe-exit").click()
+    expect(status).to_have_attribute("data-state", "exited", timeout=10000)
+    expect(page.locator("#player-status")).to_be_hidden()
+
+
+def test_authenticated_player_submits_leaderboard_and_returns(page: Page) -> None:
+    suffix = uuid.uuid4().hex[:10]
+    login = f"probe{suffix}"
+    nickname = f"Probe{suffix}"
+    page.goto(f"{BASE_URL}/en/auth/register/", wait_until="domcontentloaded")
+    page.locator("[name=login]").fill(login)
+    page.locator("[name=nickname]").fill(nickname)
+    page.locator("[name=password1]").fill("correct horse battery staple")
+    page.locator("[name=password2]").fill("correct horse battery staple")
+    page.locator("[name=age_confirmed]").check()
+    page.locator("[name=terms_accepted]").check()
+    page.locator("[name=privacy_accepted]").check()
+    page.locator("form button[type=submit]").click()
+    page.wait_for_url("**/en/account/", wait_until="domcontentloaded")
+
+    page.goto(f"{BASE_URL}/en/games/probe/play/", wait_until="domcontentloaded")
+    frame = page.frame_locator("#game-frame")
+    status = frame.locator("#probe-status")
+    expect(status).to_have_attribute("data-state", "ready", timeout=15000)
+
+    # The probe declares the minimum playtime as durationMs; wait it out so
+    # the server's duration-vs-session-elapsed check can pass.
+    page.wait_for_timeout(11000)
+    frame.locator("#probe-submit").click()
+    expect(status).to_have_attribute("data-state", "submitted", timeout=15000)
+    expect(status).to_contain_text('"status":"saved"')
+    expect(status).to_contain_text('"isPersonalBest":true')
+
+    frame.locator("#probe-leaderboard").click()
+    expect(status).to_have_attribute("data-state", "leaderboard", timeout=10000)
+    expect(status).to_contain_text(nickname)
+
+    page.get_by_role("link", name="← probe").click()
+    page.wait_for_url("**/en/games/probe/", wait_until="domcontentloaded")
 
 
 def test_probe_rejects_mismatched_portal_origin(page: Page) -> None:
