@@ -256,11 +256,56 @@ def test_lower_result_does_not_replace_best() -> None:
     assert response.status_code == 200
     assert response.json()["is_personal_best"] is False
     # The user's board position is their best entry (100), not the
-    # hypothetical position of this worse run (which would be 2).
+    # hypothetical position of this worse run (which would be 3, behind the
+    # user's own 100 and the rival's 80).
     assert response.json()["rank"] == 1
     assert response.json()["is_record"] is False
     entry = LeaderboardEntry.objects.get(game=game, user=user)
     assert entry.value == 100
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_personal_best_that_is_not_first_is_not_a_record() -> None:
+    game = _game(technical_id="pb_second_game")
+    leader = User.objects.create_user(login="leader", password="correct horse battery staple")
+    leader_client, leader_csrf = _client(leader)
+    leader_session = _ready_session(leader_client, leader_csrf, game)
+    leader_result = _result(leader_client, leader_csrf, leader_session, key="l1", value=100)
+    assert leader_result.status_code == 200
+
+    user = User.objects.create_user(login="runner_up", password="correct horse battery staple")
+    client, csrf = _client(user)
+    session_id = _ready_session(client, csrf, game)
+    response = _result(client, csrf, session_id, key="u1", value=80)
+
+    assert response.status_code == 200
+    assert response.json()["is_personal_best"] is True
+    assert response.json()["rank"] == 2
+    assert response.json()["is_record"] is False
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_lower_is_better_non_best_keeps_leaderboard_rank() -> None:
+    game = _game(technical_id="lower_non_best_game", direction="lower_is_better")
+    user = User.objects.create_user(login="fast", password="correct horse battery staple")
+    client, csrf = _client(user)
+    first_session = _ready_session(client, csrf, game)
+    assert _result(client, csrf, first_session, key="f1", value=50).status_code == 200
+    rival = User.objects.create_user(login="fast_rival", password="correct horse battery staple")
+    rival_client, rival_csrf = _client(rival)
+    rival_session = _ready_session(rival_client, rival_csrf, game)
+    assert _result(rival_client, rival_csrf, rival_session, key="f2", value=70).status_code == 200
+
+    second_session = _ready_session(client, csrf, game)
+    response = _result(client, csrf, second_session, key="f3", value=100)
+
+    assert response.status_code == 200
+    assert response.json()["is_personal_best"] is False
+    assert response.json()["rank"] == 1
+    assert response.json()["is_record"] is False
+    assert LeaderboardEntry.objects.get(game=game, user=user).value == 50
 
 
 @pytest.mark.django_db
