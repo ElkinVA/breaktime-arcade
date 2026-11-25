@@ -67,6 +67,10 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- Backup/DR: restore-check verifies dump SHA-256 before and after
+  pg_restore, rejects empty/unreadable dumps, checks required tables and
+  django_migrations, records control counts (`ARCADE-RESTORE-CHECK-001`,
+  `cdb567a`); live dev restore passed, staging/production untested.
 - API robustness: malformed/negative Content-Length returns 400 and
   oversized returns 413, never 500 (`ARCADE-CONTENT-LENGTH-001`,
   `ab62a7d`). Restore-check hardening is the next P1 slice.

@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-RESTORE-CHECK-001 — verified restore-check
+
+| Поле | Значение |
+|---|---|
+| Тип | P1 backup/DR integrity (§5.4); security-auditor accept after delta |
+| Результат | SHA-256 до/после restore vs BackupRun; empty/unreadable reject; DROP FORCE; required tables + django_migrations; meta counts; malformed SQL fails |
+| Проверки | 22 unit restore-check; полный suite **1197 tests: 1184 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean (382); real dev restore OK (44 tables/42 migrations/10 required), temp DB dropped; staging/prod NOT TESTED |
+| Статус | **COMPLETED / SECURITY-AUDITOR ACCEPT** |
+| Остаток | A→B→A swap window; no concurrent advisory lock; structural-only; superuser role owner-gated; baked image rebuild for cron; file-level S608 noqa |
+| Источник | commit `cdb567a`; модели: implement — `deepseek-flash[1m]`, review — `security-auditor` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-CONTENT-LENGTH-001 — malformed header returns 400/413
 
 | Поле | Значение |

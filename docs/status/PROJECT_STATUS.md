@@ -528,6 +528,30 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.45. Verified restore-check — 2026-11-25
+
+`ARCADE-RESTORE-CHECK-001` (`cdb567a`) — **COMPLETED / SECURITY-AUDITOR
+ACCEPT**: restore-check больше не объявляет SUCCESS по одному числу таблиц.
+Отклоняются отсутствующий/пустой/недоступный дамп; SHA-256 сверяется с
+успешным `BackupRun` до любых операций с БД и повторно после `pg_restore`;
+DROP выполняется с `WITH (FORCE)`; после restore проверяются непустой
+`public`, все `REQUIRED_TABLES` (accounts/catalog/gameplay/crm core,
+`django_migrations`) и непустая `django_migrations`. В `BackupRun.meta`
+пишутся `backup_run_id`, `sha256`, `table_count`, `required_tables`,
+`migration_count`; нечисловой SQL-ответ — ошибка; pre-flight OSError
+завершает run как failed. 22 unit-теста; полный suite
+**1197 tests: 1184 passed, 13 skipped, exit 0** на свежей БД; ruff/format/
+mypy clean (382). **Реальный restore на dev** текущим кодом:
+`OK verified_at=2026-11-25 01:42:13`, metadata 44 таблицы / 42 миграции /
+10 обязательных таблиц, temp DB удалена; staging/production NOT TESTED.
+Модели: реализация — `deepseek-flash[1m]`, review — `security-auditor`
+(`deepseek-v4-pro`, text-only), accept после delta. Остатки: swap A→B→A
+вокруг pg_restore (staff-level FS; закрытие — `/proc/self/fd/N`); нет
+advisory-lock между одновременными проверками (spurious visible failure,
+не false SUCCESS); проверка структурная, не построчная; роль-суперюзер
+БД — owner-gated §5.4; cron использует baked image (нужен rebuild для
+нового кода); file-level S608 noqa.
+
 ## 0.44. Malformed Content-Length — 2026-11-25
 
 `ARCADE-CONTENT-LENGTH-001` (`ab62a7d`) — **COMPLETED / CODE-REVIEW ACCEPT**:

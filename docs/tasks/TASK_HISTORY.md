@@ -1488,6 +1488,39 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-RESTORE-CHECK-001 — проверка восстановления дампа
+
+- **Первопричина:** restore-check считал только число таблиц в `public` и
+  мог объявить SUCCESS для пустого/повреждённого/неполного дампа; SHA-256
+  дампа и обязательные таблицы не проверялись.
+- **Результат:** отклоняются отсутствующий, пустой (0 байт) и недоступный
+  дамп; SHA-256 сверяется с успешным `BackupRun` до любых операций с БД и
+  повторно после `pg_restore`; DROP выполняется с `WITH (FORCE)`; после
+  restore проверяются непустой `public`, наличие всех `REQUIRED_TABLES`
+  (`django_migrations`, accounts/catalog/gameplay/crm core) и непустая
+  `django_migrations`. В `BackupRun.meta` сохраняются путь, id полного
+  прогона, SHA-256, `table_count`, `required_tables`, `migration_count`;
+  нечисловой ответ SQL — ошибка. Pre-flight OSError завершает run как
+  failed, а не оставляет RUNNING.
+- **Проверки:** 22 unit restore-check (success metadata, default selection,
+  missing/mismatched hash, empty dump, missing tables/migrations,
+  unparseable SQL, pre-flight OSError, dump changed during restore); полный
+  suite **1197 tests: 1184 passed, 13 skipped, exit 0** на свежей БД;
+  ruff/format/mypy clean (382). **Реальный restore на dev** с текущим кодом:
+  `OK verified_at=2026-11-25 01:42:13`, meta 44 таблицы / 42 миграции /
+  10 обязательных, temp DB удалена. Security-auditor: **accept** после
+  delta (SHA before/after, OSError, DROP FORCE, runbook).
+- **Остатки:** swap A→B→A вокруг pg_restore всё ещё обходит post-hash
+  (staff-level FS; закрытие — передать `/proc/self/fd/N`); нет
+  advisory-lock между одновременными restore-check (видимый spurious
+  failure, не false SUCCESS); проверка структурная, не построчная;
+  приложение работает ролью-суперюзером — owner-gated по §5.4; file-level
+  noqa S608; staging/production restore NOT TESTED; cron/restore-check
+  использует baked image, для нового кода нужен rebuild образа (ops).
+- **Модели:** реализация — `deepseek-flash[1m]`; review —
+  `security-auditor` (`deepseek-v4-pro`, text-only).
+- **Commit:** `cdb567a`.
+
 ### ARCADE-CONTENT-LENGTH-001 — malformed Content-Length → 400
 
 - **Первопричина:** `SessionResultView` парсил `CONTENT_LENGTH` через

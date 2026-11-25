@@ -4,16 +4,17 @@
 
 ## Актуальная сводка автономного цикла (2026-11-24)
 
-- HEAD `ab62a7d` (Content-Length) + `116efbd` (test flake) после `766029e`
-  (ratings block), `88c2a64` (CRM block/unblock), `ecfb419` (safe rollback),
-  `bbfdcaf` (registration limits), `de08292` (auth throttling), `b953419`
-  (throttle scopes), `1fc0e97` (result verification), `cb92702` (B1d),
-  `35ae98f` (B1b), `f7a3779` (B1c), `7da168a` (B1a), A2/A1/CI; этот
-  docs-коммит обновляет реестры, затем `origin/main` синхронизируется push.
-- Последний полный gate: **1188 tests: 1175 passed, 13 skipped, exit 0** на
-  свежей БД; JS **31/31**; ruff/format clean, mypy 382 файла clean. Прогон
-  ~60 мин из-за высокой нагрузки хоста (staging worker/load ~15-22).
-  Перед gate проверять отсутствие orphaned pytest и test_ba-сессий.
+- HEAD `cdb567a` (restore-check) после `ab62a7d` (Content-Length) +
+  `116efbd` (test flake), `766029e` (ratings block), `88c2a64` (CRM
+  block/unblock), `ecfb419` (safe rollback), `bbfdcaf` (registration
+  limits), `de08292` (auth throttling), `b953419` (throttle scopes),
+  `1fc0e97` (result verification), B1/CI; этот docs-коммит обновляет
+  реестры и runbook, затем `origin/main` синхронизируется push.
+- Последний полный gate: **1197 tests: 1184 passed, 13 skipped, exit 0** на
+  свежей БД; JS **31/31**; ruff/format clean, mypy 382 файла clean.
+  Реальный restore-check на dev PASS: 44 таблицы, 42 миграции,
+  10 обязательных, temp DB удалена. Прогоны ~55-60 мин из-за нагрузки
+  хоста; перед gate проверять отсутствие orphaned pytest/test_ba-сессий.
   Reuse-DB translation-seed issue — `ARCADE-TEST-DB-SEED-001`.
 - AI HQ: 26 прежних COMPLETED + AI-HQ-CI-001 (CI run NOT VERIFIED) +
   AI-HQ-A1 (security accept); 5 BLOCKED. Cost accounting — только фактический
@@ -31,6 +32,11 @@
   IP-failure burst race, CSRF device rotation, hard 30/day без challenge,
   authenticated sessions_ip exemption, heartbeat invalid-id buckets,
   DRF counters non-atomic.
+- P1 backup/DR (`cdb567a`): restore-check проверяет SHA-256 до/после
+  restore, отклоняет пустой/повреждённый дамп, проверяет обязательные
+  таблицы и `django_migrations`, пишет контрольные данные в metadata
+  (`ARCADE-RESTORE-CHECK-001`); real dev restore PASS; staging/prod NOT
+  TESTED.
 - P1 API robustness (`ab62a7d`): malformed/negative `Content-Length` →
   400, oversized → 413, никогда 500 (`ARCADE-CONTENT-LENGTH-001`);
   code-reviewer accept после delta; dispatch-level тест добавлен.
@@ -68,11 +74,10 @@
   `propose` → отфильтровать задачи, требующие schema/contract/infra/E2E →
   `run --max-tasks 1`; после каждой задачи обновить реестры, PROJECT_STATUS
   и этот файл. Не запускать schema/contract/infra изменения без решения
-  владельца. Следующий независимый P1-срез — §5.4 restore-check:
-  SHA-256 до восстановления, обязательные таблицы/`django_migrations`,
-  контрольные данные в metadata, тесты пустого/повреждённого дампа;
-  затем §5.3 audit events (новые action-константы требуют
-  owner-согласования миграции). Stage C §4.1/§4.3 остаются owner-gated.
+  владельца. Следующий независимый P1-срез — инвалидация активных
+  password-reset токенов при смене/удалении email (§5.1), затем §5.3
+  audit events (новые action-константы требуют owner-согласования
+  миграции). Stage C §4.1/§4.3 остаются owner-gated.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**
