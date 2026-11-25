@@ -88,10 +88,13 @@ services:
     command: ["celery", "-A", "config", "worker", "-Q", "default,celery", "-l", "info"]
     environment:
       RUN_MIGRATIONS: "0"
+      # Orphan-runtime cleanup scans/deletes the published runtime volume.
+      ZIP_PUBLIC_RUNTIME_ROOT: /app/runtime
     volumes:
       - static_data:/app/staticfiles
       - media_data:/app/media
       - app_var:/app/var
+      - runtime_data:/app/runtime
       - zip_uploads:/var/ba/zip/uploads
     depends_on:
       db: { condition: service_healthy }

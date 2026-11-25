@@ -11,6 +11,7 @@ from apps.pipeline.services.reaper import reap_stale_extraction_jobs
 from apps.pipeline.services.retention import (
     cleanup_pipeline_retention as cleanup_pipeline_retention_service,
 )
+from apps.pipeline.services.runtime_cleanup import cleanup_orphan_runtimes
 from apps.pipeline.services.worker import (
     WorkerError,
     cleanup_expired_jobs,
@@ -69,6 +70,12 @@ def cleanup_zip_uploads() -> dict[str, int]:
 def reap_stale_zip_jobs() -> dict[str, int]:
     """Recover jobs left RUNNING after a web/worker crash (idempotent)."""
     return {"reaped": reap_stale_extraction_jobs()}
+
+
+@shared_task(name="apps.pipeline.tasks.cleanup_orphan_runtimes")
+def cleanup_orphan_runtimes_task() -> dict[str, int]:
+    """Daily TTL cleanup of runtime bundles not referenced by any version."""
+    return cleanup_orphan_runtimes()
 
 
 @shared_task(name="apps.pipeline.tasks.cleanup_pipeline_retention")

@@ -313,6 +313,12 @@ CELERY_TASK_ANNOTATIONS = {
         "soft_time_limit": 240,
         "time_limit": 300,
     },
+    "apps.pipeline.tasks.cleanup_orphan_runtimes": {
+        "acks_late": True,
+        "reject_on_worker_lost": True,
+        "soft_time_limit": 240,
+        "time_limit": 300,
+    },
 }
 CELERY_BEAT_SCHEDULE: dict[str, dict[str, object]] = {
     "backup-full-daily": {
@@ -374,6 +380,11 @@ CELERY_BEAT_SCHEDULE: dict[str, dict[str, object]] = {
         "task": "apps.pipeline.tasks.reap_stale_zip_jobs",
         "schedule": 60 * 5,
         "options": {"expires": 60 * 4},
+    },
+    "pipeline-cleanup-orphan-runtimes": {
+        "task": "apps.pipeline.tasks.cleanup_orphan_runtimes",
+        "schedule": 60 * 60 * 24,
+        "options": {"expires": 60 * 60},
     },
 }
 
@@ -442,6 +453,7 @@ ZIP_UPLOADS_ROOT = Path(env("ZIP_UPLOADS_ROOT", "/var/ba/zip/uploads"))
 ZIP_ARTIFACTS_ROOT = Path(env("ZIP_ARTIFACTS_ROOT", "/var/ba/zip/artifacts"))
 ZIP_JOB_DEADLINE_SECONDS = env_int("ZIP_JOB_DEADLINE_SECONDS", 50)
 ZIP_JOB_STALE_SECONDS = env_int("ZIP_JOB_STALE_SECONDS", 600)
+ZIP_RUNTIME_ORPHAN_TTL_SECONDS = env_int("ZIP_RUNTIME_ORPHAN_TTL_SECONDS", 60 * 60 * 24)
 ZIP_STAGING_TTL_SECONDS = env_int("ZIP_STAGING_TTL_SECONDS", 60 * 60)
 ZIP_COMPLETED_TTL_SECONDS = env_int("ZIP_COMPLETED_TTL_SECONDS", 60 * 60 * 24)
 ZIP_DISK_RESERVE_BYTES = env_int("ZIP_DISK_RESERVE_BYTES", 150 * 1024 * 1024)

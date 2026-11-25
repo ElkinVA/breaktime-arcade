@@ -65,8 +65,10 @@ def test_regular_worker_does_not_consume_zip() -> None:
         "static_data:/app/staticfiles",
         "media_data:/app/media",
         "app_var:/app/var",
+        "runtime_data:/app/runtime",
         "zip_uploads:/var/ba/zip/uploads",
     ]
+    assert service["environment"]["ZIP_PUBLIC_RUNTIME_ROOT"] == "/app/runtime"
 
 
 def test_web_volume_access() -> None:
