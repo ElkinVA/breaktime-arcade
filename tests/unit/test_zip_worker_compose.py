@@ -157,6 +157,16 @@ def test_zip_quota_environment_matches_web_exactly() -> None:
         assert zip_worker[name] == web[name]
 
 
+def test_prod_overlay_does_not_define_zip_worker() -> None:
+    prod = _load("compose.prod.yml") or {}
+    services = prod.get("services") or {}
+
+    # The production overlay is currently empty; any future zip-worker
+    # section here must be a deliberate, reviewed change that keeps the
+    # minimal env and isolation asserted above.
+    assert "zip-worker" not in services
+
+
 def test_regular_worker_does_not_consume_zip() -> None:
     service = _load("compose.yml")["services"]["worker"]
     command = service["command"]
