@@ -10,9 +10,11 @@ from autonomy.orchestrator import (
     _developer_files,
     _parse_json,
     _reviewer_verdict,
+    _run_orchestrator_checks,
     _safe_file,
     _stage_task,
     _unstage,
+    _validate_worktree_git,
 )
 from autonomy.runner import ClaudeRunner, RunResult
 from autonomy.state import (
@@ -364,3 +366,23 @@ def test_reviewer_verdict_is_strict_and_fail_closed() -> None:
         "",
     ):
         assert _reviewer_verdict(malformed)["verdict"] == "reject"
+
+
+def test_orchestrator_checks_report_failed_tools(monkeypatch: pytest.MonkeyPatch) -> None:
+    commands = ["/bin/true --tool pytest", "/bin/false --tool ruff"]
+    monkeypatch.setattr("autonomy.orchestrator._sandbox_commands", lambda: commands)
+
+    text, failed = _run_orchestrator_checks(Path.cwd())
+
+    assert failed == ["ruff"]
+    assert "pytest: exit=0" in text
+    assert "ruff: exit=1" in text
+
+
+def test_worktree_git_pointer_must_stay_inside_project(tmp_path: Path) -> None:
+    worktree = tmp_path / "worktree"
+    worktree.mkdir()
+    (worktree / ".git").write_text("gitdir: /etc/passwd\n", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="outside the project worktrees"):
+        _validate_worktree_git(worktree)

@@ -310,8 +310,31 @@ def _validate_self_check(developer: RunResult) -> None:
         raise RuntimeError("developer self_check localization_reviewed must be boolean")
 
 
+def _validate_worktree_git(worktree: Path) -> None:
+    """Refuse git operations if the worktree's ``.git`` pointer was altered.
+
+    A model can write inside its worktree; without this check a poisoned
+    ``.git`` file could redirect ``git add/commit`` to the main checkout.
+    """
+    if worktree.resolve() == ROOT.resolve():
+        return
+    git_file = worktree / ".git"
+    if git_file.is_symlink() or not git_file.is_file():
+        raise RuntimeError("worktree .git metadata is missing or unsafe")
+    text = git_file.read_text(encoding="utf-8").strip()
+    if not text.startswith("gitdir: "):
+        raise RuntimeError("worktree .git metadata has an unexpected format")
+    target = Path(text.removeprefix("gitdir: ").strip())
+    if not target.is_absolute():
+        target = worktree / target
+    expected = (ROOT / ".git" / "worktrees").resolve()
+    if not target.resolve().is_relative_to(expected):
+        raise RuntimeError("worktree .git metadata points outside the project worktrees")
+
+
 def _changed_files(root: Path) -> list[str]:
     """Derive the changed-file set from Git, not from the developer report."""
+    _validate_worktree_git(root)
     tracked = _git(["diff", "--name-only", "-z", "HEAD"], cwd=root)
     untracked = _git(["ls-files", "--others", "--exclude-standard", "-z"], cwd=root)
     names = {name for name in (tracked.stdout + untracked.stdout).split("\0") if name}
@@ -377,6 +400,7 @@ def _commit_staged(task: Task, files: list[str], root: Path = ROOT) -> str:
 
 
 def _commit_candidate(task: Task, files: list[str], worktree: Path) -> str:
+    _validate_worktree_git(worktree)
     _stage_task(files, worktree)
     _commit_staged(task, files, worktree)
     return _head(worktree)
@@ -442,15 +466,18 @@ def _sandbox_commands() -> list[str]:
     ]
 
 
-def _run_orchestrator_checks(worktree: Path) -> str:
+def _run_orchestrator_checks(worktree: Path) -> tuple[str, list[str]]:
     """Run the trusted sandbox checks in the parent, outside the model sandbox.
 
     The model child has no Docker socket or host paths, so it cannot execute
     the test runner itself. The parent runs the same fixed commands against the
     committed candidate; the runner copies the worktree into a capability-
     dropped container, so untrusted code is still not executed on the host.
+    Returns the evidence text and the list of failed tools; a non-empty list
+    must hard-fail the candidate before QA.
     """
     lines: list[str] = []
+    failed: list[str] = []
     for command in _sandbox_commands():
         argv = shlex.split(command)
         tool = argv[argv.index("--tool") + 1]
@@ -465,11 +492,15 @@ def _run_orchestrator_checks(worktree: Path) -> str:
             )
             output = (completed.stdout + completed.stderr)[-3000:]
             lines.append(f"- {tool}: exit={completed.returncode}\n{output}")
+            if completed.returncode != 0:
+                failed.append(tool)
         except subprocess.TimeoutExpired:
             lines.append(f"- {tool}: TIMEOUT")
+            failed.append(tool)
         except Exception as exc:  # noqa: BLE001 - evidence must reach QA
             lines.append(f"- {tool}: LAUNCH ERROR {type(exc).__name__}: {exc}")
-    return "\n".join(lines) or "no checks configured"
+            failed.append(tool)
+    return "\n".join(lines) or "no checks configured", failed
 
 
 def _developer_prompt(task: Task) -> str:
@@ -820,7 +851,21 @@ class Orchestrator:
             candidate = _commit_candidate(task, files, worktree)
             self.store.set_candidate(task.id, candidate)
             qa_worktree, _ = _create_worktree(task, base=candidate)
-            checks = _run_orchestrator_checks(qa_worktree)
+            checks, failed_checks = _run_orchestrator_checks(qa_worktree)
+            if failed_checks:
+                _discard_worktrees(worktree, qa_worktree)
+                self.store.set_worktree(task.id, None, None)
+                worktree = None
+                qa_worktree = None
+                retried = self.store.retry(
+                    task.id,
+                    f"orchestrator checks failed: {', '.join(failed_checks)}",
+                )
+                return {
+                    "status": "retry" if retried and retried.status == READY else "blocked",
+                    "task": task.id,
+                    "checks": failed_checks,
+                }
             self.store.transition(
                 task.id,
                 QA,

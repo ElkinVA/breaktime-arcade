@@ -236,13 +236,20 @@ def node_read_root(claude_path: str | None = None) -> Path | None:
     if not claude:
         return None
     path = Path(claude).resolve()
-    # .../.nvm/versions/node/<version>/bin/claude -> <version>
-    for parent in path.parents:
-        if parent.name == "versions" and parent.parent.name == ".nvm":
-            return parent.parent
-        if (parent / "lib" / "node_modules").is_dir():
+    # .../.nvm/versions/node/<version>/bin/claude -> <version>.
+    # Prefer the narrow runtime root; never grant the whole host HOME or .nvm.
+    parents = list(path.parents)
+    for parent in parents:
+        if (
+            parent.parent.name == "node"
+            and parent.parent.parent.name == "versions"
+            and (parent / "lib" / "node_modules").is_dir()
+        ):
             return parent
-    return None
+    for parent in parents:
+        if parent != Path("/") and (parent / "lib" / "node_modules").is_dir():
+            return parent
+    return path.parent if path.parent.name == "bin" else None
 
 
 def sandbox_preexec(
