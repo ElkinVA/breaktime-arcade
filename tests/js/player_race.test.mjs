@@ -190,6 +190,15 @@ test("stale submit responses and retries never cross a session boundary", async 
     const firstKey = oldCalls[0].headers["Idempotency-Key"];
     assert.ok(firstKey, "submit carries an idempotency key");
 
+    const pageHide = listeners.get("pagehide");
+    assert.equal(typeof pageHide, "function");
+    pageHide();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.ok(
+        !fetchCalls.some((call) => call.url.endsWith(`/sessions/${OLD_SESSION}/close`)),
+        "pagehide must not abort a session with a pending submit",
+    );
+
     await messageHandler({
         source: frame.contentWindow,
         origin: ORIGIN,

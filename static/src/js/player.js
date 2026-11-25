@@ -414,6 +414,12 @@ if (frame) {
         if (!sessionId) {
             return;
         }
+        // A submit in flight finishes the session itself; closing now would
+        // race it and turn a valid result into E_SESSION_EXPIRED. Abandoned
+        // sessions without a submit still get the best-effort close.
+        if (submissionChains.get(sessionId)) {
+            return;
+        }
         const url = `/api/v1/sessions/${sessionId}/close`;
         // sendBeacon cannot attach the CSRF header required by the API;
         // keepalive fetch is the reliable same-origin close on pagehide.
