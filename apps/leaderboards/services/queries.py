@@ -33,9 +33,10 @@ _ADMISSIBLE_TRUST_LEVELS = (
 def rank_annotation() -> Expression:
     """Correlated count of strictly better entries for one ``LeaderboardEntry``.
 
-    Mirrors :func:`_rank` (§2.11 tie-break: direction, then ``achieved_at ASC``,
-    then ``user_id ASC``) but can annotate a whole user's game list in a single
-    query, so the profile does not issue one rank query per game.
+    Mirrors :func:`apps.gameplay.services.ranking.entry_rank` (§2.11 item 3:
+    direction, then ``achieved_at ASC``, then ``user_id ASC``) but can annotate
+    a whole user's game list in a single query, so the profile does not issue
+    one rank query per game.
     """
     same_board = LeaderboardEntry.objects.filter(
         game_id=OuterRef("game_id"),

@@ -11,9 +11,9 @@ from apps.gameplay.models import LeaderboardEntry
 def entry_rank(game, epoch: int, value: int, achieved_at: datetime, user_id: UUID) -> int:
     """Return 1-based position on the public board for one candidate row.
 
-    §2.11.3 tie-break: direction, then ``achieved_at ASC``, then ``user_id
-    ASC``. Kept in one place so the submit response and the public/profile
-    queries cannot drift.
+    §2.11 item 3 tie-break: direction, then ``achieved_at ASC``, then
+    ``user_id ASC``. Kept in one place so the submit response and the
+    public/profile queries cannot drift.
     """
     entries = LeaderboardEntry.objects.filter(game=game, epoch=epoch, is_public=True)
     tie_break = entries.filter(value=value, achieved_at=achieved_at, user_id__lt=user_id)

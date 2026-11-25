@@ -9,6 +9,8 @@ from django.utils import timezone
 from apps.accounts.models import User, UserProfile
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.gameplay.models import GameResult, GameSession, LeaderboardEntry
+from apps.gameplay.services.ranking import entry_rank
+from apps.leaderboards.services.queries import annotate_rank
 
 LOCMEM_CACHES = {
     "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
@@ -210,3 +212,27 @@ def test_limit_validation_and_epoch_filter() -> None:
     payload = Client().get(f"{API}/{game.technical_id}/leaderboard").json()
     assert payload["entries"] == []
     assert payload["epoch"] == 2
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_entry_rank_covers_full_tie_break_and_matches_annotation() -> None:
+    game = _game(technical_id="tie_break_board_game")
+    first = _user("quinn", "Quinn")
+    second = _user("rita", "Rita")
+    achieved_at = timezone.now()
+    _entry(game, first, 50, achieved_at=achieved_at)
+    _entry(game, second, 50, achieved_at=achieved_at)
+    ordered = sorted(LeaderboardEntry.objects.filter(game=game), key=lambda entry: entry.user_id)
+
+    assert ordered[0].user_id < ordered[1].user_id
+    assert entry_rank(game, game.leaderboard_epoch, 50, achieved_at, ordered[0].user_id) == 1
+    assert entry_rank(game, game.leaderboard_epoch, 50, achieved_at, ordered[1].user_id) == 2
+    # An empty epoch has no public rows and therefore rank 1.
+    assert entry_rank(game, 99, 50, achieved_at, ordered[0].user_id) == 1
+
+    annotated = {
+        entry.user_id: entry.rank
+        for entry in annotate_rank(LeaderboardEntry.objects.filter(game=game))
+    }
+    assert annotated == {ordered[0].user_id: 1, ordered[1].user_id: 2}
