@@ -82,7 +82,7 @@ probe-seed:
 > $(PY) manage.py probe_seed
 > $(PY) manage.py collectstatic --noinput
 > $(COMPOSE) exec -T web chmod -R u+rwX,g+rX,o+rX /app/staticfiles
-> $(COMPOSE) exec -T -u root -e BA_RUNTIME_ROOT=/app/runtime web python scripts/publish_probe.py
+> $(COMPOSE) exec -T -u 10001:10001 -e BA_RUNTIME_ROOT=/app/runtime web python scripts/publish_probe.py
 
 coverage:
 > $(PYU) -m pytest --cov=apps --cov-report=term-missing

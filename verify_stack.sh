@@ -7,13 +7,13 @@ cd "$(dirname "$0")"
 COMPOSE=(docker compose -f compose.yml -f compose.dev-lite.yml)
 WAIT_SECS="${WAIT_SECS:-90}"
 
-echo "==> Ожидание healthy: web, db, redis-cache, redis-broker (до ${WAIT_SECS}s)"
+echo "==> Ожидание healthy: web, db, redis-cache, redis-broker, redis-throttle, redis-zip (до ${WAIT_SECS}s)"
 deadline=$(( $(date +%s) + WAIT_SECS ))
 while [ "$(date +%s)" -lt "$deadline" ]; do
     status="$("${COMPOSE[@]}" ps --format json 2>/dev/null \
         | python3 -c '
 import sys, json
-ok_services = {"web","db","redis-cache","redis-broker"}
+ok_services = {"web","db","redis-cache","redis-broker","redis-throttle","redis-zip"}
 ready = set()
 for line in sys.stdin:
     line = line.strip()
@@ -31,7 +31,7 @@ for line in sys.stdin:
             ready.add(name)
 print(",".join(sorted(ready)))
 ' || echo "")"
-    if [ "$status" = "db,redis-broker,redis-cache,web" ]; then
+    if [ "$status" = "db,redis-broker,redis-cache,redis-throttle,redis-zip,web" ]; then
         echo "  OK: все healthy"
         break
     fi
