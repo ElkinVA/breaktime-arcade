@@ -4,9 +4,9 @@ import json
 
 from rest_framework import serializers  # type: ignore[import-untyped]
 
-from apps.core.contracts import validate_schema
+from apps.core.contracts import MAX_EVENTLOG_RAW_BYTES, validate_schema
 
-MAX_EVENT_LOG_BYTES = 2 * 1024 * 1024
+MAX_EVENT_LOG_BYTES = MAX_EVENTLOG_RAW_BYTES
 MAX_EVENT_LOG_EVENTS = 20_000
 
 
