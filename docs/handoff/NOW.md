@@ -4,10 +4,10 @@
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 
-- HEAD `9fc9096` (isolated ZIP Redis broker) после browser runner `16dba6d`,
-  AI HQ `f303b01`/`86b21d6`/`b3f42ce` и прежней очереди `e136af8`…`1fc0e97`;
-  этот docs-коммит обновляет реестры, затем `origin/main` синхронизируется
-  push.
+- HEAD `331a1a6` (CI E2E hardening) после `f17d239`, `3c997d6`,
+  `dba59fb`, `9fc9096`, `16dba6d`, AI HQ `f303b01`/`86b21d6`/`b3f42ce` и
+  прежней очереди `e136af8`…`1fc0e97`; этот docs-коммит обновляет реестры,
+  затем `origin/main` синхронизируется push.
 - Последний полный Python gate: **1259 passed, 14 skipped, exit 0** на
   reuse-DB без `--create-db` (10:04, HEAD `9fc9096`); ruff/format clean (485),
   mypy clean (393). JS suite **31/31**. Первый прогон после browser runner
@@ -18,6 +18,14 @@
   **COMPLETED / code-review ACCEPT**; отдельный `redis-zip`, zip-worker не
   видит default broker; publisher-only app с explicit connection; live
   dispatcher/extraction доставлены; стоимость — один Redis 96 МБ + volume.
+- CI browser E2E: `ARCADE-CI-BROWSER-E2E-001` (`dba59fb` + `3c997d6` +
+  `331a1a6`) — **COMPLETED / code-review ACCEPT**; GitHub job ставит
+  openssl certs/Chromium, поднимает dev stack, сеет probe runtime и
+  запускает `make e2e`, cleanup всегда; локально **22 passed** за 34.5 с;
+  hosted run **NOT EXECUTED**. `probe-seed` публикует runtime от UID 10001.
+  Критические сценарии `ARCADE-GAME-E2E-CRITICAL-001` (`f17d239` +
+  `c1e3940` + `71a7274`) — **COMPLETED / code-review ACCEPT** (guest/auth
+  submit, leaderboard, restart, exit/return).
 - Browser publish gate: `ARCADE-BROWSER-AUTOTEST-RUNNER-001`
   (`a1388da` + `16dba6d`) — **COMPLETED / code-review ACCEPT после reject**;
   Chromium вынесен в secretless `browser-autotest` (autotestnet, без

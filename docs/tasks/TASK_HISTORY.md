@@ -2315,3 +2315,37 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Модели:** реализация — `deepseek-flash[1m]`; review — `code-reviewer`
   (`deepseek-v4-pro`, text-only).
 - **Commit:** `9fc9096`.
+
+### ARCADE-CI-BROWSER-E2E-001 — обязательный browser E2E в CI
+
+- **Первопричина:** CI запускал только Python/JS; браузерные сценарии
+  проверялись вручную, а `probe-seed` под root не мог писать в app-owned
+  runtime volume после `cap_drop: ALL`.
+- **Результат:** job `e2e` в `.github/workflows/ci.yml`: uv/Python 3.14,
+  openssl self-signed сертификаты, Playwright Chromium, `make
+  env/build/up`, ожидание шести сервисов (fail-closed), `make probe-seed`,
+  `make e2e`, всегда `make down`. `verify_stack.sh` ждёт
+  `redis-throttle`/`redis-zip` и падает по таймауту; `probe-seed` публикует
+  runtime от UID 10001. Quality job получил `redis-zip` и
+  `CELERY_ZIP_BROKER_URL`.
+- **Проверки:** локально `make e2e` — **22 passed** за 34.5 с;
+  `./verify_stack.sh` — все healthy; `make probe-seed` PASS; YAML/shell
+  syntax clean; полный Python suite не менялся (1259/14).
+  GitHub-hosted run **NOT EXECUTED**.
+- **Review:** code-reviewer ACCEPT; minor (verify wait не падал) исправлен
+  `331a1a6`; required-check настраивается в GitHub UI.
+- **Остаток:** первый hosted run; branch protection required check.
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `code-reviewer`
+  (`deepseek-v4-pro`, text-only).
+- **Commit:** `dba59fb`, `3c997d6`, `331a1a6`.
+
+### ARCADE-GAME-E2E-CRITICAL-001 — критические игровые сценарии
+
+- **Результат:** `tests/e2e/test_game_runtime_e2e.py` покрывает guest
+  submit (`E_GUEST_FORBIDDEN`, leaderboard продолжает отвечать),
+  authenticated submit/PB/leaderboard/return, restart (probe Restart
+  button открывает новую сессию) и exit; `games-src/probe` получил кнопку
+  Restart.
+- **Проверки:** локальный `make e2e` **22 passed**; ruff clean.
+- **Статус:** COMPLETED / CODE-REVIEW ACCEPT (delta accept).
+- **Commit:** `f17d239`, `c1e3940`, `71a7274`.

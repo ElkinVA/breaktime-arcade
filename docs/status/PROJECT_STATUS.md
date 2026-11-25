@@ -528,6 +528,26 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.61. CI browser E2E and probe seed — 2026-11-25
+
+`ARCADE-CI-BROWSER-E2E-001` (`dba59fb` + `3c997d6` + `331a1a6`) —
+**COMPLETED / CODE-REVIEW ACCEPT**. В `.github/workflows/ci.yml` добавлен
+обязательный job `e2e`: Ubuntu 24.04, Python 3.14/uv, openssl self-signed
+сертификаты, установка Chromium через Playwright, `make env/build/up`,
+ожидание стека (`WAIT_SECS=180`, теперь fail-closed), `make probe-seed`,
+`make e2e`, cleanup `make down` всегда. `verify_stack.sh` ждёт
+`redis-throttle`/`redis-zip` и падает при неготовности. `probe-seed`
+публикует runtime от UID 10001 (root без DAC_OVERRIDE не может писать в
+app-owned volume). Локально: E2E **22 passed** за 34.5 с, `verify_stack.sh`
+здоров, YAML/shell syntax OK. GitHub-hosted run **NOT EXECUTED**; полный
+Python suite не менялся (1259/14). Остаток: первый CI run и required-check.
+
+`ARCADE-GAME-E2E-CRITICAL-001` (`f17d239` + `c1e3940` + `71a7274`) —
+**COMPLETED / CODE-REVIEW ACCEPT**:
+добавлены сценарии guest submit (`E_GUEST_FORBIDDEN`, leaderboard отвечает),
+authenticated PB/leaderboard/return, restart (probe Restart button) и exit;
+это покрывает старт/submit/save/leaderboard/restart/exit/return.
+
 ## 0.60. Isolated ZIP Redis broker — 2026-11-25
 
 `ARCADE-REDIS-BROKER-ISOLATION-001` (`9fc9096`) — **COMPLETED / CODE-REVIEW

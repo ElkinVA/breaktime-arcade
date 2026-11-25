@@ -901,6 +901,26 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Остаток | нет auth внутри zipnet (граница — сеть); staging/prod live NOT TESTED; publisher-сети web/worker остаются доверенными |
 | Источник | commit `9fc9096`; eval `docs/tasks/REDIS-ZIP-ISOLATION-001.md`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
 
+## ARCADE-CI-BROWSER-E2E-001 — GitHub Actions browser gate
+
+| Поле | Значение |
+|---|---|
+| Тип | CI/quality gate; independent code review |
+| Результат | job `e2e`: openssl certs, Chromium, dev compose, probe seed, `make e2e`, always cleanup; `verify_stack` fail-closed на шести сервисах; `probe-seed` UID 10001; quality job с redis-zip |
+| Проверки | локально E2E **22 passed** (34.5 с), verify_stack healthy, probe-seed PASS, YAML/shell clean; полный Python suite 1259/14 |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT** (`dba59fb` + `3c997d6` + `331a1a6`); hosted run NOT EXECUTED |
+| Остаток | первый hosted run; required check в branch protection |
+
+## ARCADE-GAME-E2E-CRITICAL-001 — critical game browser scenarios
+
+| Поле | Значение |
+|---|---|
+| Тип | Browser E2E coverage; independent code review |
+| Результат | guest submit `E_GUEST_FORBIDDEN` + leaderboard; authenticated PB/leaderboard/return; restart opens a new session; exit leaves portal usable; probe Restart button |
+| Проверки | локальный `make e2e` **22 passed** за 34.5 с; ruff clean |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT** (`f17d239` + `c1e3940` + `71a7274`) |
+| Остаток | hosted CI run; restart UI только в probe, продуктовой кнопки restart нет |
+
 ## ARCADE-EXTERNAL-AUDIT-2026-11-25 — P1/P2 response
 
 | Поле | Значение |

@@ -128,6 +128,14 @@ ambiguity.
   redis-broker/db/cache; cleanup and extraction traverse the isolated broker
   (`ARCADE-REDIS-BROKER-ISOLATION-001`, eval in
   `docs/tasks/REDIS-ZIP-ISOLATION-001.md`). Staging/prod live untested.
+- CI browser E2E: a mandatory GitHub Actions `e2e` job generates
+  self-signed certs, installs Chromium, boots the dev compose stack, waits
+  for Redis/cache/broker, seeds the probe runtime and runs `make e2e`;
+  cleanup runs always. Local E2E is 22/22 (guest/auth submit, storage,
+  leaderboard, restart, exit/return); the hosted workflow has not run yet.
+  `probe-seed` now publishes as UID 10001 because root lacks DAC_OVERRIDE
+  under `cap_drop: ALL` (`ARCADE-CI-BROWSER-E2E-001`,
+  `ARCADE-GAME-E2E-CRITICAL-001`).
 - Test infrastructure: the reuse-DB fixture now reseeds every i18n
   `*_seed_*.py` migration after a transaction-test flush, discovered in
   migration order with fail-loud guards (`ARCADE-TEST-DB-SEED-001`,
