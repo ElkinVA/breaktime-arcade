@@ -436,6 +436,108 @@ def test_email_change_requires_current_password() -> None:
 
 @pytest.mark.django_db
 @override_settings(CACHES=LOCMEM_CACHES)
+def test_email_change_invalidates_password_reset_tokens() -> None:
+    from apps.accounts.services.email import password_reset_token_valid
+
+    client = Client()
+    client.post("/en/auth/register/", payload())
+    user = User.objects.get(login="alice")
+    EmailAddress.objects.filter(user=user).update(verified_at=timezone.now())
+    raw = issue_token(
+        user,
+        AccountToken.PURPOSE_PASSWORD_RESET,
+        ttl_seconds=1800,
+        email="alice@example.com",
+    )
+
+    response = client.post(
+        "/en/account/edit/",
+        {
+            "nickname": "Alice",
+            "email": "new@example.com",
+            "current_password": "correct horse battery staple",
+            "language_code": "en",
+            "theme": "dark",
+        },
+    )
+
+    assert response.status_code == 302
+    assert password_reset_token_valid(raw) is False
+    confirm = client.post(
+        f"/en/auth/password-reset/confirm/{raw}/",
+        {
+            "password1": "Another strong passphrase 42",
+            "password2": "Another strong passphrase 42",
+        },
+    )
+    assert confirm.status_code == 302
+    user.refresh_from_db()
+    assert user.check_password("correct horse battery staple") is True
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_email_removal_invalidates_password_reset_tokens() -> None:
+    from apps.accounts.services.email import password_reset_token_valid
+
+    client = Client()
+    client.post("/en/auth/register/", payload())
+    user = User.objects.get(login="alice")
+    EmailAddress.objects.filter(user=user).update(verified_at=timezone.now())
+    raw = issue_token(
+        user,
+        AccountToken.PURPOSE_PASSWORD_RESET,
+        ttl_seconds=1800,
+        email="alice@example.com",
+    )
+
+    response = client.post(
+        "/en/account/edit/",
+        {
+            "nickname": "Alice",
+            "email": "",
+            "current_password": "correct horse battery staple",
+            "language_code": "en",
+            "theme": "dark",
+        },
+    )
+
+    assert response.status_code == 302
+    assert not EmailAddress.objects.filter(user=user).exists()
+    assert password_reset_token_valid(raw) is False
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_reset_confirm_rechecks_current_email_even_for_live_token() -> None:
+    client = Client()
+    client.post("/en/auth/register/", payload())
+    user = User.objects.get(login="alice")
+    EmailAddress.objects.filter(user=user).update(verified_at=timezone.now())
+    raw = issue_token(
+        user,
+        AccountToken.PURPOSE_PASSWORD_RESET,
+        ttl_seconds=1800,
+        email="alice@example.com",
+    )
+    # Bypass the invalidation path on purpose: the confirm check must reject.
+    EmailAddress.objects.filter(user=user).update(email="attacker@example.com", verified_at=None)
+
+    confirm = client.post(
+        f"/en/auth/password-reset/confirm/{raw}/",
+        {
+            "password1": "Another strong passphrase 42",
+            "password2": "Another strong passphrase 42",
+        },
+    )
+
+    assert confirm.status_code == 302
+    user.refresh_from_db()
+    assert user.check_password("correct horse battery staple") is True
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
 def test_account_export_and_deletion_request_cancel() -> None:
     client = Client()
     client.post("/en/auth/register/", payload())

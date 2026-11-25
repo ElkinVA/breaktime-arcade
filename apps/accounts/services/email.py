@@ -110,9 +110,12 @@ def find_verified_email(value: str) -> EmailAddress | None:
 
 
 def password_reset_token_valid(raw: str) -> bool:
-    return find_token(raw, AccountToken.PURPOSE_PASSWORD_RESET) is not None
+    token = find_token(raw, AccountToken.PURPOSE_PASSWORD_RESET)
+    return token is not None and token.user.is_active
 
 
 def password_reset_token_user(raw: str) -> User | None:
     token = find_token(raw, AccountToken.PURPOSE_PASSWORD_RESET)
-    return token.user if token is not None else None
+    if token is None or not token.user.is_active:
+        return None
+    return token.user

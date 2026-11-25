@@ -522,6 +522,14 @@ def password_reset_confirm(request: HttpRequest, token: str) -> HttpResponse:
                 messages.error(request, "Ссылка недействительна или истекла.")
                 return redirect("accounts:password_reset")
             user = token_obj.user
+            email = EmailAddress.objects.filter(user=user).first()
+            if (
+                email is None
+                or email.verified_at is None
+                or email.email.casefold() != token_obj.email.casefold()
+            ):
+                messages.error(request, "Ссылка недействительна или истекла.")
+                return redirect("accounts:password_reset")
             user.set_password(str(form.cleaned_data["password1"]))
             user.save(update_fields=["password"])
             invalidate_tokens(user, AccountToken.PURPOSE_PASSWORD_RESET)
@@ -639,8 +647,10 @@ def _update_email(request: HttpRequest, user: User, value: str) -> None:
     current = EmailAddress.objects.filter(user=user).first()
     if not value:
         if current is not None:
-            current.delete()
-            invalidate_tokens(user, AccountToken.PURPOSE_EMAIL_VERIFY)
+            with transaction.atomic():
+                current.delete()
+                invalidate_tokens(user, AccountToken.PURPOSE_EMAIL_VERIFY)
+                invalidate_tokens(user, AccountToken.PURPOSE_PASSWORD_RESET)
         return
     if current is not None and current.email.casefold() == value.casefold():
         return
@@ -657,6 +667,10 @@ def _update_email(request: HttpRequest, user: User, value: str) -> None:
             current.verified_at = None
             current.bounce_at = None
             current.save(update_fields=["email", "verified_at", "bounce_at", "updated_at"])
+        # A reset/verification link issued for the old address must not
+        # survive the change.
+        invalidate_tokens(user, AccountToken.PURPOSE_PASSWORD_RESET)
+        invalidate_tokens(user, AccountToken.PURPOSE_EMAIL_VERIFY)
     try:
         send_verification_email(user, request)
     except Exception:
