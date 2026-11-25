@@ -132,8 +132,8 @@ def test_authenticated_player_submits_leaderboard_and_returns(page: Page) -> Non
     status = frame.locator("#probe-status")
     expect(status).to_have_attribute("data-state", "ready", timeout=15000)
 
-    # The probe declares the minimum playtime as durationMs; wait it out so
-    # the server's duration-vs-session-elapsed check can pass.
+    # Probe declares durationMs = minPlaytimeSeconds * 1000 (15 s) and the
+    # server allows a 5 s tolerance, so credited time must be >= 10 s.
     page.wait_for_timeout(11000)
     frame.locator("#probe-submit").click()
     expect(status).to_have_attribute("data-state", "submitted", timeout=15000)
@@ -144,7 +144,7 @@ def test_authenticated_player_submits_leaderboard_and_returns(page: Page) -> Non
     expect(status).to_have_attribute("data-state", "leaderboard", timeout=10000)
     expect(status).to_contain_text(nickname)
 
-    page.get_by_role("link", name="← probe").click()
+    page.locator("a[href$='/games/probe/']").first.click()
     page.wait_for_url("**/en/games/probe/", wait_until="domcontentloaded")
 
 
