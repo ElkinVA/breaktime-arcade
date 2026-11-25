@@ -6,12 +6,14 @@ import io
 import json
 import os
 import stat
+import threading
 import zipfile
 from pathlib import Path
 
 import pytest
 from django.conf import settings
 from django.core.files.storage import default_storage
+from django.db import IntegrityError, connections
 from django.utils.functional import empty
 from PIL import Image
 
@@ -733,6 +735,91 @@ def test_rollback_accepts_string_schema_version_like_importer(pipeline_env: Path
     result = rollback_version(game, string_schema)
 
     assert result.ok
+
+
+@pytest.mark.django_db
+def test_integrity_error_from_concurrent_technical_id_is_distinct(
+    pipeline_env: Path, monkeypatch
+) -> None:
+    def fake_persist(**_kwargs):
+        raise IntegrityError(
+            'duplicate key value violates unique constraint "catalog_game_technical_id_key"'
+        )
+
+    monkeypatch.setattr("apps.pipeline.services.importer._persist", fake_persist)
+
+    result = _run(pipeline_env, _package())
+
+    assert result.status == "rejected"
+    assert any(item.code == "V_ID_CONFLICT" for item in result.report.diagnostics)
+    assert all(item.code != "V_VERSION_DUP" for item in result.report.diagnostics)
+
+
+@pytest.mark.django_db
+def test_locked_existing_game_adopts_card_created_after_lookup(pipeline_env: Path) -> None:
+    from apps.pipeline.services.importer import _locked_existing_game
+
+    first = _run(pipeline_env, _package())
+    assert first.game is not None
+    game = first.game
+
+    adopted = _locked_existing_game({"id": game.technical_id}, None, None)
+
+    assert adopted is not None
+    assert adopted.pk == game.pk
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_same_package_import_creates_one_game(pipeline_env: Path) -> None:
+    data = _package()
+    _official_sdk(pipeline_env)
+    results: list[object] = []
+    errors: list[Exception] = []
+    lock = threading.Lock()
+
+    def worker() -> None:
+        try:
+            result = _run(pipeline_env, data)
+        except Exception as exc:  # noqa: BLE001 - re-raised on the test thread
+            with lock:
+                errors.append(exc)
+        else:
+            with lock:
+                results.append(result)
+        finally:
+            connections.close_all()
+
+    threads = [threading.Thread(target=worker) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=90)
+
+    assert not any(thread.is_alive() for thread in threads)
+    if errors:
+        raise errors[0]
+    statuses = sorted(result.status for result in results)
+    assert statuses == ["created", "duplicate"]
+    assert Game.objects.filter(technical_id="test_game").count() == 1
+    assert GameVersion.objects.filter(game__technical_id="test_game").count() == 1
+
+
+@pytest.mark.django_db
+def test_import_locks_the_technical_id(pipeline_env: Path, monkeypatch) -> None:
+    from apps.pipeline.services import importer
+
+    calls: list[str] = []
+    real_lock = importer._lock_import
+
+    def spy(technical_id: str) -> None:
+        calls.append(technical_id)
+        real_lock(technical_id)
+
+    monkeypatch.setattr(importer, "_lock_import", spy)
+
+    _run(pipeline_env, _package())
+
+    assert calls == ["test_game"]
 
 
 @pytest.mark.django_db

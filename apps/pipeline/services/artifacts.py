@@ -185,6 +185,13 @@ def store_runtime(
     try:
         local.rename(target)
     except OSError as exc:
+        # A concurrent import may have published the identical bundle first.
+        if target.is_dir() and not target.is_symlink():
+            with contextlib.suppress(ArtifactError):
+                if runtime_hash_for(tree_hashes(target)) == runtime_hash:
+                    shutil.rmtree(local, ignore_errors=True)
+                    _make_runtime_public(target)
+                    return target
         shutil.rmtree(local, ignore_errors=True)
         raise ArtifactError("X_ARTIFACT_IO", f"Не удалось опубликовать runtime: {exc}") from None
     shutil.rmtree(staging, ignore_errors=True)

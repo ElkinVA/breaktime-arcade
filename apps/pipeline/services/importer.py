@@ -8,6 +8,7 @@ its own hash.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from contextlib import suppress
@@ -17,7 +18,7 @@ from typing import Any
 
 from django.conf import settings
 from django.core.files.base import ContentFile
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 from django.utils import timezone
 
 from apps.accounts.models import User
@@ -71,6 +72,7 @@ from apps.pipeline.validation.codes import (
     SEVERITY_WARNING,
     V_ENCODING,
     V_GENRE_UNKNOWN,
+    V_ID_CONFLICT,
     V_ID_MISMATCH,
     V_LANG_UNKNOWN,
     V_SDK_INCOMPATIBLE,
@@ -434,11 +436,20 @@ def _import_package(
                 e2e_report=autotest.report,
                 created_by=created_by,
             )
-        except IntegrityError:
+        except IntegrityError as exc:
             duplicate = _find_duplicate(intake.package_hash, target_game)
             if duplicate is not None:
                 return _finish_duplicate(draft, duplicate, report, intake.stored_path)
-            report.add(V_VERSION_DUP, "Версия с таким semver уже существует")
+            cause = getattr(exc, "__cause__", None)
+            constraint = str(getattr(getattr(cause, "diag", None), "constraint_name", "") or "")
+            conflict_text = f"{constraint} {exc}".lower()
+            if constraint == "catalog_game_technical_id_key" or "technical_id" in conflict_text:
+                report.add(
+                    V_ID_CONFLICT,
+                    "Игра с таким technical_id создана параллельным импортом; повторите загрузку",
+                )
+            else:
+                report.add(V_VERSION_DUP, "Версия с таким semver уже существует")
             return _reject(draft, report)
         except OSError:
             report.add("X_ARTIFACT_IO", "Не удалось сохранить ассеты игры")
@@ -597,6 +608,29 @@ def _finish_duplicate(
     )
 
 
+def _advisory_key(namespace: str, value: str) -> int:
+    raw = f"{namespace}:{value}".encode()
+    return int.from_bytes(hashlib.blake2b(raw, digest_size=8).digest(), "big", signed=True)
+
+
+def _lock_import(technical_id: str) -> None:
+    """Serialize card creation for one technical_id (held until commit)."""
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_advisory_xact_lock(%s)", [_advisory_key("import", technical_id)])
+
+
+def _locked_existing_game(
+    manifest: dict[str, Any],
+    existing_game: Game | None,
+    target_game: Game | None,
+) -> Game | None:
+    """Adopt a card created by a concurrent import between lookup and persist."""
+    if existing_game is not None or target_game is not None:
+        return existing_game
+    technical_id = str(manifest["id"])
+    return Game.objects.select_for_update().filter(technical_id=technical_id).first()
+
+
 def _persist(
     *,
     manifest: dict[str, Any],
@@ -620,8 +654,10 @@ def _persist(
 ) -> tuple[Game, GameVersion, list[dict[str, Any]]]:
     conflicts: list[dict[str, Any]] = []
     tags_created: list[str] = []
-    created = existing_game is None and target_game is None
     with transaction.atomic():
+        _lock_import(str(manifest["id"]).lower())
+        existing_game = _locked_existing_game(manifest, existing_game, target_game)
+        created = existing_game is None and target_game is None
         if existing_game is not None:
             game = Game.objects.select_for_update().get(pk=existing_game.pk)
         else:
