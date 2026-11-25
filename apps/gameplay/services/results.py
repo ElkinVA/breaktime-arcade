@@ -266,8 +266,16 @@ def submit_result(
                     },
                 )
             response["is_personal_best"] = is_personal_best
-            response["rank"] = _rank(game, epoch, value, achieved_at, user.id)
-            response["is_record"] = response["rank"] == 1
+            # §2.11: a user occupies one leaderboard row — their best. If this
+            # run is not a personal best, ``rank`` is that row's position, not
+            # the hypothetical position of a worse run (which would also count
+            # the user's own best above it).
+            rank_value, rank_at = value, achieved_at
+            if not is_personal_best and previous is not None:
+                rank_value, rank_at = previous.value, previous.achieved_at
+            rank = _rank(game, epoch, rank_value, rank_at, user.id)
+            response["rank"] = rank
+            response["is_record"] = is_personal_best and rank == 1
             result.response = response
             result.save(update_fields=["response"])
 

@@ -247,11 +247,18 @@ def test_lower_result_does_not_replace_best() -> None:
     client, csrf = _client(user)
     first_session = _ready_session(client, csrf, game)
     assert _result(client, csrf, first_session, key="k1", value=100).status_code == 200
+    rival = User.objects.create_user(login="ivan_rival", password="correct horse battery staple")
+    rival_client, rival_csrf = _client(rival)
+    rival_session = _ready_session(rival_client, rival_csrf, game)
+    assert _result(rival_client, rival_csrf, rival_session, key="r1", value=80).status_code == 200
     second_session = _ready_session(client, csrf, game)
     response = _result(client, csrf, second_session, key="k2", value=50)
     assert response.status_code == 200
     assert response.json()["is_personal_best"] is False
-    assert response.json()["rank"] == 2
+    # The user's board position is their best entry (100), not the
+    # hypothetical position of this worse run (which would be 2).
+    assert response.json()["rank"] == 1
+    assert response.json()["is_record"] is False
     entry = LeaderboardEntry.objects.get(game=game, user=user)
     assert entry.value == 100
 
