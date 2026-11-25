@@ -483,6 +483,8 @@ ZIP_QUOTA_RESERVATION_TTL_SECONDS = env_int("ZIP_QUOTA_RESERVATION_TTL_SECONDS",
 # worker timeouts surface as their own stable code instead of a client timeout.
 ZIP_IMPORT_WAIT_SECONDS = env_int("ZIP_IMPORT_WAIT_SECONDS", 75)
 ZIP_IMPORT_POLL_INTERVAL_SECONDS = env_float("ZIP_IMPORT_POLL_INTERVAL_SECONDS", 0.5)
+# Once a real browser runner exists, production turns this on (see prod.py).
+PUBLISH_REQUIRE_BROWSER_AUTOTEST = env_bool("PUBLISH_REQUIRE_BROWSER_AUTOTEST", False)
 BACKUP_RETENTION_DAYS = env_int("BACKUP_RETENTION_DAYS", 30)
 BA_BACKUP_CHECK_ENABLED = env_bool("BA_BACKUP_CHECK_ENABLED", True)
 BA_BACKUP_STALE_HOURS = env_int("BA_BACKUP_STALE_HOURS", 48)

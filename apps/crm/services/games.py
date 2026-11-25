@@ -17,6 +17,7 @@ from django.db.models import Count, Prefetch, Q, QuerySet
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.catalog.services.catalog import localized_translation
 from apps.catalog.services.localization import LocalizationCoverage, localization_coverage
+from apps.pipeline.services.publishing import autotest_passed
 
 GAME_STATUS_FILTERS = tuple(code for code, _label in Game.STATUS_CHOICES)
 
@@ -170,8 +171,7 @@ def _version_blockers(version: GameVersion) -> int:
 
 
 def _autotest_passed(version: GameVersion) -> bool:
-    report = version.e2e_report or {}
-    return bool(report.get("passed"))
+    return autotest_passed(version)
 
 
 def _version_rows(game: Game) -> tuple[VersionRow, ...]:

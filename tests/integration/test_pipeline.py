@@ -9,11 +9,13 @@ import stat
 import threading
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.db import IntegrityError, connections
+from django.test import override_settings
 from django.utils.functional import empty
 from PIL import Image
 
@@ -21,7 +23,7 @@ from apps.catalog.models import Game, GameVersion, Genre, Tag
 from apps.i18n.models import Language
 from apps.pipeline.models import GameImportDraft, ZipExtractionJob
 from apps.pipeline.services.importer import import_package
-from apps.pipeline.services.publishing import publish_version
+from apps.pipeline.services.publishing import autotest_passed, publish_version
 from apps.pipeline.services.rollback import rollback_version
 from apps.pipeline.services.worker import cleanup_expired_jobs, cleanup_upload_jobs
 from apps.pipeline.validation.codes import V_PUBLISHED_UPDATE_BLOCKED
@@ -894,3 +896,34 @@ def test_publish_blocks_without_green_autotest(pipeline_env: Path) -> None:
     assert result.reason == "V_AUTOTEST_FAILED"
     game.refresh_from_db()
     assert game.current_version_id is None
+
+
+def test_autotest_gate_requires_playwright_when_configured() -> None:
+    static = SimpleNamespace(e2e_report={"passed": True, "kind": "static", "playwright": False})
+    browser = SimpleNamespace(e2e_report={"passed": True, "playwright": True})
+    failed = SimpleNamespace(e2e_report={"passed": False, "playwright": True})
+
+    with override_settings(PUBLISH_REQUIRE_BROWSER_AUTOTEST=True):
+        assert autotest_passed(static) is False
+        assert autotest_passed(browser) is True
+        assert autotest_passed(failed) is False
+    with override_settings(PUBLISH_REQUIRE_BROWSER_AUTOTEST=False):
+        assert autotest_passed(static) is True
+
+
+@pytest.mark.django_db
+@override_settings(PUBLISH_REQUIRE_BROWSER_AUTOTEST=True)
+def test_publish_blocks_static_only_autotest_when_browser_required(
+    pipeline_env: Path,
+) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    assert first.version.e2e_report.get("playwright") is False
+
+    result = publish_version(first.game, first.version)
+
+    assert not result.ok
+    assert result.reason == "V_AUTOTEST_FAILED"
+    first.game.refresh_from_db()
+    assert first.game.status != Game.STATUS_PUBLISHED
+    assert first.game.current_version_id is None

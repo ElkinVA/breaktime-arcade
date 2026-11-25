@@ -23,6 +23,9 @@ STORAGES["staticfiles"]["BACKEND"] = (  # noqa: F405
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 # §2.10.2: проверка HIBP обязательна; при недоступности сервис fails closed.
 HIBP_ENABLED = env_bool("HIBP_ENABLED", True)
+# The importer currently writes static-only reports (playwright=False). Do not
+# treat them as browser proof in production until a real runner exists.
+PUBLISH_REQUIRE_BROWSER_AUTOTEST = env_bool("PUBLISH_REQUIRE_BROWSER_AUTOTEST", True)
 EMAIL_HOST = env("EMAIL_HOST")
 EMAIL_PORT = int(env("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = env("EMAIL_USER")

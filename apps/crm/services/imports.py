@@ -16,6 +16,7 @@ from apps.accounts.models import User
 from apps.catalog.models import Game, GameVersion
 from apps.pipeline.models import GameImportDraft
 from apps.pipeline.services.importer import ImportResult, import_package
+from apps.pipeline.services.publishing import autotest_passed
 
 
 def upload_package(
@@ -111,8 +112,7 @@ def _version_blockers(version: GameVersion) -> int:
 
 
 def _autotest_passed(version: GameVersion) -> bool:
-    report = version.e2e_report or {}
-    return bool(report.get("passed"))
+    return autotest_passed(version)
 
 
 @dataclass(frozen=True, slots=True)

@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -64,9 +65,23 @@ def _validation_blockers(version: GameVersion) -> int:
     return 0 if report.get("ok", True) else 1
 
 
-def _autotest_passed(version: GameVersion) -> bool:
+def autotest_passed(version: GameVersion) -> bool:
+    """Static checks always count; browser proof is required where configured.
+
+    ``version.e2e_report`` is produced by the import sandbox and is currently
+    static-only (``playwright=False``). Production must not treat that as a
+    browser pass, so the stricter requirement is a deployment setting until a
+    real browser runner writes ``playwright=True`` reports.
+    """
     report = version.e2e_report or {}
-    return bool(report.get("passed"))
+    if report.get("passed") is not True:
+        return False
+    if not getattr(settings, "PUBLISH_REQUIRE_BROWSER_AUTOTEST", False):
+        return True
+    return report.get("playwright") is True
+
+
+_autotest_passed = autotest_passed
 
 
 def publish_version(
