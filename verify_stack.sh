@@ -9,6 +9,7 @@ WAIT_SECS="${WAIT_SECS:-90}"
 
 echo "==> Ожидание healthy: web, db, redis-cache, redis-broker, redis-throttle, redis-zip (до ${WAIT_SECS}s)"
 deadline=$(( $(date +%s) + WAIT_SECS ))
+all_healthy=0
 while [ "$(date +%s)" -lt "$deadline" ]; do
     status="$("${COMPOSE[@]}" ps --format json 2>/dev/null \
         | python3 -c '
@@ -33,11 +34,18 @@ print(",".join(sorted(ready)))
 ' || echo "")"
     if [ "$status" = "db,redis-broker,redis-cache,redis-throttle,redis-zip,web" ]; then
         echo "  OK: все healthy"
+        all_healthy=1
         break
     fi
     printf '  ждём... ready=[%s]\n' "$status"
     sleep 4
 done
+
+if [ "$all_healthy" -ne 1 ]; then
+    echo "ОШИБКА: не все обязательные сервисы стали healthy за ${WAIT_SECS}s" >&2
+    "${COMPOSE[@]}" ps --format 'table {{.Name}}\t{{.Status}}'
+    exit 1
+fi
 
 echo
 echo "==> Проверка HTTPS"
