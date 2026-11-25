@@ -1013,6 +1013,8 @@ def _finish_job(
     job.task_id = task_id
     job.diagnostics = diagnostics or {}
     job.finished_at = timezone.now()
+    # The web outcome is authoritative: a genuinely slow import that finishes
+    # after the reaper marked it X_JOB_STALE intentionally overwrites that row.
     job.save()
 
 

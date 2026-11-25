@@ -7,6 +7,7 @@ from typing import Any
 
 from celery.exceptions import SoftTimeLimitExceeded
 
+from apps.pipeline.services.reaper import reap_stale_extraction_jobs
 from apps.pipeline.services.retention import (
     cleanup_pipeline_retention as cleanup_pipeline_retention_service,
 )
@@ -62,6 +63,12 @@ def cleanup_zip_uploads() -> dict[str, int]:
     cleanup is idempotent and safe to rerun after a restart.
     """
     return cleanup_upload_jobs(active_job_ids=_active_extraction_job_ids())
+
+
+@shared_task(name="apps.pipeline.tasks.reap_stale_zip_jobs")
+def reap_stale_zip_jobs() -> dict[str, int]:
+    """Recover jobs left RUNNING after a web/worker crash (idempotent)."""
+    return {"reaped": reap_stale_extraction_jobs()}
 
 
 @shared_task(name="apps.pipeline.tasks.cleanup_pipeline_retention")
