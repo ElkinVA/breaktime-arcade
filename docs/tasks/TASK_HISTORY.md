@@ -1488,6 +1488,33 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-RATINGS-NIGHTLY-001 — ночной пересчёт агрегатов оценок
+
+- **Первопричина:** ТЗ §2.9 требует пересчёта агрегатов по изменению голосов
+  и ночной задачей; transition-хуки лечили только свои пути, а прямые
+  изменения `is_valid`/`is_active` (admin/queryset) оставляли дрейф.
+- **Результат:** `recalculate_all` пересчитывает union голосов и
+  существующих агрегатов, по возрастанию pk, одной транзакцией и одним
+  advisory lock на игру; при совпадении всех пяти полей запись не делается
+  (`recalculated_at` не двигается). Dry-run не берёт локов и ничего не
+  пишет; ошибка одной игры логируется с `game_id` и не прерывает остальные,
+  `SoftTimeLimitExceeded` пробрасывается. Добавлены дневная beat-задача
+  `ratings-nightly-recalc` (acks_late, 2400/3000) и команда
+  `recalculate_ratings --dry-run --limit N`; при `failed>0` — ненулевой
+  exit.
+- **Проверки:** 12 nightly tests (direct is_valid/is_active drift, zeroing,
+  union, failure isolation, pk order, beat/annotations, dry-run без
+  lock/записи, soft limit, команда); полный suite **1230 tests: 1217
+  passed, 13 skipped, exit 0**; ruff/format/mypy clean (387);
+  `makemigrations --check` — no changes. Code-reviewer: **ACCEPT**, delta
+  **ACCEPT**; nit N1 исправлен отдельным тестом.
+- **Остатки:** `--limit` без offset (M1), 6 запросов на игру (M3), при
+  soft-timeout остаток ждёт следующего beat через 24 ч (M4), нет теста
+  границы батча 200 (M5); live beat/worker NOT TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; plan — `architect`,
+  review — `code-reviewer` (`deepseek-v4-pro`, text-only).
+- **Commit:** `006aaca`, `b24ff78`, `4c5dd02`.
+
 ### ARCADE-ZIP-WORKER-SECRETS-001 — минимальный env для zip-worker
 
 - **Первопричина:** изолированный zip-worker, разбирающий недоверенные

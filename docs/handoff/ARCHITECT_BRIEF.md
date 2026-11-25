@@ -67,6 +67,11 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- Ratings: a daily task and `recalculate_ratings --dry-run/--limit` command
+  recompute all vote/aggregate games in pk order, one transaction and one
+  advisory lock per game, skip unchanged rows, and isolate per-game failures
+  (`ARCADE-RATINGS-NIGHTLY-001`, `006aaca`/`b24ff78`/`4c5dd02`). Live beat is
+  untested; `--limit` has no offset.
 - ZIP security: the untrusted-input `zip-worker` no longer receives the full
   `.env`; it gets a 13-key non-secret allowlist (settings, broker, quota,
   worker limits/TTL) interpolated from `.env`, with no `env_file` in base or

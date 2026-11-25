@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-RATINGS-NIGHTLY-001 — nightly rating aggregate recalc
+
+| Поле | Значение |
+|---|---|
+| Тип | §2.9 backend/data; code-reviewer ACCEPT + delta ACCEPT |
+| Результат | `recalculate_all` union(votes, aggregates), pk order, per-game atomic + advisory lock, skip-if-unchanged, per-game error isolation; daily beat task (2400/3000, acks_late); command `recalculate_ratings --dry-run --limit`, non-zero on failures |
+| Проверки | 12 nightly tests (drift is_valid/is_active, zeroing, union, error isolation, pk order, beat/annotations, dry-run no locks/writes, soft limit, command); полный suite **1230 tests: 1217 passed, 13 skipped, exit 0**; ruff/format/mypy clean (387); makemigrations clean |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT**; live beat/worker NOT TESTED |
+| Остаток | M1 offset, M3 six queries per game, M4 next-day catch-up after timeout, M5 batch-boundary test |
+| Источник | commits `006aaca`, `b24ff78`, `4c5dd02`; модели: implement — `deepseek-flash[1m]`, plan — `architect`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-ZIP-WORKER-SECRETS-001 — least-privilege env for ZIP worker
 
 | Поле | Значение |

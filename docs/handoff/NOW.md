@@ -4,18 +4,23 @@
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 
-- HEAD `1cbbec3` (zip-worker env pin) после `d90af22`, `1c19af5`,
-  `f6680ed`, `995f5d2`, `8e5f507`, `34f237f` (orphan runtime), `03aaf0f`
-  (concurrent import), `1687517` (ZIP reaper), `26d8075` (email reset),
-  `cdb567a` (restore-check), `ab62a7d` + `116efbd`, `766029e`, `88c2a64`,
+- HEAD `4c5dd02` (ratings nightly N1) после `b24ff78`, `006aaca`,
+  `e8e0175`, `1cbbec3`, `d90af22`, `1c19af5`, `f6680ed`, `995f5d2`,
+  `8e5f507`, `34f237f` (orphan runtime), `03aaf0f` (concurrent import),
+  `1687517` (ZIP reaper), `26d8075` (email reset), `cdb567a`
+  (restore-check), `ab62a7d` + `116efbd`, `766029e`, `88c2a64`,
   `ecfb419`, `bbfdcaf`, `de08292`, `b953419`, `1fc0e97`, B1/CI; этот
   docs-коммит обновляет реестры, затем `origin/main` синхронизируется push.
-- Последний полный gate: **1218 tests: 1205 passed, 13 skipped, exit 0** на
-  reuse-DB без `--create-db` (12:32); ruff/format clean, mypy 384 файла
-  clean. M2-пин prod-оверлея добавлен после gate и проверен targeted (11
-  compose tests). Reuse-DB issue `ARCADE-TEST-DB-SEED-001` закрыт; перед
-  gate проверять отсутствие orphaned pytest/test_ba-сессий. Один редкий
-  step-up флейк moderation не воспроизведён — наблюдение, не исправление.
+- Последний полный gate: **1230 tests: 1217 passed, 13 skipped, exit 0** на
+  reuse-DB без `--create-db` (8:00); ruff/format clean, mypy 387 файлов
+  clean. N1-тест добавлен после gate и проверен targeted (12 nightly tests).
+  Reuse-DB issue `ARCADE-TEST-DB-SEED-001` закрыт; перед gate проверять
+  отсутствие orphaned pytest/test_ba-сессий. Один редкий step-up флейк
+  moderation не воспроизведён — наблюдение, не исправление.
+- Локальная инфраструктура 2026-11-25: staging-стек остановлен
+  (`make staging-down`) из-за исчерпания RAM/swap; volumes/данные не
+  удалялись, для staging-проверок поднять `make staging-up`. Host после
+  остановки: ~1.9 ГБ available.
 - AI HQ: 26 прежних COMPLETED + AI-HQ-CI-001 (CI run NOT VERIFIED) +
   AI-HQ-A1 (security accept); 5 BLOCKED. Cost accounting — только фактический
   modelUsage, не stop-condition; см. `.autonomy/state.json`.
@@ -32,6 +37,12 @@
   IP-failure burst race, CSRF device rotation, hard 30/day без challenge,
   authenticated sessions_ip exemption, heartbeat invalid-id buckets,
   DRF counters non-atomic.
+- P1 ratings (`006aaca` + `b24ff78` + `4c5dd02`): ночной пересчёт
+  агрегатов оценок — union голосов/агрегатов, pk order, транзакция+advisory
+  lock на игру, skip-if-unchanged, per-game failure isolation; daily beat
+  2400/3000, команда `recalculate_ratings --dry-run --limit`; ревью ACCEPT
+  (`ARCADE-RATINGS-NIGHTLY-001`). Остатки M1 offset, M3 6 queries, M4
+  24-часовой catch-up; live beat/worker NOT TESTED.
 - Test infra (`8e5f507` + `995f5d2`): fixture восстанавливает все i18n
   seed-миграции 0002-0012 после transaction-flush; discovery динамический,
   fail-loud; reuse-DB gate зелёный без `--create-db`
@@ -96,13 +107,13 @@
   `propose` → отфильтровать задачи, требующие schema/contract/infra/E2E →
   `run --max-tasks 1`; после каждой задачи обновить реестры, PROJECT_STATUS
   и этот файл. Не запускать schema/contract/infra изменения без решения
-  владельца. `ARCADE-RUNTIME-ORPHAN-001` и
-  `ARCADE-ZIP-WORKER-SECRETS-001` завершены; §5.5 закрыт по runtime/import
-  и env. Следующий независимый P1-срез — `ARCADE-RATINGS-NIGHTLY-001`
-  (ночной пересчёт агрегатов + deploy-backfill, без миграций); затем §5.3
-  audit events (owner-миграция choices) или остаточное §5.5 hardening
-  (Redis ACL/queue isolation, async import, retention отклонённых ZIP).
-  Stage C §4.1/§4.3 — owner-gated.
+  владельца. `ARCADE-RUNTIME-ORPHAN-001`,
+  `ARCADE-ZIP-WORKER-SECRETS-001` и `ARCADE-RATINGS-NIGHTLY-001`
+  завершены. Следующий независимый P1-срез — остаточное §5.5 hardening
+  (Redis ACL/queue isolation, async import, retention отклонённых ZIP,
+  quota-directory consistency) либо §6 bounded game/API fixes; §5.3 audit
+  events требует owner-решения по choices-миграции. Stage C §4.1/§4.3 —
+  owner-gated.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**

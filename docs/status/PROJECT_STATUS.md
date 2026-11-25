@@ -528,6 +528,27 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.52. Nightly rating aggregate recalc — 2026-11-25
+
+`ARCADE-RATINGS-NIGHTLY-001` (`006aaca` + `b24ff78` + `4c5dd02`) —
+**COMPLETED / CODE-REVIEW ACCEPT**: ТЗ §2.9 требует ночного пересчёта
+агрегатов. `recalculate_all` берёт union игр с голосами и существующими
+агрегатами, идёт по возрастанию pk, на каждую игру открывает отдельную
+транзакцию с одним advisory lock; при совпадении total/count/average/
+wr_score/distribution запись не делается, поэтому `recalculated_at` не
+двигается и повторный прогон даёт `updated=0`. Dry-run не берёт локов и не
+пишет; ошибка одной игры логируется с `game_id` и не останавливает
+остальные, soft-timeout пробрасывается. Добавлены дневная beat-задача
+`ratings-nightly-recalc` (acks_late, reject_on_worker_lost, 2400/3000 s) и
+команда `recalculate_ratings --dry-run --limit N` с ненулевым exit при
+ошибках. Проверки: 12 nightly tests, полный suite **1230 tests: 1217
+passed, 13 skipped, exit 0**; ruff/format/mypy clean (387);
+`makemigrations --check` без изменений. Модели: реализация —
+`deepseek-flash[1m]`, plan — `architect`, review — `code-reviewer`
+(`deepseek-v4-pro`, text-only), ACCEPT + delta ACCEPT. Остатки: `--limit`
+без offset, 6 запросов на игру, 24-часовой catch-up после timeout; live
+beat/worker NOT TESTED.
+
 ## 0.51. ZIP worker least-privilege env — 2026-11-25
 
 `ARCADE-ZIP-WORKER-SECRETS-001` (`1c19af5` + `d90af22` + `1cbbec3`) —
