@@ -528,6 +528,22 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.56. Shared leaderboard rank — 2026-11-25
+
+`ARCADE-LEADERBOARD-RANK-UNIFY-001` (`c7bc92e` + `40264c2`) — **COMPLETED /
+CODE-REVIEW ACCEPT**: идентичные `_rank` из submit-пути и read-side queries
+заменены общей `entry_rank` в `apps/gameplay/services/ranking.py`; формула
+§2.11 п.3 (direction, `achieved_at ASC`, `user_id ASC`) теперь в одном
+месте, bulk `rank_annotation` оставлен отдельным для profile/CRM. Поведение
+и query shape не изменились, циклических импортов нет. Проверки: 50
+rank/leaderboard/profile/CRM-record tests, 8 leaderboard tests на дельте
+(полный tie-break + сверка с `annotate_rank`), полный suite **1236 tests:
+1223 passed, 13 skipped, exit 0**; ruff/format clean (478), mypy clean
+(388). Модели: реализация — `deepseek-flash[1m]`, review —
+`code-reviewer` (`deepseek-v4-pro`, text-only), ACCEPT + delta ACCEPT.
+Остаток: `previous` в submit-пути не фильтруется по `is_public`
+(модерационного скрытия строк ещё нет); browser E2E/staging NOT TESTED.
+
 ## 0.55. Rank for non-personal-best results — 2026-11-25
 
 `ARCADE-RANK-NONPB-001` (`df8cad6` + `910f268`) — **COMPLETED /

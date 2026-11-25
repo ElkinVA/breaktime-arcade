@@ -1488,6 +1488,27 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-LEADERBOARD-RANK-UNIFY-001 — общий расчёт rank
+
+- **Первопричина:** review `ARCADE-RANK-NONPB-001` нашёл две идентичные
+  реализации `_rank` — в submit-пути и в read-side queries; при будущем
+  изменении tie-break они могли разойтись.
+- **Результат:** формула §2.11 п.3 вынесена в
+  `apps/gameplay/services/ranking.py::entry_rank`; `results.py` и
+  `leaderboards/queries.py` импортируют её. Bulk `rank_annotation` оставлен
+  отдельным (single-query profile/CRM). Поведение и query shape не менялись;
+  циклических импортов нет.
+- **Проверки:** 50 rank/leaderboard/profile/CRM-record tests; 8 leaderboard
+  tests на дельте, включая полный tie-break (value + achieved_at равны →
+  `user_id ASC`) и сверку `entry_rank` ↔ `annotate_rank`; полный suite
+  **1236 tests: 1223 passed, 13 skipped, exit 0**; ruff/format clean (478),
+  mypy clean (388). Code-reviewer: **ACCEPT**, delta **ACCEPT**.
+- **Остатки:** `previous` в submit-пути не фильтруется по `is_public`
+  (модерационного скрытия строк пока нет); browser E2E/staging NOT TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; review —
+  `code-reviewer` (`deepseek-v4-pro`, text-only).
+- **Commit:** `c7bc92e`, `40264c2`.
+
 ### ARCADE-RANK-NONPB-001 — rank при non-personal-best результате
 
 - **Первопричина:** owner-аудит §6.7. При non-PB сабмите возвращалась

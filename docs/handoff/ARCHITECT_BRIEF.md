@@ -70,8 +70,10 @@ ambiguity.
 - Leaderboard rank: a non-personal-best submit returns the position of the
   user's existing best row, not the hypothetical position of the worse run;
   `is_record` is true only for a personal best that is also #1
-  (`ARCADE-RANK-NONPB-001`, `df8cad6`/`910f268`). `_rank` duplication and an
-  `is_public` filter remain in a follow-up.
+  (`ARCADE-RANK-NONPB-001`, `df8cad6`/`910f268`). The scalar rank formula now
+  lives in one `entry_rank` shared by submit and read-side queries, with a
+  full tie-break test (`c7bc92e`/`40264c2`); only the `is_public` filter for
+  the previous row remains open.
 - Result payload: the eventLog 2 MiB limit is enforced on UTF-8 bytes, and
   lone surrogates now yield a structured validation error in both the
   serializer and semantic validator (`ARCADE-EVENTLOG-BYTES-001`,

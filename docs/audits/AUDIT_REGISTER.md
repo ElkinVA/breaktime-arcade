@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-LEADERBOARD-RANK-UNIFY-001 — shared rank calculation
+
+| Поле | Значение |
+|---|---|
+| Тип | Minor refactor / drift protection; code-reviewer ACCEPT + delta ACCEPT |
+| Результат | shared `entry_rank` in `apps/gameplay/services/ranking.py`; submit and read-side queries import it; bulk `rank_annotation` unchanged; no query-shape or behavior change |
+| Проверки | 50 rank/leaderboard/profile/CRM tests; 8 leaderboard tests on delta incl. full `user_id ASC` tie-break and `entry_rank`↔`annotate_rank` parity; full **1236 tests: 1223 passed, 13 skipped, exit 0**; ruff/format 478 clean; mypy 388 clean |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT**; browser E2E/staging NOT TESTED |
+| Остаток | submit `previous` row not filtered by `is_public` (no hidden-row moderation exists yet) |
+| Источник | commits `c7bc92e`, `40264c2`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-RANK-NONPB-001 — rank for non-personal-best results
 
 | Поле | Значение |
