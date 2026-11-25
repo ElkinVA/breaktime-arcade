@@ -1,6 +1,8 @@
 /* Portal-side player host. Owns the launch ticket and talks to the APIs. */
 import { HostBridge } from "./host_protocol.js";
 
+const API_TIMEOUT_MS = 10_000;
+
 const frame = document.getElementById("game-frame");
 if (frame) {
     const gameId = frame.dataset.gameId;
@@ -29,10 +31,14 @@ if (frame) {
         let lastError;
         for (let attempt = 0; attempt < 3; attempt += 1) {
             try {
-                const response = await fetch(path, {
+                const request = {
                     credentials: "same-origin",
                     ...requestOptions,
-                });
+                };
+                // A blackholed request must not block a restart forever: every
+                // attempt gets its own timeout, then api() retries/fails.
+                request.signal ??= AbortSignal.timeout(API_TIMEOUT_MS);
+                const response = await fetch(path, request);
                 let payload = null;
                 if (response.status !== 204) {
                     payload = await response.json().catch(() => null);
