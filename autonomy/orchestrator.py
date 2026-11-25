@@ -35,7 +35,7 @@ from autonomy.notifier import (
     Notifier,
 )
 from autonomy.observability import InvocationContext, reconcile_invocations
-from autonomy.runner import ClaudeRunner, RunResult
+from autonomy.runner import ClaudeRunner, RunnerError, RunResult
 from autonomy.state import (
     BLOCKED,
     COMPLETED,
@@ -174,8 +174,11 @@ def _assert_main_clean() -> None:
 
 def _create_worktree(task: Task, base: str | None = None) -> tuple[Path, str]:
     _assert_main_clean()
+    safe_id = "".join(ch for ch in task.id if ch.isalnum() or ch in "-_")[:80]
+    if not safe_id:
+        raise RunnerError("task id has no safe worktree prefix")
     base = base or _head()
-    path = WORKTREE_ROOT / f"{task.id}-{uuid.uuid4().hex[:12]}" / "ba"
+    path = WORKTREE_ROOT / f"{safe_id}-{uuid.uuid4().hex[:12]}" / "ba"
     path.parent.mkdir(parents=True, exist_ok=True)
     # Keep basename "ba": project hooks derive the sibling repo from ROOT.name
     # and would otherwise treat the worktree as the sibling repository.
@@ -961,6 +964,7 @@ class Orchestrator:
             }
         except Exception as exc:  # noqa: BLE001 - task boundary is fail-closed
             _discard_worktrees(worktree, qa_worktree)
+            self.store.set_worktree(task.id, None, None)
             retried = self.store.retry(task.id, f"{type(exc).__name__}: {exc}")
             return {
                 "status": "retry" if retried and retried.status == READY else "blocked",

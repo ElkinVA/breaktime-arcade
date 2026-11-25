@@ -246,9 +246,8 @@ def node_read_root(claude_path: str | None = None) -> Path | None:
             and (parent / "lib" / "node_modules").is_dir()
         ):
             return parent
-    for parent in parents:
-        if parent != Path("/") and (parent / "lib" / "node_modules").is_dir():
-            return parent
+    # Native/non-nvm layouts are intentionally narrow: only the executable's
+    # bin directory, never an ancestor such as the host HOME.
     return path.parent if path.parent.name == "bin" else None
 
 
