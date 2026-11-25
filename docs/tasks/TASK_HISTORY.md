@@ -1488,6 +1488,32 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-ZIP-JOB-REAPER-001 — reaper зависших extraction jobs
+
+- **Первопричина:** падение web/worker оставляло `ZipExtractionJob` в
+  RUNNING навсегда: CRM показывал вечный активный импорт, а cleanup
+  продолжал защищать его файлы.
+- **Результат:** `reap_stale_extraction_jobs` идемпотентно переводит
+  RUNNING-задания старше `ZIP_JOB_STALE_SECONDS` (по умолчанию 600 s;
+  fallback на `created_at` при пустом `started_at`) в TIMEOUT с
+  `X_JOB_STALE`, `finished_at`/`updated_at`; UPDATE защищён
+  `status=RUNNING`. Beat-задача `reap_stale_zip_jobs` каждые 5 минут с
+  time limits 240/300; позднее завершение web-импорта остаётся
+  авторитетным и перезаписывает timeout.
+- **Проверки:** 3 reaper tests (stale/recent/exact-TTL/null-started,
+  terminal/queued не трогаются, идемпотентность, task body, beat entry);
+  полный suite **1203 tests: 1190 passed, 13 skipped, exit 0** на свежей
+  БД; ruff/format/mypy clean (383). Code-reviewer: **accept** после delta.
+- **Остатки:** beat работает только при включённом profile `beat`
+  (операционно); нет CANCEL-маркера (bounded deadline/hard limit/cleanup);
+  draft остаётся `uploaded` до 7-дневного purge; инвариант
+  `ZIP_JOB_STALE_SECONDS > wait+deadline` не проверяется на старте; запрос
+  использует status-индекс (OR не идеален, но RUNNING-набор мал); новый env
+  не внесён в BA-ENV (owner-контракт); live beat NOT TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; review —
+  `code-reviewer` (`deepseek-v4-pro`, text-only).
+- **Commit:** `1687517`.
+
 ### ARCADE-EMAIL-RESET-INVALIDATION-001 — reset-токены при смене email
 
 - **Первопричина:** password-reset токен, выданный на старый адрес, оставался

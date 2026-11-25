@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-ZIP-JOB-REAPER-001 — stale RUNNING extraction reaper
+
+| Поле | Значение |
+|---|---|
+| Тип | P1 ZIP pipeline reliability (§5.5); code-reviewer accept after delta |
+| Результат | RUNNING >600 s (или null started + old created_at) → TIMEOUT X_JOB_STALE с finished_at; guarded idempotent update; beat 5 мин, task limits; web-late-completion авторитетен |
+| Проверки | 3 reaper tests (границы, null, terminal/queued, task body, beat); полный suite **1203 tests: 1190 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean (383) |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT**; live beat NOT TESTED |
+| Остаток | beat profile; no CANCEL marker; draft 7d purge; TTL invariant check; OR-index; env not in BA-ENV |
+| Источник | commit `1687517`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-EMAIL-RESET-INVALIDATION-001 — reset tokens die with email change
 
 | Поле | Значение |

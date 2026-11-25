@@ -67,6 +67,10 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- ZIP pipeline: RUNNING extraction jobs older than 600 s are reaped to
+  TIMEOUT/X_JOB_STALE by a 5-minute beat task, idempotently
+  (`ARCADE-ZIP-JOB-REAPER-001`, `1687517`); concurrent-import hardening is
+  the next slice. Live beat untested.
 - Account email security: changing/removing an email invalidates reset and
   verify tokens atomically; reset confirm rechecks current verified email
   and active status (`ARCADE-EMAIL-RESET-INVALIDATION-001`, `26d8075`).

@@ -4,16 +4,16 @@
 
 ## Актуальная сводка автономного цикла (2026-11-24)
 
-- HEAD `26d8075` (email reset tokens) после `cdb567a` (restore-check),
-  `ab62a7d` (Content-Length) + `116efbd` (test flake), `766029e` (ratings
-  block), `88c2a64` (CRM block/unblock), `ecfb419` (safe rollback),
-  `bbfdcaf`, `de08292`, `b953419`, `1fc0e97`, B1/CI; этот docs-коммит
-  обновляет реестры, затем `origin/main` синхронизируется push.
-- Последний полный gate: **1200 tests: 1187 passed, 13 skipped, exit 0** на
-  свежей БД; JS **31/31**; ruff/format clean, mypy 382 файла clean.
-  Real restore-check на dev PASS (44/42/10). Прогоны ~50-60 мин из-за
-  нагрузки хоста; перед gate проверять отсутствие orphaned
-  pytest/test_ba-сессий. Reuse-DB issue — `ARCADE-TEST-DB-SEED-001`.
+- HEAD `1687517` (ZIP reaper) после `26d8075` (email reset), `cdb567a`
+  (restore-check), `ab62a7d` (Content-Length) + `116efbd`, `766029e`
+  (ratings block), `88c2a64` (CRM block/unblock), `ecfb419`, `bbfdcaf`,
+  `de08292`, `b953419`, `1fc0e97`, B1/CI; этот docs-коммит обновляет
+  реестры, затем `origin/main` синхронизируется push.
+- Последний полный gate: **1203 tests: 1190 passed, 13 skipped, exit 0** на
+  свежей БД (прогон 7:43 после снижения нагрузки); ruff/format clean,
+  mypy 383 файла clean. Real restore-check на dev PASS (44/42/10).
+  Reuse-DB issue — `ARCADE-TEST-DB-SEED-001`; перед gate проверять
+  отсутствие orphaned pytest/test_ba-сессий.
 - AI HQ: 26 прежних COMPLETED + AI-HQ-CI-001 (CI run NOT VERIFIED) +
   AI-HQ-A1 (security accept); 5 BLOCKED. Cost accounting — только фактический
   modelUsage, не stop-condition; см. `.autonomy/state.json`.
@@ -30,6 +30,9 @@
   IP-failure burst race, CSRF device rotation, hard 30/day без challenge,
   authenticated sessions_ip exemption, heartbeat invalid-id buckets,
   DRF counters non-atomic.
+- P1 ZIP pipeline (`1687517`): reaper зависших RUNNING extraction jobs
+  (TTL 600 s, beat 5 мин, X_JOB_STALE, guarded idempotent update)
+  (`ARCADE-ZIP-JOB-REAPER-001`); live beat NOT TESTED.
 - P1 accounts (`26d8075`): смена/удаление email инвалидирует
   password-reset/verify токены атомарно; confirm перепроверяет
   current/verified email и active (`ARCADE-EMAIL-RESET-INVALIDATION-001`).
@@ -76,10 +79,10 @@
   `propose` → отфильтровать задачи, требующие schema/contract/infra/E2E →
   `run --max-tasks 1`; после каждой задачи обновить реестры, PROJECT_STATUS
   и этот файл. Не запускать schema/contract/infra изменения без решения
-  владельца. Следующий независимый P1-срез — reaper зависших
-  `ZipExtractionJob(RUNNING)` с TTL (без схемы), затем конкурентный импорт
-  и §5.3 audit events (новые action-константы требуют owner-согласования
-  миграции). Stage C §4.1/§4.3 остаются owner-gated.
+  владельца. Следующий независимый P1-срез — конкурентный импорт ZIP:
+  advisory lock по `technical_id`, различение конфликтов `technical_id` и
+  `semver`, обработка гонки `store_runtime`, очистка orphan runtime.
+  Затем §5.3 audit events (owner-миграция). Stage C §4.1/§4.3 — owner-gated.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**

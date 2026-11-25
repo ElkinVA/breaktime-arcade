@@ -528,6 +528,27 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.47. Stale ZIP job reaper — 2026-11-25
+
+`ARCADE-ZIP-JOB-REAPER-001` (`1687517`) — **COMPLETED / CODE-REVIEW ACCEPT**:
+`reap_stale_extraction_jobs` идемпотентно переводит `ZipExtractionJob` в
+RUNNING старше `ZIP_JOB_STALE_SECONDS` (default 600 s; fallback на
+`created_at`, если `started_at` пуст) в TIMEOUT с `X_JOB_STALE`,
+`finished_at` и `updated_at`; UPDATE защищён `status=RUNNING`, поэтому
+повторный reaper и терминальные задания не затрагиваются. Beat-задача
+`reap_stale_zip_jobs` выполняется каждые 5 минут (time limits 240/300);
+позднее завершение web-импорта остаётся авторитетным и перезаписывает
+timeout. 3 reaper tests (stale/recent/exact-TTL/null-started, terminal и
+queued не трогаются, идемпотентность, task body, beat entry); полный suite
+**1203 tests: 1190 passed, 13 skipped, exit 0** на свежей БД; ruff/format/
+mypy clean (383). Модели: реализация — `deepseek-flash[1m]`, review —
+`code-reviewer` (`deepseek-v4-pro`, text-only), accept после delta.
+Остатки: beat только при включённом profile `beat` (операционно); нет
+CANCEL-маркера для queued worker (bounded deadline/cleanup); draft остаётся
+`uploaded` до 7-дневного purge; инвариант TTL > wait+deadline не
+проверяется на старте; OR-запрос использует status-индекс; новый env не
+внесён в BA-ENV (owner-контракт); live beat NOT TESTED.
+
 ## 0.46. Reset tokens invalidated on email change — 2026-11-25
 
 `ARCADE-EMAIL-RESET-INVALIDATION-001` (`26d8075`) — **COMPLETED /
