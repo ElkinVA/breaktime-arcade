@@ -3,15 +3,24 @@
 ``django_db(transaction=True)`` тесты в teardown делают flush всех таблиц.
 С ``--reuse-db`` тестовая БД осталась бы без данных data-миграций (языки,
 строки интерфейса), и публичные страницы отвечали бы 503. Для transaction-
-тестов seed-данные восстанавливаются перед тестом и после teardown.
+тестов seed-данные всех i18n data-миграций восстанавливаются перед тестом
+и после teardown.
+
+Список seed-модулей собирается из каталога миграций, поэтому новые
+*_seed_*.py подхватываются автоматически; ручной список уже один раз
+разошёлся с миграциями (ARCADE-TEST-DB-SEED-001).
 """
 
 from __future__ import annotations
 
 import importlib
-from collections.abc import Generator
+from collections.abc import Callable, Generator
+from pathlib import Path
+from typing import Any
 
 import pytest
+
+_I18N_MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "apps" / "i18n" / "migrations"
 
 
 def _is_transaction_test(item: pytest.Item | None) -> bool:
@@ -21,19 +30,23 @@ def _is_transaction_test(item: pytest.Item | None) -> bool:
     return marker is not None and bool(marker.kwargs.get("transaction"))
 
 
-def _reseed_i18n_if_empty() -> None:
+def _i18n_seeders() -> list[Callable[[Any, Any], None]]:
+    seeders: list[Callable[[Any, Any], None]] = []
+    for path in sorted(_I18N_MIGRATIONS_DIR.glob("[0-9]*_seed_*.py")):
+        module = importlib.import_module(f"apps.i18n.migrations.{path.stem}")
+        seed = getattr(module, "seed_languages", None) or getattr(module, "seed_strings", None)
+        if seed is not None:
+            seeders.append(seed)
+    return seeders
+
+
+def _reseed_i18n() -> None:
     from django.apps import apps as django_apps
     from django.db import connection
 
-    from apps.i18n.models import Language
-
     try:
-        if Language.objects.exists():
-            return
-        languages = importlib.import_module("apps.i18n.migrations.0002_seed_languages")
-        languages.seed_languages(django_apps, None)
-        strings = importlib.import_module("apps.i18n.migrations.0003_seed_ui_strings")
-        strings.seed_strings(django_apps, None)
+        for seed in _i18n_seeders():
+            seed(django_apps, None)
     finally:
         connection.close()
 
@@ -42,7 +55,7 @@ def _reseed_i18n_if_empty() -> None:
 def _ensure_seed_data(request: pytest.FixtureRequest, django_db_blocker) -> Generator[None]:
     if _is_transaction_test(request.node):
         with django_db_blocker.unblock():
-            _reseed_i18n_if_empty()
+            _reseed_i18n()
     yield
 
 
@@ -59,4 +72,4 @@ def pytest_runtest_teardown(
 
     blocker = item.config.stash[blocking_manager_key]
     with blocker.unblock():
-        _reseed_i18n_if_empty()
+        _reseed_i18n()
