@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from apps.crm.models.backup import BackupRun
 from apps.crm.services.backup import (
+    REQUIRED_TABLES,
     _db_params,
     _pg_env,
     _rotate,
@@ -103,13 +104,36 @@ def test_restore_check_missing_file(monkeypatch, tmp_path: Path) -> None:
     assert "Файл не найден" in run.error_message
 
 
+def _full_run_for(path: Path, *, sha256: str | None = None) -> BackupRun:
+    return BackupRun.objects.create(
+        type=BackupRun.TYPE_FULL,
+        status=BackupRun.STATUS_SUCCESS,
+        file_path=str(path),
+        sha256=sha256 if sha256 is not None else _sha256(path),
+    )
+
+
+def _fake_restore_success(cmd, **_kwargs):
+    stdout = ""
+    if cmd[0] == "psql":
+        sql = cmd[-1]
+        if "table_name IN" in sql:
+            stdout = f"{len(REQUIRED_TABLES)}\n"
+        elif "information_schema.tables" in sql:
+            stdout = "42\n"
+        elif "django_migrations" in sql:
+            stdout = "100\n"
+    return subprocess.CompletedProcess(cmd, 0, stdout=stdout, stderr="")
+
+
 @pytest.mark.django_db
 def test_restore_check_success(monkeypatch, tmp_path: Path) -> None:
     backup = tmp_path / "ba.dump"
     backup.write_bytes(b"dump")
+    full = _full_run_for(backup)
     monkeypatch.setattr(
         "apps.crm.services.backup.subprocess.run",
-        lambda cmd, **_kwargs: subprocess.CompletedProcess(cmd, 0),
+        _fake_restore_success,
     )
 
     run = run_restore_check(backup)
@@ -117,17 +141,173 @@ def test_restore_check_success(monkeypatch, tmp_path: Path) -> None:
     assert run.status == BackupRun.STATUS_SUCCESS
     assert run.verified_at is not None
     assert run.meta["backup_path"] == str(backup)
+    assert run.meta["backup_run_id"] == str(full.id)
+    assert run.meta["table_count"] == 42
+    assert run.meta["required_tables"] == len(REQUIRED_TABLES)
+    assert run.meta["migration_count"] == 100
+
+
+@pytest.mark.django_db
+def test_restore_check_requires_sha_metadata(monkeypatch, tmp_path: Path) -> None:
+    backup = tmp_path / "ba.dump"
+    backup.write_bytes(b"dump")
+
+    run = run_restore_check(backup)
+
+    assert run.status == BackupRun.STATUS_FAILED
+    assert "SHA-256" in run.error_message
+
+
+@pytest.mark.django_db
+def test_restore_check_rejects_sha_mismatch(monkeypatch, tmp_path: Path) -> None:
+    backup = tmp_path / "ba.dump"
+    backup.write_bytes(b"dump")
+    _full_run_for(backup, sha256="0" * 64)
+    monkeypatch.setattr(
+        "apps.crm.services.backup.subprocess.run",
+        lambda *args, **kwargs: pytest.fail("restore must not run"),
+    )
+
+    run = run_restore_check(backup)
+
+    assert run.status == BackupRun.STATUS_FAILED
+    assert "не совпадает" in run.error_message
+
+
+@pytest.mark.django_db
+def test_restore_check_rejects_empty_dump(monkeypatch, tmp_path: Path) -> None:
+    backup = tmp_path / "ba.dump"
+    backup.write_bytes(b"")
+
+    run = run_restore_check(backup)
+
+    assert run.status == BackupRun.STATUS_FAILED
+    assert "Пустой" in run.error_message
+
+
+@pytest.mark.django_db
+def test_restore_check_rejects_missing_required_tables(monkeypatch, tmp_path: Path) -> None:
+    backup = tmp_path / "ba.dump"
+    backup.write_bytes(b"dump")
+    _full_run_for(backup)
+
+    def fake_run(cmd, **_kwargs):
+        if cmd[0] == "psql" and "table_name IN" in cmd[-1]:
+            return subprocess.CompletedProcess(cmd, 0, stdout="0\n", stderr="")
+        if cmd[0] == "psql" and "information_schema" in cmd[-1]:
+            return subprocess.CompletedProcess(cmd, 0, stdout="42\n", stderr="")
+        if cmd[0] == "psql":
+            return subprocess.CompletedProcess(cmd, 0, stdout="100\n", stderr="")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr("apps.crm.services.backup.subprocess.run", fake_run)
+
+    run = run_restore_check(backup)
+
+    assert run.status == BackupRun.STATUS_FAILED
+    assert "Обязательных таблиц" in run.error_message
+
+
+@pytest.mark.django_db
+def test_restore_check_rejects_empty_migrations(monkeypatch, tmp_path: Path) -> None:
+    backup = tmp_path / "ba.dump"
+    backup.write_bytes(b"dump")
+    _full_run_for(backup)
+
+    def fake_run(cmd, **_kwargs):
+        if cmd[0] == "psql" and cmd[-1].startswith("SELECT count(*) FROM django_migrations"):
+            return subprocess.CompletedProcess(cmd, 0, stdout="0\n", stderr="")
+        return _fake_restore_success(cmd)
+
+    monkeypatch.setattr("apps.crm.services.backup.subprocess.run", fake_run)
+
+    run = run_restore_check(backup)
+
+    assert run.status == BackupRun.STATUS_FAILED
+    assert "django_migrations" in run.error_message
+
+
+@pytest.mark.django_db
+def test_restore_check_default_uses_last_successful_backup(monkeypatch, tmp_path: Path) -> None:
+    backup = tmp_path / "ba.dump"
+    backup.write_bytes(b"dump")
+    full = _full_run_for(backup)
+    monkeypatch.setattr("apps.crm.services.backup.subprocess.run", _fake_restore_success)
+
+    run = run_restore_check()
+
+    assert run.status == BackupRun.STATUS_SUCCESS
+    assert run.meta["backup_run_id"] == str(full.id)
+
+
+@pytest.mark.django_db
+def test_restore_check_rejects_unparseable_sql(monkeypatch, tmp_path: Path) -> None:
+    backup = tmp_path / "ba.dump"
+    backup.write_bytes(b"dump")
+    _full_run_for(backup)
+
+    def fake_run(cmd, **_kwargs):
+        if cmd[0] == "psql" and "information_schema" in cmd[-1]:
+            return subprocess.CompletedProcess(cmd, 0, stdout="not-a-number\n", stderr="")
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr("apps.crm.services.backup.subprocess.run", fake_run)
+
+    run = run_restore_check(backup)
+
+    assert run.status == BackupRun.STATUS_FAILED
+    assert "Неожиданный ответ" in run.error_message
+
+
+@pytest.mark.django_db
+def test_restore_check_marks_failed_on_preflight_oserror(monkeypatch, tmp_path: Path) -> None:
+    backup = tmp_path / "ba.dump"
+    backup.write_bytes(b"dump")
+    _full_run_for(backup)
+
+    def boom(path: Path) -> str:
+        raise OSError("unreadable")
+
+    monkeypatch.setattr("apps.crm.services.backup._sha256", boom)
+
+    run = run_restore_check(backup)
+
+    assert run.status == BackupRun.STATUS_FAILED
+    assert run.finished_at is not None
+    assert "Ошибка доступа" in run.error_message
+
+
+@pytest.mark.django_db
+def test_restore_check_detects_dump_change_during_restore(monkeypatch, tmp_path: Path) -> None:
+    backup = tmp_path / "ba.dump"
+    backup.write_bytes(b"dump")
+    _full_run_for(backup)
+    real_sha = _sha256
+    calls = {"count": 0}
+
+    def changing_sha(path: Path) -> str:
+        calls["count"] += 1
+        return real_sha(path) if calls["count"] == 1 else "f" * 64
+
+    monkeypatch.setattr("apps.crm.services.backup._sha256", changing_sha)
+    monkeypatch.setattr("apps.crm.services.backup.subprocess.run", _fake_restore_success)
+
+    run = run_restore_check(backup)
+
+    assert run.status == BackupRun.STATUS_FAILED
+    assert "изменился" in run.error_message
 
 
 @pytest.mark.django_db
 def test_restore_check_failure(monkeypatch, tmp_path: Path) -> None:
     backup = tmp_path / "ba.dump"
     backup.write_bytes(b"dump")
+    _full_run_for(backup)
 
     def fake_run(cmd, **_kwargs):
         if cmd[0] == "pg_restore":
             raise subprocess.CalledProcessError(1, cmd, stderr="restore failed")
-        return subprocess.CompletedProcess(cmd, 0)
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr("apps.crm.services.backup.subprocess.run", fake_run)
 

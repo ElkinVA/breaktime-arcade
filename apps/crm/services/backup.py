@@ -1,3 +1,4 @@
+# ruff: noqa: S608 - SQL built only from fixed commands and internal constants
 """Полный pg_dump + восстановление в ba_restore_check (§2.5).
 
 Использует pg_dump / pg_restore / psql версии 18 (устанавливается в Dockerfile).
@@ -19,6 +20,24 @@ from django.utils import timezone
 from apps.crm.models.backup import BackupRun
 
 logger = logging.getLogger(__name__)
+
+RESTORE_CHECK_TARGET_DB = "ba_restore_check"
+REQUIRED_TABLES = (
+    "django_migrations",
+    "accounts_user",
+    "accounts_profile",
+    "catalog_game",
+    "catalog_game_version",
+    "catalog_game_translation",
+    "gameplay_session",
+    "gameplay_result",
+    "gameplay_leaderboard_entry",
+    "crm_backup_run",
+)
+
+
+class RestoreCheckError(Exception):
+    """A restore completed with an unusable or unexpected database."""
 
 
 # ------------------------------------------------------------------ helpers
@@ -135,8 +154,42 @@ def _rotate(directory: Path, retention_days: int) -> None:
 
 
 # ----------------------------------------------------------- restore check
+def _backup_run_for(path: Path) -> BackupRun | None:
+    return (
+        BackupRun.objects.filter(
+            type=BackupRun.TYPE_FULL,
+            status=BackupRun.STATUS_SUCCESS,
+            file_path=str(path),
+        )
+        .order_by("-started_at")
+        .first()
+    )
+
+
+def _psql_scalar(base: list[str], env: dict[str, str], sql: str) -> int:
+    result = subprocess.run(  # noqa: S603
+        base + ["-t", "-c", sql],
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    try:
+        return int(result.stdout.strip())
+    except ValueError as exc:
+        raise RestoreCheckError(f"Неожиданный ответ SQL-проверки: {result.stdout!r}") from exc
+
+
+def _required_tables_sql() -> str:
+    names = ",".join(f"'{name}'" for name in REQUIRED_TABLES)
+    return (
+        "SELECT count(*) FROM information_schema.tables "
+        f"WHERE table_schema='public' AND table_name IN ({names});"
+    )
+
+
 def run_restore_check(backup_path: Path | None = None) -> BackupRun:
-    """Восстанавливает последний успешный дамп в ba_restore_check и проверяет."""
+    """Восстанавливает дамп в ba_restore_check и проверяет его содержимое."""
     run = BackupRun.objects.create(
         type=BackupRun.TYPE_RESTORE_CHECK, status=BackupRun.STATUS_RUNNING
     )
@@ -159,15 +212,50 @@ def run_restore_check(backup_path: Path | None = None) -> BackupRun:
         run.error_message = f"Файл не найден: {backup_path}"
         _finish(run)
         return run
+    try:
+        if backup_path.stat().st_size == 0:
+            run.status = BackupRun.STATUS_FAILED
+            run.error_message = f"Пустой дамп: {backup_path}"
+            _finish(run)
+            return run
+
+        backup_run = _backup_run_for(backup_path)
+        if backup_run is None or not backup_run.sha256:
+            run.status = BackupRun.STATUS_FAILED
+            run.error_message = f"Нет записи BackupRun с SHA-256 для {backup_path}"
+            _finish(run)
+            return run
+        actual_sha = _sha256(backup_path)
+    except OSError as exc:
+        run.status = BackupRun.STATUS_FAILED
+        run.error_message = f"Ошибка доступа к дампу: {exc}"[:2000]
+        _finish(run)
+        return run
+    if actual_sha != backup_run.sha256:
+        run.status = BackupRun.STATUS_FAILED
+        run.error_message = "SHA-256 дампа не совпадает с метаданными BackupRun"
+        run.meta = {
+            "backup_path": str(backup_path),
+            "backup_run_id": str(backup_run.id),
+            "sha256": actual_sha,
+            "expected_sha256": backup_run.sha256,
+        }
+        _finish(run)
+        return run
+    run.meta = {
+        "backup_path": str(backup_path),
+        "backup_run_id": str(backup_run.id),
+        "sha256": actual_sha,
+    }
 
     p = _db_params()
     env = _pg_env()
-    target_db = "ba_restore_check"
+    target_db = RESTORE_CHECK_TARGET_DB
     # psql подключается к базе "postgres" от того же пользователя (суперюзер в контейнере).
     base_psql = ["psql", "-h", p["host"], "-p", p["port"], "-U", p["user"], "-d", "postgres"]
 
     commands = [
-        base_psql + ["-c", f'DROP DATABASE IF EXISTS "{target_db}";'],
+        base_psql + ["-c", f'DROP DATABASE IF EXISTS "{target_db}" WITH (FORCE);'],
         base_psql + ["-c", f'CREATE DATABASE "{target_db}";'],
         [
             "pg_restore",
@@ -184,20 +272,6 @@ def run_restore_check(backup_path: Path | None = None) -> BackupRun:
             "--exit-on-error",
             str(backup_path),
         ],
-        [
-            "psql",
-            "-h",
-            p["host"],
-            "-p",
-            p["port"],
-            "-U",
-            p["user"],
-            "-d",
-            target_db,
-            "-t",
-            "-c",
-            "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';",
-        ],
     ]
 
     try:
@@ -206,20 +280,49 @@ def run_restore_check(backup_path: Path | None = None) -> BackupRun:
             subprocess.run(  # noqa: S603
                 c, env=env, check=True, capture_output=True, text=True
             )
+        if _sha256(backup_path) != backup_run.sha256:
+            raise RestoreCheckError("SHA-256 дампа изменился во время восстановления")
+        target_psql = base_psql[:-1] + [target_db]
+        table_count = _psql_scalar(
+            target_psql,
+            env,
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';",
+        )
+        required_count = _psql_scalar(target_psql, env, _required_tables_sql())
+        migration_count = _psql_scalar(target_psql, env, "SELECT count(*) FROM django_migrations;")
+        if table_count <= 0:
+            raise RestoreCheckError("В восстановленной БД нет таблиц")
+        if required_count != len(REQUIRED_TABLES):
+            raise RestoreCheckError(
+                f"Обязательных таблиц {required_count} из {len(REQUIRED_TABLES)}"
+            )
+        if migration_count <= 0:
+            raise RestoreCheckError("Таблица django_migrations пуста")
         run.status = BackupRun.STATUS_SUCCESS
         run.verified_at = timezone.now()
-        run.meta = {"backup_path": str(backup_path)}
+        run.meta = {
+            **run.meta,
+            "table_count": table_count,
+            "required_tables": required_count,
+            "migration_count": migration_count,
+        }
+    except RestoreCheckError as exc:
+        run.status = BackupRun.STATUS_FAILED
+        run.error_message = str(exc)[:2000]
     except subprocess.CalledProcessError as exc:
         run.status = BackupRun.STATUS_FAILED
         run.error_message = ((exc.stderr or "") + (exc.stdout or "") or str(exc))[:2000]
     except FileNotFoundError as exc:
         run.status = BackupRun.STATUS_FAILED
         run.error_message = f"Утилита не найдена: {exc}"
+    except OSError as exc:
+        run.status = BackupRun.STATUS_FAILED
+        run.error_message = f"Ошибка доступа к дампу: {exc}"[:2000]
 
     # Попытка дропнуть временную БД — не фатально при ошибке.
     try:
         subprocess.run(  # noqa: S603
-            base_psql + ["-c", f'DROP DATABASE IF EXISTS "{target_db}";'],
+            base_psql + ["-c", f'DROP DATABASE IF EXISTS "{target_db}" WITH (FORCE);'],
             env=env,
             check=False,
             capture_output=True,
