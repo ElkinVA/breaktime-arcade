@@ -85,8 +85,14 @@ def run_browser_autotest(
     timeout_seconds: int = 30,
     resolver: str = "",
     headless: bool = True,
+    allow_insecure_tls: bool = False,
 ) -> BrowserAutotestResult:
-    """Load a runtime and verify the SDK handshake; never raises for a game error."""
+    """Load a runtime and verify the SDK handshake; never raises for a game error.
+
+    ``timeout_seconds`` is a single deadline for the whole browser run, not a
+    per-step timeout: the caller is a synchronous CRM request and must stay
+    below the web-server timeout.
+    """
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:  # pragma: no cover - deployment guard
@@ -95,6 +101,11 @@ def run_browser_autotest(
     checks: list[dict[str, Any]] = []
     page_errors: list[str] = []
     started = time.monotonic()
+    deadline = started + max(1, timeout_seconds)
+
+    def remaining_ms() -> int:
+        return max(1, int((deadline - time.monotonic()) * 1000))
+
     url = runtime_url(
         host_label,
         runtime_hash,
@@ -108,14 +119,15 @@ def run_browser_autotest(
 
     try:
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=headless, args=args)
+            browser = playwright.chromium.launch(
+                headless=headless, args=args, timeout=remaining_ms()
+            )
             try:
-                page = browser.new_page(ignore_https_errors=True)
-                page.on("pageerror", lambda exc: page_errors.append(str(exc)))
+                page = browser.new_page(ignore_https_errors=allow_insecure_tls)
                 response = page.goto(
                     portal_origin.rstrip("/") + "/en/",
                     wait_until="domcontentloaded",
-                    timeout=timeout_seconds * 1000,
+                    timeout=remaining_ms(),
                 )
                 checks.append(
                     {
@@ -124,6 +136,9 @@ def run_browser_autotest(
                         "detail": f"status={getattr(response, 'status', None)}",
                     }
                 )
+                # Collect only game-runtime errors: a portal-side JS issue must
+                # not make every game publish fail.
+                page.on("pageerror", lambda exc: page_errors.append(str(exc)))
                 page.evaluate(
                     """([runtime, sessionId, payload, requestId]) => {
                         document.body.innerHTML = "";
@@ -158,7 +173,7 @@ def run_browser_autotest(
                 try:
                     page.wait_for_function(
                         "() => window.__baAutotest && window.__baAutotest.hello === true",
-                        timeout=timeout_seconds * 1000,
+                        timeout=remaining_ms(),
                     )
                     hello = True
                 except Exception:  # noqa: BLE001 - reported as a check
@@ -204,6 +219,8 @@ def run_browser_autotest(
                 "passed": False,
                 "kind": "browser",
                 "playwright": False,
+                "browser": "chromium",
+                "attempted": True,
                 "generated_at": datetime.now(UTC).isoformat(),
                 "runtime_hash": runtime_hash,
                 "runtime_url": url,
@@ -221,9 +238,10 @@ def merge_autotest_reports(static: dict[str, Any], browser: dict[str, Any]) -> d
     static_checks: list[Any] = raw_static if isinstance(raw_static, list) else []
     browser_checks: list[Any] = raw_browser if isinstance(raw_browser, list) else []
     passed = static.get("passed") is True and browser.get("passed") is True
+    attempted = browser.get("attempted") is True or browser.get("playwright") is True
     return {
         "passed": passed,
-        "kind": "browser" if browser.get("playwright") else "static",
+        "kind": "browser" if attempted else "static",
         "playwright": browser.get("playwright") is True,
         "generated_at": browser.get("generated_at", datetime.now(UTC).isoformat()),
         "runtime_hash": browser.get("runtime_hash", ""),

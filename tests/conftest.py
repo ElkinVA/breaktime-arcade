@@ -63,6 +63,19 @@ def _ensure_seed_data(request: pytest.FixtureRequest, django_db_blocker) -> Gene
     yield
 
 
+@pytest.fixture(autouse=True)
+def _isolated_zip_quota_state(tmp_path: Path, settings: Any) -> None:
+    """Keep quota locks/state out of the compose volume.
+
+    In the dev-lite web container ``ZIP_QUOTA_STATE_ROOT`` points at the shared
+    ``zip_quota`` volume owned by the app UID. Tests run as the developer UID,
+    so using the production path would reject every extraction with
+    ``X_STORAGE_QUOTA_STATE``. A per-test directory keeps the state isolated
+    and writable without weakening the production check.
+    """
+    settings.ZIP_QUOTA_STATE_ROOT = tmp_path / "zip-quota-state"
+
+
 @pytest.hookimpl(hookwrapper=True, trylast=True)
 def pytest_runtest_teardown(
     item: pytest.Item,

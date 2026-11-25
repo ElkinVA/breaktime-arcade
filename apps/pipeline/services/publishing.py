@@ -68,12 +68,11 @@ def _validation_blockers(version: GameVersion) -> int:
 def autotest_passed(version: GameVersion, *, require_browser: bool | None = None) -> bool:
     """Static checks always count; browser proof is required where configured.
 
-    ``version.e2e_report`` is produced by the import sandbox and is currently
-    static-only (``playwright=False``). Production must not treat that as a
-    browser pass, so the stricter requirement is a deployment setting until a
-    real browser runner writes ``playwright=True`` reports. Rollback passes
-    ``require_browser=False``: the target already passed the historical
-    publish gate and must stay available for incident recovery.
+    ``version.e2e_report`` is produced by the import pipeline. When the
+    isolated browser runner is enabled, the report contains a merged static +
+    browser result with ``playwright=True``; production requires that proof.
+    Rollback passes ``require_browser=False``: the target already passed the
+    historical publish gate and must stay available for incident recovery.
     """
     report = version.e2e_report or {}
     if report.get("passed") is not True:

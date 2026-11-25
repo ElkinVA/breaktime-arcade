@@ -65,8 +65,9 @@ services:
       ZIP_STORAGE_QUOTA_BYTES: "${ZIP_STORAGE_QUOTA_BYTES:-2147483648}"
       ZIP_STORAGE_MIN_FREE_BYTES: "${ZIP_STORAGE_MIN_FREE_BYTES:-157286400}"
       ZIP_QUOTA_RESERVATION_TTL_SECONDS: "${ZIP_QUOTA_RESERVATION_TTL_SECONDS:-3600}"
-      # Browser autotest resolves portal/game hostnames to the local nginx.
-      BROWSER_AUTOTEST_RESOLVER: "${BROWSER_AUTOTEST_RESOLVER:-nginx}"
+      # Browser autotest runs in a dedicated secretless container.
+      BROWSER_AUTOTEST_URL: "${BROWSER_AUTOTEST_URL:-http://browser-autotest:8100/run}"
+    networks: [internal, edge, autotestnet]
     volumes:
       - static_data:/app/staticfiles
       - media_data:/app/media
@@ -178,6 +179,50 @@ services:
       driver: json-file
       options: { max-size: "10m", max-file: "3" }
 
+  # ARCADE-BROWSER-AUTOTEST-001: untrusted game JavaScript runs here, never in
+  # web. No env_file, no database/Redis credentials, no edge/egress network.
+  browser-autotest:
+    image: ba/app:${IMAGE_TAG:-dev}
+    build:
+      context: .
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.14-slim-bookworm}
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
+        UV_VERSION: ${UV_VERSION:?задайте UV_VERSION в .env (make env)}
+    restart: unless-stopped
+    user: "10001:10001"
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    entrypoint: ["python", "-m", "apps.pipeline.services.browser_service"]
+    command: []
+    environment:
+      HOME: /tmp
+      BROWSER_AUTOTEST_BIND: "0.0.0.0"
+      BROWSER_AUTOTEST_PORT: "8100"
+      BROWSER_AUTOTEST_RESOLVER: "nginx"
+      BROWSER_AUTOTEST_HEADLESS: "true"
+      BROWSER_AUTOTEST_INSECURE_TLS: "${BROWSER_AUTOTEST_INSECURE_TLS:-false}"
+      BROWSER_AUTOTEST_CONCURRENCY: "1"
+    networks: [autotestnet]
+    depends_on:
+      nginx: { condition: service_healthy }
+    read_only: true
+    tmpfs:
+      - /tmp:rw,size=512m,mode=1777
+    shm_size: 256m
+    pids_limit: 256
+    cpus: "1.0"
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8100/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
   beat:
     <<: *app
     command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule", "/app/var/celerybeat-schedule"]
@@ -268,7 +313,7 @@ services:
   nginx:
     image: nginxinc/nginx-unprivileged:1.29-alpine
     restart: unless-stopped
-    networks: [edge, internal]
+    networks: [edge, internal, autotestnet]
     depends_on:
       web: { condition: service_healthy }
     volumes:
@@ -304,6 +349,10 @@ networks:
   internal:
     internal: true
   edge:
+  # ARCADE-BROWSER-AUTOTEST-001: nginx, web and the secretless browser runner.
+  # No database, broker, cache or edge gateway is attached.
+  autotestnet:
+    internal: true
   # BA-ZIP-WORKER-001: only zip-worker and redis-broker; no external gateway.
   zipnet:
     internal: true

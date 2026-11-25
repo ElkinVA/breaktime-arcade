@@ -40,11 +40,8 @@ from apps.pipeline.services.artifacts import (
     store_runtime,
 )
 from apps.pipeline.services.autotest import run_autotest
-from apps.pipeline.services.browser_autotest import (
-    BrowserAutotestUnavailable,
-    merge_autotest_reports,
-    run_browser_autotest,
-)
+from apps.pipeline.services.browser_autotest import merge_autotest_reports
+from apps.pipeline.services.browser_client import run_browser_autotest
 from apps.pipeline.services.bundling import build_runtime
 from apps.pipeline.services.diff import (
     game_manifest_values,
@@ -440,30 +437,18 @@ def _import_package(
 
         e2e_report = autotest.report
         if settings.BROWSER_AUTOTEST_ENABLED:
-            try:
-                browser = run_browser_autotest(
-                    host_label=runtime_label,
-                    runtime_hash=bundle.runtime_hash,
-                    game_id=str(manifest["id"]),
-                    game_version=str(manifest["version"]),
-                    portal_origin=settings.PORTAL_ORIGIN,
-                    games_domain=settings.GAMES_DOMAIN,
-                    timeout_seconds=settings.BROWSER_AUTOTEST_TIMEOUT_SECONDS,
-                    resolver=settings.BROWSER_AUTOTEST_RESOLVER,
-                    headless=settings.BROWSER_AUTOTEST_HEADLESS,
-                )
-                e2e_report = merge_autotest_reports(autotest.report, browser.report)
-            except BrowserAutotestUnavailable as exc:
-                e2e_report = merge_autotest_reports(
-                    autotest.report,
-                    {
-                        "passed": False,
-                        "kind": "browser",
-                        "playwright": False,
-                        "error": str(exc),
-                        "checks": [],
-                    },
-                )
+            browser = run_browser_autotest(
+                host_label=runtime_label,
+                runtime_hash=bundle.runtime_hash,
+                game_id=str(manifest["id"]),
+                game_version=str(manifest["version"]),
+                portal_origin=settings.PORTAL_ORIGIN,
+                games_domain=settings.GAMES_DOMAIN,
+                timeout_seconds=settings.BROWSER_AUTOTEST_TIMEOUT_SECONDS,
+                resolver=settings.BROWSER_AUTOTEST_RESOLVER,
+                headless=settings.BROWSER_AUTOTEST_HEADLESS,
+            )
+            e2e_report = merge_autotest_reports(autotest.report, browser.report)
 
         try:
             game, version, conflicts = _persist(

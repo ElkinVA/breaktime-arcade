@@ -245,13 +245,20 @@ def test_runner_captures_usage_in_evidence_and_result(
     monkeypatch.setattr(runner_module, "EVIDENCE_ROOT", tmp_path)
     monkeypatch.setattr(runner_module.subprocess, "run", lambda *args, **kwargs: Completed())
 
-    result = runner_module.ClaudeRunner(journal_root=tmp_path / "journal").run(
+    worktree = tmp_path / "worktrees" / "task"
+    worktree.mkdir(parents=True)
+    result = runner_module.ClaudeRunner(
+        root=tmp_path,
+        worktree_root=tmp_path / "worktrees",
+        journal_root=tmp_path / "journal",
+    ).run(
         role="developer",
         model="deepseek-flash",
         agent="test",
         prompt="prompt",
         allowed_tools=[],
         permission_mode="acceptEdits",
+        cwd=worktree,
     )
 
     assert result.usage.total_tokens == 20

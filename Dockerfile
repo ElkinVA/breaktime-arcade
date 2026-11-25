@@ -46,7 +46,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl ca-certificates \
+ && apt-get install -y --no-install-recommends curl ca-certificates libatomic1 \
  && rm -rf /var/lib/apt/lists/* \
  && groupadd -g 10001 app \
  && useradd -u 10001 -g 10001 -M -s /usr/sbin/nologin app \
@@ -54,16 +54,16 @@ RUN apt-get update \
  && chown -R app:app /app /var/ba/zip
 WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
+# Browser autotest for publish gating. Install before copying sources so code
+# changes do not invalidate the expensive Chromium/OS-dependency layer.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN python -m playwright install --with-deps chromium-headless-shell \
+ && chmod -R a+rX /ms-playwright
 COPY --chown=app:app . /app
 COPY --from=assets --chown=app:app /build/static/dist /app/static/dist
 RUN DJANGO_SECRET_KEY=build-only python manage.py collectstatic --noinput \
  && chown -R app:app /app/staticfiles \
  && chmod -R a+rX /app/staticfiles /app/media
-# Browser autotest for publish gating. The headless shell is enough; OS
-# dependencies are installed by Playwright. Runtime user stays unprivileged.
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN python -m playwright install --with-deps chromium-headless-shell \
- && chmod -R a+rX /ms-playwright
 USER app
 EXPOSE 8000
 ENTRYPOINT ["/app/infra/scripts/entrypoint.sh"]

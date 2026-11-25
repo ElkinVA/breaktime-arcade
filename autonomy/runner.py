@@ -135,6 +135,9 @@ class ClaudeRunner:
         ]
         if cwd is None:
             raise RunnerError(f"{role} must run inside an isolated task worktree")
+        # Callers may invoke run() directly, so validate here as well: the
+        # Landlock ruleset grants write access to this directory.
+        worktree = self._worktree_cwd(role, cwd)
         if abi_version() < 1 and not os.environ.get("PYTEST_CURRENT_TEST"):
             # Tests replace subprocess.run with a recorder; real model runs
             # must never proceed without the kernel boundary.
@@ -145,7 +148,6 @@ class ClaudeRunner:
         started_at = datetime.now(UTC).isoformat()
         invocation_id = str(uuid.uuid4())
         child_env = build_child_env()
-        worktree = Path(cwd).resolve()
         sandbox_root = self.journal_root / "agent-sandbox" / invocation_id
         home = sandbox_root / "home"
         temp = sandbox_root / "tmp"

@@ -96,12 +96,61 @@ class _Completed:
 
 
 def _runner(tmp_path: Path) -> runner_module.ClaudeRunner:
-    return runner_module.ClaudeRunner(journal_root=tmp_path / "journal")
+    return runner_module.ClaudeRunner(
+        root=tmp_path,
+        worktree_root=tmp_path / "worktrees",
+        journal_root=tmp_path / "journal",
+    )
+
+
+def _worktree(tmp_path: Path) -> Path:
+    path = tmp_path / "worktrees" / "task"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _run(
+    tmp_path: Path,
+    *,
+    role: str,
+    model: str,
+    agent: str,
+    prompt: str,
+    allowed_tools: list[str],
+    permission_mode: str,
+    timeout: int | None = None,
+) -> RunResult:
+    return _runner(tmp_path).run(
+        role=role,
+        model=model,
+        agent=agent,
+        prompt=prompt,
+        allowed_tools=allowed_tools,
+        permission_mode=permission_mode,
+        timeout=timeout,
+        cwd=_worktree(tmp_path),
+    )
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, result: object, tmp_path: Path) -> None:
     monkeypatch.setattr(runner_module, "EVIDENCE_ROOT", tmp_path / "evidence")
     monkeypatch.setattr(runner_module.subprocess, "run", lambda *args, **kwargs: result)
+
+
+def test_direct_run_rejects_cwd_outside_worktree(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+
+    with pytest.raises(runner_module.RunnerError, match="rejected unsafe cwd"):
+        _runner(tmp_path).run(
+            role="developer",
+            model="deepseek-flash",
+            agent="test",
+            prompt="prompt",
+            allowed_tools=[],
+            permission_mode="acceptEdits",
+            cwd=outside,
+        )
 
 
 def test_from_run_result_keeps_metadata_and_excludes_content() -> None:
@@ -233,7 +282,8 @@ def test_runner_writes_started_before_spawn_and_finished_on_success(
     monkeypatch.setattr(runner_module.subprocess, "run", fake_run)
     monkeypatch.setattr(runner_module, "EVIDENCE_ROOT", tmp_path / "evidence")
 
-    result = _runner(tmp_path).run(
+    result = _run(
+        tmp_path,
         role="developer",
         model="deepseek-flash",
         agent="test",
@@ -263,7 +313,8 @@ def test_runner_api_error_preserves_reported_usage(
     _install(monkeypatch, _Completed(payload, returncode=1), tmp_path)
 
     with pytest.raises(runner_module.RunnerError):
-        _runner(tmp_path).run(
+        _run(
+            tmp_path,
             role="developer",
             model="deepseek-flash",
             agent="test",
@@ -292,7 +343,8 @@ def test_runner_zeroed_error_usage_is_unknown(
     _install(monkeypatch, _Completed(payload, returncode=1), tmp_path)
 
     with pytest.raises(runner_module.RunnerError):
-        _runner(tmp_path).run(
+        _run(
+            tmp_path,
             role="developer",
             model="deepseek-flash",
             agent="test",
@@ -314,7 +366,8 @@ def test_runner_invalid_output_marks_usage_unknown(
     _install(monkeypatch, _Completed(returncode=0), tmp_path)
 
     with pytest.raises(runner_module.RunnerError):
-        _runner(tmp_path).run(
+        _run(
+            tmp_path,
             role="developer",
             model="deepseek-flash",
             agent="test",
@@ -338,7 +391,8 @@ def test_runner_timeout_records_timeout(tmp_path: Path, monkeypatch: pytest.Monk
     monkeypatch.setattr(runner_module, "EVIDENCE_ROOT", tmp_path / "evidence")
 
     with pytest.raises(runner_module.RunnerError):
-        _runner(tmp_path).run(
+        _run(
+            tmp_path,
             role="developer",
             model="deepseek-flash",
             agent="test",
@@ -366,7 +420,8 @@ def test_runner_keyboard_interrupt_records_cancelled(
     monkeypatch.setattr(runner_module, "EVIDENCE_ROOT", tmp_path / "evidence")
 
     with pytest.raises(KeyboardInterrupt):
-        _runner(tmp_path).run(
+        _run(
+            tmp_path,
             role="developer",
             model="deepseek-flash",
             agent="test",
@@ -621,7 +676,8 @@ def test_runner_launch_error_records_failed(
     monkeypatch.setattr(runner_module, "EVIDENCE_ROOT", tmp_path / "evidence")
 
     with pytest.raises(OSError):
-        _runner(tmp_path).run(
+        _run(
+            tmp_path,
             role="developer",
             model="deepseek-flash",
             agent="test",
@@ -643,7 +699,8 @@ def test_runner_model_mismatch_preserves_usage(
     _install(monkeypatch, _Completed(payload, returncode=0), tmp_path)
 
     with pytest.raises(runner_module.RunnerError):
-        _runner(tmp_path).run(
+        _run(
+            tmp_path,
             role="developer",
             model="deepseek-flash",
             agent="test",
@@ -672,7 +729,8 @@ def test_runner_evidence_failure_keeps_terminal_record(
     monkeypatch.setattr(runner_module.ClaudeRunner, "_write_evidence", staticmethod(fail_write))
 
     with pytest.raises(OSError):
-        _runner(tmp_path).run(
+        _run(
+            tmp_path,
             role="developer",
             model="deepseek-flash",
             agent="test",

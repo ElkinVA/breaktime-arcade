@@ -1,9 +1,9 @@
-"""CRM autotest report (§2.14.8).
+"""Static autotest report (§2.14.8).
 
-A full Playwright run is part of the CRM delivery target but is not available
-in the server sandbox. This deterministic static autotest checks the runtime
-bundle invariants that can be verified without a browser and records that the
-browser stage is still pending; publication requires a green report.
+This deterministic pass checks the runtime bundle invariants that can be
+verified without a browser. The importer merges its report with the isolated
+browser runner's handshake evidence when that gate is enabled; publication
+requires a green merged report.
 """
 
 from __future__ import annotations
@@ -94,8 +94,8 @@ def run_autotest(
         "generated_at": datetime.now(UTC).isoformat(),
         "checks": [item.as_dict() for item in checks],
         "notes": [
-            "Браузерный Playwright-прогон не выполнялся в серверной песочнице; "
-            "требуется отдельная проверка CRM перед публикацией.",
+            "Static bundle checks only; a browser handshake report is merged "
+            "separately by the isolated browser runner when enabled.",
         ],
     }
     return AutotestResult(passed=passed, report=report, checks=checks)
