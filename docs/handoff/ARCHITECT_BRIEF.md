@@ -71,8 +71,11 @@ ambiguity.
   cards are blocked until draft isolation; production publish requires a
   `playwright=true` report (rollback stays available); empty eventLog is
   quarantined under a verification profile; pagehide does not close a session
-  with an in-flight submit. AI HQ OS sandbox, Redis broker isolation, draft
-  isolation, browser runner/override and PB `is_public` remain owner-gated.
+  with an in-flight submit. Minor audit items are closed too: probe_seed is
+  dev-only, schedule_publish checks validation/autotest, and the exact 2 MiB
+  eventLog boundary is pinned. AI HQ OS sandbox, Redis broker isolation,
+  draft isolation, browser runner/override and PB `is_public` remain
+  owner-gated.
 - Leaderboard rank: a non-personal-best submit returns the position of the
   user's existing best row, not the hypothetical position of the worse run;
   `is_record` is true only for a personal best that is also #1

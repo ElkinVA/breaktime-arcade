@@ -21,7 +21,10 @@
 |---|---|---|
 | pagehide может закрыть сессию во время in-flight submit | pagehide пропускает close при pending submit; submit сам завершает сессию | **Исправлено** `64d7149`; server-side atomic terminal op — остаток |
 | Submit PB lookup без `is_public` | Модерационного скрытия строк ещё нет; фильтр преждевременен (может «разскрыть» строку) | **OWNER/DESIGN**, `ARCADE-PB-ISPUBLIC-001` |
-| Email reset race, submit/restart residuals, eventLog boundary, ratings catch-up, staging/restore | Мелкие/инфраструктурные остатки | Заведены в `BACKLOG.md` |
+| `probe_seed` обходил publish gate/audit | dev-only guard (`DEBUG`/pytest) | **Исправлено** `8756e8c` |
+| `schedule_publish` без validation gate | добавлены `_validation_blockers` и тест autotest-ветки | **Исправлено** `541280a`, `e136af8` |
+| eventLog boundary/дублирование 2 MiB | точный boundary-тест, общая константа из contracts | **Исправлено** `4bd039c` |
+| Email reset race, submit/restart residuals, ratings catch-up, staging/restore | Мелкие/инфраструктурные остатки | Заведены в `BACKLOG.md` |
 
 ## Что аудит подтвердил положительно
 

@@ -1500,18 +1500,20 @@ tests: 1056 passed, 8 skipped, exit 0**.
   `empty_event_log` → quarantine; pagehide пропускает close при pending
   submit. Draft isolation §4.1, browser runner/override, AI HQ OS sandbox и
   Redis broker isolation зафиксированы как owner-gated.
-- **Проверки:** pipeline 37; pipeline+wizard 50; result 30; JS 31; полный
-  suite **1246 tests: 1233 passed, 13 skipped, exit 0** (на `d8c5d9f`);
-  ruff/format/mypy clean (388). Независимые review: ACCEPT по всем четырём
-  фиксам; для import guard был reject → delta accept (hidden/archived,
-  TOCTOU), для browser gate — accept → delta accept (rollback/UI).
+- **Проверки:** pipeline 40; pipeline+wizard 50; result 30; JS 31; полный
+  suite **1250 tests: 1237 passed, 13 skipped, exit 0** (на `e136af8`);
+  ruff/format/mypy clean (388). Независимые review: ACCEPT по всем фиксам;
+  для import guard был reject → delta accept (hidden/archived, TOCTOU),
+  для browser gate — accept → delta accept (rollback/UI). Дополнительно:
+  probe_seed guard, validation-gate schedule_publish, exact eventLog
+  boundary.
 - **Остатки:** browser E2E не в CI; production publish без browser runner
   намеренно заблокирован; гостевой active-session cap до 30 мин при
   submit+pagehide; PB `is_public`; staging/prod live NOT TESTED.
 - **Модели:** реализация — `deepseek-flash[1m]`; review —
   `code-reviewer` (`deepseek-v4-pro`, text-only).
 - **Commit:** `1763554`, `cc9923b`, `50f9135`, `d8c5d9f`, `154de78`,
-  `64d7149`.
+  `64d7149`, `8756e8c`, `541280a`, `4bd039c`, `e136af8`.
 
 ### ARCADE-LEADERBOARD-RANK-UNIFY-001 — общий расчёт rank
 

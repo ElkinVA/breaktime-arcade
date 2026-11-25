@@ -550,10 +550,14 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 - `ARCADE-PAGEHIDE-SUBMIT-RACE-001` (`64d7149`): pagehide не закрывает
   сессию при in-flight submit; server-side terminal op — остаток.
 
-Полный suite на `d8c5d9f`: **1246 tests: 1233 passed, 13 skipped, exit 0**;
-pipeline 37, pipeline+wizard 50, result 30, JS 31; ruff/format/mypy clean
-(388). Owner-gated остатки: AI HQ OS sandbox, Redis broker isolation,
-draft isolation, browser runner/override, PB `is_public` semantics; staging
+Дополнительно закрыты audit-minors (`8756e8c`, `541280a`, `4bd039c`,
+`e136af8`): `probe_seed` вне dev/pytest отклоняется; `schedule_publish`
+проверяет validation blockers и покрыт тестом autotest-ветки; eventLog
+имеет точный boundary-тест на 2 MiB и общую константу. Финальный полный
+suite: **1250 tests: 1237 passed, 13 skipped, exit 0**; pipeline 40,
+pipeline+wizard 50, result 30, JS 31; ruff/format/mypy clean (388).
+Owner-gated остатки: AI HQ OS sandbox, Redis broker isolation, draft
+isolation, browser runner/override, PB `is_public` semantics; staging
 по-прежнему остановлен, browser E2E не входит в CI.
 
 ## 0.56. Shared leaderboard rank — 2026-11-25

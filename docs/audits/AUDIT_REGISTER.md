@@ -873,8 +873,8 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Поле | Значение |
 |---|---|
 | Тип | Внешний статический audit + code fixes; независимые review |
-| Результат | published-import blocker и re-lock re-check (`1763554`/`cc9923b`); production browser autotest gate + rollback exemption (`50f9135`/`d8c5d9f`); empty eventLog quarantine (`154de78`); pagehide pending-submit guard (`64d7149`) |
-| Проверки | pipeline 37; pipeline+wizard 50; result 30; JS 31; полный suite **1246 tests: 1233 passed, 13 skipped, exit 0** (на `d8c5d9f`); ruff/format/mypy clean (388) |
+| Результат | published-import blocker и re-lock re-check (`1763554`/`cc9923b`); production browser autotest gate + rollback exemption (`50f9135`/`d8c5d9f`); empty eventLog quarantine (`154de78`); pagehide pending-submit guard (`64d7149`); probe_seed guard, schedule validation/autotest tests, exact eventLog boundary (`8756e8c`, `541280a`, `4bd039c`, `e136af8`) |
+| Проверки | pipeline 40; pipeline+wizard 50; result 30; JS 31; полный suite **1250 tests: 1237 passed, 13 skipped, exit 0** (на `e136af8`); ruff/format/mypy clean (388) |
 | Статус | **PARTIAL / CODE FIXES ACCEPT**; AI HQ OS sandbox, Redis broker isolation, draft isolation, browser runner/override — owner-gated |
 | Остаток | browser E2E в CI, staging/prod live, server-side terminal operation для pagehide, PB `is_public` semantics |
 | Источник | `docs/audits/EXTERNAL_AUDIT_2026-11-25.md`; commits above; review agents text-only |

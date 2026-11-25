@@ -4,7 +4,8 @@
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 
-- HEAD `64d7149` (pagehide guard) после `d8c5d9f`, `cc9923b`, `50f9135`,
+- HEAD `e136af8` (schedule autotest test) после `4bd039c`, `541280a`,
+  `8756e8c`, `19a100f`, `64d7149`, `d8c5d9f`, `cc9923b`, `50f9135`,
   `154de78`, `1763554`, `40264c2`, `c7bc92e`, `910f268`, `df8cad6`,
   `0a0dbfb`, `ea47229`, `a81ec48`, `24d9979`, `4c5dd02`, `b24ff78`,
   `006aaca`, `e8e0175`, `1cbbec3`, `d90af22`, `1c19af5`, `f6680ed`,
@@ -12,17 +13,18 @@
   `cdb567a`, `ab62a7d` + `116efbd`, `766029e`, `88c2a64`, `ecfb419`,
   `bbfdcaf`, `de08292`, `b953419`, `1fc0e97`, B1/CI; этот docs-коммит
   обновляет реестры, затем `origin/main` синхронизируется push.
-- Последний полный Python gate: **1246 tests: 1233 passed, 13 skipped,
-  exit 0** на reuse-DB без `--create-db` (10:20, HEAD `d8c5d9f`); после
-  него только JS pagehide-фикс. ruff/format clean (478), mypy clean (388).
-  JS suite **31/31**, `check:js` clean на `64d7149`. Reuse-DB issue
-  `ARCADE-TEST-DB-SEED-001` закрыт; перед gate проверять отсутствие
-  orphaned pytest/test_ba-сессий. Один редкий step-up флейк moderation не
-  воспроизведён — наблюдение, не исправление.
+- Последний полный Python gate: **1250 tests: 1237 passed, 13 skipped,
+  exit 0** на reuse-DB без `--create-db` (8:20, HEAD `e136af8`);
+  ruff/format clean (479), mypy clean (388). JS suite **31/31**, `check:js`
+  clean на `64d7149`. Reuse-DB issue `ARCADE-TEST-DB-SEED-001` закрыт; перед
+  gate проверять отсутствие orphaned pytest/test_ba-сессий. Один редкий
+  step-up флейк moderation не воспроизведён — наблюдение, не исправление.
 - Внешний аудит 2026-11-25 разобран: `docs/audits/EXTERNAL_AUDIT_2026-11-25.md`.
   Приняты и исправлены P1 импортов, browser gate, empty eventLog и P2
-  pagehide; draft isolation §4.1, browser runner/override, AI HQ OS sandbox,
-  Redis broker isolation и PB `is_public` — owner-gated.
+  pagehide; дополнительно probe_seed guard, validation-gate
+  schedule_publish, точная граница eventLog и общая константа. Draft
+  isolation §4.1, browser runner/override, AI HQ OS sandbox, Redis broker
+  isolation и PB `is_public` — owner-gated.
 - Локальная инфраструктура 2026-11-25: staging-стек остановлен
   (`make staging-down`) из-за исчерпания RAM/swap; volumes/данные не
   удалялись, для staging-проверок поднять `make staging-up`. Host после
