@@ -4,18 +4,18 @@
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 
-- HEAD `995f5d2` (test-DB reseed delta) после `8e5f507`, `34f237f`
-  (orphan runtime), `03aaf0f` (concurrent import), `1687517` (ZIP reaper),
-  `26d8075` (email reset), `cdb567a` (restore-check), `ab62a7d` +
-  `116efbd`, `766029e`, `88c2a64`, `ecfb419`, `bbfdcaf`, `de08292`,
-  `b953419`, `1fc0e97`, B1/CI; этот docs-коммит обновляет реестры, затем
-  `origin/main` синхронизируется push.
-- Последний полный gate: **1214 tests: 1201 passed, 13 skipped, exit 0** на
-  reuse-DB без `--create-db` (13:00); ruff/format clean, mypy 383 файла
-  clean. Fresh-DB gate (14:28) остаётся в силе. Reuse-DB issue
-  `ARCADE-TEST-DB-SEED-001` закрыт; перед gate проверять отсутствие
-  orphaned pytest/test_ba-сессий. Один редкий step-up флейк moderation не
-  воспроизведён — наблюдение, не исправление.
+- HEAD `1cbbec3` (zip-worker env pin) после `d90af22`, `1c19af5`,
+  `f6680ed`, `995f5d2`, `8e5f507`, `34f237f` (orphan runtime), `03aaf0f`
+  (concurrent import), `1687517` (ZIP reaper), `26d8075` (email reset),
+  `cdb567a` (restore-check), `ab62a7d` + `116efbd`, `766029e`, `88c2a64`,
+  `ecfb419`, `bbfdcaf`, `de08292`, `b953419`, `1fc0e97`, B1/CI; этот
+  docs-коммит обновляет реестры, затем `origin/main` синхронизируется push.
+- Последний полный gate: **1218 tests: 1205 passed, 13 skipped, exit 0** на
+  reuse-DB без `--create-db` (12:32); ruff/format clean, mypy 384 файла
+  clean. M2-пин prod-оверлея добавлен после gate и проверен targeted (11
+  compose tests). Reuse-DB issue `ARCADE-TEST-DB-SEED-001` закрыт; перед
+  gate проверять отсутствие orphaned pytest/test_ba-сессий. Один редкий
+  step-up флейк moderation не воспроизведён — наблюдение, не исправление.
 - AI HQ: 26 прежних COMPLETED + AI-HQ-CI-001 (CI run NOT VERIFIED) +
   AI-HQ-A1 (security accept); 5 BLOCKED. Cost accounting — только фактический
   modelUsage, не stop-condition; см. `.autonomy/state.json`.
@@ -42,8 +42,14 @@
   runtime rename race) и ref-aware TTL-очистка runtime-бандлов без ссылки
   `GameVersion` (сутки; worker получил rw `runtime_data`) —
   `ARCADE-ZIP-JOB-REAPER-001`, `ARCADE-ZIP-CONCURRENT-IMPORT-001`,
-  `ARCADE-RUNTIME-ORPHAN-001`; §5.5 закрыт. Live worker recreation и
-  удаление aged orphan проверены; live beat/staging NOT TESTED.
+  `ARCADE-RUNTIME-ORPHAN-001`; §5.5 закрыт по runtime/import. Live worker
+  recreation и удаление aged orphan проверены; live beat/staging NOT TESTED.
+- P0/P1 ZIP security (`1c19af5` + `d90af22` + `1cbbec3`): изолированный
+  `zip-worker` больше не получает полный `.env`; 13-ключевой non-secret
+  allowlist, паритет брокера/лимитов через интерполяцию, staging без
+  `env_file`, prod-оверлей запинен (`ARCADE-ZIP-WORKER-SECRETS-001`);
+  security-auditor ACCEPT; live dev probe E2E PASS, staging/prod NOT
+  TESTED. Остатки M1/M3–M5 в TASK_HISTORY.
 - P1 accounts (`26d8075`): смена/удаление email инвалидирует
   password-reset/verify токены атомарно; confirm перепроверяет
   current/verified email и active (`ARCADE-EMAIL-RESET-INVALIDATION-001`).
@@ -90,10 +96,13 @@
   `propose` → отфильтровать задачи, требующие schema/contract/infra/E2E →
   `run --max-tasks 1`; после каждой задачи обновить реестры, PROJECT_STATUS
   и этот файл. Не запускать schema/contract/infra изменения без решения
-  владельца. `ARCADE-RUNTIME-ORPHAN-001` завершён, §5.5 закрыт. Следующий
-  независимый P1-срез — остаточное §5.5 hardening (минимизация env
-  zip-worker, retention отклонённых ZIP) либо §5.3 audit events
-  (owner-миграция choices). Stage C §4.1/§4.3 — owner-gated.
+  владельца. `ARCADE-RUNTIME-ORPHAN-001` и
+  `ARCADE-ZIP-WORKER-SECRETS-001` завершены; §5.5 закрыт по runtime/import
+  и env. Следующий независимый P1-срез — `ARCADE-RATINGS-NIGHTLY-001`
+  (ночной пересчёт агрегатов + deploy-backfill, без миграций); затем §5.3
+  audit events (owner-миграция choices) или остаточное §5.5 hardening
+  (Redis ACL/queue isolation, async import, retention отклонённых ZIP).
+  Stage C §4.1/§4.3 — owner-gated.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**

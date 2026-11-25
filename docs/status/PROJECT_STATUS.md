@@ -528,6 +528,27 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.51. ZIP worker least-privilege env — 2026-11-25
+
+`ARCADE-ZIP-WORKER-SECRETS-001` (`1c19af5` + `d90af22` + `1cbbec3`) —
+**COMPLETED / SECURITY-AUDITOR ACCEPT**: изолированный `zip-worker`,
+разбирающий недоверенные ZIP, больше не получает полный `.env`. Удалён
+`env_file` в base и staging; воркеру передаются ровно 13 не-секретных
+переменных: `DJANGO_SETTINGS_MODULE`, `CELERY_BROKER_URL`, `RUN_*`, четыре
+переменные квоты и пять worker-side лимитов/TTL. Значения интерполируются
+из `.env`/`.env.staging`, сохраняя паритет брокера и лимитов с web.
+Проверки: 11 compose tests (exact allowlist, secret-name denylist, quota
+parity, defaults vs `base.py`, overlay non-widening, prod pin); полный
+suite **1218 tests: 1205 passed, 13 skipped, exit 0**; ruff/format/mypy
+clean (384). Live dev: worker healthy, env — только allowlist и системные
+переменные, broker URL hash совпал с web, benign probe ZIP прошёл
+web→Redis→zip-worker→`COMPLETED.json`, DB/cache DNS недоступны; артефакты
+удалены. Модели: реализация — `deepseek-flash[1m]`, plan — `architect`,
+review — `security-auditor` (`deepseek-v4-pro`, text-only). Остатки:
+dev-lite `.:/app:ro` (M1), пустой `SECRET_KEY` fail-loud (M3), пароль
+брокера при requirepass (M4), Sentry из воркера не отправляется (M5);
+live staging/prod NOT TESTED.
+
 ## 0.50. Complete i18n reseed for reuse-DB — 2026-11-25
 
 `ARCADE-TEST-DB-SEED-001` (`8e5f507` + `995f5d2`) — **COMPLETED**:

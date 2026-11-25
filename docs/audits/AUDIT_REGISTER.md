@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-ZIP-WORKER-SECRETS-001 — least-privilege env for ZIP worker
+
+| Поле | Значение |
+|---|---|
+| Тип | P0/P1 ZIP security hardening; security-auditor ACCEPT |
+| Результат | `env_file` удалён из base/staging zip-worker; 13-ключевой non-secret allowlist (settings, broker, run flags, quota, worker CLI/TTL limits) с интерполяцией из `.env`; staging overlay не монтирует секреты; prod overlay запинен |
+| Проверки | 11 compose tests (allowlist, secret-name denylist, quota parity, defaults vs base.py, overlay non-widening, prod pin); полный suite **1218 tests: 1205 passed, 13 skipped, exit 0**; ruff/format/mypy clean (384); live worker healthy, keys-only env, broker hash = web, benign ZIP E2E completed, db/cache DNS unreachable |
+| Статус | **COMPLETED / SECURITY-AUDITOR ACCEPT**; live staging/prod NOT TESTED |
+| Остаток | M1 dev-lite repo mount; M3 empty SECRET_KEY fail-loud; M4 broker password if requirepass; M5 no Sentry from worker |
+| Источник | commits `1c19af5`, `d90af22`, `1cbbec3`; модели: implement — `deepseek-flash[1m]`, plan — `architect`, review — `security-auditor` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-TEST-DB-SEED-001 — complete i18n reseed after flush
 
 | Поле | Значение |

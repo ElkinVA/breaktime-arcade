@@ -1488,6 +1488,34 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-ZIP-WORKER-SECRETS-001 — минимальный env для zip-worker
+
+- **Первопричина:** изолированный zip-worker, разбирающий недоверенные
+  архивы, получал полный `.env`: БД, почту, S3, backup- и signing-секреты.
+- **Результат:** `env_file` удалён из base/staging; воркеру передаются ровно
+  13 не-секретных переменных: `DJANGO_SETTINGS_MODULE`,
+  `CELERY_BROKER_URL`, `RUN_MIGRATIONS`, `RUN_COLLECTSTATIC`, 4 переменные
+  квоты и 5 worker-side лимитов/TTL. Значения интерполируются из
+  `.env`/`.env.staging`, поэтому web и worker используют один брокер и
+  одинаковые лимиты; staging-оверлей больше не монтирует `.env.staging` в
+  воркер. Пустой `SECRET_KEY` в воркере fail-loud при будущем обращении, но
+  zip-задачи его не читают.
+- **Проверки:** 11 compose tests (exact allowlist, отсутствие secret-имён,
+  паритет квоты, defaults vs `base.py`, overlay non-widening, prod-пин);
+  полный suite **1218 tests: 1205 passed, 13 skipped, exit 0**; ruff/format/
+  mypy clean (384). Security-auditor: **ACCEPT**, M2 закрыт отдельным
+  ассертом. Live dev: worker healthy, env — только allowlist + системные
+  переменные, broker URL hash совпал с web, benign probe ZIP прошёл
+  web→Redis→zip-worker→COMPLETED.json, db/cache DNS недоступны; артефакты
+  удалены.
+- **Остатки:** M1 dev-lite монтирует весь репозиторий `.:/app:ro` (dev-only;
+  режимы файлов не проверены из-за guard'а, по генераторам 600/640);
+  M3 `SECRET_KEY=""`; M4 пароль брокера при будущем requirepass; M5 Sentry
+  из zip-worker не отправляется; live staging/prod NOT TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; plan — `architect`,
+  review — `security-auditor` (`deepseek-v4-pro`, text-only).
+- **Commit:** `1c19af5`, `d90af22`, `1cbbec3`.
+
 ### ARCADE-TEST-DB-SEED-001 — reseed всех i18n seed-миграций
 
 - **Первопричина:** после `django_db(transaction=True)` pytest-django делает

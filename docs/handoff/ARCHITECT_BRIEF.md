@@ -67,6 +67,12 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- ZIP security: the untrusted-input `zip-worker` no longer receives the full
+  `.env`; it gets a 13-key non-secret allowlist (settings, broker, quota,
+  worker limits/TTL) interpolated from `.env`, with no `env_file` in base or
+  staging and a pinned empty prod overlay (`ARCADE-ZIP-WORKER-SECRETS-001`,
+  `1c19af5`/`d90af22`/`1cbbec3`). Live dev worker/probe extraction passed;
+  staging/prod untested; dev-lite repo mount and no-Sentry residuals remain.
 - Test infrastructure: the reuse-DB fixture now reseeds every i18n
   `*_seed_*.py` migration after a transaction-test flush, discovered in
   migration order with fail-loud guards (`ARCADE-TEST-DB-SEED-001`,
