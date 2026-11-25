@@ -1488,6 +1488,31 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-EXTERNAL-AUDIT-2026-11-25 — ответ на P1/P2 аудит
+
+- **Первопричина:** внешний аудит выявил: импорт мутирует live-карточку до
+  publish; статический autotest проходит publish gate; `events=[]` при
+  verification profile даёт heuristic_validated; pagehide может закрыть
+  сессию во время in-flight submit.
+- **Результат:** `V_PUBLISHED_UPDATE_BLOCKED` для
+  `Game.PUBLISHED_STATUSES` + re-check под row lock; production-гейт
+  `playwright=true` (rollback ранее опубликованных версий освобождён);
+  `empty_event_log` → quarantine; pagehide пропускает close при pending
+  submit. Draft isolation §4.1, browser runner/override, AI HQ OS sandbox и
+  Redis broker isolation зафиксированы как owner-gated.
+- **Проверки:** pipeline 37; pipeline+wizard 50; result 30; JS 31; полный
+  suite **1246 tests: 1233 passed, 13 skipped, exit 0** (на `d8c5d9f`);
+  ruff/format/mypy clean (388). Независимые review: ACCEPT по всем четырём
+  фиксам; для import guard был reject → delta accept (hidden/archived,
+  TOCTOU), для browser gate — accept → delta accept (rollback/UI).
+- **Остатки:** browser E2E не в CI; production publish без browser runner
+  намеренно заблокирован; гостевой active-session cap до 30 мин при
+  submit+pagehide; PB `is_public`; staging/prod live NOT TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; review —
+  `code-reviewer` (`deepseek-v4-pro`, text-only).
+- **Commit:** `1763554`, `cc9923b`, `50f9135`, `d8c5d9f`, `154de78`,
+  `64d7149`.
+
 ### ARCADE-LEADERBOARD-RANK-UNIFY-001 — общий расчёт rank
 
 - **Первопричина:** review `ARCADE-RANK-NONPB-001` нашёл две идентичные

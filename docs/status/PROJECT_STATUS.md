@@ -528,6 +528,34 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.57. External audit response — 2026-11-25
+
+Внешний аудит (снимок `47e5f75`) дал P1/P2-находки; код-фиксы приняты
+независимыми review:
+
+- `ARCADE-IMPORT-PUBLISHED-BLOCK-001` (`1763554` + `cc9923b`): импорт
+  больше не мутирует опубликованную/скрытую/архивную карточку до publish —
+  blocker `V_PUBLISHED_UPDATE_BLOCKED`, проверка всего
+  `Game.PUBLISHED_STATUSES`, повторная проверка под row lock (TOCTOU);
+  duplicate re-upload остаётся идемпотентным. Draft isolation (§4.1) —
+  owner-gated `ARCADE-IMPORT-DRAFT-ISOLATION-001`.
+- `ARCADE-AUTOTEST-BROWSER-GATE-001` (`50f9135` + `d8c5d9f`): production
+  требует `playwright=true`; rollback ранее опубликованных static-only
+  версий освобождён для incident recovery; CRM step 4 использует общий gate.
+  Реального browser runner пока нет — production publish намеренно
+  заблокирован до `ARCADE-BROWSER-AUTOTEST-RUNNER-001`.
+- `ARCADE-EVENTLOG-EMPTY-001` (`154de78`): пустой `events=[]` при
+  verification profile → quarantine, не heuristic_validated и не
+  leaderboard.
+- `ARCADE-PAGEHIDE-SUBMIT-RACE-001` (`64d7149`): pagehide не закрывает
+  сессию при in-flight submit; server-side terminal op — остаток.
+
+Полный suite на `d8c5d9f`: **1246 tests: 1233 passed, 13 skipped, exit 0**;
+pipeline 37, pipeline+wizard 50, result 30, JS 31; ruff/format/mypy clean
+(388). Owner-gated остатки: AI HQ OS sandbox, Redis broker isolation,
+draft isolation, browser runner/override, PB `is_public` semantics; staging
+по-прежнему остановлен, browser E2E не входит в CI.
+
 ## 0.56. Shared leaderboard rank — 2026-11-25
 
 `ARCADE-LEADERBOARD-RANK-UNIFY-001` (`c7bc92e` + `40264c2`) — **COMPLETED /

@@ -322,6 +322,17 @@ ADR:
 | Retention-сроки | **Решено Architect:** сроки Приложения D обязательны, `[PROP]`-сроки — временные внутренние значения; юридическая проверка ПДн/бэкапов остаётся |
 | Production requirements | **Решено Architect:** письменный baseline (ADR D13); deploy/домены/TLS/S3/CDN/Sentry/credentials — **внешние действия**, не выполнялись |
 
+## Внешний аудит 2026-11-25 — требуются решения владельца
+
+| Вопрос | Статус |
+|---|---|
+| Импорт обновлений published/hidden/archived игр временно отклоняется до draft isolation (§4.1). Подтвердить stopgap и приоритет draft isolation | **Требует подтверждения**; код-фикс `1763554`/`cc9923b` уже действует |
+| Производственная публикация требует browser autotest (`playwright=true`); реального browser runner пока нет, поэтому production publish намеренно заблокирован. Rollback ранее опубликованных версий разрешён | **Требует подтверждения политики**; `PUBLISH_REQUIRE_BROWSER_AUTOTEST` можно временно выключить env, но это неаудируемый обход |
+| Owner-only audited override для публикации без browser E2E (роль + причина + audit event) | **Требует решения**; нужна миграция choices audit actions |
+| AI HQ Developer/QA должны работать в отдельном unprivileged container/VM с task-only mount, без host Docker/SSH/credentials | **Требует решения владельца**; текущий host-user процесс не является OS sandbox |
+| Отдельный Redis broker/ACL для ZIP worker, запрет publish в default queue | **Требует решения владельца/инфраструктуры** |
+| Семантика скрытых leaderboard-строк для PB/rank (`is_public`) | **Требует продуктового решения** до появления moderation hide |
+
 ## Источники
 
 - прямые сообщения владельца в истории BA;

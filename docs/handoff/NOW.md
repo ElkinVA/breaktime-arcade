@@ -4,21 +4,25 @@
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 
-- HEAD `40264c2` (rank tie-break test) после `c7bc92e` (shared rank),
-  `910f268`, `df8cad6`, `0a0dbfb`, `ea47229`, `a81ec48`, `24d9979`,
-  `4c5dd02`, `b24ff78`, `006aaca`, `e8e0175`, `1cbbec3`, `d90af22`,
-  `1c19af5`, `f6680ed`, `995f5d2`, `8e5f507`, `34f237f`, `03aaf0f`,
-  `1687517`, `26d8075`, `cdb567a`, `ab62a7d` + `116efbd`, `766029e`,
-  `88c2a64`, `ecfb419`, `bbfdcaf`, `de08292`, `b953419`, `1fc0e97`,
-  B1/CI; этот docs-коммит обновляет реестры, затем `origin/main`
-  синхронизируется push.
-- Последний полный Python gate: **1236 tests: 1223 passed, 13 skipped,
-  exit 0** на reuse-DB без `--create-db` (8:15, HEAD `c7bc92e`); после него
-  только docstring/тест дельта `40264c2`. ruff/format clean (478), mypy
-  clean (388). JS suite **31/31**, `check:js` clean на `a81ec48`.
-  Reuse-DB issue `ARCADE-TEST-DB-SEED-001` закрыт; перед gate проверять
-  отсутствие orphaned pytest/test_ba-сессий. Один редкий step-up флейк
-  moderation не воспроизведён — наблюдение, не исправление.
+- HEAD `64d7149` (pagehide guard) после `d8c5d9f`, `cc9923b`, `50f9135`,
+  `154de78`, `1763554`, `40264c2`, `c7bc92e`, `910f268`, `df8cad6`,
+  `0a0dbfb`, `ea47229`, `a81ec48`, `24d9979`, `4c5dd02`, `b24ff78`,
+  `006aaca`, `e8e0175`, `1cbbec3`, `d90af22`, `1c19af5`, `f6680ed`,
+  `995f5d2`, `8e5f507`, `34f237f`, `03aaf0f`, `1687517`, `26d8075`,
+  `cdb567a`, `ab62a7d` + `116efbd`, `766029e`, `88c2a64`, `ecfb419`,
+  `bbfdcaf`, `de08292`, `b953419`, `1fc0e97`, B1/CI; этот docs-коммит
+  обновляет реестры, затем `origin/main` синхронизируется push.
+- Последний полный Python gate: **1246 tests: 1233 passed, 13 skipped,
+  exit 0** на reuse-DB без `--create-db` (10:20, HEAD `d8c5d9f`); после
+  него только JS pagehide-фикс. ruff/format clean (478), mypy clean (388).
+  JS suite **31/31**, `check:js` clean на `64d7149`. Reuse-DB issue
+  `ARCADE-TEST-DB-SEED-001` закрыт; перед gate проверять отсутствие
+  orphaned pytest/test_ba-сессий. Один редкий step-up флейк moderation не
+  воспроизведён — наблюдение, не исправление.
+- Внешний аудит 2026-11-25 разобран: `docs/audits/EXTERNAL_AUDIT_2026-11-25.md`.
+  Приняты и исправлены P1 импортов, browser gate, empty eventLog и P2
+  pagehide; draft isolation §4.1, browser runner/override, AI HQ OS sandbox,
+  Redis broker isolation и PB `is_public` — owner-gated.
 - Локальная инфраструктура 2026-11-25: staging-стек остановлен
   (`make staging-down`) из-за исчерпания RAM/swap; volumes/данные не
   удалялись, для staging-проверок поднять `make staging-up`. Host после
@@ -130,15 +134,14 @@
   и этот файл. Не запускать schema/contract/infra изменения без решения
   владельца. `ARCADE-RUNTIME-ORPHAN-001`,
   `ARCADE-ZIP-WORKER-SECRETS-001` и `ARCADE-RATINGS-NIGHTLY-001`
-  завершены. Остаточные §6-пункты: Neon Snake restart/seed и Archer RNG
-  particles (нужен browser/game E2E), SDK schema/serializer alignment и
-  score type (публичный контракт/owner), player error messages (i18n-строки
-  требуют data-миграции). Остаточное §5.5 hardening — Redis ACL/queue
-  isolation, async import, retention отклонённых ZIP, quota-directory
-  consistency. §5.3 audit events требует owner-решения по choices-миграции.
-  `ARCADE-SUBMIT-RESTART-HARDENING-001` и residuals
-  `ARCADE-EVENTLOG-BYTES-001` — мелкие follow-up. Stage C §4.1/§4.3 —
-  owner-gated.
+  завершены. Приоритет после аудита: (1) owner-решения по draft isolation
+  §4.1, browser runner/override, AI HQ OS sandbox, Redis broker isolation,
+  PB `is_public`; (2) `ARCADE-CI-BROWSER-E2E-001` и staging на ресурсах с
+  реальным RAM/swap; (3) §6.2 Neon restart/seed, §6.3 Archer RNG, §6.4/6.6
+  SDK serializer/score type (публичный контракт), §6.10 player error
+  messages (i18n data-миграция); (4) мелкие follow-up
+  `ARCADE-SUBMIT-RESTART-HARDENING-001`, eventLog boundary, ratings offset.
+  Stage C §4.1/§4.3 — owner-gated.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**
