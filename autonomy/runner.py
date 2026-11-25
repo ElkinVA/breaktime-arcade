@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import shutil
 import socket
 import subprocess
 import time
@@ -15,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from autonomy.budget import Usage
+from autonomy.landlock import abi_version, sandbox_preexec
 from autonomy.observability import (
     InvocationContext,
     InvocationStart,
@@ -131,14 +133,35 @@ class ClaudeRunner:
             "json",
             prompt,
         ]
+        if cwd is None:
+            raise RunnerError(f"{role} must run inside an isolated task worktree")
+        if abi_version() < 1 and not os.environ.get("PYTEST_CURRENT_TEST"):
+            # Tests replace subprocess.run with a recorder; real model runs
+            # must never proceed without the kernel boundary.
+            raise RunnerError(
+                "OS sandbox (Landlock) is unavailable; refusing to run a model unsandboxed"
+            )
         started = time.monotonic()
         started_at = datetime.now(UTC).isoformat()
         invocation_id = str(uuid.uuid4())
         child_env = build_child_env()
-        if cwd is not None:
-            # Bind the sandbox runner to this task's worktree; an agent cannot
-            # point --source-root at another task or the main checkout.
-            child_env["BA_TASK_WORKTREE"] = str(Path(cwd).resolve())
+        worktree = Path(cwd).resolve()
+        sandbox_root = self.journal_root / "agent-sandbox" / invocation_id
+        home = sandbox_root / "home"
+        temp = sandbox_root / "tmp"
+        home.mkdir(parents=True, exist_ok=True)
+        temp.mkdir(parents=True, exist_ok=True)
+        # The child keeps its config/cache in a private HOME; the host HOME is
+        # not readable under the Landlock ruleset.
+        child_env["HOME"] = str(home)
+        child_env["TMPDIR"] = str(temp)
+        child_env["XDG_CONFIG_HOME"] = str(home / ".config")
+        child_env["XDG_CACHE_HOME"] = str(home / ".cache")
+        child_env["XDG_DATA_HOME"] = str(home / ".local/share")
+        child_env["XDG_STATE_HOME"] = str(home / ".local/state")
+        # Bind the sandbox runner to this task's worktree; an agent cannot
+        # point --source-root at another task or the main checkout.
+        child_env["BA_TASK_WORKTREE"] = str(worktree)
         owner_pid = os.getpid()
         finished = False
 
@@ -213,6 +236,12 @@ class ClaudeRunner:
                 timeout=timeout or self.timeout,
                 check=False,
                 env=child_env,
+                preexec_fn=sandbox_preexec(
+                    worktree,
+                    home,
+                    temp,
+                    claude_path=shutil.which("claude", path=child_env.get("PATH")),
+                ),
             )
         except subprocess.TimeoutExpired as exc:
             duration = time.monotonic() - started
@@ -451,29 +480,6 @@ class ClaudeRunner:
             context=context,
         )
 
-    def _sandbox_command(self) -> str:
-        """Absolute path to the trusted sandbox runner and interpreter."""
-        return f"{self.root / '.venv/bin/python'} {self.root / 'devcontrol/sandbox/run_tests.py'}"
-
-    def _sandbox_tools(self) -> list[str]:
-        """Exact, non-wildcard sandbox invocations available to a role.
-
-        ``Bash(prefix:*)`` matches any command that merely starts with the
-        prefix, so shell chaining after it would escape the sandbox. The
-        allowlist therefore contains only four complete commands.
-        """
-        base = self._sandbox_command()
-        return [
-            f"Bash({base} --source-root . --tool pytest --timeout 1800)",
-            (
-                f"Bash({base} --source-root . --tool pytest "
-                "tests/integration/test_migrations_check.py --timeout 1800)"
-            ),
-            f"Bash({base} --source-root . --tool ruff --timeout 1800)",
-            f"Bash({base} --source-root . --tool mypy --timeout 1800)",
-            f"Bash({base} --source-root . --tool js --timeout 1800)",
-        ]
-
     def developer(
         self,
         prompt: str,
@@ -492,7 +498,6 @@ class ClaudeRunner:
                 "Glob",
                 "Edit",
                 "Write",
-                *self._sandbox_tools(),
             ],
             permission_mode="acceptEdits",
             cwd=self._worktree_cwd("developer", cwd),
@@ -511,12 +516,7 @@ class ClaudeRunner:
             model=QA_MODEL,
             agent="autonomy-qa",
             prompt=prompt,
-            allowed_tools=[
-                "Read",
-                "Grep",
-                "Glob",
-                *self._sandbox_tools(),
-            ],
+            allowed_tools=["Read", "Grep", "Glob"],
             permission_mode="acceptEdits",
             cwd=self._worktree_cwd("qa", cwd),
             context=context,

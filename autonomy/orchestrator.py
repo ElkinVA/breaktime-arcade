@@ -8,6 +8,7 @@ import argparse
 import contextlib
 import fcntl
 import json
+import shlex
 import shutil
 import subprocess
 import sys
@@ -441,31 +442,60 @@ def _sandbox_commands() -> list[str]:
     ]
 
 
+def _run_orchestrator_checks(worktree: Path) -> str:
+    """Run the trusted sandbox checks in the parent, outside the model sandbox.
+
+    The model child has no Docker socket or host paths, so it cannot execute
+    the test runner itself. The parent runs the same fixed commands against the
+    committed candidate; the runner copies the worktree into a capability-
+    dropped container, so untrusted code is still not executed on the host.
+    """
+    lines: list[str] = []
+    for command in _sandbox_commands():
+        argv = shlex.split(command)
+        tool = argv[argv.index("--tool") + 1]
+        try:
+            completed = subprocess.run(  # noqa: S603 - fixed argv, no shell
+                argv,
+                cwd=worktree,
+                text=True,
+                capture_output=True,
+                timeout=1900,
+                check=False,
+            )
+            output = (completed.stdout + completed.stderr)[-3000:]
+            lines.append(f"- {tool}: exit={completed.returncode}\n{output}")
+        except subprocess.TimeoutExpired:
+            lines.append(f"- {tool}: TIMEOUT")
+        except Exception as exc:  # noqa: BLE001 - evidence must reach QA
+            lines.append(f"- {tool}: LAUNCH ERROR {type(exc).__name__}: {exc}")
+    return "\n".join(lines) or "no checks configured"
+
+
 def _developer_prompt(task: Task) -> str:
-    commands = "\n".join(f"- `{item}`" for item in _sandbox_commands())
     return (
         f"Task ID: {task.id}\nTitle: {task.title}\n"
         f"Acceptance criteria:\n- " + "\n- ".join(task.acceptance) + "\n"
-        "Implement exactly this task in the isolated worktree. The worktree has no "
-        ".env: do not run make test/check there. Do not run host pytest, mypy, ruff "
-        "or npm. Run checks only with one of these exact commands, with no extra "
-        f"arguments, shell chaining, redirection or wildcards:\n{commands}\n"
+        "Implement exactly this task in the isolated worktree. The orchestrator runs "
+        "the trusted sandbox test suite on your committed candidate after handoff; "
+        "the model sandbox has no Docker socket or host paths, so do not attempt to "
+        "run pytest/mypy/ruff/npm or the sandbox runner yourself. In self_check set "
+        "tests_run to [] and describe known limits honestly.\n"
         "Do not change game features. Complete the mandatory self-check against the "
-        "ТЗ, scope, tests and localization/regressions; include its fields in the JSON. "
+        "ТЗ, scope and localization/regressions; include its fields in the JSON. "
         + (f"Previous failure to address:\n{task.last_error[:4000]}\n" if task.last_error else "")
         + "Return the strict JSON report from your instructions."
     )
 
 
-def _qa_prompt(task: Task, developer: RunResult) -> str:
-    commands = "\n".join(f"- `{item}`" for item in _sandbox_commands())
+def _qa_prompt(task: Task, developer: RunResult, checks: str = "") -> str:
     return (
         f"Task ID: {task.id}\nTitle: {task.title}\n"
         f"Acceptance criteria:\n- " + "\n- ".join(task.acceptance) + "\n"
         f"Developer report:\n{developer.result[:8000]}\n"
-        "The worktree has no .env: do not run make test/check there. Do not run host "
-        "pytest, mypy, ruff or npm. Run checks only with one of these exact commands, "
-        f"with no extra arguments, shell chaining, redirection or wildcards:\n{commands}\n"
+        "The orchestrator ran the trusted sandbox checks on the committed candidate. "
+        "Review the code and this evidence; do not run host commands (the QA sandbox "
+        f"has no Docker socket):\n{checks or 'checks were not executed'}\n"
         "Return the strict JSON QA report."
     )
 
@@ -790,6 +820,7 @@ class Orchestrator:
             candidate = _commit_candidate(task, files, worktree)
             self.store.set_candidate(task.id, candidate)
             qa_worktree, _ = _create_worktree(task, base=candidate)
+            checks = _run_orchestrator_checks(qa_worktree)
             self.store.transition(
                 task.id,
                 QA,
@@ -798,7 +829,9 @@ class Orchestrator:
                 evidence=developer.evidence_path,
             )
             qa = self.runner.qa(
-                _qa_prompt(task, developer), cwd=qa_worktree, context=self._context(task)
+                _qa_prompt(task, developer, checks),
+                cwd=qa_worktree,
+                context=self._context(task),
             )
             self._account(task.id, qa, tracker)
             self._guard(tracker)
