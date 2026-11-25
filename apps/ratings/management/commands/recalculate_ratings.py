@@ -38,7 +38,5 @@ class Command(BaseCommand):
         )
         if result["failed"]:
             self.stderr.write(self.style.ERROR(message))
-            if not dry_run:
-                raise CommandError(f"rating recalculation failed for {result['failed']} games")
-            return
+            raise CommandError(f"rating recalculation failed for {result['failed']} games")
         self.stdout.write(self.style.SUCCESS(message))

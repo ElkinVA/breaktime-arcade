@@ -7,6 +7,7 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
+from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -225,3 +226,41 @@ def test_recalculate_ratings_command_reports_failures(monkeypatch: pytest.Monkey
 
     with pytest.raises(CommandError):
         call_command("recalculate_ratings")
+    # A dry-run must not hide failures from CI smoke checks either.
+    with pytest.raises(CommandError):
+        call_command("recalculate_ratings", "--dry-run")
+    with pytest.raises(CommandError):
+        call_command("recalculate_ratings", "--limit", "0")
+
+
+@pytest.mark.django_db
+def test_nightly_dry_run_takes_no_locks_and_writes_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    game = _game("nightly_dry")
+    _vote(game, _user("nightly_alice"), 5)
+    aggregate = recalculate(game)
+    _vote(game, _user("nightly_bob"), 3)
+    locks: list[UUID] = []
+    monkeypatch.setattr(aggregates, "_lock", lambda game_id: locks.append(game_id))
+
+    result = recalculate_all(apply=False)
+
+    assert result["updated"] == 1
+    assert locks == []
+    aggregate.refresh_from_db()
+    assert aggregate.count == 1
+
+
+@pytest.mark.django_db
+def test_nightly_propagates_soft_time_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    game = _game("nightly_soft_limit")
+    _vote(game, _user("nightly_alice"), 5)
+
+    def timeout(game: Game) -> dict[str, object]:
+        raise SoftTimeLimitExceeded
+
+    monkeypatch.setattr(aggregates, "_computed_values", timeout)
+
+    with pytest.raises(SoftTimeLimitExceeded):
+        recalculate_all()
