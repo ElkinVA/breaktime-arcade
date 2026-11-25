@@ -164,7 +164,11 @@ def validate_eventlog_semantics(
         if isinstance(kind, str) and kind not in allowed:
             errors.append(f"event[{index}].k is not declared in eventKinds")
 
-    raw = json.dumps(eventlog, separators=(",", ":"), ensure_ascii=False).encode()
+    try:
+        raw = json.dumps(eventlog, separators=(",", ":"), ensure_ascii=False).encode()
+    except UnicodeEncodeError:
+        # json.loads accepts lone surrogates; they are not valid UTF-8.
+        return [*errors, "eventLog contains invalid Unicode"]
     if len(raw) > MAX_EVENTLOG_RAW_BYTES:
         errors.append("eventLog exceeds 2 MiB raw")
     compressed = gzip.compress(raw)

@@ -35,7 +35,11 @@ class SessionResultSerializer(serializers.Serializer):
         events = value.get("events", [])
         if not isinstance(events, list) or len(events) > MAX_EVENT_LOG_EVENTS:
             raise serializers.ValidationError("eventLog has too many events")
-        encoded = json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        try:
+            encoded = json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        except UnicodeEncodeError:
+            # json.loads accepts lone surrogates; they are not valid UTF-8.
+            raise serializers.ValidationError("eventLog contains invalid Unicode") from None
         if len(encoded) > MAX_EVENT_LOG_BYTES:
             raise serializers.ValidationError("eventLog is too large")
         schema_errors = validate_schema("eventlog.json", value)
