@@ -528,6 +528,30 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.48. Concurrent same-game import — 2026-11-25
+
+`ARCADE-ZIP-CONCURRENT-IMPORT-001` (`03aaf0f`) — **COMPLETED /
+CODE-REVIEW ACCEPT**: два одновременных импорта нового `technical_id`
+больше не создают две карточки. `_persist` первым делом берёт
+`pg_advisory_xact_lock` по lowercased `technical_id`, затем под
+`select_for_update` повторно читает `Game` и усыновляет карточку,
+созданную параллельным импортом; `created`/`updated` и отчёт
+пересчитываются. `IntegrityError` с constraint
+`catalog_game_technical_id_key` репортится как новый `V_ID_CONFLICT`,
+остальные — `V_VERSION_DUP`. `store_runtime` при проигранной rename-гонке
+проверяет хэш существующего target и возвращает идентичный бандл.
+Проверки: реальный двухпоточный импорт (ровно одна Game/Version, статусы
+created+duplicate), spy на advisory lock, adoption-тест,
+constraint-классификация, forced rename-race и tampered-target; полный
+suite **1210 tests: 1197 passed, 13 skipped, exit 0** на свежей БД;
+ruff/format/mypy clean (383). Модели: реализация — `deepseek-flash[1m]`,
+review — `code-reviewer` (`deepseek-v4-pro`, text-only), reject → delta
+accept. Остатки: orphan runtime — `ARCADE-RUNTIME-ORPHAN-001` (нужна для
+закрытия §5.5); error-code асимметрия rename-ветки; отчёт может содержать
+I_IMPORT_CREATED после rollback (cosmetic); threaded-тест без barrier
+(как принятый App F harness); `manifest["id"]` vs get; live staging
+NOT TESTED.
+
 ## 0.47. Stale ZIP job reaper — 2026-11-25
 
 `ARCADE-ZIP-JOB-REAPER-001` (`1687517`) — **COMPLETED / CODE-REVIEW ACCEPT**:

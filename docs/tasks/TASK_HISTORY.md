@@ -1488,6 +1488,37 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-ZIP-CONCURRENT-IMPORT-001 — гонка импорта одной игры
+
+- **Первопричина:** два одновременных импорта нового `technical_id` оба
+  создавали карточку; проигравший получал `IntegrityError`, который
+  ошибочно классифицировался как конфликт semver; параллельная публикация
+  идентичного runtime могла проиграть rename-гонку и отклонить импорт.
+- **Результат:** `_persist` первым делом берёт
+  `pg_advisory_xact_lock` по lowercased `technical_id`, затем повторно
+  читает `Game` под `select_for_update` и при необходимости усыновляет
+  карточку, созданную параллельным импортом (`created`/`updated`
+  пересчитываются). `IntegrityError` с constraint
+  `catalog_game_technical_id_key` репортится как `V_ID_CONFLICT`, остальные
+  — `V_VERSION_DUP`. `store_runtime` при проигранной rename-гонке проверяет
+  хэш существующего target и возвращает идентичный бандл, иначе оставляет
+  ошибку.
+- **Проверки:** реальный двухпоточный импорт (ровно одна Game/Version,
+  статусы created+duplicate), spy на вызов lock, adoption-тест,
+  constraint-классификация, forced rename-race и tampered-target тесты;
+  полный suite **1210 tests: 1197 passed, 13 skipped, exit 0** на свежей
+  БД; ruff/format/mypy clean (383). Code-reviewer: **reject → delta
+  accept** после добавления реальных race-тестов.
+- **Остатки:** orphan runtime после неудачного persist — отдельная
+  `ARCADE-RUNTIME-ORPHAN-001` (нужна для закрытия §5.5); error-code
+  асимметрия rename-ветки (X_ARTIFACT_IO vs UNSAFE/CONFLICT); отчёт может
+  содержать I_IMPORT_CREATED после rollback (cosmetic); threaded-тест без
+  barrier (совпадает с принятым App F harness); `manifest["id"]` vs get;
+  live staging NOT TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; review —
+  `code-reviewer` (`deepseek-v4-pro`, text-only).
+- **Commit:** `03aaf0f`.
+
 ### ARCADE-ZIP-JOB-REAPER-001 — reaper зависших extraction jobs
 
 - **Первопричина:** падение web/worker оставляло `ZipExtractionJob` в

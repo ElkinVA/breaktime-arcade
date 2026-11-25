@@ -67,6 +67,11 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- ZIP pipeline: same-game imports serialize on a technical_id advisory
+  lock and adopt a concurrently created card; V_ID_CONFLICT is distinct
+  from V_VERSION_DUP, and runtime rename races adopt an identical bundle
+  (`ARCADE-ZIP-CONCURRENT-IMPORT-001`, `03aaf0f`). Orphan-runtime TTL
+  cleanup remains before §5.5 closes.
 - ZIP pipeline: RUNNING extraction jobs older than 600 s are reaped to
   TIMEOUT/X_JOB_STALE by a 5-minute beat task, idempotently
   (`ARCADE-ZIP-JOB-REAPER-001`, `1687517`); concurrent-import hardening is

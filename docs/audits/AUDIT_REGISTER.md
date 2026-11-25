@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-ZIP-CONCURRENT-IMPORT-001 — same-game import race
+
+| Поле | Значение |
+|---|---|
+| Тип | P1 ZIP pipeline integrity (§5.5); code-reviewer reject → delta accept |
+| Результат | advisory xact lock по technical_id + adoption карточки; V_ID_CONFLICT vs V_VERSION_DUP; store_runtime усыновляет идентичный бандл после rename-гонки |
+| Проверки | threaded race (одна Game/Version, created+duplicate), lock spy, adoption, constraint, forced rename/tampered; полный suite **1210 tests: 1197 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean (383) |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT**; live staging not tested |
+| Остаток | orphan runtime — ARCADE-RUNTIME-ORPHAN-001; error-code asymmetry; report mutation after rollback; no barrier in race test |
+| Источник | commit `03aaf0f`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-ZIP-JOB-REAPER-001 — stale RUNNING extraction reaper
 
 | Поле | Значение |
