@@ -9,7 +9,12 @@ import pytest
 yaml = pytest.importorskip("yaml")
 
 ROOT = Path(__file__).resolve().parents[2]
-COMPOSE_FILES = ("compose.yml", "compose.dev-lite.yml", "compose.staging.yml")
+COMPOSE_FILES = (
+    "compose.yml",
+    "compose.dev-lite.yml",
+    "compose.staging.yml",
+    "compose.prod.yml",
+)
 
 ZIP_WORKER_ENV = {
     "DJANGO_SETTINGS_MODULE": "${DJANGO_SETTINGS_MODULE:-config.settings.prod}",
