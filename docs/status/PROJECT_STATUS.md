@@ -528,6 +528,27 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.46. Reset tokens invalidated on email change — 2026-11-25
+
+`ARCADE-EMAIL-RESET-INVALIDATION-001` (`26d8075`) — **COMPLETED /
+SECURITY-AUDITOR ACCEPT**: password-reset ссылка, выданная на старый адрес,
+больше не действует после смены/удаления email. Изменение email
+инвалидирует `PASSWORD_RESET` и `EMAIL_VERIFY` в той же транзакции, что и
+запись `EmailAddress`; удаление делает delete+invalidate атомарно.
+`password_reset_confirm` после consume проверяет, что у пользователя есть
+verified-адрес, совпадающий с email токена (casefold), и что аккаунт
+активен; иначе нейтральный redirect без смены пароля. Токены неактивных
+аккаунтов не принимаются. 25 `test_accounts` (смена/удаление инвалидируют
+токен, старый пароль остаётся; confirm-mismatch с живым токеном; полный
+reset flow); полный suite **1200 tests: 1187 passed, 13 skipped, exit 0**
+на свежей БД; ruff/format/mypy clean (382). Модели: реализация —
+`deepseek-flash[1m]`, review — `security-auditor` (`deepseek-v4-pro`,
+text-only), accept после delta. Остатки: строгий submission-order race
+(`ARCADE-EMAIL-RESET-RACE-001`; эффективный порядок линеаризуем, фикс
+требует единого lock order); timing-oracle в `password_reset_request`
+(pre-existing); single-address assumption; inactive-token остаётся unused
+до reactivation; live staging NOT TESTED.
+
 ## 0.45. Verified restore-check — 2026-11-25
 
 `ARCADE-RESTORE-CHECK-001` (`cdb567a`) — **COMPLETED / SECURITY-AUDITOR

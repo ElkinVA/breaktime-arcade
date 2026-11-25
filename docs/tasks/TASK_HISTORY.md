@@ -1488,6 +1488,32 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-EMAIL-RESET-INVALIDATION-001 — reset-токены при смене email
+
+- **Первопричина:** password-reset токен, выданный на старый адрес, оставался
+  действительным после смены/удаления email; confirm не сверял текущий
+  адрес с email токена, а неактивный аккаунт мог использовать токен.
+- **Результат:** смена email инвалидирует `PASSWORD_RESET` и
+  `EMAIL_VERIFY` в той же транзакции, что и запись `EmailAddress`; удаление
+  email делает delete+invalidate атомарно. Confirm после consume проверяет,
+  что у пользователя есть verified-адрес, совпадающий с email токена
+  (casefold), и что аккаунт активен; иначе нейтральный redirect без смены
+  пароля. `password_reset_token_valid/user` требуют `is_active`.
+- **Проверки:** 25 `test_accounts` (смена/удаление инвалидируют токен,
+  старый пароль остаётся; confirm-mismatch с живым токеном; полный reset
+  flow); полный suite **1200 tests: 1187 passed, 13 skipped, exit 0** на
+  свежей БД; ruff/format/mypy clean (382). Security-auditor: **accept**
+  после delta; submission-order race признан линеаризуемым и не
+  блокирующим.
+- **Остатки:** `ARCADE-EMAIL-RESET-RACE-001` (строгий submission-order
+  race; фикс требует единого lock order, риск AB-BA); timing-oracle
+  `password_reset_request` (pre-existing); single-address assumption;
+  inactive-token остаётся unused и оживает после reactivation (consistent
+  runtime gate); live staging NOT TESTED.
+- **Модели:** реализация — `deepseek-flash[1m]`; review —
+  `security-auditor` (`deepseek-v4-pro`, text-only).
+- **Commit:** `26d8075`.
+
 ### ARCADE-RESTORE-CHECK-001 — проверка восстановления дампа
 
 - **Первопричина:** restore-check считал только число таблиц в `public` и

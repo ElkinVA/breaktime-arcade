@@ -4,18 +4,16 @@
 
 ## Актуальная сводка автономного цикла (2026-11-24)
 
-- HEAD `cdb567a` (restore-check) после `ab62a7d` (Content-Length) +
-  `116efbd` (test flake), `766029e` (ratings block), `88c2a64` (CRM
-  block/unblock), `ecfb419` (safe rollback), `bbfdcaf` (registration
-  limits), `de08292` (auth throttling), `b953419` (throttle scopes),
-  `1fc0e97` (result verification), B1/CI; этот docs-коммит обновляет
-  реестры и runbook, затем `origin/main` синхронизируется push.
-- Последний полный gate: **1197 tests: 1184 passed, 13 skipped, exit 0** на
+- HEAD `26d8075` (email reset tokens) после `cdb567a` (restore-check),
+  `ab62a7d` (Content-Length) + `116efbd` (test flake), `766029e` (ratings
+  block), `88c2a64` (CRM block/unblock), `ecfb419` (safe rollback),
+  `bbfdcaf`, `de08292`, `b953419`, `1fc0e97`, B1/CI; этот docs-коммит
+  обновляет реестры, затем `origin/main` синхронизируется push.
+- Последний полный gate: **1200 tests: 1187 passed, 13 skipped, exit 0** на
   свежей БД; JS **31/31**; ruff/format clean, mypy 382 файла clean.
-  Реальный restore-check на dev PASS: 44 таблицы, 42 миграции,
-  10 обязательных, temp DB удалена. Прогоны ~55-60 мин из-за нагрузки
-  хоста; перед gate проверять отсутствие orphaned pytest/test_ba-сессий.
-  Reuse-DB translation-seed issue — `ARCADE-TEST-DB-SEED-001`.
+  Real restore-check на dev PASS (44/42/10). Прогоны ~50-60 мин из-за
+  нагрузки хоста; перед gate проверять отсутствие orphaned
+  pytest/test_ba-сессий. Reuse-DB issue — `ARCADE-TEST-DB-SEED-001`.
 - AI HQ: 26 прежних COMPLETED + AI-HQ-CI-001 (CI run NOT VERIFIED) +
   AI-HQ-A1 (security accept); 5 BLOCKED. Cost accounting — только фактический
   modelUsage, не stop-condition; см. `.autonomy/state.json`.
@@ -32,6 +30,10 @@
   IP-failure burst race, CSRF device rotation, hard 30/day без challenge,
   authenticated sessions_ip exemption, heartbeat invalid-id buckets,
   DRF counters non-atomic.
+- P1 accounts (`26d8075`): смена/удаление email инвалидирует
+  password-reset/verify токены атомарно; confirm перепроверяет
+  current/verified email и active (`ARCADE-EMAIL-RESET-INVALIDATION-001`).
+  Остаток: submission-order race — `ARCADE-EMAIL-RESET-RACE-001`.
 - P1 backup/DR (`cdb567a`): restore-check проверяет SHA-256 до/после
   restore, отклоняет пустой/повреждённый дамп, проверяет обязательные
   таблицы и `django_migrations`, пишет контрольные данные в metadata
@@ -74,9 +76,9 @@
   `propose` → отфильтровать задачи, требующие schema/contract/infra/E2E →
   `run --max-tasks 1`; после каждой задачи обновить реестры, PROJECT_STATUS
   и этот файл. Не запускать schema/contract/infra изменения без решения
-  владельца. Следующий независимый P1-срез — инвалидация активных
-  password-reset токенов при смене/удалении email (§5.1), затем §5.3
-  audit events (новые action-константы требуют owner-согласования
+  владельца. Следующий независимый P1-срез — reaper зависших
+  `ZipExtractionJob(RUNNING)` с TTL (без схемы), затем конкурентный импорт
+  и §5.3 audit events (новые action-константы требуют owner-согласования
   миграции). Stage C §4.1/§4.3 остаются owner-gated.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /

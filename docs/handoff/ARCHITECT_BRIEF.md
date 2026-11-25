@@ -67,6 +67,10 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- Account email security: changing/removing an email invalidates reset and
+  verify tokens atomically; reset confirm rechecks current verified email
+  and active status (`ARCADE-EMAIL-RESET-INVALIDATION-001`, `26d8075`).
+  Submission-order race remains a documented minor follow-up.
 - Backup/DR: restore-check verifies dump SHA-256 before and after
   pg_restore, rejects empty/unreadable dumps, checks required tables and
   django_migrations, records control counts (`ARCADE-RESTORE-CHECK-001`,

@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-EMAIL-RESET-INVALIDATION-001 — reset tokens die with email change
+
+| Поле | Значение |
+|---|---|
+| Тип | P1 account security (§5.1); security-auditor accept after delta |
+| Результат | смена/удаление email инвалидирует PASSWORD_RESET+EMAIL_VERIFY атомарно; confirm сверяет verified/current email и active; inactive token отклоняется |
+| Проверки | 25 account tests; полный suite **1200 tests: 1187 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean (382) |
+| Статус | **COMPLETED / SECURITY-AUDITOR ACCEPT**; live staging not tested |
+| Остаток | submission-order race — ARCADE-EMAIL-RESET-RACE-001; timing oracle; single-address assumption |
+| Источник | commit `26d8075`; модели: implement — `deepseek-flash[1m]`, review — `security-auditor` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-RESTORE-CHECK-001 — verified restore-check
 
 | Поле | Значение |
