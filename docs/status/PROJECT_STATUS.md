@@ -528,6 +528,44 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.59. Browser autotest runner — 2026-11-25
+
+`ARCADE-BROWSER-AUTOTEST-RUNNER-001` (`a1388da` + `16dba6d`) —
+**COMPLETED / CODE-REVIEW ACCEPT** (initial reject → fixes → delta accept).
+Импортёр после `store_runtime` вызывает отдельный контейнер `browser-autotest`:
+без `.env`/секретов, только `autotestnet`
+(nginx + web), без сетей БД/Redis/edge, read-only, caps dropped. Сервис
+валидирует payload, запускает Chromium headless shell под единым дедлайном и
+возвращает проверки `portal_page`, `sdk_handshake`, `page_errors`; отчёт
+мержится со static-отчётом, production требует `playwright=true` (rollback
+освобождён). `ignore_https_errors` явный (prod false, dev true); pageerror
+собирается только после загрузки портала. Live: positive 3/3 за 4.9 с,
+negative — timeout handshake + page error `boom`; env сервиса без секретов,
+`db`/`redis-broker` не резолвятся, nginx доступен; client→service PASS.
+Staging browser gate выключен до browser-testable topology. Полный suite:
+**1256 passed, 14 skipped, exit 0** (повторный прогон; первый дал тот же
+известный moderation step-up flake, который прошёл 5/5 отдельно и 45/45
+файлом); ruff/format clean (484), mypy clean (392), JS 31/31.
+Остатки: prod nginx game hosts/TLS — deploy gate; CI browser E2E; `entry_path`
+hardcoded; live importer→service отдельно не прогонялся.
+
+## 0.58. AI HQ OS sandbox — 2026-11-25
+
+`ARCADE-AI-HQ-OS-SANDBOX-001` (`f303b01` + `86b21d6` + `b3f42ce`) —
+**COMPLETED / SECURITY-AUDITOR ACCEPT**: каждый реальный model-child
+запускается в private user+mount namespace с пустыми `/run` и `/dev/shm`
+(host Docker/SSH/unix-сокеты недоступны) и Landlock-правилами: read/execute
+системных runtime-путей и Node/Claude, read/write только task worktree и
+приватного HOME/TMPDIR; host HOME, main checkout, `.env`, SSH keys и чужие
+`/proc` закрыты; при ошибке setup — exit 125. Parent orchestrator сам
+запускает фиксированные sandbox-проверки на committed candidate и жёстко
+блокирует retry при non-zero; `.git` worktree проверяется перед git-операциями.
+Developer/QA больше не имеют Bash. Live: реальный `claude -p` под sandbox
+rc 0, `.env` → PermissionError, Docker socket → FileNotFoundError.
+Автономность/control-plane: 37 passed, 1 skip (web-container без user ns);
+ruff/format/mypy clean (390). Остатки: abstract AF_UNIX/netns, gitdir
+worktree ro, cross-task gitdir, live unattended run NOT TESTED.
+
 ## 0.57. External audit response — 2026-11-25
 
 Внешний аудит (снимок `47e5f75`) дал P1/P2-находки; код-фиксы приняты

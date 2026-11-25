@@ -4,27 +4,30 @@
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 
-- HEAD `e136af8` (schedule autotest test) после `4bd039c`, `541280a`,
-  `8756e8c`, `19a100f`, `64d7149`, `d8c5d9f`, `cc9923b`, `50f9135`,
-  `154de78`, `1763554`, `40264c2`, `c7bc92e`, `910f268`, `df8cad6`,
-  `0a0dbfb`, `ea47229`, `a81ec48`, `24d9979`, `4c5dd02`, `b24ff78`,
-  `006aaca`, `e8e0175`, `1cbbec3`, `d90af22`, `1c19af5`, `f6680ed`,
-  `995f5d2`, `8e5f507`, `34f237f`, `03aaf0f`, `1687517`, `26d8075`,
-  `cdb567a`, `ab62a7d` + `116efbd`, `766029e`, `88c2a64`, `ecfb419`,
-  `bbfdcaf`, `de08292`, `b953419`, `1fc0e97`, B1/CI; этот docs-коммит
-  обновляет реестры, затем `origin/main` синхронизируется push.
-- Последний полный Python gate: **1250 tests: 1237 passed, 13 skipped,
-  exit 0** на reuse-DB без `--create-db` (8:20, HEAD `e136af8`);
-  ruff/format clean (479), mypy clean (388). JS suite **31/31**, `check:js`
-  clean на `64d7149`. Reuse-DB issue `ARCADE-TEST-DB-SEED-001` закрыт; перед
-  gate проверять отсутствие orphaned pytest/test_ba-сессий. Один редкий
-  step-up флейк moderation не воспроизведён — наблюдение, не исправление.
+- HEAD `16dba6d` (isolated browser autotest runner) после AI HQ
+  `f303b01`/`86b21d6`/`b3f42ce` и прежней очереди `e136af8`…`1fc0e97`; этот
+  docs-коммит обновляет реестры, затем `origin/main` синхронизируется push.
+- Последний полный Python gate: **1256 passed, 14 skipped, exit 0** на
+  reuse-DB без `--create-db` (9:42, HEAD `16dba6d`); ruff/format clean (484),
+  mypy clean (392). JS suite **31/31**. Первый прогон дал тот же редкий
+  moderation step-up flake (прошёл 5/5 отдельно и 45/45 файлом); наблюдение,
+  не исправление. Перед gate проверять отсутствие orphaned pytest/test_ba.
+- Browser publish gate: `ARCADE-BROWSER-AUTOTEST-RUNNER-001`
+  (`a1388da` + `16dba6d`) — **COMPLETED / code-review ACCEPT после reject**;
+  Chromium вынесен в secretless `browser-autotest` (autotestnet, без
+  .env/БД/Redis/edge), единый deadline, prod требует `playwright=true`;
+  live positive 3/3 и negative page error; prod-style image build OK.
+  Staging browser gate выключен до browser-testable topology; prod nginx
+  game hosts/TLS и CI E2E остаются.
+- AI HQ OS sandbox (`ARCADE-AI-HQ-OS-SANDBOX-001`, `f303b01`/`86b21d6`/
+  `b3f42ce`) — **COMPLETED / security-auditor ACCEPT**; private user+mount
+  namespace + Landlock, fail-closed 125; остатки abstract AF_UNIX/netns,
+  gitdir ro и live unattended run.
 - Внешний аудит 2026-11-25 разобран: `docs/audits/EXTERNAL_AUDIT_2026-11-25.md`.
   Приняты и исправлены P1 импортов, browser gate, empty eventLog и P2
   pagehide; дополнительно probe_seed guard, validation-gate
   schedule_publish, точная граница eventLog и общая константа. Draft
-  isolation §4.1, browser runner/override, AI HQ OS sandbox, Redis broker
-  isolation и PB `is_public` — owner-gated.
+  isolation §4.1, Redis broker isolation и PB `is_public` — owner-gated.
 - Локальная инфраструктура 2026-11-25: staging-стек остановлен
   (`make staging-down`) из-за исчерпания RAM/swap; volumes/данные не
   удалялись, для staging-проверок поднять `make staging-up`. Host после

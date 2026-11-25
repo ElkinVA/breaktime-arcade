@@ -327,9 +327,10 @@ ADR:
 | Вопрос | Статус |
 |---|---|
 | Импорт обновлений published/hidden/archived игр временно отклоняется до draft isolation (§4.1). Подтвердить stopgap и приоритет draft isolation | **Требует подтверждения**; код-фикс `1763554`/`cc9923b` уже действует |
-| Производственная публикация требует browser autotest (`playwright=true`); реального browser runner пока нет, поэтому production publish намеренно заблокирован. Rollback ранее опубликованных версий разрешён | **Требует подтверждения политики**; `PUBLISH_REQUIRE_BROWSER_AUTOTEST` можно временно выключить env, но это неаудируемый обход |
-| Owner-only audited override для публикации без browser E2E (роль + причина + audit event) | **Требует решения**; нужна миграция choices audit actions |
-| AI HQ Developer/QA должны работать в отдельном unprivileged container/VM с task-only mount, без host Docker/SSH/credentials | **Требует решения владельца**; текущий host-user процесс не является OS sandbox |
+| Производственная публикация требует browser autotest (`playwright=true`); runner реализован отдельным secretless-сервисом. Rollback ранее опубликованных версий разрешён | **Решено владельцем:** обязательный простой browser runner; production publish без `playwright=true` невозможен, rollback остаётся |
+| Owner-only audited override для публикации без browser E2E (роль + причина + audit event) | **Отклонено владельцем:** сложный audited override не внедряется; обход через env считается операторским изменением конфигурации, а не штатным путём |
+| Browser autotest на staging при Basic Auth и внешнем порту 8444 (внутренний listener 8443) | **Временно выключен** в `config/settings/staging.py`; включение требует решения владельца о staging-топологии и credentials harness |
+| AI HQ Developer/QA должны работать в отдельном unprivileged container/VM с task-only mount, без host Docker/SSH/credentials | **Решено владельцем:** простейшая надёжная изоляция; реализовано namespace+Landlock (`f303b01`/`86b21d6`/`b3f42ce`, security ACCEPT), product acceptance pending |
 | Отдельный Redis broker/ACL для ZIP worker, запрет publish в default queue | **Требует решения владельца/инфраструктуры** |
 | Семантика скрытых leaderboard-строк для PB/rank (`is_public`) | **Требует продуктового решения** до появления moderation hide |
 

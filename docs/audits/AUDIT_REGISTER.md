@@ -868,6 +868,28 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-AI-HQ-OS-SANDBOX-001 — model children OS sandbox
+
+| Поле | Значение |
+|---|---|
+| Тип | P1 AI HQ security; security-auditor ACCEPT (initial + delta) |
+| Результат | private user+mount namespace + Landlock; host HOME/.env/SSH/Docker socket/main checkout denied; fail-closed exit 125; parent-run sandbox checks hard-gated before QA; worktree gitdir validated; dev/QA no Bash |
+| Проверки | autonomy/control-plane 37 passed, 1 skip; ruff/format/mypy clean (390); host live `claude -p` rc 0, `.env` PermissionError, docker socket FileNotFoundError |
+| Статус | **COMPLETED / SECURITY-AUDITOR ACCEPT**; live unattended autonomy NOT TESTED |
+| Остаток | abstract AF_UNIX/netns, own gitdir not ro, cross-task gitdir, devcontrol bot outside scope |
+| Источник | commits `f303b01`, `86b21d6`, `b3f42ce`; модели: implement — `deepseek-flash[1m]`, review — `security-auditor` (`deepseek-v4-pro`, text-only) |
+
+## ARCADE-BROWSER-AUTOTEST-RUNNER-001 — isolated browser publish gate
+
+| Поле | Значение |
+|---|---|
+| Тип | P1 pipeline/security; independent code review (reject → fixes → re-review) |
+| Результат | отдельный secretless Chromium-service в `autotestnet` без `.env`/DB/Redis/edge; web зовёт его по HTTP, игровой JS не исполняется в web; единый дедлайн прогона; static+browser merge; prod требует `playwright=true`; staging gate выключен до browser-testable topology |
+| Проверки | live service: positive 3/3 (portal 200, `ba:hello`, 0 errors), negative page error `boom`; service env без секретов, DNS db/redis недоступен, nginx доступен; client→service live PASS; targeted tests 99; ruff/format/mypy clean (392); full suite **1256 passed, 14 skipped, exit 0**; prod-style image build OK |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT** (initial reject → fixes → delta accept); minors: command `[]` добавлен, staging service idle, auth token future |
+| Остаток | prod/staging image build и nginx game hosts — deploy gate; CI browser E2E; `entry_path` hardcoded; live importer→service smoke не выполнялся (client/service проверены отдельно) |
+| Источник | commit `a1388da` + `16dba6d`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-EXTERNAL-AUDIT-2026-11-25 — P1/P2 response
 
 | Поле | Значение |
@@ -875,7 +897,7 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Тип | Внешний статический audit + code fixes; независимые review |
 | Результат | published-import blocker и re-lock re-check (`1763554`/`cc9923b`); production browser autotest gate + rollback exemption (`50f9135`/`d8c5d9f`); empty eventLog quarantine (`154de78`); pagehide pending-submit guard (`64d7149`); probe_seed guard, schedule validation/autotest tests, exact eventLog boundary (`8756e8c`, `541280a`, `4bd039c`, `e136af8`) |
 | Проверки | pipeline 40; pipeline+wizard 50; result 30; JS 31; полный suite **1250 tests: 1237 passed, 13 skipped, exit 0** (на `e136af8`); ruff/format/mypy clean (388) |
-| Статус | **PARTIAL / CODE FIXES ACCEPT**; AI HQ OS sandbox, Redis broker isolation, draft isolation, browser runner/override — owner-gated |
+| Статус | **PARTIAL / CODE FIXES ACCEPT**; AI HQ OS sandbox и browser runner закрыты, остаются owner-gated Redis broker isolation, draft isolation и PB `is_public` |
 | Остаток | browser E2E в CI, staging/prod live, server-side terminal operation для pagehide, PB `is_public` semantics |
 | Источник | `docs/audits/EXTERNAL_AUDIT_2026-11-25.md`; commits above; review agents text-only |
 

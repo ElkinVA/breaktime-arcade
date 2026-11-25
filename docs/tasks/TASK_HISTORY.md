@@ -1488,6 +1488,29 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-AI-HQ-OS-SANDBOX-001 — OS-изоляция model-children
+
+- **Первопричина:** внешний аудит P1: дочерние агенты работали под host user
+  и могли читать host files/secrets, main checkout, Docker/SSH sockets.
+- **Результат:** `preexec` создаёт private user+mount namespace (uid/gid map,
+  tmpfs на `/run` и `/dev/shm`), затем Landlock ruleset: rw только task
+  worktree + private HOME/TMPDIR; ro system paths и Node/Claude; host HOME,
+  `.env`, SSH keys, чужие `/proc` и Docker socket недоступны; setup failure
+  → exit 125. Runner отказывает при отсутствии Landlock (вне pytest).
+  Parent orchestrator выполняет фиксированные sandbox-проверки на committed
+  candidate; non-zero/timeout → retry/blocked до QA. Developer/QA не имеют
+  Bash; `.git` worktree проверяется до git-операций; task id санитизируется.
+- **Проверки:** autonomy/control-plane 37 passed, 1 skip (web-container без
+  user namespaces); ruff/format/mypy clean (390). Host live: `claude -p` под
+  sandbox rc 0; `.env` PermissionError; Docker socket FileNotFoundError.
+  Security-auditor: ACCEPT f303b01, delta ACCEPT 86b21d6.
+- **Остатки:** abstract AF_UNIX/netns не ограничены; собственный gitdir
+  worktree не выдан ro; cross-task gitdir допускается; live unattended
+  autonomy run NOT TESTED. `devcontrol` bot (`claude --bg`) вне scope.
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `security-auditor`
+  (`deepseek-v4-pro`, text-only).
+- **Commit:** `f303b01`, `86b21d6`, `b3f42ce`.
+
 ### ARCADE-EXTERNAL-AUDIT-2026-11-25 — ответ на P1/P2 аудит
 
 - **Первопричина:** внешний аудит выявил: импорт мутирует live-карточку до
@@ -2236,3 +2259,35 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - Изменение Dockerfile/infra вне согласованного scope. Drift уже ловится
   parity-тестом `tests/unit/test_host_schemas_registry.py` и
   `npm run check:schemas`; задача остановлена без merge.
+
+### ARCADE-BROWSER-AUTOTEST-RUNNER-001 — изолированный browser publish gate
+
+- **Первопричина:** production publish требовал `playwright=true`, но
+  реального runner не было; первая реализация запускала untrusted game JS в
+  web-контейнере с секретами и сетью БД/Redis, а prod-образ не собирался
+  (playwright только в dev-группе).
+- **Результат:** `pyproject.toml`/`uv.lock` перенесли playwright в runtime;
+  Dockerfile ставит `libatomic1` и Chromium до COPY исходников. Импортёр
+  после `store_runtime` вызывает отдельный `browser-autotest` service:
+  stdlib HTTP, без Django/env_file/секретов, только `autotestnet` (nginx+web),
+  `cap_drop ALL`, read-only, tmpfs/shm, лимиты. `browser_client` шлёт payload
+  и превращает transport/HTTP-ошибки в failed report; сервис валидирует
+  hash/host/origin/timeout и ограничивает concurrency. Один deadline
+  покрывает launch/goto/handshake; pageerror собирается после портала;
+  `ignore_https_errors` включается только dev. Staging browser gate явно
+  выключен до browser-testable topology; production остаётся fail-closed.
+- **Проверки:** live positive 3/3 (portal 200, `ba:hello`, 0 errors) и
+  negative page error `boom`; env сервиса без секретов, db/redis DNS
+  недоступны, nginx доступен; client→service PASS; targeted 99; полный suite
+  **1256 passed, 14 skipped, exit 0**; ruff/format clean (484), mypy clean
+  (392), JS 31/31; prod-style image build OK (Playwright 1.65.1, pytest
+  отсутствует). Первый полный прогон дал известный moderation step-up flake,
+  который прошёл 5/5 отдельно и 45/45 файлом.
+- **Review:** code-reviewer reject → fixes → delta **ACCEPT**; minors
+  `command: []` и docstring исправлены.
+- **Остаток:** prod nginx game hosts/TLS — deploy prerequisite; CI browser
+  E2E; `entry_path` hardcoded; live importer→service не прогонялся отдельно;
+  staging browser service запущен, но gate выключен.
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `code-reviewer`
+  (`deepseek-v4-pro`, text-only).
+- **Commit:** `a1388da`, `16dba6d`.

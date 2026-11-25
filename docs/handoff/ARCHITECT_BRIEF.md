@@ -67,15 +67,31 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- AI HQ: model children run under a private user+mount namespace plus
+  Landlock: host HOME, main checkout, .env, SSH and Docker sockets are
+  unreachable; setup failures exit 125. Developer/QA have no Bash; the parent
+  runs fixed sandbox checks and hard-blocks failed candidates before QA, and
+  worktree gitdir is validated before git operations (`ARCADE-AI-HQ-OS-SANDBOX-001`,
+  `f303b01`/`86b21d6`/`b3f42ce`). Abstract Unix sockets/netns and live
+  unattended runs remain residuals.
+- Browser autotest runner: the importer calls a dedicated secretless Chromium
+  service on an internal-only network; untrusted game JS never runs in web.
+  The service has no `.env`, DB/Redis reachability or edge network. A single
+  deadline bounds the whole run; static+browser reports merge and production
+  still requires `playwright=true` (rollback exempt). Live positive 3/3 and
+  negative page error pass; staging keeps the browser gate off until its
+  Basic Auth/internal-port topology is browser-testable. Entry path is still
+  `index.html`; CI browser E2E and prod nginx game hosts remain
+  (`ARCADE-BROWSER-AUTOTEST-RUNNER-001`, `a1388da` + `16dba6d`).
 - External audit 2026-11-25 response: imports of published/hidden/archived
   cards are blocked until draft isolation; production publish requires a
   `playwright=true` report (rollback stays available); empty eventLog is
   quarantined under a verification profile; pagehide does not close a session
   with an in-flight submit. Minor audit items are closed too: probe_seed is
   dev-only, schedule_publish checks validation/autotest, and the exact 2 MiB
-  eventLog boundary is pinned. AI HQ OS sandbox, Redis broker isolation,
-  draft isolation, browser runner/override and PB `is_public` remain
-  owner-gated.
+  eventLog boundary is pinned. AI HQ OS sandbox and the browser runner are
+  closed; Redis broker isolation, draft isolation, PB `is_public` and the
+  staging browser topology remain owner-gated.
 - Leaderboard rank: a non-personal-best submit returns the position of the
   user's existing best row, not the hypothetical position of the worse run;
   `is_record` is true only for a personal best that is also #1
