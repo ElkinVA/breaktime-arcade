@@ -70,12 +70,15 @@ ambiguity.
 - ZIP pipeline: same-game imports serialize on a technical_id advisory
   lock and adopt a concurrently created card; V_ID_CONFLICT is distinct
   from V_VERSION_DUP, and runtime rename races adopt an identical bundle
-  (`ARCADE-ZIP-CONCURRENT-IMPORT-001`, `03aaf0f`). Orphan-runtime TTL
-  cleanup remains before §5.5 closes.
+  (`ARCADE-ZIP-CONCURRENT-IMPORT-001`, `03aaf0f`).
+- ZIP pipeline: runtime bundles with no `GameVersion` reference are deleted
+  after a 24 h TTL by a daily idempotent beat task; the default worker now
+  mounts `runtime_data` rw, otherwise the cleanup would silently no-op
+  (`ARCADE-RUNTIME-ORPHAN-001`, `34f237f`). §5.5 is closed; live beat and
+  staging remain untested.
 - ZIP pipeline: RUNNING extraction jobs older than 600 s are reaped to
   TIMEOUT/X_JOB_STALE by a 5-minute beat task, idempotently
-  (`ARCADE-ZIP-JOB-REAPER-001`, `1687517`); concurrent-import hardening is
-  the next slice. Live beat untested.
+  (`ARCADE-ZIP-JOB-REAPER-001`, `1687517`). Live beat untested.
 - Account email security: changing/removing an email invalidates reset and
   verify tokens atomically; reset confirm rechecks current verified email
   and active status (`ARCADE-EMAIL-RESET-INVALIDATION-001`, `26d8075`).

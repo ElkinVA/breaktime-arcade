@@ -1,16 +1,16 @@
 # NOW — Breaktime Arcade
 
-**Дата:** 2026-11-24
+**Дата:** 2026-11-25
 
-## Актуальная сводка автономного цикла (2026-11-24)
+## Актуальная сводка автономного цикла (2026-11-25)
 
-- HEAD `03aaf0f` (concurrent import) после `1687517` (ZIP reaper),
-  `26d8075` (email reset), `cdb567a` (restore-check), `ab62a7d` +
-  `116efbd`, `766029e`, `88c2a64`, `ecfb419`, `bbfdcaf`, `de08292`,
-  `b953419`, `1fc0e97`, B1/CI; этот docs-коммит обновляет реестры, затем
-  `origin/main` синхронизируется push.
-- Последний полный gate: **1210 tests: 1197 passed, 13 skipped, exit 0** на
-  свежей БД (8:50); ruff/format clean, mypy 383 файла clean.
+- HEAD `34f237f` (orphan runtime) после `03aaf0f` (concurrent import),
+  `1687517` (ZIP reaper), `26d8075` (email reset), `cdb567a`
+  (restore-check), `ab62a7d` + `116efbd`, `766029e`, `88c2a64`,
+  `ecfb419`, `bbfdcaf`, `de08292`, `b953419`, `1fc0e97`, B1/CI; этот
+  docs-коммит обновляет реестры, затем `origin/main` синхронизируется push.
+- Последний полный gate: **1214 tests: 1201 passed, 13 skipped, exit 0** на
+  свежей БД (14:28); ruff/format clean, mypy 383 файла clean.
   Real restore-check на dev PASS (44/42/10). Reuse-DB issue —
   `ARCADE-TEST-DB-SEED-001`; перед gate проверять отсутствие orphaned
   pytest/test_ba-сессий.
@@ -30,12 +30,14 @@
   IP-failure burst race, CSRF device rotation, hard 30/day без challenge,
   authenticated sessions_ip exemption, heartbeat invalid-id buckets,
   DRF counters non-atomic.
-- P1 ZIP pipeline (`1687517` + `03aaf0f`): reaper зависших RUNNING jobs
-  (TTL 600 s, beat 5 мин, X_JOB_STALE) и сериализация импорта одной игры
-  (advisory lock technical_id, adoption, `V_ID_CONFLICT`, runtime
-  rename race) — `ARCADE-ZIP-JOB-REAPER-001`,
-  `ARCADE-ZIP-CONCURRENT-IMPORT-001`. Для закрытия §5.5 остаётся
-  `ARCADE-RUNTIME-ORPHAN-001`. Live beat/staging NOT TESTED.
+- P1 ZIP pipeline (`1687517` + `03aaf0f` + `34f237f`): reaper зависших
+  RUNNING jobs (TTL 600 s, beat 5 мин, X_JOB_STALE), сериализация импорта
+  одной игры (advisory lock technical_id, adoption, `V_ID_CONFLICT`,
+  runtime rename race) и ref-aware TTL-очистка runtime-бандлов без ссылки
+  `GameVersion` (сутки; worker получил rw `runtime_data`) —
+  `ARCADE-ZIP-JOB-REAPER-001`, `ARCADE-ZIP-CONCURRENT-IMPORT-001`,
+  `ARCADE-RUNTIME-ORPHAN-001`; §5.5 закрыт. Live worker recreation и
+  удаление aged orphan проверены; live beat/staging NOT TESTED.
 - P1 accounts (`26d8075`): смена/удаление email инвалидирует
   password-reset/verify токены атомарно; confirm перепроверяет
   current/verified email и active (`ARCADE-EMAIL-RESET-INVALIDATION-001`).
@@ -82,10 +84,10 @@
   `propose` → отфильтровать задачи, требующие schema/contract/infra/E2E →
   `run --max-tasks 1`; после каждой задачи обновить реестры, PROJECT_STATUS
   и этот файл. Не запускать schema/contract/infra изменения без решения
-  владельца. Следующий независимый P1-срез — `ARCADE-RUNTIME-ORPHAN-001`:
-  TTL-очистка runtime-бандлов без ссылки `GameVersion`, beat, тесты;
-  после неё §5.5 закрыт. Затем §5.3 audit events (owner-миграция).
-  Stage C §4.1/§4.3 — owner-gated.
+  владельца. `ARCADE-RUNTIME-ORPHAN-001` завершён, §5.5 закрыт. Следующий
+  независимый P1-срез — остаточное §5.5 hardening (минимизация env
+  zip-worker, retention отклонённых ZIP) либо §5.3 audit events
+  (owner-миграция choices). Stage C §4.1/§4.3 — owner-gated.
 
 **Текущий этап: ARCADE-P5 ARCHER — IMPLEMENTED / LIVE DEV E2E PASS /
 PRO REVIEW ACCEPT; PRODUCT + STAGING + PRODUCTION NOT ACCEPTED.**

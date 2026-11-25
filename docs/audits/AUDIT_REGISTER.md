@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-RUNTIME-ORPHAN-001 — ref-aware runtime TTL cleanup
+
+| Поле | Значение |
+|---|---|
+| Тип | P1 ZIP storage lifecycle (§5.5); code-reviewer reject (worker mount) → delta accept |
+| Результат | ежедневный `cleanup_orphan_runtimes`: flat/host-раскладки, symlink/non-hash skip, защита `GameVersion.runtime_hash`, TTL 24 ч, идемпотентность, лог `pipeline.runtime_orphan_removed`; worker rw `runtime_data` + `ZIP_PUBLIC_RUNTIME_ROOT` |
+| Проверки | 4 новых теста (referenced/expired/fresh/symlink/flat, идемпотентность, beat/task, missing/symlink root) + compose regression; полный suite **1214 tests: 1201 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean (383); live worker recreation + aged orphan removal с логом |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT**; live beat/staging NOT TESTED; §5.5 закрыт |
+| Остаток | referenced-protection только unit (dev-БД без GameVersion); default worker получил rw runtime-том (осознанно); TTL не настраивается per-game |
+| Источник | commit `34f237f`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-ZIP-CONCURRENT-IMPORT-001 — same-game import race
 
 | Поле | Значение |
@@ -876,7 +887,7 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Результат | advisory xact lock по technical_id + adoption карточки; V_ID_CONFLICT vs V_VERSION_DUP; store_runtime усыновляет идентичный бандл после rename-гонки |
 | Проверки | threaded race (одна Game/Version, created+duplicate), lock spy, adoption, constraint, forced rename/tampered; полный suite **1210 tests: 1197 passed, 13 skipped, exit 0** (fresh DB); ruff/format/mypy clean (383) |
 | Статус | **COMPLETED / CODE-REVIEW ACCEPT**; live staging not tested |
-| Остаток | orphan runtime — ARCADE-RUNTIME-ORPHAN-001; error-code asymmetry; report mutation after rollback; no barrier in race test |
+| Остаток | orphan runtime закрыт `ARCADE-RUNTIME-ORPHAN-001` (`34f237f`); error-code asymmetry; report mutation after rollback; no barrier in race test |
 | Источник | commit `03aaf0f`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
 
 ## ARCADE-ZIP-JOB-REAPER-001 — stale RUNNING extraction reaper

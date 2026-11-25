@@ -15,8 +15,13 @@
 | `ZIP_PIPELINE_STORAGE_ROOT` | приватные исходные ZIP (`packages/<hash>.zip`) | web **rw** |
 
 Публичный runtime (`ZIP_PUBLIC_RUNTIME_ROOT`/`runtime_data`) **не входит** в
-квоту и никогда не удаляется и не изменяется квотой/cleanup. Опубликованные
-`GameVersion`, их `package_hash`/`runtime_hash` и файлы runtime неприкосновенны.
+квоту и не изменяется квотой. Опубликованные `GameVersion`, их
+`package_hash`/`runtime_hash` и файлы runtime неприкосновенны, пока на них
+ссылается хотя бы одна `GameVersion`. Отдельная beat-задача
+`cleanup_orphan_runtimes` раз в сутки удаляет только те runtime-каталоги,
+на hash которых нет ссылок, и только если каталог старше
+`ZIP_RUNTIME_ORPHAN_TTL_SECONDS` (по умолчанию 24 ч). `worker` монтирует
+`runtime_data` rw и получает `ZIP_PUBLIC_RUNTIME_ROOT=/app/runtime`.
 
 `web` видит все три корня (uploads, artifacts ro, packages) и учитывает их при
 допуске. `zip-worker` видит uploads (ro) и artifacts; на время распаковки
@@ -67,11 +72,12 @@ Beat-задачами; повторный запуск идемпотентен.
   `flock` на `artifacts/<job_id>/.lock` для artifacts. Cleanup не может
   удалить задание, которое ещё выполняется.
 - Каталоги non-UUID и `.quota` не считаются job-каталогами и не удаляются.
-- Original ZIP (`packages/`) и опубликованный runtime хранятся, пока на них
-  ссылается `GameVersion`/`Game.current_version`; автоматического удаления
-  нет. Идемпотентный повторный импорт не создаёт второй экземпляр (`store_immutable`).
-- Удаление ограничено двумя корнями (`uploads`, `artifacts`); cleanup не
-  принимает `runtime_data`/`ZIP_PUBLIC_RUNTIME_ROOT`.
+- Original ZIP (`packages/`) хранится, пока на него ссылается `GameVersion`;
+  автоматического удаления нет. Runtime-каталоги без ссылок удаляются
+  TTL-задачей `cleanup_orphan_runtimes` (см. §1). Идемпотентный повторный
+  импорт не создаёт второй экземпляр (`store_immutable`).
+- Uploads/artifacts cleanup не принимает `runtime_data`/`ZIP_PUBLIC_RUNTIME_ROOT`;
+  runtime удаляет только отдельная ref-aware TTL-задача.
 
 ## 4. Параметры (не секреты)
 
@@ -83,6 +89,8 @@ Beat-задачами; повторный запуск идемпотентен.
 | `ZIP_QUOTA_RESERVATION_TTL_SECONDS` | `3600` | `3600` |
 | `ZIP_STAGING_TTL_SECONDS` | `3600` | `7200` |
 | `ZIP_COMPLETED_TTL_SECONDS` | `86400` | `86400` |
+| `ZIP_JOB_STALE_SECONDS` | `600` | `600` |
+| `ZIP_RUNTIME_ORPHAN_TTL_SECONDS` | `86400` | `86400` |
 
 `ZIP_STORAGE_QUOTA_BYTES` должен превышать `ZIP_JOB_MAX_BYTES` (по умолчанию
 120 МиБ), иначе любая распаковка будет отклонена.

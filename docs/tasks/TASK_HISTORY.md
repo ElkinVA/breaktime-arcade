@@ -1488,6 +1488,30 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-RUNTIME-ORPHAN-001 — TTL-очистка runtime без ссылок
+
+- **Первопричина:** опубликованные runtime-каталоги не удалялись никогда;
+  неудачные импорты и заменённые версии накапливались на `runtime_data`
+  без ссылки `GameVersion`.
+- **Результат:** `cleanup_orphan_runtimes` сканирует `<hash>/` и
+  `host_label/<hash>/`, пропускает symlink, не-hash имена, каталоги моложе
+  `ZIP_RUNTIME_ORPHAN_TTL_SECONDS` (default 24 ч), ошибки stat/rmtree и
+  хэши, на которые ссылается `GameVersion`; логирует
+  `pipeline.runtime_orphan_removed`. Beat-задача раз в сутки (acks_late,
+  reject_on_worker_lost, limits 240/300). Default worker получил rw
+  `runtime_data` и `ZIP_PUBLIC_RUNTIME_ROOT=/app/runtime` — без этого
+  cleanup был no-op; compose-тест это фиксирует.
+- **Проверки:** 4 теста (referenced/expired/fresh/symlink/flat,
+  идемпотентность, beat/task, missing/symlink root); полный suite
+  **1214 tests: 1201 passed, 13 skipped, exit 0** на свежей БД;
+  ruff/format/mypy clean (383). Code-reviewer: **reject → delta accept**.
+  Live: worker пересоздан, aged orphan удалён, событие в логе.
+- **Остатки:** live beat/staging NOT TESTED; referenced-protection только
+  unit-тестами (dev-БД без `GameVersion`); TTL не per-game. §5.5 закрыт.
+- **Модели:** реализация — `deepseek-flash[1m]`; review —
+  `code-reviewer` (`deepseek-v4-pro`, text-only).
+- **Commit:** `34f237f`.
+
 ### ARCADE-ZIP-CONCURRENT-IMPORT-001 — гонка импорта одной игры
 
 - **Первопричина:** два одновременных импорта нового `technical_id` оба
@@ -1509,8 +1533,8 @@ tests: 1056 passed, 8 skipped, exit 0**.
   полный suite **1210 tests: 1197 passed, 13 skipped, exit 0** на свежей
   БД; ruff/format/mypy clean (383). Code-reviewer: **reject → delta
   accept** после добавления реальных race-тестов.
-- **Остатки:** orphan runtime после неудачного persist — отдельная
-  `ARCADE-RUNTIME-ORPHAN-001` (нужна для закрытия §5.5); error-code
+- **Остатки:** orphan runtime закрыт в `ARCADE-RUNTIME-ORPHAN-001`
+  (`34f237f`); error-code
   асимметрия rename-ветки (X_ARTIFACT_IO vs UNSAFE/CONFLICT); отчёт может
   содержать I_IMPORT_CREATED после rollback (cosmetic); threaded-тест без
   barrier (совпадает с принятым App F harness); `manifest["id"]` vs get;
