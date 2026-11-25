@@ -183,7 +183,9 @@ def test_credit_window_counts_unique_once_per_30_minutes() -> None:
     first = _session(game, user=user)
     second = _session(game, user=user)
     third = _session(game, user=user)
-    now = timezone.now()
+    # Fixed midday UTC keeps all three credits on one daily-stats row even
+    # when the suite runs across the UTC midnight boundary.
+    now = datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
     assert credit_session(first, duration_ms=30_000, completed=True, now=now)
     assert not credit_session(
         second, duration_ms=30_000, completed=False, now=now + timedelta(minutes=10)
