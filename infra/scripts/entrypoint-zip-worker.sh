@@ -2,7 +2,8 @@
 # BA-ZIP-WORKER-001: isolated extraction worker entrypoint.
 #
 # The worker is attached only to the `zipnet` internal network. It must NOT
-# wait for db or redis-cache: those services are intentionally unreachable.
+# wait for db, redis-cache or the default broker: those services are
+# intentionally unreachable. Only the isolated zip broker is on zipnet.
 # Migrations and collectstatic are never run here.
 set -euo pipefail
 cd /app
@@ -20,6 +21,6 @@ wait_for() {
   return 1
 }
 
-wait_for redis-broker 6379
+wait_for redis-zip 6379
 
 exec "$@"

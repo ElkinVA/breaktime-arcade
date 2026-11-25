@@ -271,6 +271,10 @@ FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o750
 
 # --- Celery -------------------------------------------------------------
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", env("REDIS_BROKER_URL", "redis://redis-broker:6379/2"))
+# ARCADE-REDIS-BROKER-ISOLATION-001: the ZIP queue lives on its own broker.
+# A compromised zip-worker can only reach redis-zip, never the default queue.
+# Fail closed rather than silently falling back to the shared broker.
+CELERY_ZIP_BROKER_URL = env("CELERY_ZIP_BROKER_URL", "redis://redis-zip:6379/0")
 CELERY_RESULT_BACKEND = None
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_ACKS_LATE = True
@@ -285,6 +289,9 @@ CELERY_TASK_QUEUES = (
     Queue("zip", Exchange("zip", type="direct"), routing_key="zip"),
 )
 CELERY_TASK_ROUTES = {
+    # Never call .delay()/.apply_async() for these tasks on the default app:
+    # their queue lives on redis-zip. Use apps.pipeline.tasks helpers, which
+    # publish through config.zip_celery.send_zip_task.
     "apps.pipeline.tasks.extract_zip_task": {"queue": "zip"},
     "apps.pipeline.tasks.cleanup_zip_staging": {"queue": "zip"},
 }
@@ -372,10 +379,10 @@ CELERY_BEAT_SCHEDULE: dict[str, dict[str, object]] = {
         "schedule": 60 * 60 * 24,
         "options": {"expires": 60 * 60},
     },
-    "pipeline-cleanup-zip-staging": {
-        "task": "apps.pipeline.tasks.cleanup_zip_staging",
+    "pipeline-dispatch-zip-cleanup": {
+        "task": "apps.pipeline.tasks.dispatch_zip_cleanup",
         "schedule": 60 * 60,
-        "options": {"queue": "zip", "expires": 60 * 10},
+        "options": {"expires": 60 * 10},
     },
     "pipeline-cleanup-zip-uploads": {
         "task": "apps.pipeline.tasks.cleanup_zip_uploads",

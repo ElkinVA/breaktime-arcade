@@ -23,6 +23,7 @@ x-app: &app
     db: { condition: service_healthy }
     redis-cache: { condition: service_healthy }
     redis-broker: { condition: service_healthy }
+    redis-zip: { condition: service_healthy }
     redis-throttle: { condition: service_healthy }
   logging:
     driver: json-file
@@ -67,6 +68,8 @@ services:
       ZIP_QUOTA_RESERVATION_TTL_SECONDS: "${ZIP_QUOTA_RESERVATION_TTL_SECONDS:-3600}"
       # Browser autotest runs in a dedicated secretless container.
       BROWSER_AUTOTEST_URL: "${BROWSER_AUTOTEST_URL:-http://browser-autotest:8100/run}"
+      # ARCADE-REDIS-BROKER-ISOLATION-001: ZIP jobs go to the isolated broker.
+      CELERY_ZIP_BROKER_URL: "${CELERY_ZIP_BROKER_URL:-redis://redis-zip:6379/0}"
     networks: [internal, edge, autotestnet]
     volumes:
       - static_data:/app/staticfiles
@@ -93,6 +96,8 @@ services:
       RUN_MIGRATIONS: "0"
       # Orphan-runtime cleanup scans/deletes the published runtime volume.
       ZIP_PUBLIC_RUNTIME_ROOT: /app/runtime
+      # Dispatches ZIP cleanup to redis-zip; extraction uses the same publisher.
+      CELERY_ZIP_BROKER_URL: "${CELERY_ZIP_BROKER_URL:-redis://redis-zip:6379/0}"
     volumes:
       - static_data:/app/staticfiles
       - media_data:/app/media
@@ -115,7 +120,7 @@ services:
         limits: { cpus: "1.0", memory: 1024M }
 
   # BA-ZIP-WORKER-001: isolated extraction worker.
-  # Network zipnet contains only this service and redis-broker; no edge/db/cache.
+  # Network zipnet contains only this service and redis-zip; no edge/db/cache.
   zip-worker:
     image: ba/app:${IMAGE_TAG:-dev}
     build:
@@ -138,7 +143,8 @@ services:
     # interpolation still reads .env/.env.staging for these named variables.
     environment:
       DJANGO_SETTINGS_MODULE: "${DJANGO_SETTINGS_MODULE:-config.settings.prod}"
-      CELERY_BROKER_URL: "${CELERY_BROKER_URL:-redis://redis-broker:6379/2}"
+      # Fixed to the isolated broker; never follows the shared .env value.
+      CELERY_BROKER_URL: "redis://redis-zip:6379/0"
       RUN_MIGRATIONS: "0"
       RUN_COLLECTSTATIC: "0"
       # Shared quota state/lock; must be writable here for artifact admission.
@@ -159,7 +165,7 @@ services:
     networks: [zipnet]
     depends_on:
       zip-volume-init: { condition: service_completed_successfully }
-      redis-broker: { condition: service_healthy }
+      redis-zip: { condition: service_healthy }
     read_only: true
     tmpfs:
       - /tmp:rw,size=64m,mode=1777
@@ -284,7 +290,7 @@ services:
     command: ["redis-server", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes", "--appendfsync", "everysec"]
     volumes:
       - redis_broker_data:/data
-    networks: [internal, zipnet]
+    networks: [internal]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -293,6 +299,25 @@ services:
     deploy:
       resources:
         limits: { cpus: "0.5", memory: 640M }
+
+  # ARCADE-REDIS-BROKER-ISOLATION-001: the ZIP queue has its own broker.
+  # zipnet contains only zip-worker and redis-zip; nothing on it can reach the
+  # default broker, database, cache or edge.
+  redis-zip:
+    image: redis:8-alpine@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - redis_zip_data:/data
+    networks: [internal, zipnet]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits: { cpus: "0.25", memory: 96M }
 
   # Predictable throttle counters (OD-REDIS-001): no eviction, no persistence.
   # Losing counters on restart is acceptable; eviction is not.
@@ -353,7 +378,8 @@ networks:
   # No database, broker, cache or edge gateway is attached.
   autotestnet:
     internal: true
-  # BA-ZIP-WORKER-001: only zip-worker and redis-broker; no external gateway.
+  # ARCADE-REDIS-BROKER-ISOLATION-001: only zip-worker and redis-zip; no
+  # default broker, database, cache, edge or external gateway.
   zipnet:
     internal: true
 
@@ -361,6 +387,7 @@ volumes:
   pgdata:
   redis_cache_data:
   redis_broker_data:
+  redis_zip_data:
   static_data:
   media_data:
   app_var:

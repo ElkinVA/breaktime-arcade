@@ -273,9 +273,12 @@ def test_pipeline_task_wrappers(monkeypatch) -> None:
     )
     assert cleanup_zip_staging() == {"removed": 2, "skipped": 1}
 
+    from apps.pipeline import tasks as pipeline_tasks
+
     monkeypatch.setattr(
-        "apps.pipeline.tasks.extract_zip_task.apply_async",
-        lambda *args, **kwargs: SimpleNamespace(id="task-id"),
+        pipeline_tasks,
+        "send_zip_task",
+        lambda *args, **kwargs: "task-id",
     )
     assert enqueue_extraction("job") == "task-id"
 

@@ -18,7 +18,7 @@ COMPOSE_FILES = (
 
 ZIP_WORKER_ENV = {
     "DJANGO_SETTINGS_MODULE": "${DJANGO_SETTINGS_MODULE:-config.settings.prod}",
-    "CELERY_BROKER_URL": "${CELERY_BROKER_URL:-redis://redis-broker:6379/2}",
+    "CELERY_BROKER_URL": "redis://redis-zip:6379/0",
     "RUN_MIGRATIONS": "0",
     "RUN_COLLECTSTATIC": "0",
     "ZIP_QUOTA_STATE_ROOT": "${ZIP_QUOTA_STATE_ROOT:-/var/ba/zip/quota}",
@@ -83,7 +83,7 @@ def test_zip_worker_isolation() -> None:
 
     assert service["networks"] == ["zipnet"]
     assert data["networks"]["zipnet"] == {"internal": True}
-    assert "zipnet" in data["services"]["redis-broker"]["networks"]
+    assert "zipnet" not in data["services"]["redis-broker"]["networks"]
     assert service["read_only"] is True
     assert service["pids_limit"] == 64
     assert service["cap_drop"] == ["ALL"]
@@ -102,7 +102,7 @@ def test_zip_worker_isolation() -> None:
     ]
     assert service["depends_on"] == {
         "zip-volume-init": {"condition": "service_completed_successfully"},
-        "redis-broker": {"condition": "service_healthy"},
+        "redis-zip": {"condition": "service_healthy"},
     }
 
 
@@ -131,7 +131,7 @@ def test_zip_worker_env_defaults_match_settings() -> None:
             assert _default(value) == "config.settings.prod"
             continue
         if name == "CELERY_BROKER_URL":
-            assert _default(value) == "redis://redis-broker:6379/2"
+            assert value == "redis://redis-zip:6379/0"
             assert '"redis://redis-broker:6379/2"' in source
             continue
         match = re.search(rf'env_int\("{name}", ([^)\n]+)\)', source)
@@ -165,6 +165,25 @@ def test_prod_overlay_does_not_define_zip_worker() -> None:
     # section here must be a deliberate, reviewed change that keeps the
     # minimal env and isolation asserted above.
     assert "zip-worker" not in services
+
+
+def test_zip_broker_is_isolated_from_default_broker() -> None:
+    data = _load("compose.yml")
+    zip_worker = data["services"]["zip-worker"]
+    zip_broker = data["services"]["redis-zip"]
+
+    assert zip_worker["environment"]["CELERY_BROKER_URL"] == "redis://redis-zip:6379/0"
+    assert zip_worker["networks"] == ["zipnet"]
+    assert "zipnet" not in data["services"]["redis-broker"]["networks"]
+    assert set(zip_broker["networks"]) == {"internal", "zipnet"}
+    assert zip_worker["depends_on"]["redis-zip"] == {"condition": "service_healthy"}
+    assert "redis-broker" not in zip_worker["depends_on"]
+    assert "redis_zip_data:/data" in zip_broker["volumes"]
+    assert "redis_zip_data" in data["volumes"]
+    # Publishers must use the isolated broker explicitly, not the shared one.
+    for service in ("web", "worker"):
+        value = data["services"][service]["environment"]["CELERY_ZIP_BROKER_URL"]
+        assert value == "${CELERY_ZIP_BROKER_URL:-redis://redis-zip:6379/0}"
 
 
 def test_regular_worker_does_not_consume_zip() -> None:

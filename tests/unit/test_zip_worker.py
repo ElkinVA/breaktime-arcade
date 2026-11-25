@@ -408,7 +408,8 @@ def test_normalize_job_id_rejects_garbage() -> None:
 
 
 def test_queue_routing_and_limits(monkeypatch: pytest.MonkeyPatch) -> None:
-    from apps.pipeline.tasks import enqueue_extraction, extract_zip_task
+    from apps.pipeline import tasks as pipeline_tasks
+    from apps.pipeline.tasks import enqueue_extraction
 
     assert settings.CELERY_TASK_ROUTES["apps.pipeline.tasks.extract_zip_task"]["queue"] == "zip"
     assert settings.CELERY_TASK_ROUTES["apps.pipeline.tasks.cleanup_zip_staging"]["queue"] == "zip"
@@ -421,15 +422,66 @@ def test_queue_routing_and_limits(monkeypatch: pytest.MonkeyPatch) -> None:
 
     calls: dict[str, object] = {}
 
-    def fake_apply_async(args: object = None, kwargs: object = None, **options: object):
+    def fake_send_zip_task(name: str, *, args: tuple[object, ...] = (), queue: str = "zip") -> str:
+        calls["name"] = name
         calls["args"] = args
-        calls["options"] = options
+        calls["queue"] = queue
+        return "task-id"
+
+    monkeypatch.setattr(pipeline_tasks, "send_zip_task", fake_send_zip_task)
+    assert enqueue_extraction("job-id") == "task-id"
+    assert calls["name"] == "apps.pipeline.tasks.extract_zip_task"
+    assert calls["args"] == ("job-id",)
+    assert calls["queue"] == "zip"
+
+
+def test_cleanup_is_dispatched_to_zip_broker(monkeypatch: pytest.MonkeyPatch) -> None:
+    from apps.pipeline import tasks as pipeline_tasks
+    from apps.pipeline.tasks import dispatch_zip_cleanup
+
+    calls: dict[str, object] = {}
+
+    def fake_send_zip_task(name: str, *, args: tuple[object, ...] = (), queue: str = "zip") -> str:
+        calls["name"] = name
+        calls["queue"] = queue
+        return "cleanup-task"
+
+    monkeypatch.setattr(pipeline_tasks, "send_zip_task", fake_send_zip_task)
+
+    assert dispatch_zip_cleanup() == {"task_id": "cleanup-task"}
+    assert calls["name"] == "apps.pipeline.tasks.cleanup_zip_staging"
+    assert calls["queue"] == "zip"
+    schedule = settings.CELERY_BEAT_SCHEDULE["pipeline-dispatch-zip-cleanup"]
+    assert schedule["task"] == "apps.pipeline.tasks.dispatch_zip_cleanup"
+
+
+def test_send_zip_task_uses_explicit_connection(monkeypatch: pytest.MonkeyPatch) -> None:
+    from config import zip_celery
+
+    class FakeConnection:
+        def __enter__(self) -> FakeConnection:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+    connection = FakeConnection()
+    seen: dict[str, object] = {}
+
+    def fake_send_task(name: str, args: object = None, queue: str = "", connection: object = None):
+        seen.update(name=name, args=args, queue=queue, connection=connection)
         return SimpleNamespace(id="task-id")
 
-    monkeypatch.setattr(extract_zip_task, "apply_async", fake_apply_async)
-    assert enqueue_extraction("job-id") == "task-id"
-    assert calls["args"] == ("job-id",)
-    assert calls["options"] == {"queue": "zip"}
+    monkeypatch.setattr(zip_celery, "Connection", lambda url: connection)
+    monkeypatch.setattr(zip_celery.zip_app, "send_task", fake_send_task)
+
+    assert zip_celery.send_zip_task("task.name", args=(1,), queue="zip") == "task-id"
+    assert seen == {
+        "name": "task.name",
+        "args": (1,),
+        "queue": "zip",
+        "connection": connection,
+    }
 
 
 def test_timeout_code_maps_to_timeout_status() -> None:

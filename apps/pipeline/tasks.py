@@ -19,6 +19,7 @@ from apps.pipeline.services.worker import (
     run_extraction,
 )
 from celery import shared_task
+from config.zip_celery import send_zip_task
 
 
 @shared_task(name="apps.pipeline.tasks.extract_zip_task")
@@ -42,6 +43,20 @@ def cleanup_zip_staging() -> dict[str, int]:
     R-036: acks_late + reject_on_worker_lost; idempotent cleanup.
     """
     return cleanup_expired_jobs()
+
+
+@shared_task(name="apps.pipeline.tasks.dispatch_zip_cleanup")
+def dispatch_zip_cleanup() -> dict[str, str]:
+    """Publish the staging cleanup to the isolated zip broker.
+
+    Beat schedules this lightweight task on the default broker; only this
+    dispatcher and extraction jobs cross into `redis-zip`.
+    """
+    result_id = send_zip_task(
+        "apps.pipeline.tasks.cleanup_zip_staging",
+        queue="zip",
+    )
+    return {"task_id": result_id}
 
 
 def _active_extraction_job_ids() -> set[str]:
@@ -88,6 +103,9 @@ def cleanup_pipeline_retention() -> dict[str, int]:
 
 
 def enqueue_extraction(job_id: str) -> str:
-    """Publish extraction explicitly to the isolated queue (web-side helper)."""
-    result = extract_zip_task.apply_async((job_id,), queue="zip")
-    return str(result.id)
+    """Publish extraction explicitly to the isolated zip broker/queue."""
+    return send_zip_task(
+        "apps.pipeline.tasks.extract_zip_task",
+        args=(job_id,),
+        queue="zip",
+    )
