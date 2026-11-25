@@ -229,6 +229,10 @@ def test_recalculate_ratings_command_reports_failures(monkeypatch: pytest.Monkey
     # A dry-run must not hide failures from CI smoke checks either.
     with pytest.raises(CommandError):
         call_command("recalculate_ratings", "--dry-run")
+
+
+@pytest.mark.django_db
+def test_recalculate_ratings_command_rejects_non_positive_limit() -> None:
     with pytest.raises(CommandError):
         call_command("recalculate_ratings", "--limit", "0")
 
