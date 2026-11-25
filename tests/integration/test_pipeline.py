@@ -16,6 +16,7 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from django.db import IntegrityError, connections
 from django.test import override_settings
+from django.utils import timezone
 from django.utils.functional import empty
 from PIL import Image
 
@@ -24,7 +25,11 @@ from apps.i18n.models import Language
 from apps.pipeline.models import GameImportDraft, ZipExtractionJob
 from apps.pipeline.services import importer
 from apps.pipeline.services.importer import import_package
-from apps.pipeline.services.publishing import autotest_passed, publish_version
+from apps.pipeline.services.publishing import (
+    autotest_passed,
+    publish_version,
+    schedule_publish,
+)
 from apps.pipeline.services.rollback import rollback_version
 from apps.pipeline.services.worker import cleanup_expired_jobs, cleanup_upload_jobs
 from apps.pipeline.validation.codes import V_PUBLISHED_UPDATE_BLOCKED
@@ -972,6 +977,20 @@ def test_import_locks_the_technical_id(pipeline_env: Path, monkeypatch) -> None:
     _run(pipeline_env, _package())
 
     assert calls == ["test_game"]
+
+
+@pytest.mark.django_db
+def test_schedule_publish_blocks_validation_errors(pipeline_env: Path) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None
+    blocked = _version_for(first.game, "2.0.0", blockers=1)
+
+    result = schedule_publish(first.game, blocked, timezone.now())
+
+    assert not result.ok
+    assert result.reason == "V_VALIDATION_BLOCKED"
+    first.game.refresh_from_db()
+    assert first.game.publish_at is None
 
 
 @pytest.mark.django_db

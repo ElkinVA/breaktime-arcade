@@ -138,6 +138,8 @@ def schedule_publish(
     """Set a future ``publish_at``; a Celery beat task performs the switch."""
     if version.game_id != game.id:
         return PublishResult(ok=False, reason="V_VERSION_NOT_IN_GAME", game=game, version=version)
+    if _validation_blockers(version):
+        return PublishResult(ok=False, reason="V_VALIDATION_BLOCKED", game=game, version=version)
     if not autotest_passed(version):
         return PublishResult(ok=False, reason="V_AUTOTEST_FAILED", game=game, version=version)
     with transaction.atomic():
