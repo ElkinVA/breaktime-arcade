@@ -110,6 +110,10 @@ SDK_PACKAGE_PATH = "js/ba-sdk.js"
 IMPORT_WRITE_COPIES = 2
 
 
+class PublishedUpdateBlocked(Exception):
+    """The card became published between the pre-check and ``_persist``."""
+
+
 @dataclass(slots=True)
 class ImportResult:
     status: str
@@ -350,7 +354,7 @@ def _import_package(
             # assets until the new version is switched atomically. Draft
             # isolation is not implemented yet, so reject the update instead
             # of mutating the live game before publish.
-            if existing_game.status == Game.STATUS_PUBLISHED:
+            if existing_game.status in Game.PUBLISHED_STATUSES:
                 report.add(
                     V_PUBLISHED_UPDATE_BLOCKED,
                     "Обновление опубликованной игры временно заблокировано",
@@ -450,6 +454,15 @@ def _import_package(
                 e2e_report=autotest.report,
                 created_by=created_by,
             )
+        except PublishedUpdateBlocked:
+            report.add(
+                V_PUBLISHED_UPDATE_BLOCKED,
+                "Обновление опубликованной игры временно заблокировано",
+                hint=(
+                    "Карточка была опубликована во время импорта; дождитесь изоляции draft-импорта."
+                ),
+            )
+            return _reject(draft, report)
         except IntegrityError as exc:
             duplicate = _find_duplicate(intake.package_hash, target_game)
             if duplicate is not None:
@@ -683,6 +696,11 @@ def _persist(
                 slug=_host_label(str(manifest["id"])),
                 primary_genre=genre,
             )
+
+        # A concurrent publish may have changed the status after the earlier
+        # pre-check. Re-check under the row lock before any live mutation.
+        if not created and game.status in Game.PUBLISHED_STATUSES:
+            raise PublishedUpdateBlocked
 
         overridden = {str(item) for item in (game.overridden_fields or [])}
         incoming = game_manifest_values(manifest)

@@ -22,6 +22,7 @@ from PIL import Image
 from apps.catalog.models import Game, GameVersion, Genre, Tag
 from apps.i18n.models import Language
 from apps.pipeline.models import GameImportDraft, ZipExtractionJob
+from apps.pipeline.services import importer
 from apps.pipeline.services.importer import import_package
 from apps.pipeline.services.publishing import autotest_passed, publish_version
 from apps.pipeline.services.rollback import rollback_version
@@ -582,8 +583,12 @@ def test_reimport_of_published_game_is_rejected_without_mutation(
     translations_before = list(
         game.translations.order_by("language__code").values_list("language__code", "name")
     )
-    tags_before = sorted(game.tags.values_list("code", flat=True))
+    tags_before = sorted(game.tag_links.values_list("id", "tag__code"))
     assets_before = sorted(game.assets.values_list("id", "file"))
+    runtime_before = sorted(
+        path.relative_to(Path(first.draft.runtime_path).parent.parent)
+        for path in Path(first.draft.runtime_path).parent.parent.rglob("*")
+    )
 
     second = _run(pipeline_env, _package(version="1.1.0", name="Renamed Game"))
 
@@ -595,8 +600,86 @@ def test_reimport_of_published_game_is_rejected_without_mutation(
         list(game.translations.order_by("language__code").values_list("language__code", "name"))
         == translations_before
     )
-    assert sorted(game.tags.values_list("code", flat=True)) == tags_before
+    assert sorted(game.tag_links.values_list("id", "tag__code")) == tags_before
     assert sorted(game.assets.values_list("id", "file")) == assets_before
+    assert (
+        sorted(
+            path.relative_to(Path(first.draft.runtime_path).parent.parent)
+            for path in Path(first.draft.runtime_path).parent.parent.rglob("*")
+        )
+        == runtime_before
+    )
+    assert GameVersion.objects.filter(game=game).count() == 1
+
+
+@pytest.mark.parametrize("status", [Game.STATUS_HIDDEN, Game.STATUS_ARCHIVED])
+@pytest.mark.django_db
+def test_reimport_of_hidden_or_archived_game_is_rejected(pipeline_env: Path, status: str) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    assert publish_version(game, first.version).ok
+    game.status = status
+    game.save(update_fields=["status"])
+    current_before = game.current_version_id
+    name_before = game.translations.get().name
+
+    second = _run(pipeline_env, _package(version="1.1.0", name="Renamed Game"))
+
+    assert second.status == "rejected"
+    assert any(item.code == V_PUBLISHED_UPDATE_BLOCKED for item in second.report.diagnostics)
+    game.refresh_from_db()
+    assert game.status == status
+    assert game.current_version_id == current_before
+    assert game.translations.get().name == name_before
+    assert GameVersion.objects.filter(game=game).count() == 1
+
+
+@pytest.mark.django_db
+def test_duplicate_reupload_of_published_game_stays_idempotent(
+    pipeline_env: Path,
+) -> None:
+    data = _package()
+    first = _run(pipeline_env, data)
+    assert first.game is not None and first.version is not None
+    game = first.game
+    assert publish_version(game, first.version).ok
+    game.refresh_from_db()
+    current_before = game.current_version_id
+
+    second = _run(pipeline_env, data)
+
+    assert second.status == "duplicate"
+    assert not any(item.code == V_PUBLISHED_UPDATE_BLOCKED for item in second.report.diagnostics)
+    game.refresh_from_db()
+    assert game.status == Game.STATUS_PUBLISHED
+    assert game.current_version_id == current_before
+    assert GameVersion.objects.filter(game=game).count() == 1
+
+
+@pytest.mark.django_db
+def test_publish_during_import_is_rechecked_under_lock(pipeline_env: Path, monkeypatch) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    real_build_runtime = importer.build_runtime
+    published: list[bool] = []
+
+    def build_after_publish(*args, **kwargs):
+        if not published:
+            assert publish_version(game, first.version).ok
+            published.append(True)
+        return real_build_runtime(*args, **kwargs)
+
+    monkeypatch.setattr(importer, "build_runtime", build_after_publish)
+
+    second = _run(pipeline_env, _package(version="1.1.0"))
+
+    assert second.status == "rejected"
+    assert any(item.code == V_PUBLISHED_UPDATE_BLOCKED for item in second.report.diagnostics)
+    game.refresh_from_db()
+    assert game.status == Game.STATUS_PUBLISHED
+    assert game.current_version_id == first.version.id
     assert GameVersion.objects.filter(game=game).count() == 1
 
 

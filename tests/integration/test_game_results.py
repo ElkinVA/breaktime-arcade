@@ -720,6 +720,7 @@ def test_profile_result_with_empty_events_is_quarantined() -> None:
     assert response.json()["status"] == "quarantined"
     result = GameResult.objects.get(session_id=session_id)
     assert result.is_quarantined is True
+    assert result.trust_level == GameResult.TRUST_CLIENT_REPORTED
     assert "empty_event_log" in result.verifier_flags["flags"]
     assert not LeaderboardEntry.objects.filter(game=game, user=user).exists()
 
