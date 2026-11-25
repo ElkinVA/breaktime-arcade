@@ -65,23 +65,24 @@ def _validation_blockers(version: GameVersion) -> int:
     return 0 if report.get("ok", True) else 1
 
 
-def autotest_passed(version: GameVersion) -> bool:
+def autotest_passed(version: GameVersion, *, require_browser: bool | None = None) -> bool:
     """Static checks always count; browser proof is required where configured.
 
     ``version.e2e_report`` is produced by the import sandbox and is currently
     static-only (``playwright=False``). Production must not treat that as a
     browser pass, so the stricter requirement is a deployment setting until a
-    real browser runner writes ``playwright=True`` reports.
+    real browser runner writes ``playwright=True`` reports. Rollback passes
+    ``require_browser=False``: the target already passed the historical
+    publish gate and must stay available for incident recovery.
     """
     report = version.e2e_report or {}
     if report.get("passed") is not True:
         return False
-    if not getattr(settings, "PUBLISH_REQUIRE_BROWSER_AUTOTEST", False):
+    if require_browser is None:
+        require_browser = bool(getattr(settings, "PUBLISH_REQUIRE_BROWSER_AUTOTEST", False))
+    if not require_browser:
         return True
     return report.get("playwright") is True
-
-
-_autotest_passed = autotest_passed
 
 
 def publish_version(
@@ -100,7 +101,7 @@ def publish_version(
             return PublishResult(
                 ok=False, reason="V_VALIDATION_BLOCKED", game=game, version=version
             )
-        if not _autotest_passed(version):
+        if not autotest_passed(version):
             return PublishResult(ok=False, reason="V_AUTOTEST_FAILED", game=game, version=version)
 
     timestamp = now or timezone.now()
@@ -137,7 +138,7 @@ def schedule_publish(
     """Set a future ``publish_at``; a Celery beat task performs the switch."""
     if version.game_id != game.id:
         return PublishResult(ok=False, reason="V_VERSION_NOT_IN_GAME", game=game, version=version)
-    if not _autotest_passed(version):
+    if not autotest_passed(version):
         return PublishResult(ok=False, reason="V_AUTOTEST_FAILED", game=game, version=version)
     with transaction.atomic():
         locked = Game.objects.select_for_update().get(pk=game.pk)

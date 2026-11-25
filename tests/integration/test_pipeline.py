@@ -684,6 +684,25 @@ def test_publish_during_import_is_rechecked_under_lock(pipeline_env: Path, monke
 
 
 @pytest.mark.django_db
+@override_settings(PUBLISH_REQUIRE_BROWSER_AUTOTEST=True)
+def test_rollback_of_previously_published_static_version_stays_available(
+    pipeline_env: Path,
+) -> None:
+    first = _run(pipeline_env, _package())
+    assert first.game is not None and first.version is not None
+    game = first.game
+    assert publish_version(game, first.version, force=True).ok
+    replacement = _version_for(game, "2.0.0")
+    assert publish_version(game, replacement, force=True).ok
+
+    result = rollback_version(game, first.version)
+
+    assert result.ok
+    game.refresh_from_db()
+    assert game.current_version_id == first.version.id
+
+
+@pytest.mark.django_db
 def test_rollback_rejects_never_published_version(pipeline_env: Path) -> None:
     first = _run(pipeline_env, _package())
     assert first.game is not None and first.version is not None

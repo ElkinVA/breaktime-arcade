@@ -16,9 +16,9 @@ from django.db import transaction
 
 from apps.catalog.models import Game, GameVersion
 from apps.pipeline.services.publishing import (
-    _autotest_passed,
     _record_publication,
     _validation_blockers,
+    autotest_passed,
 )
 
 ROLLBACK_STATUSES = {Game.STATUS_PUBLISHED, Game.STATUS_HIDDEN, Game.STATUS_ARCHIVED}
@@ -83,7 +83,7 @@ def rollback_version(
             return RollbackResult(
                 ok=False, reason="V_VALIDATION_BLOCKED", game=game, version=target
             )
-        if not _autotest_passed(target):
+        if not autotest_passed(target, require_browser=False):
             return RollbackResult(ok=False, reason="V_AUTOTEST_FAILED", game=game, version=target)
         target_direction, target_schema = _score_rules(target)
         current_direction, current_schema = _current_score_rules(locked)

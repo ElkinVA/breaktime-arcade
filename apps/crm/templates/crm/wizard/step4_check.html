@@ -17,8 +17,10 @@
     <section class="p-5 bg-surface rounded-card border border-text/10" data-testid="crm-wizard-autotest">
         <h2 class="text-lg font-display font-bold mb-2">Автотест</h2>
         <p class="text-sm mb-3">
-            {% if autotest.passed %}
+            {% if readiness.autotest_passed %}
                 <span class="text-accent font-semibold" data-testid="crm-wizard-autotest-status">Пройден</span>
+            {% elif autotest.passed %}
+                <span class="text-red-300 font-semibold" data-testid="crm-wizard-autotest-status">Недостаточен для публикации</span>
             {% else %}
                 <span class="text-red-300 font-semibold" data-testid="crm-wizard-autotest-status">Не пройден</span>
             {% endif %}
