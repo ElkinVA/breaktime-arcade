@@ -2291,3 +2291,27 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Модели:** реализация — `deepseek-flash[1m]`; review — `code-reviewer`
   (`deepseek-v4-pro`, text-only).
 - **Commit:** `a1388da`, `16dba6d`.
+
+### ARCADE-REDIS-BROKER-ISOLATION-001 — отдельный broker для ZIP-очереди
+
+- **Первопричина:** zip-worker и остальной Celery делили `redis-broker` без
+  auth/ACL; скомпрометированный worker мог читать/удалять default-задачи или
+  опубликовать задачу для обычного worker с доступом к БД.
+- **Результат:** добавлен `redis-zip` (`internal`+`zipnet`, AOF/noeviction,
+  64mb/96m); `redis-broker` убран из `zipnet`; zip-worker жёстко на
+  `redis://redis-zip:6379/0` и не резолвит default broker/БД/кеш.
+  Publisher-only Celery app с явным Kombu `Connection` обходит приоритет
+  env `CELERY_BROKER_URL`; beat планирует dispatcher очистки в default, а
+  dispatcher публикует cleanup в zip broker. Стоимость/варианты —
+  `docs/tasks/REDIS-ZIP-ISOLATION-001.md`.
+- **Проверки:** targeted 66; live: dispatcher→cleanup и
+  enqueue_extraction→extract_zip_task доставлены zip-worker; DNS
+  redis-broker/db/redis-cache из zip-worker недоступен; ruff/format clean
+  (485), mypy clean (393); полный suite **1259 passed, 14 skipped, exit 0**.
+- **Review:** code-reviewer ACCEPT; minors (комментарии, route warning,
+  retry-семантика) закрыты/задокументированы.
+- **Остаток:** auth внутри zipnet нет (граница — сеть); staging/prod live
+  NOT TESTED; web/worker остаются доверенными publisher-сетями.
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `code-reviewer`
+  (`deepseek-v4-pro`, text-only).
+- **Commit:** `9fc9096`.

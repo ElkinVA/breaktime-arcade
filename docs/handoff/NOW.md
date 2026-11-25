@@ -4,14 +4,20 @@
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 
-- HEAD `16dba6d` (isolated browser autotest runner) после AI HQ
-  `f303b01`/`86b21d6`/`b3f42ce` и прежней очереди `e136af8`…`1fc0e97`; этот
-  docs-коммит обновляет реестры, затем `origin/main` синхронизируется push.
-- Последний полный Python gate: **1256 passed, 14 skipped, exit 0** на
-  reuse-DB без `--create-db` (9:42, HEAD `16dba6d`); ruff/format clean (484),
-  mypy clean (392). JS suite **31/31**. Первый прогон дал тот же редкий
-  moderation step-up flake (прошёл 5/5 отдельно и 45/45 файлом); наблюдение,
-  не исправление. Перед gate проверять отсутствие orphaned pytest/test_ba.
+- HEAD `9fc9096` (isolated ZIP Redis broker) после browser runner `16dba6d`,
+  AI HQ `f303b01`/`86b21d6`/`b3f42ce` и прежней очереди `e136af8`…`1fc0e97`;
+  этот docs-коммит обновляет реестры, затем `origin/main` синхронизируется
+  push.
+- Последний полный Python gate: **1259 passed, 14 skipped, exit 0** на
+  reuse-DB без `--create-db` (10:04, HEAD `9fc9096`); ruff/format clean (485),
+  mypy clean (393). JS suite **31/31**. Первый прогон после browser runner
+  дал тот же редкий moderation step-up flake (прошёл 5/5 отдельно и 45/45
+  файлом); наблюдение, не исправление. Перед gate проверять отсутствие
+  orphaned pytest/test_ba.
+- ZIP Redis isolation: `ARCADE-REDIS-BROKER-ISOLATION-001` (`9fc9096`) —
+  **COMPLETED / code-review ACCEPT**; отдельный `redis-zip`, zip-worker не
+  видит default broker; publisher-only app с explicit connection; live
+  dispatcher/extraction доставлены; стоимость — один Redis 96 МБ + volume.
 - Browser publish gate: `ARCADE-BROWSER-AUTOTEST-RUNNER-001`
   (`a1388da` + `16dba6d`) — **COMPLETED / code-review ACCEPT после reject**;
   Chromium вынесен в secretless `browser-autotest` (autotestnet, без
@@ -27,7 +33,7 @@
   Приняты и исправлены P1 импортов, browser gate, empty eventLog и P2
   pagehide; дополнительно probe_seed guard, validation-gate
   schedule_publish, точная граница eventLog и общая константа. Draft
-  isolation §4.1, Redis broker isolation и PB `is_public` — owner-gated.
+  isolation §4.1 и PB `is_public` — owner-gated.
 - Локальная инфраструктура 2026-11-25: staging-стек остановлен
   (`make staging-down`) из-за исчерпания RAM/swap; volumes/данные не
   удалялись, для staging-проверок поднять `make staging-up`. Host после
@@ -140,11 +146,10 @@
   владельца. `ARCADE-RUNTIME-ORPHAN-001`,
   `ARCADE-ZIP-WORKER-SECRETS-001` и `ARCADE-RATINGS-NIGHTLY-001`
   завершены. Приоритет после аудита: (1) owner-решения по draft isolation
-  §4.1, browser runner/override, AI HQ OS sandbox, Redis broker isolation,
-  PB `is_public`; (2) `ARCADE-CI-BROWSER-E2E-001` и staging на ресурсах с
-  реальным RAM/swap; (3) §6.2 Neon restart/seed, §6.3 Archer RNG, §6.4/6.6
-  SDK serializer/score type (публичный контракт), §6.10 player error
-  messages (i18n data-миграция); (4) мелкие follow-up
+  §4.1 и PB `is_public`; (2) `ARCADE-CI-BROWSER-E2E-001` и staging на
+  ресурсах с реальным RAM/swap; (3) §6.2 Neon restart/seed, §6.3 Archer RNG,
+  §6.4/6.6 SDK serializer/score type (публичный контракт), §6.10 player
+  error messages (i18n data-миграция); (4) мелкие follow-up
   `ARCADE-SUBMIT-RESTART-HARDENING-001`, eventLog boundary, ratings offset.
   Stage C §4.1/§4.3 — owner-gated.
 

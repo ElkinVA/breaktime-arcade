@@ -528,6 +528,22 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.60. Isolated ZIP Redis broker — 2026-11-25
+
+`ARCADE-REDIS-BROKER-ISOLATION-001` (`9fc9096`) — **COMPLETED / CODE-REVIEW
+ACCEPT**. ZIP-очередь перенесена на отдельный `redis-zip`: default
+`redis-broker` убран из `zipnet`,
+`zip-worker` видит только `redis-zip`, его broker жёстко
+`redis://redis-zip:6379/0`. Издатели используют publisher-only Celery app с
+явным Kombu `Connection` (Celery отдаёт env `CELERY_BROKER_URL` приоритет над
+`broker=`), beat планирует dispatcher очистки в default-очереди, dispatcher
+публикует cleanup в zip broker. Live: zip-worker не резолвит
+redis-broker/db/redis-cache; dispatcher→cleanup и `enqueue_extraction`→
+`extract_zip_task` доставлены в zip-worker; targeted 66; ruff/format clean
+(485), mypy clean (393); полный suite **1259 passed, 14 skipped, exit 0**.
+Стоимость и варианты — `docs/tasks/REDIS-ZIP-ISOLATION-001.md`.
+Остатки: нет auth внутри zipnet (граница — сеть), staging/prod live NOT TESTED.
+
 ## 0.59. Browser autotest runner — 2026-11-25
 
 `ARCADE-BROWSER-AUTOTEST-RUNNER-001` (`a1388da` + `16dba6d`) —
@@ -594,9 +610,9 @@ worktree ro, cross-task gitdir, live unattended run NOT TESTED.
 имеет точный boundary-тест на 2 MiB и общую константу. Финальный полный
 suite: **1250 tests: 1237 passed, 13 skipped, exit 0**; pipeline 40,
 pipeline+wizard 50, result 30, JS 31; ruff/format/mypy clean (388).
-Owner-gated остатки: AI HQ OS sandbox, Redis broker isolation, draft
-isolation, browser runner/override, PB `is_public` semantics; staging
-по-прежнему остановлен, browser E2E не входит в CI.
+Owner-gated остатки: draft isolation §4.1, PB `is_public` semantics; staging
+по-прежнему остановлен, browser E2E не входит в CI. AI HQ OS sandbox,
+browser runner и Redis broker isolation закрыты в 0.58–0.60.
 
 ## 0.56. Shared leaderboard rank — 2026-11-25
 

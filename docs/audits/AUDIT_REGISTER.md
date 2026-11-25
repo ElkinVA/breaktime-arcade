@@ -890,6 +890,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Остаток | prod/staging image build и nginx game hosts — deploy gate; CI browser E2E; `entry_path` hardcoded; live importer→service smoke не выполнялся (client/service проверены отдельно) |
 | Источник | commit `a1388da` + `16dba6d`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
 
+## ARCADE-REDIS-BROKER-ISOLATION-001 — isolated ZIP broker
+
+| Поле | Значение |
+|---|---|
+| Тип | P1 infrastructure security; independent code review |
+| Результат | отдельный `redis-zip` (internal+zipnet, AOF/noeviction); `redis-broker` убран из zipnet; zip-worker жёстко на redis-zip и не резолвит default broker/БД/кеш; publisher-only Celery app с явным Kombu Connection; beat dispatcher публикует cleanup в zip broker |
+| Проверки | targeted 66; live: dispatcher→cleanup и enqueue→extract доставлены zip-worker; DNS default broker/DB/cache недоступны; ruff/format clean (485), mypy clean (393); full suite **1259 passed, 14 skipped, exit 0** |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT**; minors: комментарии/маршруты, retry-семантика dispatcher задокументирована |
+| Остаток | нет auth внутри zipnet (граница — сеть); staging/prod live NOT TESTED; publisher-сети web/worker остаются доверенными |
+| Источник | commit `9fc9096`; eval `docs/tasks/REDIS-ZIP-ISOLATION-001.md`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-EXTERNAL-AUDIT-2026-11-25 — P1/P2 response
 
 | Поле | Значение |
@@ -897,7 +908,7 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Тип | Внешний статический audit + code fixes; независимые review |
 | Результат | published-import blocker и re-lock re-check (`1763554`/`cc9923b`); production browser autotest gate + rollback exemption (`50f9135`/`d8c5d9f`); empty eventLog quarantine (`154de78`); pagehide pending-submit guard (`64d7149`); probe_seed guard, schedule validation/autotest tests, exact eventLog boundary (`8756e8c`, `541280a`, `4bd039c`, `e136af8`) |
 | Проверки | pipeline 40; pipeline+wizard 50; result 30; JS 31; полный suite **1250 tests: 1237 passed, 13 skipped, exit 0** (на `e136af8`); ruff/format/mypy clean (388) |
-| Статус | **PARTIAL / CODE FIXES ACCEPT**; AI HQ OS sandbox и browser runner закрыты, остаются owner-gated Redis broker isolation, draft isolation и PB `is_public` |
+| Статус | **PARTIAL / CODE FIXES ACCEPT**; AI HQ OS sandbox, browser runner и Redis broker isolation закрыты, остаются owner-gated draft isolation и PB `is_public` |
 | Остаток | browser E2E в CI, staging/prod live, server-side terminal operation для pagehide, PB `is_public` semantics |
 | Источник | `docs/audits/EXTERNAL_AUDIT_2026-11-25.md`; commits above; review agents text-only |
 

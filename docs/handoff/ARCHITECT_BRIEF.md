@@ -89,8 +89,8 @@ ambiguity.
   quarantined under a verification profile; pagehide does not close a session
   with an in-flight submit. Minor audit items are closed too: probe_seed is
   dev-only, schedule_publish checks validation/autotest, and the exact 2 MiB
-  eventLog boundary is pinned. AI HQ OS sandbox and the browser runner are
-  closed; Redis broker isolation, draft isolation, PB `is_public` and the
+  eventLog boundary is pinned. AI HQ OS sandbox, the browser runner and the
+  isolated ZIP broker are closed; draft isolation, PB `is_public` and the
   staging browser topology remain owner-gated.
 - Leaderboard rank: a non-personal-best submit returns the position of the
   user's existing best row, not the hypothetical position of the worse run;
@@ -119,6 +119,15 @@ ambiguity.
   staging and a pinned empty prod overlay (`ARCADE-ZIP-WORKER-SECRETS-001`,
   `1c19af5`/`d90af22`/`1cbbec3`). Live dev worker/probe extraction passed;
   staging/prod untested; dev-lite repo mount and no-Sentry residuals remain.
+- ZIP broker isolation: the `zip` queue now lives on `redis-zip`; the default
+  `redis-broker` is no longer on `zipnet`, and zip-worker is fixed to
+  `redis://redis-zip:6379/0`. Publishers use a publisher-only Celery app with
+  an explicit Kombu connection (Celery's legacy env precedence would
+  otherwise route to the default broker); beat schedules a dispatcher that
+  publishes cleanup to zip. Live dev: zip-worker cannot resolve
+  redis-broker/db/cache; cleanup and extraction traverse the isolated broker
+  (`ARCADE-REDIS-BROKER-ISOLATION-001`, eval in
+  `docs/tasks/REDIS-ZIP-ISOLATION-001.md`). Staging/prod live untested.
 - Test infrastructure: the reuse-DB fixture now reseeds every i18n
   `*_seed_*.py` migration after a transaction-test flush, discovered in
   migration order with fail-loud guards (`ARCADE-TEST-DB-SEED-001`,

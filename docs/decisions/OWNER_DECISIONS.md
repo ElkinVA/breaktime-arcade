@@ -331,7 +331,7 @@ ADR:
 | Owner-only audited override для публикации без browser E2E (роль + причина + audit event) | **Отклонено владельцем:** сложный audited override не внедряется; обход через env считается операторским изменением конфигурации, а не штатным путём |
 | Browser autotest на staging при Basic Auth и внешнем порту 8444 (внутренний listener 8443) | **Временно выключен** в `config/settings/staging.py`; включение требует решения владельца о staging-топологии и credentials harness |
 | AI HQ Developer/QA должны работать в отдельном unprivileged container/VM с task-only mount, без host Docker/SSH/credentials | **Решено владельцем:** простейшая надёжная изоляция; реализовано namespace+Landlock (`f303b01`/`86b21d6`/`b3f42ce`, security ACCEPT), product acceptance pending |
-| Отдельный Redis broker/ACL для ZIP worker, запрет publish в default queue | **Требует решения владельца/инфраструктуры** |
+| Отдельный Redis broker/ACL для ZIP worker, запрет publish в default queue | **Решено технически:** отдельный `redis-zip` без auth/секретов, zip-worker только в `zipnet`; стоимость — +1 Redis (лимит 96 МБ, idle ~10–20 МБ), volume и dispatcher; оценка в `docs/tasks/REDIS-ZIP-ISOLATION-001.md`; product acceptance pending |
 | Семантика скрытых leaderboard-строк для PB/rank (`is_public`) | **Требует продуктового решения** до появления moderation hide |
 
 ## Источники
