@@ -40,6 +40,7 @@ def pipeline_env(db, tmp_path, settings, inline_zip_worker):
     settings.MEDIA_ROOT = str(tmp_path / "media")
     settings.ZIP_UPLOADS_ROOT = str(tmp_path / "zip-uploads")
     settings.ZIP_ARTIFACTS_ROOT = str(tmp_path / "zip-artifacts")
+    settings.ZIP_QUOTA_STATE_ROOT = str(tmp_path / "quota-state")
     default_storage._wrapped = empty
     Genre.objects.get_or_create(code="arcade")
     Language.objects.get_or_create(code="en", defaults={"name": "English"})
@@ -190,7 +191,6 @@ def _run(env: Path, data: bytes, **kwargs):
 def test_valid_package_creates_card_version_and_runtime(pipeline_env: Path) -> None:
     data = _package()
     result = _run(pipeline_env, data)
-
     assert result.status == "created"
     assert result.ok
     assert result.game is not None and result.version is not None
@@ -977,6 +977,58 @@ def test_import_locks_the_technical_id(pipeline_env: Path, monkeypatch) -> None:
     _run(pipeline_env, _package())
 
     assert calls == ["test_game"]
+
+
+@pytest.mark.django_db
+@override_settings(BROWSER_AUTOTEST_ENABLED=True)
+def test_import_persists_browser_autotest_report(
+    pipeline_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from apps.pipeline.services import importer
+
+    browser = SimpleNamespace(
+        passed=True,
+        report={
+            "passed": True,
+            "kind": "browser",
+            "playwright": True,
+            "checks": [{"name": "sdk_handshake", "passed": True}],
+        },
+    )
+    monkeypatch.setattr(importer, "run_browser_autotest", lambda **kwargs: browser)
+
+    result = _run(pipeline_env, _package())
+
+    assert result.status == "created"
+    assert result.version is not None
+    assert result.version.e2e_report["playwright"] is True
+    assert result.version.e2e_report["passed"] is True
+
+
+@pytest.mark.django_db
+@override_settings(BROWSER_AUTOTEST_ENABLED=True)
+def test_import_with_failed_browser_report_is_not_publishable(
+    pipeline_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from apps.pipeline.services import importer
+
+    browser = SimpleNamespace(
+        passed=False,
+        report={
+            "passed": False,
+            "kind": "browser",
+            "playwright": True,
+            "checks": [{"name": "sdk_handshake", "passed": False}],
+        },
+    )
+    monkeypatch.setattr(importer, "run_browser_autotest", lambda **kwargs: browser)
+
+    result = _run(pipeline_env, _package())
+    assert result.status == "created" and result.game is not None and result.version is not None
+    published = publish_version(result.game, result.version)
+
+    assert not published.ok
+    assert published.reason == "V_AUTOTEST_FAILED"
 
 
 @pytest.mark.django_db

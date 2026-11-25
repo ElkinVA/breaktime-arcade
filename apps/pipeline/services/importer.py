@@ -40,6 +40,11 @@ from apps.pipeline.services.artifacts import (
     store_runtime,
 )
 from apps.pipeline.services.autotest import run_autotest
+from apps.pipeline.services.browser_autotest import (
+    BrowserAutotestUnavailable,
+    merge_autotest_reports,
+    run_browser_autotest,
+)
 from apps.pipeline.services.bundling import build_runtime
 from apps.pipeline.services.diff import (
     game_manifest_values,
@@ -433,6 +438,33 @@ def _import_package(
             report.add(exc.code, exc.message)
             return _reject(draft, report)
 
+        e2e_report = autotest.report
+        if settings.BROWSER_AUTOTEST_ENABLED:
+            try:
+                browser = run_browser_autotest(
+                    host_label=runtime_label,
+                    runtime_hash=bundle.runtime_hash,
+                    game_id=str(manifest["id"]),
+                    game_version=str(manifest["version"]),
+                    portal_origin=settings.PORTAL_ORIGIN,
+                    games_domain=settings.GAMES_DOMAIN,
+                    timeout_seconds=settings.BROWSER_AUTOTEST_TIMEOUT_SECONDS,
+                    resolver=settings.BROWSER_AUTOTEST_RESOLVER,
+                    headless=settings.BROWSER_AUTOTEST_HEADLESS,
+                )
+                e2e_report = merge_autotest_reports(autotest.report, browser.report)
+            except BrowserAutotestUnavailable as exc:
+                e2e_report = merge_autotest_reports(
+                    autotest.report,
+                    {
+                        "passed": False,
+                        "kind": "browser",
+                        "playwright": False,
+                        "error": str(exc),
+                        "checks": [],
+                    },
+                )
+
         try:
             game, version, conflicts = _persist(
                 manifest=manifest,
@@ -451,7 +483,7 @@ def _import_package(
                 critical_measured=bundle.critical_path.measured_bytes,
                 report=report,
                 injection_report=bundle.injection_report.as_dict(),
-                e2e_report=autotest.report,
+                e2e_report=e2e_report,
                 created_by=created_by,
             )
         except PublishedUpdateBlocked:

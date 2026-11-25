@@ -26,6 +26,7 @@ HIBP_ENABLED = env_bool("HIBP_ENABLED", True)
 # The importer currently writes static-only reports (playwright=False). Do not
 # treat them as browser proof in production until a real runner exists.
 PUBLISH_REQUIRE_BROWSER_AUTOTEST = env_bool("PUBLISH_REQUIRE_BROWSER_AUTOTEST", True)
+BROWSER_AUTOTEST_ENABLED = env_bool("BROWSER_AUTOTEST_ENABLED", True)
 EMAIL_HOST = env("EMAIL_HOST")
 EMAIL_PORT = int(env("EMAIL_PORT", "587"))
 EMAIL_HOST_USER = env("EMAIL_USER")

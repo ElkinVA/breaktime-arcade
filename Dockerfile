@@ -59,6 +59,11 @@ COPY --from=assets --chown=app:app /build/static/dist /app/static/dist
 RUN DJANGO_SECRET_KEY=build-only python manage.py collectstatic --noinput \
  && chown -R app:app /app/staticfiles \
  && chmod -R a+rX /app/staticfiles /app/media
+# Browser autotest for publish gating. The headless shell is enough; OS
+# dependencies are installed by Playwright. Runtime user stays unprivileged.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN python -m playwright install --with-deps chromium-headless-shell \
+ && chmod -R a+rX /ms-playwright
 USER app
 EXPOSE 8000
 ENTRYPOINT ["/app/infra/scripts/entrypoint.sh"]

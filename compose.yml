@@ -65,6 +65,8 @@ services:
       ZIP_STORAGE_QUOTA_BYTES: "${ZIP_STORAGE_QUOTA_BYTES:-2147483648}"
       ZIP_STORAGE_MIN_FREE_BYTES: "${ZIP_STORAGE_MIN_FREE_BYTES:-157286400}"
       ZIP_QUOTA_RESERVATION_TTL_SECONDS: "${ZIP_QUOTA_RESERVATION_TTL_SECONDS:-3600}"
+      # Browser autotest resolves portal/game hostnames to the local nginx.
+      BROWSER_AUTOTEST_RESOLVER: "${BROWSER_AUTOTEST_RESOLVER:-nginx}"
     volumes:
       - static_data:/app/staticfiles
       - media_data:/app/media
