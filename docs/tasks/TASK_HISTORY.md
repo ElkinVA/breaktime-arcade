@@ -1488,6 +1488,29 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-TEST-DB-SEED-001 — reseed всех i18n seed-миграций
+
+- **Первопричина:** после `django_db(transaction=True)` pytest-django делает
+  flush; fixture `tests/conftest.py` восстанавливал только i18n 0002/0003,
+  поэтому строки 0004-0012 отсутствовали в reuse-DB прогоне и публичные
+  страницы падали (воспроизведено в `test_home_blocks.py`).
+- **Результат:** seed-модули собираются динамически из
+  `apps/i18n/migrations/[0-9]*_seed_*.py` в порядке миграций; вызывается
+  `seed_languages`/`seed_strings`; reseed перед transaction-тестом и после
+  teardown. Пустой glob или модуль без известной функции теперь даёт
+  RuntimeError (fail-loud), а не тихий no-op.
+- **Проверки:** полный suite **1214 tests: 1201 passed, 13 skipped, exit 0**
+  на reuse-DB (13:00) без `--create-db`; targeted transaction+home — 4
+  passed; ruff/format/mypy clean. Code-reviewer: **ACCEPT**, delta
+  **ACCEPT**. Один редкий step-up флейк в moderation наблюдался однократно,
+  не воспроизвёлся (10 одиночных, 3 файловых, 2 полных прогона).
+- **Остатки:** прерывание сразу после flush до teardown-reseed оставляет
+  reuse-DB пустой до следующего transaction-прогона; step-up флейк не
+  доказан и не исправлялся; test-only.
+- **Модели:** реализация — `deepseek-flash[1m]`; review —
+  `code-reviewer` (`deepseek-v4-pro`, text-only).
+- **Commit:** `8e5f507`, `995f5d2`.
+
 ### ARCADE-RUNTIME-ORPHAN-001 — TTL-очистка runtime без ссылок
 
 - **Первопричина:** опубликованные runtime-каталоги не удалялись никогда;

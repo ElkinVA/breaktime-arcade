@@ -4,16 +4,18 @@
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 
-- HEAD `34f237f` (orphan runtime) после `03aaf0f` (concurrent import),
-  `1687517` (ZIP reaper), `26d8075` (email reset), `cdb567a`
-  (restore-check), `ab62a7d` + `116efbd`, `766029e`, `88c2a64`,
-  `ecfb419`, `bbfdcaf`, `de08292`, `b953419`, `1fc0e97`, B1/CI; этот
-  docs-коммит обновляет реестры, затем `origin/main` синхронизируется push.
+- HEAD `995f5d2` (test-DB reseed delta) после `8e5f507`, `34f237f`
+  (orphan runtime), `03aaf0f` (concurrent import), `1687517` (ZIP reaper),
+  `26d8075` (email reset), `cdb567a` (restore-check), `ab62a7d` +
+  `116efbd`, `766029e`, `88c2a64`, `ecfb419`, `bbfdcaf`, `de08292`,
+  `b953419`, `1fc0e97`, B1/CI; этот docs-коммит обновляет реестры, затем
+  `origin/main` синхронизируется push.
 - Последний полный gate: **1214 tests: 1201 passed, 13 skipped, exit 0** на
-  свежей БД (14:28); ruff/format clean, mypy 383 файла clean.
-  Real restore-check на dev PASS (44/42/10). Reuse-DB issue —
-  `ARCADE-TEST-DB-SEED-001`; перед gate проверять отсутствие orphaned
-  pytest/test_ba-сессий.
+  reuse-DB без `--create-db` (13:00); ruff/format clean, mypy 383 файла
+  clean. Fresh-DB gate (14:28) остаётся в силе. Reuse-DB issue
+  `ARCADE-TEST-DB-SEED-001` закрыт; перед gate проверять отсутствие
+  orphaned pytest/test_ba-сессий. Один редкий step-up флейк moderation не
+  воспроизведён — наблюдение, не исправление.
 - AI HQ: 26 прежних COMPLETED + AI-HQ-CI-001 (CI run NOT VERIFIED) +
   AI-HQ-A1 (security accept); 5 BLOCKED. Cost accounting — только фактический
   modelUsage, не stop-condition; см. `.autonomy/state.json`.
@@ -30,6 +32,10 @@
   IP-failure burst race, CSRF device rotation, hard 30/day без challenge,
   authenticated sessions_ip exemption, heartbeat invalid-id buckets,
   DRF counters non-atomic.
+- Test infra (`8e5f507` + `995f5d2`): fixture восстанавливает все i18n
+  seed-миграции 0002-0012 после transaction-flush; discovery динамический,
+  fail-loud; reuse-DB gate зелёный без `--create-db`
+  (`ARCADE-TEST-DB-SEED-001`).
 - P1 ZIP pipeline (`1687517` + `03aaf0f` + `34f237f`): reaper зависших
   RUNNING jobs (TTL 600 s, beat 5 мин, X_JOB_STALE), сериализация импорта
   одной игры (advisory lock technical_id, adoption, `V_ID_CONFLICT`,

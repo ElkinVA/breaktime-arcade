@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-TEST-DB-SEED-001 — complete i18n reseed after flush
+
+| Поле | Значение |
+|---|---|
+| Тип | Test-infra correction; product untouched |
+| Результат | dynamic discovery of all `apps/i18n/migrations/*_seed_*.py` in migration order, idempotent reseed before/after transaction tests, fail-loud on empty glob/unknown seeder |
+| Проверки | full reuse-DB suite **1214 tests: 1201 passed, 13 skipped, exit 0** (13:00); targeted transaction+home 4 passed; ruff/format/mypy clean; code-reviewer ACCEPT + delta ACCEPT |
+| Статус | **COMPLETED**; test-only; no product acceptance claimed |
+| Остаток | interrupted run can leave reuse-DB unseeded until next transaction test; one unreproduced step-up flake noted |
+| Источник | commits `8e5f507`, `995f5d2`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-RUNTIME-ORPHAN-001 — ref-aware runtime TTL cleanup
 
 | Поле | Значение |

@@ -67,6 +67,11 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- Test infrastructure: the reuse-DB fixture now reseeds every i18n
+  `*_seed_*.py` migration after a transaction-test flush, discovered in
+  migration order with fail-loud guards (`ARCADE-TEST-DB-SEED-001`,
+  `8e5f507`/`995f5d2`); full reuse-DB suite is green (1201/13). One rare
+  step-up moderation flake remains unreproduced and unfixed.
 - ZIP pipeline: same-game imports serialize on a technical_id advisory
   lock and adopt a concurrently created card; V_ID_CONFLICT is distinct
   from V_VERSION_DUP, and runtime rename races adopt an identical bundle

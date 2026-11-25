@@ -528,6 +528,23 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.50. Complete i18n reseed for reuse-DB — 2026-11-25
+
+`ARCADE-TEST-DB-SEED-001` (`8e5f507` + `995f5d2`) — **COMPLETED**:
+transaction-тесты делают flush, а fixture восстанавливал только i18n
+0002/0003, поэтому reuse-DB прогон падал на страницах, которым нужны строки
+0004-0012. Теперь seed-модули собираются динамически из
+`apps/i18n/migrations/[0-9]*_seed_*.py` в порядке миграций (11 модулей),
+вызываются идемпотентные `seed_languages`/`seed_strings` перед каждым
+transaction-тестом и после teardown; пустой glob или модуль без известной
+функции даёт RuntimeError. Проверки: полный suite **1214 tests: 1201
+passed, 13 skipped, exit 0** на reuse-DB без `--create-db` (13:00);
+targeted transaction+home 4 passed; ruff/format/mypy clean. Модели:
+реализация — `deepseek-flash[1m]`, review — `code-reviewer`
+(`deepseek-v4-pro`, text-only), ACCEPT + delta ACCEPT. Остатки: прерывание
+после flush до teardown-reseed требует следующего transaction-прогона;
+один редкий step-up флейк moderation не воспроизведён; продукт не менялся.
+
 ## 0.49. Orphan runtime TTL cleanup — 2026-11-25
 
 `ARCADE-RUNTIME-ORPHAN-001` (`34f237f`) — **COMPLETED / CODE-REVIEW ACCEPT**:
