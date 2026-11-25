@@ -104,8 +104,7 @@ def test_block_recalculates_all_games_in_deterministic_order(
         UUID("00000000-0000-4000-8000-000000000003"),
     ]
     games = [
-        _game(f"ratings_order_{index}", game_id=game_id)
-        for index, game_id in enumerate(game_ids)
+        _game(f"ratings_order_{index}", game_id=game_id) for index, game_id in enumerate(game_ids)
     ]
     for game in games:
         GameRatingVote.objects.create(game=game, user=target, value=4)

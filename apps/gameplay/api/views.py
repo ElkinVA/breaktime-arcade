@@ -119,6 +119,18 @@ class SessionHeartbeatView(APIView):
 MAX_RESULT_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024
 
 
+def _content_length(request) -> int | None:
+    """Parse Content-Length defensively; None means an invalid header."""
+    raw = request.META.get("CONTENT_LENGTH")
+    if raw in (None, ""):
+        return 0
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):  # fmt: skip
+        return None
+    return value if value >= 0 else None
+
+
 class SessionCloseView(APIView):
     authentication_classes = [CsrfEnforcedSessionAuthentication]
     permission_classes = [AllowAny]
@@ -140,7 +152,9 @@ class SessionResultView(APIView):
     throttle_scope = "results"
 
     def post(self, request, session_id: UUID):
-        content_length = int(request.META.get("CONTENT_LENGTH") or 0)
+        content_length = _content_length(request)
+        if content_length is None:
+            return _error(_invalid_request())
         if content_length > MAX_RESULT_BODY_BYTES:
             return _error(SessionError("E_PAYLOAD_TOO_LARGE", "Payload is too large", 413))
         serializer = SessionResultSerializer(data=request.data)
