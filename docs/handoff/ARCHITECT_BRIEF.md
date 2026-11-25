@@ -67,6 +67,10 @@ ambiguity.
 - Game API throttling: create/activate/close use separate subject buckets,
   results have the Appendix E 1200/hour IP cap, and complaints are 5/day
   subject + 30/day IP (`ARCADE-THROTTLE-001`, `b953419`).
+- Result payload: the eventLog 2 MiB limit is enforced on UTF-8 bytes, and
+  lone surrogates now yield a structured validation error in both the
+  serializer and semantic validator (`ARCADE-EVENTLOG-BYTES-001`,
+  `ea47229`/`0a0dbfb`). Exact-boundary tests and a duplicated constant remain.
 - Player: result submissions are serialized per session and share an
   idempotency key; `newSession`/`exit` await the chain before closing, so a
   restart cannot abort an in-flight result; restarts are serialized and each

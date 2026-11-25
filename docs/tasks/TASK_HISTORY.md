@@ -1488,6 +1488,30 @@ tests: 1056 passed, 8 skipped, exit 0**.
   отсутствие alias — R-054 (осознанно).
 - **Commit:** `16068f4`; tooling `3a91997`.
 
+### ARCADE-EVENTLOG-BYTES-001 — байтовый лимит eventLog
+
+- **Первопричина:** §2.12.7 требует лимит eventLog в байтах, а сериализатор
+  сравнивал `len(json.dumps(...))` — длину в Python-символах. Многобайтовый
+  payload мог пройти лимит по символам, превысив 2 MiB на проводе, и
+  отклонялся schema-ошибкой вместо size-ошибки.
+- **Результат:** сериализованный payload кодируется в UTF-8 перед проверкой.
+  Дополнительно закрыт найденный review crash-path: `json.loads` принимает
+  lone surrogate, а `.encode("utf-8")` бросал `UnicodeEncodeError` → 500;
+  теперь serializer отдаёт структурированную ошибку `eventLog contains
+  invalid Unicode`, а `validate_eventlog_semantics` возвращает её в списке
+  ошибок. Тестовый payload сделан schema-валидным; добавлены surrogate-тесты
+  для обеих веток.
+- **Проверки:** 3 eventLog tests, foundation contracts + game results 38
+  passed; полный suite **1234 tests: 1221 passed, 13 skipped, exit 0**;
+  ruff/format/mypy clean (387). Code-reviewer: **ACCEPT**, delta **ACCEPT**
+  (major исправлен в `0a0dbfb`).
+- **Остатки:** нет тестов «ровно на границе 2 MiB» и дублирование константы
+  2 MiB в serializers/contracts; HTTP-уровень lone-surrogate не
+  воспроизводился E2E.
+- **Модели:** реализация — `deepseek-flash[1m]`; review —
+  `code-reviewer` (`deepseek-v4-pro`, text-only).
+- **Commit:** `ea47229`, `0a0dbfb`.
+
 ### ARCADE-SUBMIT-RESTART-001 — гонка submit и перезапуска игры
 
 - **Первопричина:** игра могла запросить новую сессию, пока результат

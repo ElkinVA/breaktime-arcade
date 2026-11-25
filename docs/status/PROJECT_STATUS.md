@@ -528,6 +528,24 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.54. eventLog UTF-8 byte limit — 2026-11-25
+
+`ARCADE-EVENTLOG-BYTES-001` (`ea47229` + `0a0dbfb`) — **COMPLETED /
+CODE-REVIEW ACCEPT**: лимит eventLog 2 MiB теперь считается по UTF-8
+байтам, а не по Python-символам. Дополнительно review нашёл crash-path:
+`json.loads` принимает lone surrogate, а `.encode("utf-8")` бросал
+`UnicodeEncodeError` → 500; сериализатор теперь отдаёт структурированную
+ошибку `eventLog contains invalid Unicode`, а
+`validate_eventlog_semantics` возвращает её в списке ошибок. Тестовый
+payload сделан schema-валидным; добавлены surrogate-тесты для обеих веток.
+Проверки: 3 eventLog tests; foundation contracts + game results 38 passed;
+полный suite **1234 tests: 1221 passed, 13 skipped, exit 0**;
+ruff/format/mypy clean (387). Модели: реализация — `deepseek-flash[1m]`,
+review — `code-reviewer` (`deepseek-v4-pro`, text-only), ACCEPT + delta
+ACCEPT. Остатки: нет теста ровно на границе 2 MiB, константа 2 MiB
+дублируется в serializers/contracts, HTTP-уровень surrogate не
+воспроизводился E2E.
+
 ## 0.53. Player submit/restart race — 2026-11-25
 
 `ARCADE-SUBMIT-RESTART-001` (`24d9979` + `a81ec48`) — **COMPLETED /

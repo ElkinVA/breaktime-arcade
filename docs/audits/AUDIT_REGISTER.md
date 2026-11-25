@@ -868,6 +868,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Источник | commit `16068f4`; tooling `3a91997`; evidence в `.autonomy/evidence/` |
 
 
+## ARCADE-EVENTLOG-BYTES-001 — UTF-8 eventLog limit
+
+| Поле | Значение |
+|---|---|
+| Тип | §2.12.7 / §6.5 payload limit; code-reviewer ACCEPT + delta ACCEPT |
+| Результат | size check after UTF-8 encode; lone-surrogate UnicodeEncodeError mapped to structured 400/error list in serializer and semantic validator; schema-valid oversized test and two surrogate tests |
+| Проверки | 3 eventLog tests; foundation contracts + game results 38 passed; полный suite **1234 tests: 1221 passed, 13 skipped, exit 0**; ruff/format/mypy clean (387) |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT**; HTTP E2E not exercised |
+| Остаток | exact-2-MiB boundary tests; duplicated 2 MiB constant |
+| Источник | commits `ea47229`, `0a0dbfb`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
+
 ## ARCADE-SUBMIT-RESTART-001 — result submission vs restart race
 
 | Поле | Значение |
