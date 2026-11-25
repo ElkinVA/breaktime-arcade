@@ -692,6 +692,40 @@ def test_profile_result_without_eventlog_is_quarantined() -> None:
 
 @pytest.mark.django_db
 @override_settings(CACHES=LOCMEM_CACHES)
+def test_profile_result_with_empty_events_is_quarantined() -> None:
+    verification = {
+        "profile": {"maxPointsPerSecond": 10, "maxIdleGapMs": 1000},
+        "eventKinds": ["start"],
+        "eventSchema": {"type": "object"},
+    }
+    game = _game(technical_id="empty_log_game", verification=verification)
+    game.leaderboard_only_verified = True
+    game.save(update_fields=["leaderboard_only_verified"])
+    user = User.objects.create_user(login="empty_log", password="correct horse battery staple")
+    client, csrf = _client(user)
+    session_id = _ready_session(client, csrf, game)
+    session = GameSession.objects.get(pk=session_id)
+
+    response = _result(
+        client,
+        csrf,
+        session_id,
+        key="empty-log",
+        value=10,
+        seed=session.seed,
+        event_log={"v": 1, "seed": session.seed, "events": []},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "quarantined"
+    result = GameResult.objects.get(session_id=session_id)
+    assert result.is_quarantined is True
+    assert "empty_event_log" in result.verifier_flags["flags"]
+    assert not LeaderboardEntry.objects.filter(game=game, user=user).exists()
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
 def test_profile_result_without_seed_is_quarantined() -> None:
     verification = {
         "profile": {"maxPointsPerSecond": 10, "maxIdleGapMs": 1000},

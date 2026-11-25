@@ -60,6 +60,11 @@ def verify(
 
     max_idle = profile.get("maxIdleGapMs")
     events = event_log.get("events")
+    if not isinstance(events, list) or not events:
+        # An empty log cannot demonstrate the declared lifecycle; without
+        # this guard a valid seed and empty events would reach
+        # heuristic_validated and (for verified-only boards) the leaderboard.
+        flags.append("empty_event_log")
     if isinstance(max_idle, int) and max_idle >= 0 and isinstance(events, list):
         previous_t = 0
         max_gap = 0
