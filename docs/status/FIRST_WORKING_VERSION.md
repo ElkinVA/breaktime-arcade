@@ -1,4 +1,4 @@
-# Готовность первой рабочей версии — 2026-11-25
+# Готовность первой рабочей версии — 2026-11-26
 
 **Короткий вердикт:** dev/demo-контур готов к показу и ручной проверке
 владельцем. Production-деплой и публикация обновлений уже опубликованных игр
@@ -6,17 +6,20 @@
 
 ## Что проверено
 
-- Полный Python gate: **1259 passed, 14 skipped, exit 0** (reuse-DB, 8:08,
-  код на `ef242eb`; UX-шаблон входит в этот прогон).
-- Browser E2E: **22 passed** (34–40 с), включая guest/auth submit, storage,
-  leaderboard, restart, exit и возврат в каталог; Playwright Chromium.
-- JS: **31/31**; ruff/format clean (485); mypy clean (393).
+- Полный Python gate: **1261 passed, 15 skipped, exit 0** (reuse-DB, 12:13).
+- Browser E2E: **25 passed** (включая новый Who's Undercover? Pass & Play:
+  setup → роли → подсказки → тайное голосование → победа/replay, 360 px,
+  ru-локаль и projector); Playwright Chromium.
+- JS: **31/31 + 12/12 game core**; ruff/format clean (488); mypy clean (394).
 - Prod-style image (`INSTALL_DEV=false`): Playwright 1.65.1 и Chromium
   присутствуют, pytest отсутствует; сборка PASS.
 - Browser publish gate: live positive 3/3 и negative page error; отдельный
   secretless-контейнер, web не исполняет игровой JS.
 - ZIP Redis isolation: zip-worker не резолвит default broker/БД/кеш;
   dispatcher→cleanup и extraction доставлены live.
+- Who's Undercover? Pass & Play 1.0.1: 10 колод en/ru, privacy handoff,
+  тайное голосование, все win-сценарии, replay, timer/sound/projector;
+  ZIP импортирован/опубликован через pipeline; code-review ACCEPT.
 - `./verify_stack.sh`: шесть обязательных сервисов healthy, HTTPS/статика
   отвечают.
 

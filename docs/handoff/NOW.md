@@ -4,18 +4,14 @@
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 
-- HEAD `ef242eb` (player header UX) после `331a1a6`, `f17d239`,
-  `3c997d6`, `dba59fb`, `9fc9096`, `16dba6d`, AI HQ
-  `f303b01`/`86b21d6`/`b3f42ce` и прежней очереди `e136af8`…`1fc0e97`;
-  этот docs-коммит обновляет реестры, затем `origin/main` синхронизируется
-  push.
-- Последний полный Python gate: **1259 passed, 14 skipped, exit 0** на
-  reuse-DB без `--create-db` (8:08, код на `ef242eb`); ruff/format clean
-  (485), mypy clean (393). JS suite **31/31**, browser E2E **22/22**
-  (44.6 с). Первый прогон после browser runner дал тот же редкий
-  moderation step-up flake (прошёл 5/5 отдельно и 45/45 файлом);
-  наблюдение, не исправление. Перед gate проверять отсутствие orphaned
-  pytest/test_ba.
+- HEAD `16af4f9` (game language fix) после `776d87c` (Who's Undercover?),
+  `ef242eb`, `331a1a6`, `f17d239`, `3c997d6`, `dba59fb`, `9fc9096`,
+  `16dba6d`, AI HQ `f303b01`/`86b21d6`/`b3f42ce`; этот docs-коммит
+  обновляет реестры, затем `origin/main` синхронизируется push.
+- Последний полный Python gate: **1261 passed, 15 skipped, exit 0** на
+  reuse-DB без `--create-db` (12:13); ruff/format clean (488), mypy clean
+  (394). JS suite **31/31 + 12/12 game core**, browser E2E **25/25**.
+  Перед gate проверять отсутствие orphaned pytest/test_ba.
 - ZIP Redis isolation: `ARCADE-REDIS-BROKER-ISOLATION-001` (`9fc9096`) —
   **COMPLETED / code-review ACCEPT**; отдельный `redis-zip`, zip-worker не
   видит default broker; publisher-only app с explicit connection; live
@@ -39,6 +35,13 @@
   название игры в шапке, ограничение ширины и перенос на мобильном;
   product acceptance pending. Локализация ошибок старта и продуктовая
   restart-кнопка остаются.
+- Who's Undercover? Pass & Play (`ARCADE-UNDERCOVER-PASSPLAY-001`, 1.0.1) —
+  **COMPLETED / code-review ACCEPT**: 4–12 игроков, 10 колод en/ru,
+  Undercover/Mr. White, privacy handoff, тайное голосование, все победы,
+  replay, timer/sound/projector, 360 px; JS 12/12, E2E 3/3, full browser 25.
+  ZIP импортирован/опубликован через pipeline; Live Room — P1 platform
+  room contract, не выдаётся за готовое. Язык игры теперь фиксируется
+  cookie на play page (`ARCADE-GAME-LANGUAGE-COOKIE-001`).
 - AI HQ OS sandbox (`ARCADE-AI-HQ-OS-SANDBOX-001`, `f303b01`/`86b21d6`/
   `b3f42ce`) — **COMPLETED / security-auditor ACCEPT**; private user+mount
   namespace + Landlock, fail-closed 125; остатки abstract AF_UNIX/netns,

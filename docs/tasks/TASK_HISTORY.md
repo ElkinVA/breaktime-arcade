@@ -2360,3 +2360,33 @@ tests: 1056 passed, 8 skipped, exit 0**.
 - **Остаток:** локализация ошибок старта и продуктовая restart-кнопка —
   отдельная UX-задача; product acceptance owner.
 - **Commit:** `ef242eb`.
+
+### ARCADE-UNDERCOVER-PASSPLAY-001 — Who's Undercover? Pass & Play
+
+- **Результат:** новый картридж `games-src/whos_undercover` 1.0.1:
+  4–12 игроков, 1–3 Undercover, Mr. White, 10 колод en/ru, приватное
+  раскрытие ролей, подсказки с таймером, тайное голосование, ничьи, все
+  победы (включая Mr. White guess), replay, звук, projector view,
+  мобильный 360 px; ZIP импортируется/публикуется через реальный pipeline.
+  Dev seed: `seed_dev_game`, `make undercover-seed`, CI e2e step.
+- **Проверки:** JS core **12/12**; browser E2E **3/3** (full browser 25/25);
+  полный Python suite **1261 passed, 15 skipped, exit 0** (12:13);
+  ruff/format/mypy clean.
+- **Review:** code-review ACCEPT; minors закрыты (html lang, touch target,
+  aria-live, sanitize, category fallback, max session, undercover-win test),
+  delta ACCEPT.
+- **Остаток:** local published game остаётся 1.0.0 (published-update guard
+  блокирует reimport 1.0.1); CI fresh импортирует 1.0.1. Live Room требует
+  platform room API; product acceptance/playtests/6 locales — owner.
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `code-reviewer`
+  (`deepseek-v4-pro`, text-only).
+- **Commit:** `776d87c`.
+
+### ARCADE-GAME-LANGUAGE-COOKIE-001 — язык игры = язык сайта
+
+- **Первопричина:** session API без языкового префикса возвращал
+  `context.language=en` на `/ru/` play page; ru E2E поймал английский UI.
+- **Результат:** play view фиксирует `django_language` на странице игры;
+  API LocaleMiddleware отдаёт контекст с языком сайта.
+- **Проверки:** play page 4/4, ru game E2E PASS, full E2E 25/25.
+- **Commit:** `16af4f9`.

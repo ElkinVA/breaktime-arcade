@@ -921,6 +921,16 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / CODE-REVIEW ACCEPT** (`f17d239` + `c1e3940` + `71a7274`) |
 | Остаток | hosted CI run; restart UI только в probe, продуктовой кнопки restart нет |
 
+## ARCADE-UNDERCOVER-PASSPLAY-001 — new game cartridge
+
+| Поле | Значение |
+|---|---|
+| Тип | Product game; independent code review |
+| Результат | Pass & Play 1.0.1: 4–12 игроков, 10 колод en/ru, Undercovers/Mr. White, private role reveal, secret vote, tie/all win paths, replay, timer/sound/projector, 360 px; ZIP pipeline import/publish; dev seed command |
+| Проверки | JS core 12/12; browser E2E 3/3 (full E2E 25/25); full Python suite **1261 passed, 15 skipped, exit 0**; code-review ACCEPT + delta; local runtime seeded from 1.0.0 pending fresh 1.0.1 import in CI |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT**; product acceptance owner |
+| Остаток | Live Room blocked on platform room API; 6 locales/300+ word pairs/playtests; hosted CI; local published-update guard blocks reimport of 1.0.1 in dev |
+
 ## ARCADE-EXTERNAL-AUDIT-2026-11-25 — P1/P2 response
 
 | Поле | Значение |

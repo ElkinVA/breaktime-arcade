@@ -140,6 +140,13 @@ ambiguity.
   technical id), caps its width and wraps on mobile
   (`ARCADE-PLAYER-HEADER-001`, `ef242eb`). Start-error localization and a
   product restart control remain.
+- Who's Undercover? Pass & Play 1.0.1: 4–12 players, 10 en/ru decks,
+  Undercover/Mr. White, private handoff, secret vote, all win paths, replay,
+  timer/sound/projector and 360 px; ZIP imported/published via the real
+  pipeline (`ARCADE-UNDERCOVER-PASSPLAY-001`; report in
+  `docs/foundation/UNDERCOVER_PASSPLAY_REPORT.md`). Live Room requires a new
+  platform room contract and is not claimed. Play pages pin the site language
+  cookie so the unprefixed session API returns the matching game context.
 - Test infrastructure: the reuse-DB fixture now reseeds every i18n
   `*_seed_*.py` migration after a transaction-test flush, discovered in
   migration order with fail-loud guards (`ARCADE-TEST-DB-SEED-001`,

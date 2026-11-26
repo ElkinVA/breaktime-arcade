@@ -528,6 +528,23 @@ suite **1137 tests: 1129 passed, 8 skipped, exit 0**. Остатки: live beat/
 и реальный браузерный E2E NOT TESTED; pagehide не гарантирован при kill
 браузера.
 
+## 0.63. Who's Undercover? Pass & Play — 2026-11-26
+
+`ARCADE-UNDERCOVER-PASSPLAY-001` — **COMPLETED / CODE-REVIEW ACCEPT**.
+Новая игра `games-src/whos_undercover` (версия 1.0.1): 4–12 игроков, 1–3
+Undercover, опциональный Mr. White, 10 колод en/ru, приватное раскрытие
+ролей, подсказки с таймером, тайное голосование, ничьи, все победы, replay,
+звук, projector view, мобильный 360 px. JS core **12/12**, browser E2E
+**3/3** (полный E2E 25/25), ZIP импортирован и опубликован через реальный
+pipeline; `seed_dev_game` + `make undercover-seed` + CI job. Независимый
+code-review ACCEPT; minors закрыты. Live Room осознанно вне MVP: нужен
+новый room-контракт платформы. Полный Python suite **1261 passed, 15
+skipped, exit 0** (12:13).
+
+`ARCADE-GAME-LANGUAGE-COOKIE-001` — play view теперь фиксирует
+`django_language` на странице игры, поэтому unprefixed session API отдаёт
+игровой контекст с языком сайта; ru E2E проверяет русские UI и роли.
+
 ## 0.62. Player header UX and final regression — 2026-11-25
 
 `ARCADE-PLAYER-HEADER-001` (`ef242eb`) — шапка плеера показывает
