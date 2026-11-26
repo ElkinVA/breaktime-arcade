@@ -133,6 +133,7 @@ jobs:
       - run: WAIT_SECS=180 ./verify_stack.sh
       - run: make probe-seed
       - run: make undercover-seed
+      - run: make undercover-live-seed
       - run: make e2e
       - name: Stop dev stack
         if: always()

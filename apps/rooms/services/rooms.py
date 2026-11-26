@@ -22,6 +22,7 @@ from apps.catalog.models import Game
 from apps.rooms.games.whos_undercover import (
     MAX_NAME_LENGTH,
     MAX_PLAYERS,
+    MAX_UNDERCOVER,
     GameSetupError,
     assign_roles,
 )
@@ -33,7 +34,7 @@ IDLE_TTL_SECONDS = 30 * 60
 HOST_TAKEOVER_SECONDS = 120
 MEMBER_STALE_SECONDS = 5 * 60
 MIN_PLAYERS = 4
-LIVE_ROOM_GAMES = frozenset({"whos_undercover"})
+LIVE_ROOM_GAMES = frozenset({"whos_undercover", "whos_undercover_live"})
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LENGTH = 6
 MAX_ROOM_ATTEMPTS = 8
@@ -248,6 +249,11 @@ def create_room(
 ) -> tuple[Room, RoomMember]:
     if not MIN_PLAYERS <= max_players <= MAX_PLAYERS:
         raise RoomError("E_PLAYERS", "Room size is invalid")
+    if not 1 <= undercover_count <= MAX_UNDERCOVER:
+        raise RoomError("E_UNDERCOVER", "Infiltrator count is invalid")
+    infiltrators = undercover_count + (1 if mr_white else 0)
+    if max_players - infiltrators <= infiltrators:
+        raise RoomError("E_BALANCE", "Too many infiltrators for this room size")
     game = (
         Game.objects.select_related("current_version")
         .filter(

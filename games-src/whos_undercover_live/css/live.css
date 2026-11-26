@@ -1,0 +1,53 @@
+/* Live Room additions; the base cartridge stylesheet remains shared. */
+.live-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 34px;
+  margin-bottom: 8px;
+}
+.live-topbar .pill[data-state="online"] { color: var(--teal); border-color: rgba(102, 214, 196, 0.35); }
+.live-topbar .pill[data-state="offline"] { color: var(--danger); }
+.live-topbar .pill[data-state="connecting"] { color: var(--gold); }
+.live-entry { justify-content: flex-start; }
+.live-entry-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.live-entry-grid .panel { display: flex; flex-direction: column; gap: 9px; }
+.field-label { color: var(--muted); font-size: 0.82rem; font-weight: 650; }
+.live-input, .live-select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  padding: 10px 12px;
+}
+.code-input { letter-spacing: 0.22em; text-transform: uppercase; font-weight: 750; }
+.live-field-row { display: grid; grid-template-columns: 1fr 110px; align-items: center; gap: 10px; }
+.live-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 14px; }
+.live-player-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.live-player-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+.live-player-list li.is-you { border-color: rgba(102, 214, 196, 0.42); }
+.live-player-list .player-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-player-list .player-meta { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
+.vote-list li { cursor: pointer; }
+.vote-list button { width: 100%; display: flex; justify-content: space-between; }
+.live-secret { width: min(560px, 100%); margin: 8vh auto 0; }
+.live-over-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.live-over-grid .panel { text-align: center; }
+.live-error { position: sticky; bottom: 12px; background: rgba(35, 8, 10, 0.92); border: 1px solid rgba(255, 123, 114, 0.4); border-radius: 12px; padding: 10px 12px; }
+.live-role-badge { color: var(--gold); font-weight: 750; }
+@media (max-width: 720px) {
+  .live-entry-grid, .live-over-grid { grid-template-columns: 1fr; }
+  .live-field-row { grid-template-columns: 1fr 90px; }
+}

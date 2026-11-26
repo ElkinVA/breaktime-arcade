@@ -10,7 +10,7 @@ PYU     := $(COMPOSE) exec -T $(AS_USER) web python
 PYTHON  ?= .venv/bin/python
 
 .PHONY: help env certs staging-up staging-down staging-reset staging-status staging-logs backup restore-check assets lock build up down restart ps logs migrate makemigrations \
-        superuser shell psql test test-fresh e2e js-check js-test probe-seed undercover-seed coverage lint fmt types check dump clean clean-caches precommit-install
+        superuser shell psql test test-fresh e2e js-check js-test probe-seed undercover-seed undercover-live-seed coverage lint fmt types check dump clean clean-caches precommit-install
 
 help:
 > @grep -E '^[a-z-]+:' Makefile | sed 's/:.*//' | sort
@@ -87,6 +87,10 @@ probe-seed:
 undercover-seed:
 > $(COMPOSE) exec -T web sh -c 'python games-src/whos_undercover/pack.py --output /tmp/whos_undercover-1.0.1.zip'
 > $(PY) manage.py seed_dev_game /tmp/whos_undercover-1.0.1.zip --genre casual --genre-name-en Casual --genre-name-ru Казуальные
+
+undercover-live-seed:
+> $(COMPOSE) exec -T web sh -c 'python games-src/whos_undercover_live/pack.py --output /tmp/whos_undercover_live-1.0.0.zip'
+> $(PY) manage.py seed_dev_game /tmp/whos_undercover_live-1.0.0.zip --genre casual --genre-name-en Casual --genre-name-ru Казуальные
 
 coverage:
 > $(PYU) -m pytest --cov=apps --cov-report=term-missing

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0d1117">
+  <title>Who's Undercover? Live</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/live.css">
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true">
+    <span class="spotlight spotlight-a"></span>
+    <span class="spotlight spotlight-b"></span>
+    <span class="grain"></span>
+  </div>
+
+  <main id="live-app" class="app">
+    <div class="live-topbar">
+      <span id="live-language" class="pill" hidden></span>
+      <span id="live-connection" class="pill" data-state="offline">offline</span>
+      <button id="leave-room" class="btn btn-quiet" type="button" hidden>Leave</button>
+    </div>
+
+    <section id="entry-screen" class="screen live-entry">
+      <header class="screen-head">
+        <p class="eyebrow">Live Room</p>
+        <h1>Who's Undercover? <span>Live</span></h1>
+        <p id="entry-lede" class="lede"></p>
+      </header>
+      <div class="live-entry-grid">
+        <div class="panel">
+          <h2 id="create-title"></h2>
+          <label class="field-label" for="create-name" data-i18n="name"></label>
+          <input id="create-name" class="live-input" maxlength="24" autocomplete="nickname">
+          <div class="live-field-row">
+            <label class="field-label" for="create-max" data-i18n="players"></label>
+            <select id="create-max" class="live-select"></select>
+          </div>
+          <div class="live-field-row">
+            <label class="field-label" for="create-undercover" data-i18n="undercover"></label>
+            <select id="create-undercover" class="live-select">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+            </select>
+          </div>
+          <label class="switch-row" for="create-mrwhite">
+            <span><strong data-i18n="mrwhite"></strong><small data-i18n="mrwhite_hint"></small></span>
+            <input id="create-mrwhite" type="checkbox">
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+          <p id="create-warning" class="form-error" role="alert" hidden></p>
+          <button id="create-room" class="btn btn-primary btn-large" type="button" data-i18n="create"></button>
+        </div>
+
+        <div class="panel">
+          <h2 id="join-title"></h2>
+          <label class="field-label" for="join-code" data-i18n="code"></label>
+          <input id="join-code" class="live-input code-input" maxlength="8" autocomplete="off" autocapitalize="characters">
+          <label class="field-label" for="join-name" data-i18n="name"></label>
+          <input id="join-name" class="live-input" maxlength="24" autocomplete="nickname">
+          <button id="join-room" class="btn btn-secondary btn-large" type="button" data-i18n="join"></button>
+        </div>
+      </div>
+      <p id="entry-error" class="form-error" role="alert" hidden></p>
+    </section>
+
+    <section id="lobby-screen" class="screen" hidden>
+      <header class="screen-head">
+        <p class="eyebrow">Live Room</p>
+        <h1 data-i18n="lobby_title"></h1>
+        <p class="lede"><span data-i18n="code"></span>: <strong id="lobby-code" class="code-text"></strong></p>
+      </header>
+      <div class="panel">
+        <div class="panel-head">
+          <h2 data-i18n="players"></h2>
+          <span id="lobby-count" class="pill"></span>
+        </div>
+        <ul id="lobby-players" class="live-player-list"></ul>
+        <p id="lobby-hint" class="muted small"></p>
+        <div class="live-actions">
+          <button id="lobby-ready" class="btn btn-secondary" type="button" data-i18n="ready"></button>
+          <button id="lobby-start" class="btn btn-primary" type="button" data-i18n="start" hidden></button>
+          <button id="lobby-claim" class="btn btn-ghost" type="button" data-i18n="claim" hidden></button>
+        </div>
+      </div>
+    </section>
+
+    <section id="reveal-screen" class="screen screen-reveal" hidden>
+      <div class="panel secret-card live-secret">
+        <p class="eyebrow" data-i18n="your_role"></p>
+        <p id="reveal-role" class="role-name"></p>
+        <div class="secret-word-block">
+          <span class="word-label" data-i18n="your_word"></span>
+          <strong id="reveal-word" class="secret-word"></strong>
+        </div>
+        <p id="reveal-hint" class="secret-hint"></p>
+        <button id="reveal-ack" class="btn btn-primary btn-large" type="button" data-i18n="seen"></button>
+      </div>
+    </section>
+
+    <section id="clues-screen" class="screen screen-board" hidden>
+      <header class="board-head">
+        <div>
+          <p id="clues-round" class="eyebrow"></p>
+          <h2 data-i18n="clues_title"></h2>
+        </div>
+        <span id="clues-alive" class="pill"></span>
+      </header>
+      <div class="panel speaker-panel">
+        <p class="eyebrow" data-i18n="speaker"></p>
+        <h1 id="clues-speaker" class="speaker-name"></h1>
+        <p class="lede" data-i18n="clue_prompt"></p>
+        <button id="clues-next" class="btn btn-primary btn-large" type="button" data-i18n="next_clue" hidden></button>
+      </div>
+      <div class="panel">
+        <h2 data-i18n="alive_players"></h2>
+        <ul id="clues-players" class="live-player-list"></ul>
+      </div>
+    </section>
+
+    <section id="vote-screen" class="screen screen-board" hidden>
+      <header class="board-head">
+        <div>
+          <p id="vote-round" class="eyebrow"></p>
+          <h2 data-i18n="vote_title"></h2>
+        </div>
+        <span id="vote-progress" class="pill"></span>
+      </header>
+      <div class="panel">
+        <p class="lede" data-i18n="vote_prompt"></p>
+        <ul id="vote-targets" class="live-player-list vote-list"></ul>
+        <p id="vote-self" class="muted small" hidden></p>
+      </div>
+    </section>
+
+    <section id="result-screen" class="screen" hidden>
+      <header class="screen-head">
+        <p class="eyebrow" data-i18n="vote_result"></p>
+        <h1 id="result-title"></h1>
+      </header>
+      <div class="panel">
+        <ul id="result-counts" class="live-player-list"></ul>
+        <p id="result-detail" class="muted"></p>
+        <button id="result-next" class="btn btn-primary btn-large" type="button" data-i18n="continue" hidden></button>
+      </div>
+    </section>
+
+    <section id="mrwhite-screen" class="screen" hidden>
+      <header class="screen-head">
+        <p class="eyebrow" data-i18n="mrwhite_phase"></p>
+        <h1 data-i18n="mrwhite_title"></h1>
+        <p class="lede" data-i18n="mrwhite_prompt"></p>
+      </header>
+      <div id="mrwhite-form" class="panel" hidden>
+        <label class="field-label" for="mrwhite-guess" data-i18n="your_guess"></label>
+        <input id="mrwhite-guess" class="live-input" maxlength="40" autocomplete="off">
+        <button id="mrwhite-submit" class="btn btn-primary btn-large" type="button" data-i18n="guess"></button>
+      </div>
+      <p id="mrwhite-wait" class="lede" data-i18n="waiting_mrwhite"></p>
+    </section>
+
+    <section id="over-screen" class="screen" hidden>
+      <header class="screen-head">
+        <p class="eyebrow" data-i18n="game_over"></p>
+        <h1 id="over-title"></h1>
+        <p id="over-reason" class="lede"></p>
+      </header>
+      <div class="live-over-grid">
+        <div class="panel">
+          <p class="eyebrow" data-i18n="word_civilian"></p>
+          <strong id="over-civilian" class="secret-word"></strong>
+        </div>
+        <div class="panel">
+          <p class="eyebrow" data-i18n="word_undercover"></p>
+          <strong id="over-undercover" class="secret-word"></strong>
+        </div>
+      </div>
+      <div class="panel">
+        <h2 data-i18n="final_roles"></h2>
+        <ul id="over-players" class="live-player-list"></ul>
+        <button id="over-restart" class="btn btn-primary btn-large" type="button" data-i18n="restart" hidden></button>
+      </div>
+    </section>
+
+    <p id="live-error" class="form-error live-error" role="alert" hidden></p>
+  </main>
+
+  <script src="js/ba-sdk.js"></script>
+  <script type="module" src="js/live.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "Who's Undercover? Live",
+  "shortDescription": "A real-time party of secret words, private roles and one perfect bluff on every player's own screen.",
+  "description": "Who's Undercover? Live turns every phone or tablet into a private seat at one social deduction table for four to twelve players. The host creates a room and shares a six-character code; each player joins from their own browser and receives a secret role and word on their own screen. Civilians share one word, Undercover players get a close but different word, and Mr. White gets none. The table reveals privately, gives one clue in turn order, then votes in secret. A tied vote eliminates nobody; a caught Mr. White gets one guess at the civilian word and can steal the game. The server owns every role and vote, so other players' secrets never reach your browser. Reloading restores your seat and private role. The game includes a balanced-table guard, connection status, English and Russian UI and a full final reveal. Designed for a sofa, a cafe table or a remote party.",
+  "instructions": "Create a room or join with the six-character code, enter a name and ready up. The host starts when everyone is ready and the table is balanced. Read your private role, acknowledge it, then give one short clue when it is your turn. Vote for one other player in secret. The host advances the clues and continues after the result; a caught Mr. White guesses the civilian word. The host can replay the same table.",
+  "controls": "Touch or mouse: tap the room buttons, ready toggle and player cards. Keyboard: Tab to move, Enter or Space to activate; type the room code normally. Each player uses their own browser and device; the room code is the only thing shared.",
+  "seoTitle": "Who's Undercover? Live — real-time party word game",
+  "seoDescription": "Play Who's Undercover? Live with 4–12 friends on their own screens: a room code, private roles, secret words, clues and secret votes.",
+  "coverAlt": "A noir party table with a spotlight, secret role cards and the words civilian and undercover.",
+  "screenshotAlts": [
+    "Who's Undercover? Live table with secret roles and private player screens.",
+    "Public clue board with a speaker spotlight and the players still in the game."
+  ]
+}

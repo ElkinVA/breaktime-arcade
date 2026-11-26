@@ -208,6 +208,78 @@ def test_server_word_decks_match_the_cartridge_locales() -> None:
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("max_players", "undercover_count", "mr_white"),
+    [(4, 2, False), (4, 1, True), (4, 3, False)],
+)
+def test_create_rejects_impossible_infiltrator_configuration(
+    max_players: int, undercover_count: int, mr_white: bool
+) -> None:
+    game = _game()
+    client, csrf = _client()
+
+    response = _post(
+        client,
+        csrf,
+        API,
+        {
+            "game_id": game.technical_id,
+            "max_players": max_players,
+            "undercover_count": undercover_count,
+            "mr_white": mr_white,
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "E_BALANCE"
+    assert not Room.objects.exists()
+
+
+@pytest.mark.django_db
+def test_create_rejects_undercover_count_outside_the_supported_range() -> None:
+    game = _game()
+    client, csrf = _client()
+
+    response = _post(
+        client,
+        csrf,
+        API,
+        {
+            "game_id": game.technical_id,
+            "max_players": 12,
+            "undercover_count": 4,
+            "mr_white": False,
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["code"] == "E_INVALID_REQUEST"
+    assert not Room.objects.exists()
+
+
+@pytest.mark.django_db
+def test_create_accepts_the_balanced_boundary() -> None:
+    game = _game()
+    client, csrf = _client()
+
+    response = _post(
+        client,
+        csrf,
+        API,
+        {
+            "game_id": game.technical_id,
+            "max_players": 5,
+            "undercover_count": 2,
+            "mr_white": False,
+            "name": "Host",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["setup"]["undercoverCount"] == 2
+
+
+@pytest.mark.django_db
 def test_lobby_join_ready_start_and_private_roles() -> None:
     game = _game()
     host_client, host_csrf = _client()
