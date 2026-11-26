@@ -31,9 +31,20 @@ Django 5.2. **Статус:** техническое evidence; product acceptanc
    `{'expired': 30, 'cleaned': 0}`, второй `{'expired': 0,
    'cleaned': 0}`. 30 истёкших комнат — накопленные dev/load-комнаты,
    не пользовательские production-данные; повторный вызов безопасен.
-5. Celery worker был перезапущен вместе с web; задача вручную
+5. После пересоздания dev worker с текущим source mount (до этого
+   контейнер использовал устаревший image без `apps.rooms`) задача
+   зарегистрирована и две реальные задачи доставлены через Celery:
+   `b81e56f9-...` → `room.expire_task duration_ms=191.61`,
+   `c229a2f7-...` → `duration_ms=36.12`, обе `expired=0/cleaned=0`.
+   Result backend отключён, поэтому проверка по worker-логам, не
+   `AsyncResult.get()`.
+6. Celery worker был перезапущен вместе с web; задача вручную
    выполнялась после restart. Отдельный broker/worker crash не
    эмулировался; рекомендуется LR-3 follow-up при появлении staging.
+7. QA независимо сверил worker-логи: task IDs и duration совпадают с
+   п.5. Комната `RUY8Q7` к моменту QA уже удалена cleanup, поэтому
+   post-restart room state повторно не проверялся — это историческое
+   evidence, не воспроизводимый сейчас тест.
 
 ## Ограничения
 

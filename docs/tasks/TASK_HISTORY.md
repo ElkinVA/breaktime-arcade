@@ -9,6 +9,32 @@
 
 ## 1. Записи работ
 
+### ARCADE-LIVE-ROOM-004 — LR-3 reliability, idempotency and load
+
+- **ID:** ARCADE-LIVE-ROOM-004.
+- **Назначение:** доказать корректность Live Room при повторных/конкурентных
+  запросах, нагрузке, restart и сбоях Celery; закрыть остатки LR-2b.
+- **Результат:** `RoomCreateRequest` + `0002` с subject/payload binding,
+  TTL 7 дней, атомарным create; SDK 1.2/host bridge/live.js requestId;
+  12 PostgreSQL race tests; load diagnostic command + baseline;
+  recovery tests; real web/worker restart и две Celery expiry task;
+  `#claim-host` topbar и реальный 125-s multi-browser E2E; safe structured
+  events без секретов, ограниченной command cardinality.
+- **Проверки (промежуточные):** idempotency 13, races 12, observability
+  4, recovery 3, Live Room 25, loadtest guard 1; QA independently
+  executed 32 targeted + 26 existing/guard, reproduced load point
+  1×8×10 s (69 reads, p95 128.8 ms, 0 errors); JS 40/40; ruff/mypy
+  clean. Host-loss E2E locally NOT VERIFIED (stale published runtime,
+  in-container topology, 30/30 sessions throttle); full gate **1324
+  passed, 17 skipped, exit 0** (640.78 s); exact-commit CI — ожидается.
+  **Статус:** IMPLEMENTED / CODE+SECURITY REVIEW ACCEPT / QA WITH
+  RESERVATIONS / FULL GATE GREEN / CI PENDING; product acceptance owner;
+  не production-ready.
+- **Модели:** implement — `deepseek-flash[1m]`; reviews — `code-reviewer`/
+  `security-auditor` (`deepseek-v4-pro`, text-only); QA — `qa-engineer`
+  (`deepseek-flash[1m]`).
+- **Дата:** 2026-11-26.
+
 ### ARCADE-CI-AUTONOMY-RESTORE-001 — CI green for autonomy
 
 - **ID:** ARCADE-CI-AUTONOMY-RESTORE-001.

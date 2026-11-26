@@ -3,8 +3,11 @@
 **Дата:** 2026-11-26. **Основание:** owner directive 2026-11-26 (LR-3),
 `ADR-LIVE-ROOM-001`, `docs/status/PROJECT_STATUS.md`,
 `docs/status/BACKLOG.md`. **Точка старта:** `main = 3ee2f0e`, CI run #156
-success. **Статус:** READY; Live Room не объявляется production-ready до
-выполнения критериев и продуктовой приёмки владельца.
+success. **Статус:** IMPLEMENTED; code+security review ACCEPT; QA PASS
+WITH RESERVATIONS; full regression gate **1324 passed, 17 skipped,
+exit 0**; host-loss E2E и exact-commit GitHub Actions ещё должны быть
+подтверждены. Live Room не объявляется production-ready до завершения
+критериев и продуктовой приёмки владельца.
 
 ## Цель
 
@@ -154,3 +157,40 @@ measured load baseline/results, crash/restart, repeatable Celery,
 host-loss E2E, observability without leaks, full regression, independent
 review ACCEPT, GitHub Actions success on exact commit, updated registers.
 Product acceptance remains owner-only.
+
+## Evidence (2026-11-26)
+
+- Idempotency: `RoomCreateRequest` + migration `0002`; 13 integration
+  tests; SDK 1.2/host bridge/live.js key; strict subject+payload binding.
+- Races: 12 PostgreSQL tests; cleanup/read race fixed.
+- Load: `docs/foundation/LIVE_ROOM_LR3_LOAD_BASELINE.md`.
+- Recovery: `docs/foundation/LIVE_ROOM_LR3_RECOVERY.md`; real web/worker
+  restart, two Celery expiry tasks through the worker.
+- Host-loss: 4 независимых контекста, real 125 s wait; сценарий
+  проверен чтением, но локально **NOT VERIFIED**: published dev runtime
+  старше source, in-container topology не достучалась до nginx, а
+  ad-hoc current-source route-прогон упёрся в 30/30 `sessions` throttle.
+  Exact-commit CI e2e (fresh DB + `make undercover-live-seed`) должен
+  выполнить его целиком; до success — не PASS.
+- Observability: 4 negative/redaction tests; bounded command values.
+- Reviews: code-reviewer ACCEPT (must-fix race assertion fixed; delta
+  ACCEPT), security-auditor ACCEPT (M1 residual), QA PASS WITH
+  RESERVATIONS.
+- Full gate: **1324 passed, 17 skipped, exit 0** (640.78 s) на свежей
+  test DB; ruff/format/mypy clean.
+- Full report: `docs/foundation/LIVE_ROOM_LR3_REPORT.md`.
+
+## Остатки
+
+- Independent code/security reviews получены (ACCEPT); QA — PASS WITH
+  RESERVATIONS. Exact-commit GitHub Actions и host-loss E2E execution
+  (fresh published runtime) остаются обязательными до любой LR-3
+  acceptance claim.
+- Load numbers are service-layer, WSL2; RPS includes setup, not
+  steady-state; not HTTP/production SLO.
+- E2E throttle headroom: ~26/30 first-visit contexts per `make e2e`;
+  additional play scenarios/reruns within an hour can hit 429. Do not
+  weaken throttling.
+- No long soak, SIGKILL mid-transaction, Redis/broker failure, staging or
+  production load.
+- Product acceptance remains owner-only.

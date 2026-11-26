@@ -1,7 +1,48 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-26 (Live Room LR-2b; CI restore;
+**Дата актуализации:** 2026-11-26 (LR-3 reliability; LR-2b; CI restore;
 owner directive continuous full product development).
+
+## 0.0c. Live Room LR-3 — reliability, idempotency, load (2026-11-26)
+
+- **Idempotency:** `RoomCreateRequest` (migration `0002`) с клиентским
+  UUID, strict subject+payload binding, TTL 7 дней, атомарной записью
+  вместе с Room/host member; replay только для того же subject+payload;
+  другой subject/payload → 409; удалённая/истёкшая запись → 410/409.
+  SDK 1.2 `room.create({requestId})`, host bridge и `live.js` передают
+  ключ; create intent сохраняется через SDK storage.
+- **Races:** 12 PostgreSQL-сценариев на независимых соединениях
+  (join/ready/start/vote/tie/host claim/sweep/expiry/cleanup). Исправлен
+  race `read_room` vs cleanup (теперь `E_ROOM_NOT_FOUND`, не 500).
+- **Load:** `apps/rooms/management/commands/room_loadtest.py`; baseline
+  и предложенные бюджеты —
+  `docs/foundation/LIVE_ROOM_LR3_LOAD_BASELINE.md`. На 12 игроках/1
+  комнате, 30 s: read p95 179.8 ms, p99 507.4 ms, 0 ошибок, lock
+  waiters max 2; оптимизация read path не внедрялась по измерениям.
+- **Recovery:** повторный expire/cleanup, failed command без partial
+  state, DB-connection restart; реальный `make restart` web/worker
+  сохранил активную комнату; две Celery expiry task выполнены через
+  worker. Evidence: `docs/foundation/LIVE_ROOM_LR3_RECOVERY.md`.
+- **Host-loss:** глобальная `#claim-host` кнопка; committed Playwright
+  с 4 независимыми контекстами, реальным 125-секундным ожиданием,
+  отклонением преждевременного и конкурентного claim, возвратом старого
+  host без полномочий. Локально **NOT VERIFIED**: published dev runtime
+  старше source, in-container topology без nginx, ad-hoc current-source
+  прогон упёрся в 30/30 `sessions` throttle. Exact-commit CI e2e
+  (fresh DB + `make undercover-live-seed`) обязан выполнить его целиком.
+- **Observability:** structured events для create/join/command/read.slow/
+  idempotency/stale/host/forfeit/expiry/cleanup; safe whitelist, no
+  names/roles/words/votes/cookies/tokens/keys; negative caplog tests.
+- **Reviews/QA:** code-reviewer ACCEPT (must-fix race assertion fixed;
+  delta ACCEPT), security-auditor ACCEPT (M1 IP-secondary residual),
+  QA PASS WITH RESERVATIONS: 32 targeted + 26 existing/guard executed,
+  load point 1×8×10 s reproduced (69 reads, p95 128.8 ms, 0 errors).
+- **Проверки:** idempotency 13, races 12, observability 4, recovery 3,
+  existing Live Room 25, loadtest guard 1; JS 40/40; ruff/mypy clean;
+  full gate **1324 passed, 17 skipped, exit 0** (640.78 s) на свежей
+  test DB. **Status:** IMPLEMENTED / REVIEW ACCEPT / QA WITH
+  RESERVATIONS / HOST-LOSS+CI PENDING; product acceptance owner; Live
+  Room не production-ready.
 
 ## 0.0a. Live Room LR-2b — картридж и browser E2E (2026-11-26)
 

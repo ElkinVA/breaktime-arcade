@@ -35,6 +35,15 @@
 что polling сам по себе не меняет версию; команды меняют версию отдельно.
 `pg_stat_activity` sampler видел не более 2 ожидающих DB lock на сэмпл.
 
+**QA-повтор точки 1×8×10 s (2026-11-26):** 69 reads, 4.24 RPS,
+p50 31.6 ms, p95 128.8 ms, p99 212.1 ms; command p95 240.5 ms;
+SQL avg 7.12, max 8; errors 0; lock waiters 0; cleanup не оставил
+`loadtest_` users/rooms. Расхождение с таблицей — run variance.
+
+**RPS** считается как reads / wall time, включающий создание комнат и
+пользователей (setup ~6 s), поэтому это не steady-state QPS. Для
+steady-state нужен отдельный прогрев и окно измерения.
+
 ## CPU/RAM sample (во время 20-секундного 12-player прогона)
 
 | Контейнер | CPU sample | RSS | Limit |

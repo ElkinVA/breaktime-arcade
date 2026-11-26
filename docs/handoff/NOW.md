@@ -2,6 +2,35 @@
 
 **Дата:** 2026-11-26
 
+## Live Room LR-3 (2026-11-26)
+
+- **Idempotency:** `RoomCreateRequest` + migration `0002`; SDK 1.2 create
+  `requestId`, host bridge, `live.js`; atomic room/member/request create;
+  same subject+payload replay, different subject/payload 409, deleted
+  room 410, expired record 409; TTL 7 дней; anonymous cookie-loss key не
+  является access token.
+- **Races:** 12 PostgreSQL concurrency tests; найден и исправлен
+  `read_room` vs cleanup race (`Room.DoesNotExist` → `E_ROOM_NOT_FOUND`).
+- **Load/recovery/host-loss:** load baseline и бюджеты в
+  `docs/foundation/LIVE_ROOM_LR3_LOAD_BASELINE.md`; restart и повторный
+  Celery expire в `LIVE_ROOM_LR3_RECOVERY.md`; `#claim-host` + real
+  125-s browser E2E (4 contexts) в committed test. Локальный host-loss
+  **NOT VERIFIED**: published dev runtime старше source, in-container
+  topology без nginx, ad-hoc current-source прогон упёрся в 30/30
+  `sessions` throttle. Exact-commit CI e2e (fresh DB +
+  `make undercover-live-seed`) — обязательный gate.
+- **Observability:** safe structured events; 4 negative log-redaction
+  tests; unknown command names сворачиваются в `other`.
+- **Reviews/QA:** code-reviewer ACCEPT (must-fix race assertion fixed;
+  delta ACCEPT), security-auditor ACCEPT (M1 residual), QA PASS WITH
+  RESERVATIONS; 32 targeted + 26 existing/guard executed, load point
+  reproduced.
+- **Evidence:** idempotency 13, races 12, observability 4, recovery 3,
+  Live Room 25, loadtest guard 1; JS 40/40; ruff/mypy clean; full gate
+  **1324 passed, 17 skipped, exit 0** (640.78 s). Host-loss E2E ждёт
+  exact-commit CI; **LR-3 не объявляется готовым**, продуктовая приёмка
+  владельца отдельно.
+
 ## Live Room LR-2b + CI restore (2026-11-26)
 
 - **CI Stage 1:** commit **`f89ece6`** восстановил Landlock-доступ к
