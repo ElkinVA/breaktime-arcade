@@ -2,22 +2,51 @@
 
 **Дата:** 2026-11-26
 
+## Product vision mapping (2026-11-26)
+
+- Новые требования владельца сопоставлены с текущей архитектурой:
+  `docs/foundation/OWNER_PRODUCT_VISION_MAPPING_2026-11-26.md`.
+- Текущий план не переориентирован. Уже есть гостевой запуск, каталог,
+  профиль/рекорды, per-game ratings, i18n, ZIP/SDK/Host Bridge, базовая
+  SEO-инфраструктура.
+- Future-only пункты (avatar/site rating/collections/social/ads/SEO
+  analytics/AI factory) добавлены в BACKLOG как DEFERRED; минимальный
+  SEO-acceptance — `ARCADE-SEO-TECH-ACCEPTANCE-001` (audit only, не начат).
+  Mass/low-quality SEO pages и game factory сейчас не создаются.
+
+## Owner checkpoint & notifications (2026-11-26)
+
+`AUTONOMY-CHECKPOINT-001` — **IMPLEMENTED / CODE+SECURITY REVIEW ACCEPT /
+FULL GATE GREEN / CI PENDING**; timer OFF.
+- `OWNER_ACTION_REQUIRED` gate отдельно от STOP; `pause/checkpoint/
+  resume/status`; проверка до claim/каждого model-call/merge; malformed
+  gate fail-closed; STOP приоритетнее.
+- Статусы `RUNNING/WAITING_FOR_NEXT_RUN/PAUSED_FOR_OWNER/
+  MILESTONE_COMPLETED/BLOCKED/STOPPED_ERROR` + `STOPPED`; RUNNING только
+  по flock+PID; systemd/timer/next-run/log paths.
+- Windows toast best-effort для pause/milestone/critical; sanitized 0600
+  `.autonomy/reports/last_run_report.json`; Telegram paused/milestone.
+- Focused **28 passed**; autonomy/control suite pass; full gate
+  **1355 passed, 17 skipped, exit 0**; ruff/mypy clean (412); real
+  pause/status/resume и toast; CI pending.
+- Отчёт: `docs/foundation/AUTONOMY_CHECKPOINT_POLICY_REPORT.md`.
+
 ## Autonomy heartbeat (2026-11-26)
 
 - Owner approved 30-минутный WSL systemd user timer для существующего
   `autonomy.orchestrator` (Pro architect/reviewer + Flash developer/QA,
   текущие лимиты). Units `autonomy/vps/wsl/*` связаны в
   `~/.config/systemd/user`; `daemon-reload` выполнен.
-- **Timer НЕ включён.** Первый bounded-run: `architect failed: Not
-  logged in · Please run /login`; сервис не получил рабочие
-  `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` из
-  `~/.config/ba/deepseek.env`. Задач не выполнено, state не изменялся.
-- Владельцу: обновить `~/.config/ba/deepseek.env` (0600), выполнить
-  `systemctl --user start ba-autonomy-orchestrator.service`, проверить
-  журнал; только после success — `systemctl --user enable --now
-  ba-autonomy-orchestrator.timer`. WSL должен быть запущен; Windows/WSL
-  autostart не настраивался.
-- **Статус:** PARTIAL / BLOCKED ON MODEL CREDENTIALS;
+- **Timer НЕ включён.** Текущий credential file система принимает;
+  bounded-run использовал architect `deepseek-v4-pro` и developer
+  `deepseek-flash[1m]`. Задача `ARCADE-EMAIL-RESET-RACE-001` дважды
+  упала на trusted ruff/mypy и стала BLOCKED; задача не завершена.
+- `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`; историческая
+  journal-запись с секретом относится к старому `export`-файлу; в Git
+  секрет не попал. WSL должен быть запущен; Windows/WSL autostart не
+  настраивался.
+- **Статус:** PARTIAL / AUTH VERIFIED / TIMER OFF; owner review перед
+  включением timer и успешный bounded-run обязательны.
   `docs/tasks/AUTONOMY-CONTINUATION-001_PLAN.md`,
   `docs/status/BACKLOG.md`.
 

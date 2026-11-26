@@ -539,7 +539,18 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Результат | A PASS (код), D PASS (код)/NOT TESTED live; B/C/E FAIL/NOT TESTED; `.autonomy` и systemd user units/timers отсутствуют; Telegram API timeout |
 | Проверки | autonomy/devcontrol tests 94 passed, 1 skipped; full 981/12; `claude agents --json` — только текущая interactive-сессия |
 | Статус | **COMPLETED / AUDIT ONLY** |
-| Остаток | `AUTONOMY-CONTINUATION-001` — owner approved 2026-11-26; WSL units linked, timer disabled pending model credentials (`Not logged in`) |
+| Остаток | `AUTONOMY-CONTINUATION-001` — owner approved 2026-11-26; WSL units linked, auth verified (Pro/Flash), task blocked on ruff/mypy, timer disabled |
+
+## AUTONOMY-CHECKPOINT-001 — owner checkpoint & notifications
+
+| Поле | Значение |
+|---|---|
+| Тип | Control-plane safety policy; code-review + security review |
+| Результат | OWNER_ACTION_REQUIRED gate separate from STOP; pause/checkpoint/resume/status; six statuses + additive STOPPED; no model call/task-state change while gated; Windows toast best-effort; sanitized 0600 report |
+| Проверки | Focused **28 passed**; existing autonomy/control suite pass; full gate **1355 passed, 17 skipped, exit 0**; ruff/format/mypy clean (412); real pause/status/resume and toast sent; CI pending |
+| Статус | **IMPLEMENTED / CODE-REVIEW ACCEPT AFTER M1/M2 / SECURITY ACCEPT / FULL GATE GREEN / CI PENDING**; timer OFF |
+| Остаток | `enqueue`/`recover` owner exceptions; toast OS suppression; WSL shutdown; gate mid-flight boundary; runbook docs |
+| Источник | `docs/foundation/AUTONOMY_CHECKPOINT_POLICY_REPORT.md`; модели: plan — `deepseek-v4-pro`, implement — `deepseek-flash[1m]`, reviews — `deepseek-v4-pro` |
 
 ## APPF-RUNTIME-REVIEW-001 — App F Runtime
 

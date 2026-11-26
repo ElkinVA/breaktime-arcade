@@ -9,6 +9,41 @@
 
 ## 1. Записи работ
 
+### OWNER-VISION-MAPPING-2026-11-26 — product/SEO mapping
+
+- **ID:** OWNER-VISION-MAPPING-2026-11-26.
+- **Результат:** новые owner-требования сопоставлены с текущей
+  архитектурой; current plan не переориентирован; future-only
+  avatar/site rating/collections/social/ads/SEO analytics/AI factory
+  внесены в BACKLOG как deferred; минимальный SEO-acceptance —
+  `ARCADE-SEO-TECH-ACCEPTANCE-001` (audit only). Mass/low-quality SEO
+  pages и game factory не начаты.
+- **Документ:** `docs/foundation/OWNER_PRODUCT_VISION_MAPPING_2026-11-26.md`.
+- **Статус:** ANALYSIS ONLY; product/scope decisions remain owner.
+- **Дата:** 2026-11-26.
+
+### AUTONOMY-CHECKPOINT-001 — owner checkpoint & notifications
+
+- **ID:** AUTONOMY-CHECKPOINT-001.
+- **Назначение:** OWNER_ACTION_REQUIRED gate (отдельно от STOP), статус
+  AI HQ, Windows toast, persistent report, безопасное возобновление.
+- **Результат:** `autonomy/gate.py`, `status_report.py`, `windows_notify.py`;
+  orchestrator check before claim/each model/merge, CLI
+  `pause/checkpoint/resume/status`, шесть статусов + additive STOPPED,
+  `RUNNING` только по flock+PID, report 0600, toast best-effort.
+- **Проверки:** focused **28 passed**; существующие autonomy/control tests
+  pass; full gate **1355 passed, 17 skipped, exit 0** (840.31 s);
+  ruff/format/mypy clean (412); реальный pause/status/resume и Windows
+  toast. Code-reviewer сначала REJECT по M1/M2; исправлено, delta
+  **ACCEPT**; security — **ACCEPT** после minor fixes; последний
+  QA-boundary check исправлен после отчёта. CI — ожидается.
+- **Статус:** IMPLEMENTED / CODE+SECURITY REVIEW ACCEPT / FULL GATE+CI
+  PENDING; timer остаётся выключенным. `enqueue`/`recover` — owner-
+  исключения; toast best-effort; WSL must be running.
+- **Модели:** architect plan — `deepseek-v4-pro`; implement — `deepseek-flash[1m]`;
+  code/security review — `deepseek-v4-pro` (text-only).
+- **Дата:** 2026-11-26.
+
 ### AUTONOMY-CONTINUATION-001 — WSL heartbeat installation
 
 - **ID:** AUTONOMY-CONTINUATION-001.
@@ -22,16 +57,18 @@
 - **Сделано:** `autonomy/vps/wsl/ba-autonomy-orchestrator.service` и
   `.timer`; unit-файлы связаны в `~/.config/systemd/user`, выполнен
   `daemon-reload`. Timer **не включён**.
-- **Проверка:** первый bounded-run завершился
-  `architect failed: Not logged in · Please run /login`; сервис не
-  получил рабочие `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` из
-  `~/.config/ba/deepseek.env`. Задач не выполнено, state не изменялся.
-- **Статус:** PARTIAL / BLOCKED ON MODEL CREDENTIALS; WSL должен быть
-  запущен; Windows/WSL autostart не настраивался.
-- **Следующий шаг:** владелец обновляет `~/.config/ba/deepseek.env`
-  (0600), затем `systemctl --user start ba-autonomy-orchestrator.service`;
-  после успешного журнала — `systemctl --user enable --now
-  ba-autonomy-orchestrator.timer`.
+- **Проверка:** текущий `~/.config/ba/deepseek.env` система принимает
+  (без `export`), service process видит `ANTHROPIC_AUTH_TOKEN` и
+  `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`. Реальный
+  bounded-run использовал architect `deepseek-v4-pro` и developer
+  `deepseek-flash[1m]`; задача `ARCADE-EMAIL-RESET-RACE-001` дважды
+  упала на trusted ruff/mypy и стала BLOCKED. Задача не завершена,
+  timer остаётся выключенным; историческая journal-запись с секретом
+  относится к старому `export`-файлу, в Git секрет не попал.
+- **Статус:** PARTIAL — auth verified, timer disabled, last task blocked
+  on checks; Windows/WSL autostart не настраивался.
+- **Следующий шаг:** разобрать check-ошибки/выбрать другую READY-задачу,
+  затем успешный bounded-run и owner review перед включением timer.
 - **Модели:** orchestrator routing Pro/Flash; установка/проверка —
   `deepseek-flash[1m]`.
 

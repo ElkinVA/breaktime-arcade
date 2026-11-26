@@ -1,24 +1,52 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-26 (autonomy heartbeat; player
-submit/restart hardening; LR-3 reliability; LR-2b; CI restore; owner
-directive continuous full product development).
+**Дата актуализации:** 2026-11-26 (owner checkpoint/notifications;
+autonomy heartbeat auth; player submit/restart hardening; LR-3; LR-2b;
+CI restore; owner directive continuous full product development).
+
+## 0.0g. Product vision mapping — 2026-11-26
+
+Новые owner-требования сопоставлены с текущей архитектурой в
+`docs/foundation/OWNER_PRODUCT_VISION_MAPPING_2026-11-26.md`. Текущий
+план не переориентирован: гостевой запуск, каталог, профиль/рекорды,
+per-game ratings, i18n, ZIP/SDK/Host Bridge и базовая SEO-инфраструктура
+уже есть. Future-only avatar/site rating/collections/social/ads/SEO
+analytics/AI factory внесены в BACKLOG как deferred; минимальный
+SEO-acceptance — `ARCADE-SEO-TECH-ACCEPTANCE-001` (audit only, не начат).
+Mass/low-quality SEO pages и AI game factory сейчас не создаются.
+
+## 0.0f. Owner checkpoint & notifications — 2026-11-26
+
+`AUTONOMY-CHECKPOINT-001` — **IMPLEMENTED / CODE+SECURITY REVIEW ACCEPT /
+FULL GATE GREEN / CI PENDING**; timer OFF.
+- `OWNER_ACTION_REQUIRED` gate separate from STOP; `pause/checkpoint/
+  resume/status`; no model call/task-state change while gated (recheck
+  before claim/each model/merge); malformed gate fail-closed.
+- Status enum `RUNNING/WAITING_FOR_NEXT_RUN/PAUSED_FOR_OWNER/
+  MILESTONE_COMPLETED/BLOCKED/STOPPED_ERROR` + additive `STOPPED`;
+  RUNNING only by flock+PID; systemd/timer/next-run/log paths.
+- Windows toast best-effort for pause/milestone/critical; persistent
+  sanitized 0600 report; existing Telegram paused/milestone event.
+- Focused **28 passed**; autonomy/control suite pass; full gate
+  **1355 passed, 17 skipped, exit 0** (840.31 s); ruff/mypy clean
+  (412); real pause/status/resume and toast; CI pending.
+- Остатки: `enqueue`/`recover` owner exceptions; toast OS suppression;
+  WSL shutdown; mid-flight gate boundary; timer remains off.
+- Отчёт: `docs/foundation/AUTONOMY_CHECKPOINT_POLICY_REPORT.md`.
 
 ## 0.0e. Autonomy heartbeat — 2026-11-26
 
-`AUTONOMY-CONTINUATION-001` — **PARTIAL / BLOCKED ON MODEL CREDENTIALS**.
-Owner approved 30-минутный WSL systemd user timer, Pro
-architect/reviewer + Flash developer/QA, текущие лимиты.
-- `autonomy/vps/wsl/ba-autonomy-orchestrator.service` и `.timer`
-  связаны в `~/.config/systemd/user`; `daemon-reload` выполнен.
-- Первый bounded-run: `architect failed: Not logged in · Please run
-  /login`; сервис не получил `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`
-  из `~/.config/ba/deepseek.env`. Задач не выполнено, state не менялся.
-- Timer **не включён**. Владельцу: обновить `~/.config/ba/deepseek.env`
-  (0600), проверить `systemctl --user start
-  ba-autonomy-orchestrator.service`, затем `enable --now ...timer`.
-- WSL должен быть запущен; Windows/WSL autostart не настраивался.
-  `STOP`, `RUN_LOCK`, worktree/paths checks остаются без изменений.
+`AUTONOMY-CONTINUATION-001` — **PARTIAL / AUTH VERIFIED / TIMER OFF**.
+- WSL user units linked; 30 min, Pro architect/reviewer + Flash
+  developer/QA, existing limits.
+- Current credential file is accepted by systemd; service process has
+  `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`.
+- Bounded run used architect `deepseek-v4-pro` and developer
+  `deepseek-flash[1m]`; task `ARCADE-EMAIL-RESET-RACE-001` failed
+  trusted ruff/mypy twice and is BLOCKED. No task completed.
+- Timer **not enabled**; no next run. Historical journal leak came from
+  the old `export` line; secret is not in Git; local journal only.
+- WSL must be running; Windows/WSL autostart not configured.
 
 ## 0.0d. Player submit/restart hardening — 2026-11-26
 

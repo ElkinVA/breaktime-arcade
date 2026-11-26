@@ -177,6 +177,20 @@ systemctl --user enable --now ba-autonomy-orchestrator.timer
 /login`; в этом случае timer не включать. `claude` в systemd должен
 находиться в `PATH`; unit уже добавляет nvm-каталог Node 22.
 
+Перед включением timer проверьте статус и owner-gate:
+
+```bash
+python3 -m autonomy.orchestrator status
+python3 -m autonomy.orchestrator pause --reason "..." --action "..."
+python3 -m autonomy.orchestrator checkpoint --milestone "M1"
+python3 -m autonomy.orchestrator resume
+```
+
+`OWNER_ACTION_REQUIRED` не смешивается с `STOP`: gate останавливает новые
+задачи, не меняя task state; `STOP` остаётся аварийным. Windows toast и
+`.autonomy/reports/last_run_report.json` — best-effort канал для
+`PAUSED_FOR_OWNER`/milestone; обычные runs тостов не создают.
+
 WSL должен быть запущен; user timer не работает после завершения WSL
 или Windows. Для запуска после logout нужен `loginctl enable-linger`
 (решение владельца). `STOP`-файл `.autonomy/STOP` и `run.lock`

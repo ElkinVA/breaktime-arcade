@@ -25,6 +25,33 @@ python3 -m autonomy.orchestrator run --max-tasks 1
 python3 -m autonomy.orchestrator recover
 ```
 
+### Owner checkpoint and status
+
+`OWNER_ACTION_REQUIRED` — отдельный от аварийного `STOP` gate. При его
+наличии оркестратор не вызывает Architect/Developer/QA/Reviewer и не
+изменяет статусы задач:
+
+```bash
+python3 -m autonomy.orchestrator pause --reason "нужно решение владельца" \
+  --action "что именно утвердить"
+python3 -m autonomy.orchestrator checkpoint --milestone "M1" \
+  --reason "крупный блок завершён" --action "review milestone"
+python3 -m autonomy.orchestrator resume
+python3 -m autonomy.orchestrator status
+```
+
+`status` показывает `RUNNING`, `WAITING_FOR_NEXT_RUN`, `PAUSED_FOR_OWNER`,
+`MILESTONE_COMPLETED`, `BLOCKED`, `STOPPED` или `STOPPED_ERROR`, последний
+запуск/задачу/агента, systemd service/timer, следующий timer, журнал и
+gate. `RUNNING` выставляется только при подтверждённом run-lock/PID.
+`checkpoint` и `pause` один раз отправляют Windows toast (best-effort) и
+пишут `.autonomy/reports/last_run_report.json`; обычные 30-минутные запуски
+тостов не создают, но продолжают писать отчёт и существующие Telegram-события.
+`STOP` остаётся аварийным и имеет приоритет. `enqueue`/`recover` — ручные
+owner-команды обслуживания; gate блокирует `run`/`propose`, но не эти
+команды, и модели они не вызывают.
+
+
 Evidence с фактическими `modelUsage`, `session_id` и diff — в
 `.autonomy/evidence/`. Раннер проверяет, что Architect/Reviewer реально
 использовали Pro, а Developer/QA — Flash. `--dangerously-skip-permissions`
