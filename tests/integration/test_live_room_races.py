@@ -626,8 +626,22 @@ def test_cleanup_and_read_are_safe() -> None:
             return ("error", exc.code)
 
     def cleanup_worker() -> tuple[str, object]:
-        return ("ok", cleanup_rooms())
+        return ("cleanup", cleanup_rooms())
 
     outcomes = _run_workers([read_worker, cleanup_worker])
-    assert not Room.objects.filter(pk=room.pk).exists()
     assert len(outcomes) == 2
+    read_outcome = next(outcome for outcome in outcomes if outcome[0] != "cleanup")
+    cleanup_count = next(value for status, value in outcomes if status == "cleanup")
+    # Row locking makes several serialization orders valid: if the read holds
+    # the lock, cleanup skips the row; if cleanup deletes first, the read must
+    # return a clean 404/403 (or have already completed) instead of a 500.
+    if Room.objects.filter(pk=room.pk).exists():
+        assert read_outcome == ("ok", "read")
+        assert cleanup_count == 0
+    else:
+        assert cleanup_count == 1
+        assert read_outcome in {
+            ("ok", "read"),
+            ("error", "E_ROOM_NOT_FOUND"),
+            ("error", "E_NOT_MEMBER"),
+        }
