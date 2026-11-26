@@ -8,7 +8,6 @@ data. It is intentionally not part of the normal test gate.
 from __future__ import annotations
 
 import math
-import os
 import resource
 import threading
 import time
@@ -84,7 +83,7 @@ class Command(BaseCommand):
         parser.add_argument("--poll-ms", type=int, default=1200)
 
     def handle(self, *args: Any, **options: Any) -> None:
-        if not settings.DEBUG and not os.environ.get("PYTEST_CURRENT_TEST"):
+        if not settings.DEBUG:
             raise CommandError("room_loadtest is a dev-only diagnostic command")
         rooms_count = min(max(1, int(options["rooms"])), 20)
         players = int(options["players"])
@@ -128,6 +127,9 @@ class Command(BaseCommand):
                     players,
                     f"Load host {room_index}",
                 )
+                active_rooms.append(
+                    ActiveRoom(room_id=room.id, users=room_users, room_code=room.code)
+                )
                 for player in room_users[1:]:
                     join_room(
                         _request(player),
@@ -151,9 +153,6 @@ class Command(BaseCommand):
                     request_id=None,
                     expected_version=None,
                 )
-                active_rooms.append(
-                    ActiveRoom(room_id=room.id, users=room_users, room_code=room.code)
-                )
 
             command_users = [
                 User.objects.create_user(
@@ -166,6 +165,11 @@ class Command(BaseCommand):
             command_room_obj, _command_host = self._create_room(
                 game, command_users[0], 4, "Command host"
             )
+            command_room = ActiveRoom(
+                room_id=command_room_obj.id,
+                users=command_users,
+                room_code=command_room_obj.code,
+            )
             for player in command_users[1:]:
                 join_room(
                     _request(player),
@@ -173,11 +177,6 @@ class Command(BaseCommand):
                     code=command_room_obj.code,
                     name=player.get_username(),
                 )
-            command_room = ActiveRoom(
-                room_id=command_room_obj.id,
-                users=command_users,
-                room_code=command_room_obj.code,
-            )
 
             deadline = time.monotonic() + seconds
             workers: list[threading.Thread] = []
@@ -225,7 +224,7 @@ class Command(BaseCommand):
             if command_room is not None:
                 room_ids.append(command_room.room_id)
             Room.objects.filter(pk__in=room_ids).delete()
-            User.objects.filter(login__startswith=run_tag).delete()
+            User.objects.filter(pk__in=[user.pk for user in users]).delete()
             connections.close_all()
 
     @staticmethod
