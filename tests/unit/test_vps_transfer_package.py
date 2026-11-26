@@ -246,21 +246,21 @@ def test_wsl_service_runs_the_existing_orchestrator() -> None:
     parser = _parse_unit(WSL_SERVICE_PATH)
     service = parser["Service"]
     assert service["ExecStart"].split() == [
-        "%h/projects/ba/.venv/bin/python",
+        "/home/elkinva/projects/ba/.venv/bin/python",
         "-m",
         "autonomy.orchestrator",
         "run",
         "--max-tasks",
         "1",
     ]
-    assert service["WorkingDirectory"] == "%h/projects/ba"
+    assert service["WorkingDirectory"] == "/home/elkinva/projects/ba"
     assert service["Type"] == "oneshot"
     assert "--dangerously-skip-permissions" not in service["ExecStart"]
     assert (REPO_ROOT / "autonomy" / "orchestrator.py").is_file()
     env_files = re.findall(r"^EnvironmentFile=(-?)(\S+)", _read(WSL_SERVICE_PATH), re.MULTILINE)
     assert env_files
     for _, path in env_files:
-        assert path.startswith("%h/.config/ba/"), path
+        assert path.startswith("/home/elkinva/.config/ba/"), path
         assert path.endswith(".env"), path
     for key, value in re.findall(
         r"^Environment=(\w+)=(.*)$", _read(WSL_SERVICE_PATH), re.MULTILINE

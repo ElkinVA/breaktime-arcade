@@ -1,18 +1,18 @@
 [Unit]
 Description=BA autonomy orchestrator (existing autonomy module; WSL heartbeat)
-Documentation=file:%h/projects/ba/autonomy/vps/README.md
+Documentation=file:/home/elkinva/projects/ba/autonomy/vps/README.md
 After=network-online.target
 Wants=network-online.target
-ConditionPathExists=%h/projects/ba/autonomy/orchestrator.py
+ConditionPathExists=/home/elkinva/projects/ba/autonomy/orchestrator.py
 
 [Service]
 Type=oneshot
-WorkingDirectory=%h/projects/ba
-ExecStart=%h/projects/ba/.venv/bin/python -m autonomy.orchestrator run --max-tasks 1
-EnvironmentFile=-%h/.config/ba/orchestrator.env
-EnvironmentFile=-%h/.config/ba/deepseek.env
+WorkingDirectory=/home/elkinva/projects/ba
+ExecStart=/home/elkinva/projects/ba/.venv/bin/python -m autonomy.orchestrator run --max-tasks 1
+EnvironmentFile=-/home/elkinva/.config/ba/orchestrator.env
+EnvironmentFile=-/home/elkinva/.config/ba/deepseek.env
 Environment=PYTHONUNBUFFERED=1
-Environment=PATH=/home/elkinva/.nvm/versions/node/v22.21.1/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=/home/elkinva/.nvm/versions/node/v22.21.1/bin:/home/elkinva/.local/bin:/usr/local/bin:/usr/bin:/bin
 UMask=0077
 NoNewPrivileges=true
 TimeoutStartSec=3900

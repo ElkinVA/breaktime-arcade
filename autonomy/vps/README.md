@@ -151,8 +151,8 @@ systemctl --user start ba-autonomy-orchestrator.service
 user-unit комплект `autonomy/vps/wsl/`:
 
 - `ba-autonomy-orchestrator.service` — тот же существующий
-  `autonomy.orchestrator run --max-tasks 1`, с путями `%h/projects/ba`,
-  venv Python и nvm `claude` в `PATH`;
+  `autonomy.orchestrator run --max-tasks 1`, с абсолютными путями
+  `/home/elkinva/projects/ba`, venv Python и nvm `claude` в `PATH`;
 - `ba-autonomy-orchestrator.timer` — `OnBootSec=5min`,
   `OnUnitActiveSec=30min`, `Persistent=true`.
 

@@ -1,7 +1,7 @@
 [Unit]
 Description=BA autonomy heartbeat timer (existing orchestrator)
-Documentation=file:%h/projects/ba/autonomy/vps/README.md
-ConditionPathExists=%h/projects/ba/autonomy/orchestrator.py
+Documentation=file:/home/elkinva/projects/ba/autonomy/vps/README.md
+ConditionPathExists=/home/elkinva/projects/ba/autonomy/orchestrator.py
 
 [Timer]
 OnBootSec=5min
