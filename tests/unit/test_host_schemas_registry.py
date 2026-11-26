@@ -45,10 +45,17 @@ def test_registry_contains_only_game_to_host_messages() -> None:
         "ba:hello",
         "ba:leaderboard",
         "ba:newSession",
+        "ba:room",
         "ba:storage",
         "ba:submit",
     ]
-    for host_message in ("ba:context", "ba:result", "ba:session", "ba:leaderboard:data"):
+    for host_message in (
+        "ba:context",
+        "ba:result",
+        "ba:session",
+        "ba:leaderboard:data",
+        "ba:room:data",
+    ):
         assert host_message not in registry.payloads
 
 

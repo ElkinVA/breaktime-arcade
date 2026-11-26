@@ -113,6 +113,11 @@ test("host payload schemas reject missing fields, wrong types and long strings",
         ["leaderboard wrong bestOnly", "ba:leaderboard", { bestOnly: "yes" }, "payload.bestOnly"],
         ["error missing code", "ba:error", { message: "x" }, "payload.code"],
         ["error oversized code", "ba:error", { code: "E".repeat(129) }, "payload.code"],
+        ["room missing op", "ba:room", {}, "payload.op"],
+        ["room bad op", "ba:room", { op: "delete" }, "payload.op"],
+        ["room bad id", "ba:room", { op: "state", roomId: "not-a-uuid" }, "payload.roomId"],
+        ["room unknown field", "ba:room", { op: "state", roomId: SESSION, extra: 1 }, "payload.extra"],
+        ["room bad command", "ba:room", { op: "command", roomId: SESSION, command: "" }, "payload.command"],
     ];
     for (const [name, type, payload, field] of cases) {
         const error = validatePayload(type, payload);
@@ -122,6 +127,7 @@ test("host payload schemas reject missing fields, wrong types and long strings",
     }
     assert.equal(validatePayload("ba:hello", {}), null);
     assert.equal(validatePayload("ba:newSession", {}), null);
+    assert.equal(validatePayload("ba:room", { op: "state", roomId: SESSION }), null);
 });
 
 test("host bridge relays schema violations as structured E_MESSAGE_INVALID", () => {
@@ -154,6 +160,23 @@ test("host bridge relays schema violations as structured E_MESSAGE_INVALID", () 
     assertWireInvalid(sent, { field: "sessionId" });
 
     assert.equal(calls.length, 1);
+});
+
+test("host bridge accepts a validated room command", () => {
+    const { bridge, sent, calls } = hostSetup();
+    hostSend(bridge, hostMessage());
+    hostSend(
+        bridge,
+        hostMessage({
+            type: "ba:room",
+            payload: { op: "state", roomId: SESSION },
+        }),
+    );
+    assert.equal(calls.length, 2);
+    assert.equal(calls[1][0], "ba:room");
+    assert.equal(calls[1][1].op, "state");
+    assert.equal(calls[1][1].roomId, SESSION);
+    assert.equal(sent.length, 0);
 });
 
 test("host bridge silently ignores untrusted source windows and origins", () => {

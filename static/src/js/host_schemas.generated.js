@@ -11,6 +11,7 @@ export const SDK_MESSAGE_TYPES = Object.freeze([
     "ba:hello",
     "ba:leaderboard",
     "ba:newSession",
+    "ba:room",
     "ba:storage",
     "ba:submit",
 ]);
@@ -102,6 +103,76 @@ export const SDK_MESSAGE_SCHEMAS = Object.freeze({
     "ba:newSession": Object.freeze({
         "type": "object",
         "additionalProperties": false
+    }),
+    "ba:room": Object.freeze({
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+            "op": {
+                "type": "string",
+                "enum": [
+                    "create",
+                    "join",
+                    "state",
+                    "command",
+                    "leave"
+                ]
+            },
+            "roomId": {
+                "type": "string",
+                "format": "uuid"
+            },
+            "code": {
+                "type": "string",
+                "minLength": 4,
+                "maxLength": 8
+            },
+            "name": {
+                "type": "string",
+                "maxLength": 24
+            },
+            "gameId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+            },
+            "maxPlayers": {
+                "type": "integer",
+                "minimum": 4,
+                "maximum": 12
+            },
+            "undercoverCount": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3
+            },
+            "mrWhite": {
+                "type": "boolean"
+            },
+            "categoryId": {
+                "type": "string",
+                "maxLength": 32
+            },
+            "command": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+            },
+            "commandPayload": {
+                "type": "object"
+            },
+            "expectedVersion": {
+                "type": "integer",
+                "minimum": 0
+            },
+            "requestId": {
+                "type": "string",
+                "format": "uuid"
+            }
+        },
+        "required": [
+            "op"
+        ]
     }),
     "ba:storage": Object.freeze({
         "type": "object",

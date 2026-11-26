@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://breaktime-arcade.local/schemas/messages/ba_room_data.json",
+  "title": "ba:room:data",
+  "description": "Sanitized Live Room snapshot from the host bridge (SDK 1.2).",
+  "allOf": [
+    {
+      "$ref": "_envelope.json"
+    },
+    {
+      "properties": {
+        "type": {
+          "const": "ba:room:data"
+        },
+        "payload": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "room": {
+              "type": "object"
+            },
+            "you": {
+              "type": "object"
+            },
+            "players": {
+              "type": "array"
+            },
+            "game": {
+              "type": "object"
+            },
+            "setup": {
+              "type": "object"
+            }
+          },
+          "required": []
+        },
+        "source": {
+          "const": "ba-host"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ]
+    }
+  ]
+}

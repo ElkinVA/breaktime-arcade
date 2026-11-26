@@ -18,7 +18,7 @@ from apps.pipeline.services.publishing import publish_version
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "games-src" / "archer"
-OFFICIAL_SDK = ROOT / "sdk" / "1.1.0" / "ba-sdk.js"
+OFFICIAL_SDK = ROOT / "sdk" / "1.2.0" / "ba-sdk.js"
 LANGUAGES = {
     "en": "English",
     "de": "Deutsch",
@@ -87,7 +87,7 @@ def test_archer_imports_persists_and_publishes(neon_env: Path) -> None:
 
     assert version.semver == "1.3.3"
     assert version.package_hash != version.runtime_hash
-    assert version.sdk_version == "1.1.0"
+    assert version.sdk_version == "1.2.0"
     assert version.entry_path == "index.html"
     assert (version.critical_path_bytes_declared or 0) > 0
     assert (version.critical_path_bytes_measured or 0) > 0
@@ -95,7 +95,7 @@ def test_archer_imports_persists_and_publishes(neon_env: Path) -> None:
     assert version.injection_report["path"] == "js/ba-sdk.js"
     official_sha = hashlib.sha256(OFFICIAL_SDK.read_bytes()).hexdigest()
     assert version.injection_report["after_sha256"] == official_sha
-    assert version.injection_report["sdk_version"] == "1.1.0"
+    assert version.injection_report["sdk_version"] == "1.2.0"
     assert version.validation_report["ok"] is True
 
     # Card translations from catalog/*.json.

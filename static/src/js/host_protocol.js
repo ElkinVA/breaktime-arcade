@@ -22,6 +22,7 @@ import {
 export { SDK_MESSAGE_SCHEMAS };
 
 const MAX_MESSAGES_PER_MINUTE = 60;
+const MAX_ROOM_MESSAGES_PER_MINUTE = 120;
 const SEEN_LIMIT = 512;
 const MAX_MESSAGE_BYTES = 64 * 1024;
 const MAX_SUBMIT_BYTES = 2 * 1024 * 1024 + 64 * 1024;
@@ -221,6 +222,7 @@ export class HostBridge {
         this.seen = new Set();
         this.seenOrder = [];
         this.messageTimes = [];
+        this.roomMessageTimes = [];
         this.onWindowMessage = this.onWindowMessage.bind(this);
         window.addEventListener("message", this.onWindowMessage);
     }
@@ -269,6 +271,10 @@ export class HostBridge {
         this.send("ba:storage:data", requestId, payload);
     }
 
+    sendRoomData(requestId, payload) {
+        this.send("ba:room:data", requestId, payload);
+    }
+
     sendSession(requestId, payload) {
         this.setSession(payload.sessionId);
         this.state = "active";
@@ -291,8 +297,17 @@ export class HostBridge {
         this.send("ba:error", requestId, payload);
     }
 
-    checkRate(requestId) {
+    checkRate(requestId, type) {
         const now = Date.now();
+        if (type === "ba:room") {
+            this.roomMessageTimes = this.roomMessageTimes.filter((time) => now - time < 60000);
+            if (this.roomMessageTimes.length >= MAX_ROOM_MESSAGES_PER_MINUTE) {
+                this.sendError(requestId, "E_RATE_LIMIT", "Too many room messages");
+                return false;
+            }
+            this.roomMessageTimes.push(now);
+            return true;
+        }
         this.messageTimes = this.messageTimes.filter((time) => now - time < 60000);
         if (this.messageTimes.length >= MAX_MESSAGES_PER_MINUTE) {
             this.sendError(requestId, "E_RATE_LIMIT", "Too many messages");
@@ -311,7 +326,7 @@ export class HostBridge {
         }
         const data = event.data;
         const requestId = isUuid(data?.requestId) ? data.requestId : null;
-        if (!this.checkRate(requestId)) {
+        if (!this.checkRate(requestId, data?.type)) {
             return;
         }
         const schemaError = validateMessage(data, "ba-sdk");
