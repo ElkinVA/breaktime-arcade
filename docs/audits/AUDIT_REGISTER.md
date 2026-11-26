@@ -547,8 +547,8 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 |---|---|
 | Тип | Control-plane safety policy; code-review + security review |
 | Результат | OWNER_ACTION_REQUIRED gate separate from STOP; pause/checkpoint/resume/status; six statuses + additive STOPPED; no model call/task-state change while gated; Windows toast best-effort; sanitized 0600 report |
-| Проверки | Focused **28 passed**; existing autonomy/control suite pass; full gate **1355 passed, 17 skipped, exit 0**; ruff/format/mypy clean (412); real pause/status/resume and toast sent; CI pending |
-| Статус | **IMPLEMENTED / CODE-REVIEW ACCEPT AFTER M1/M2 / SECURITY ACCEPT / FULL GATE GREEN / CI PENDING**; timer OFF |
+| Проверки | Focused **28 passed**; existing autonomy/control suite pass; full gate **1355 passed, 17 skipped, exit 0**; ruff/format/mypy clean (412); real pause/status/resume and toast sent; exact-commit CI **#163 success** |
+| Статус | **IMPLEMENTED / CODE-REVIEW ACCEPT AFTER M1/M2 / SECURITY ACCEPT / FULL GATE GREEN / CI #163 SUCCESS**; timer OFF |
 | Остаток | `enqueue`/`recover` owner exceptions; toast OS suppression; WSL shutdown; gate mid-flight boundary; runbook docs |
 | Источник | `docs/foundation/AUTONOMY_CHECKPOINT_POLICY_REPORT.md`; модели: plan — `deepseek-v4-pro`, implement — `deepseek-flash[1m]`, reviews — `deepseek-v4-pro` |
 

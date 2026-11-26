@@ -2,9 +2,9 @@
 
 **Дата:** 2026-11-26. **Статус:** IMPLEMENTED; code-review ACCEPT после
 must-fix M1/M2; security review ACCEPT после minor fixes; остаточный
-QA-boundary check исправлен после отчёта. Полный gate и CI — в процессе.
-**Timer остаётся выключенным.** Продуктовая/операционная приёмка владельца
-не заявлена.
+QA-boundary check исправлен после отчёта. Полный gate **1355 passed, 17
+skipped**; exact-commit CI **#163 SUCCESS**. **Timer остаётся
+выключенным.** Продуктовая/операционная приёмка владельца не заявлена.
 
 ## Что реализовано
 
@@ -44,7 +44,10 @@ QA-boundary check исправлен после отчёта. Полный gate 
   MILESTONE_COMPLETED корректны; реальный Windows toast вернул `sent`
   (и повторён после минимального child env); timer disabled.
 - Полный regression gate: **1355 passed, 17 skipped, exit 0**
-  (840.31 s) на свежей test DB; CI — ожидается.
+  (840.31 s) на свежей test DB.
+- Exact-commit CI **#163** на `9adfa09` — success (quality, e2e,
+  frontend, image, django-next):
+  https://github.com/ElkinVA/breaktime-arcade/actions/runs/45872239680
 
 ## Остатки
 

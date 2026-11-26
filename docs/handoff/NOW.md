@@ -17,7 +17,7 @@
 ## Owner checkpoint & notifications (2026-11-26)
 
 `AUTONOMY-CHECKPOINT-001` — **IMPLEMENTED / CODE+SECURITY REVIEW ACCEPT /
-FULL GATE GREEN / CI PENDING**; timer OFF.
+FULL GATE GREEN / CI #163 SUCCESS**; timer OFF.
 - `OWNER_ACTION_REQUIRED` gate отдельно от STOP; `pause/checkpoint/
   resume/status`; проверка до claim/каждого model-call/merge; malformed
   gate fail-closed; STOP приоритетнее.
@@ -28,7 +28,7 @@ FULL GATE GREEN / CI PENDING**; timer OFF.
   `.autonomy/reports/last_run_report.json`; Telegram paused/milestone.
 - Focused **28 passed**; autonomy/control suite pass; full gate
   **1355 passed, 17 skipped, exit 0**; ruff/mypy clean (412); real
-  pause/status/resume и toast; CI pending.
+  pause/status/resume и toast; CI **#163 success**.
 - Отчёт: `docs/foundation/AUTONOMY_CHECKPOINT_POLICY_REPORT.md`.
 
 ## Autonomy heartbeat (2026-11-26)

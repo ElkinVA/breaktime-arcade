@@ -18,7 +18,7 @@ Mass/low-quality SEO pages и AI game factory сейчас не создаютс
 ## 0.0f. Owner checkpoint & notifications — 2026-11-26
 
 `AUTONOMY-CHECKPOINT-001` — **IMPLEMENTED / CODE+SECURITY REVIEW ACCEPT /
-FULL GATE GREEN / CI PENDING**; timer OFF.
+FULL GATE GREEN / CI #163 SUCCESS**; timer OFF.
 - `OWNER_ACTION_REQUIRED` gate separate from STOP; `pause/checkpoint/
   resume/status`; no model call/task-state change while gated (recheck
   before claim/each model/merge); malformed gate fail-closed.
@@ -29,7 +29,7 @@ FULL GATE GREEN / CI PENDING**; timer OFF.
   sanitized 0600 report; existing Telegram paused/milestone event.
 - Focused **28 passed**; autonomy/control suite pass; full gate
   **1355 passed, 17 skipped, exit 0** (840.31 s); ruff/mypy clean
-  (412); real pause/status/resume and toast; CI pending.
+  (412); real pause/status/resume and toast; CI **#163 success**.
 - Остатки: `enqueue`/`recover` owner exceptions; toast OS suppression;
   WSL shutdown; mid-flight gate boundary; timer remains off.
 - Отчёт: `docs/foundation/AUTONOMY_CHECKPOINT_POLICY_REPORT.md`.

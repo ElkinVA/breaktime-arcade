@@ -36,7 +36,8 @@
   ruff/format/mypy clean (412); реальный pause/status/resume и Windows
   toast. Code-reviewer сначала REJECT по M1/M2; исправлено, delta
   **ACCEPT**; security — **ACCEPT** после minor fixes; последний
-  QA-boundary check исправлен после отчёта. CI — ожидается.
+  QA-boundary check исправлен после отчёта. Exact-commit CI **#163**
+  (`9adfa09`) — success (quality, e2e, frontend, image, django-next).
 - **Статус:** IMPLEMENTED / CODE+SECURITY REVIEW ACCEPT / FULL GATE+CI
   PENDING; timer остаётся выключенным. `enqueue`/`recover` — owner-
   исключения; toast best-effort; WSL must be running.
