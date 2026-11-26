@@ -162,3 +162,36 @@ test("host bridge enforces 60 messages per minute", () => {
     assert.equal(sent.at(-1).data.type, "ba:error");
     assert.equal(sent.at(-1).data.payload.code, "E_RATE_LIMIT");
 });
+
+test("host bridge rejects all messages after exit, including hello", () => {
+    const { bridge, sent, calls } = setup();
+    bridge.markExited();
+    for (const type of ["ba:hello", "ba:leaderboard", "ba:newSession"]) {
+        bridge.onWindowMessage({
+            source: bridge.iframe.contentWindow,
+            origin: ORIGIN,
+            data: message({ type, payload: type === "ba:leaderboard" ? { limit: 10 } : {} }),
+        });
+    }
+    assert.equal(calls.length, 0);
+    assert.equal(sent.length, 3);
+    assert.equal(sent.at(-1).data.type, "ba:error");
+    assert.equal(sent.at(-1).data.payload.code, "E_SESSION_FINISHED");
+});
+
+test("exited state is not reopened by a late result or session", () => {
+    const { bridge, sent, calls } = setup();
+    bridge.markExited();
+
+    bridge.sendResult(crypto.randomUUID(), { status: "saved" });
+    assert.equal(bridge.state, "exited");
+    assert.equal(calls.length, 0);
+    assert.equal(sent.at(-1).data.type, "ba:error");
+    assert.equal(sent.at(-1).data.payload.code, "E_SESSION_FINISHED");
+
+    bridge.sendSession(crypto.randomUUID(), { sessionId: OTHER_SESSION, seed: "s" });
+    assert.equal(bridge.state, "exited");
+    assert.equal(calls.length, 0);
+    assert.equal(sent.at(-1).data.type, "ba:error");
+    assert.equal(sent.at(-1).data.payload.code, "E_SESSION_FINISHED");
+});

@@ -240,6 +240,10 @@ export class HostBridge {
         this.seenOrder = [];
     }
 
+    markExited() {
+        this.state = "exited";
+    }
+
     send(type, requestId, payload = {}) {
         this.iframe.contentWindow?.postMessage(
             {
@@ -259,6 +263,10 @@ export class HostBridge {
     }
 
     sendResult(requestId, payload) {
+        if (this.state === "exited") {
+            this.sendError(requestId, "E_SESSION_FINISHED", "Session is closed");
+            return;
+        }
         this.state = "finished";
         this.send("ba:result", requestId, payload);
     }
@@ -276,6 +284,10 @@ export class HostBridge {
     }
 
     sendSession(requestId, payload) {
+        if (this.state === "exited") {
+            this.sendError(requestId, "E_SESSION_FINISHED", "Session is closed");
+            return;
+        }
         this.setSession(payload.sessionId);
         this.state = "active";
         this.send("ba:session", requestId, payload);
@@ -351,6 +363,10 @@ export class HostBridge {
         if (this.seenOrder.length > SEEN_LIMIT) {
             this.seen.delete(this.seenOrder.shift());
         }
+        if (this.state === "exited") {
+            this.sendError(data.requestId, "E_SESSION_FINISHED", "Session is closed");
+            return;
+        }
         if (data.type === "ba:hello") {
             if (this.state === "init") {
                 this.state = "active";
@@ -360,9 +376,6 @@ export class HostBridge {
             return;
         } else if (this.state === "finished" && !FINISHED_TYPES.has(data.type)) {
             this.sendError(data.requestId, "E_SESSION_FINISHED", "Session is finished");
-            return;
-        } else if (this.state === "exited") {
-            this.sendError(data.requestId, "E_SESSION_FINISHED", "Session is closed");
             return;
         }
         this.onMessage?.(data.type, data.payload, data.requestId);

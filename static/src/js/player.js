@@ -16,6 +16,8 @@ if (frame) {
     const submissionKeys = new Map();
     const submissionChains = new Map();
     let sessionSwitch = Promise.resolve();
+    let exitRequested = false;
+    let exitPromise = null;
 
     function headers(extra = {}) {
         return {
@@ -160,6 +162,7 @@ if (frame) {
             );
             // A response from a superseded session must not touch the new round.
             if (sessionId !== requestSession) {
+                bridge.sendError(requestId, "E_SESSION_FINISHED", "Session is closed");
                 return;
             }
             bridge.sendResult(requestId, {
@@ -171,6 +174,7 @@ if (frame) {
             });
         } catch (error) {
             if (sessionId !== requestSession) {
+                bridge.sendError(requestId, "E_SESSION_FINISHED", "Session is closed");
                 return;
             }
             if (error.code === "E_GUEST_FORBIDDEN") {
@@ -296,6 +300,12 @@ if (frame) {
     }
 
     function newSession(requestId) {
+        // Exit is terminal: a restart that was requested before exit must not
+        // create a session after the player has left.
+        if (exitRequested) {
+            bridge?.sendError(requestId, "E_SESSION_FINISHED", "Session is closed");
+            return Promise.resolve();
+        }
         // Serialize restarts: two quick newSession messages must not both
         // close the same session and create two replacements.
         sessionSwitch = sessionSwitch
@@ -312,21 +322,54 @@ if (frame) {
             // settle first: closing it early would turn a valid submission
             // into E_SESSION_EXPIRED and lose the score.
             const previousSession = sessionId;
+            if (exitRequested) {
+                bridge?.sendError(requestId, "E_SESSION_FINISHED", "Session is closed");
+                return;
+            }
             await waitForSubmission(previousSession);
+            if (exitRequested) {
+                bridge?.sendError(requestId, "E_SESSION_FINISHED", "Session is closed");
+                return;
+            }
             await closeSession(previousSession);
             submissionKeys.delete(previousSession);
+            if (exitRequested) {
+                bridge?.sendError(requestId, "E_SESSION_FINISHED", "Session is closed");
+                return;
+            }
             const created = await createSession();
-            bridge.setSession(sessionId);
+            if (exitRequested) {
+                // Exit arrived while the replacement was being created. Close
+                // it instead of announcing a session the player already left.
+                await closeSession(created.sessionId);
+                submissionKeys.delete(created.sessionId);
+                bridge?.sendError(requestId, "E_SESSION_FINISHED", "Session is closed");
+                return;
+            }
             bridge.sendSession(requestId, created);
         } catch (error) {
-            bridge.sendError(requestId, error.code || "E_INTERNAL", error.message);
+            bridge?.sendError(requestId, error.code || "E_INTERNAL", error.message);
         }
     }
 
-    async function exitSession() {
+    function exitSession() {
+        if (exitPromise) {
+            return exitPromise;
+        }
+        exitRequested = true;
+        exitPromise = sessionSwitch
+            .catch(() => undefined)
+            .then(() => performExit());
+        sessionSwitch = exitPromise;
+        return exitPromise;
+    }
+
+    async function performExit() {
         const current = sessionId;
         await waitForSubmission(current);
         await closeSession(current);
+        submissionKeys.delete(current);
+        bridge?.markExited();
     }
 
     async function closeSession(targetSession = sessionId) {
