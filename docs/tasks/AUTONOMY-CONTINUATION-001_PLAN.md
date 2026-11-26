@@ -1,9 +1,14 @@
 # AUTONOMY-CONTINUATION-001 — минимальное продолжение после сессии
 
 **Дата:** 2026-11-23  
-**Статус:** **BLOCKED — AWAITING OWNER DECISION** (AI HQ architecture).  
-**Основание:** фактическая проверка AI Headquarters 2026-11-23; не создавать
-параллельный оркестратор и не менять архитектуру без согласования.
+**Статус:** **PARTIAL — owner approved WSL heartbeat 2026-11-26.**
+**Основание:** фактическая проверка AI Headquarters 2026-11-23; owner
+разрешил 30-минутный systemd user timer для существующего
+`autonomy.orchestrator` (Pro architect/reviewer + Flash developer/QA,
+текущие лимиты). Units установлены/связаны, timer **не включён**:
+тестовый bounded-run остановился на `architect failed: Not logged in`.
+Не создавать параллельный оркестратор; включение timer — только после
+успешного тестового запуска с рабочими model credentials.
 
 ## 1. Факты проверки
 
@@ -72,3 +77,24 @@ ba-autonomy-orchestrator.timer
 - Нет owner approval на AI HQ architecture.
 - Нет VPS/пользователя/исходящего 443 к провайдеру.
 - Требуется изменить Celery/БД/контракты или обойти hooks — остановиться.
+
+## 7. WSL installation evidence (2026-11-26)
+
+- Owner decision: 30-минутный systemd user timer, Pro architect/reviewer +
+  Flash developer/QA, текущие лимиты (`--max-tasks 1`,
+  `BA_MAX_RUN_SECONDS=3600`).
+- Добавлены `autonomy/vps/wsl/ba-autonomy-orchestrator.service` и
+  `.timer`; unit-файлы связаны в `~/.config/systemd/user/` через
+  `systemctl --user link`, `daemon-reload` выполнен.
+- Timer **не включён**: первый bounded-run завершился
+  `architect failed: Not logged in · Please run /login`. Сервис не
+  получил рабочие `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` из
+  `~/.config/ba/deepseek.env`; `.autonomy` state не изменялся, задач не
+  выполнено, timer-запусков не было.
+- Следующее действие владельца: положить рабочие model creds в
+  `~/.config/ba/deepseek.env` (0600), выполнить
+  `systemctl --user start ba-autonomy-orchestrator.service` и проверить
+  журнал; только после успеха — `systemctl --user enable --now
+  ba-autonomy-orchestrator.timer`.
+- WSL должен быть запущен; после завершения WSL/Windows timer не
+  работает без отдельного Windows/WSL autostart (не настраивался).

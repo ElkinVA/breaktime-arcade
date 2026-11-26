@@ -9,6 +9,32 @@
 
 ## 1. Записи работ
 
+### AUTONOMY-CONTINUATION-001 — WSL heartbeat installation
+
+- **ID:** AUTONOMY-CONTINUATION-001.
+- **Назначение:** закрыть разрыв между bounded-запусками: таймер
+  периодически запускает существующий `autonomy.orchestrator`, без
+  параллельного оркестратора.
+- **Решение владельца 2026-11-26:** 30-минутный systemd user timer,
+  architect/reviewer — `deepseek-v4-pro`, developer/QA —
+  `deepseek-flash[1m]`, текущие лимиты (`--max-tasks 1`,
+  `BA_MAX_RUN_SECONDS=3600`).
+- **Сделано:** `autonomy/vps/wsl/ba-autonomy-orchestrator.service` и
+  `.timer`; unit-файлы связаны в `~/.config/systemd/user`, выполнен
+  `daemon-reload`. Timer **не включён**.
+- **Проверка:** первый bounded-run завершился
+  `architect failed: Not logged in · Please run /login`; сервис не
+  получил рабочие `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` из
+  `~/.config/ba/deepseek.env`. Задач не выполнено, state не изменялся.
+- **Статус:** PARTIAL / BLOCKED ON MODEL CREDENTIALS; WSL должен быть
+  запущен; Windows/WSL autostart не настраивался.
+- **Следующий шаг:** владелец обновляет `~/.config/ba/deepseek.env`
+  (0600), затем `systemctl --user start ba-autonomy-orchestrator.service`;
+  после успешного журнала — `systemctl --user enable --now
+  ba-autonomy-orchestrator.timer`.
+- **Модели:** orchestrator routing Pro/Flash; установка/проверка —
+  `deepseek-flash[1m]`.
+
 ### ARCADE-SUBMIT-RESTART-HARDENING-001 — exit/restart boundary
 
 - **ID:** ARCADE-SUBMIT-RESTART-HARDENING-001.

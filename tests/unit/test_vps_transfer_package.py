@@ -17,6 +17,9 @@ PACKAGE_DIR = REPO_ROOT / "autonomy" / "vps"
 UNIT_PATH = PACKAGE_DIR / "ba-autonomy-orchestrator.service"
 ENV_PATH = PACKAGE_DIR / "orchestrator.env.example"
 RUNBOOK_PATH = PACKAGE_DIR / "README.md"
+WSL_DIR = PACKAGE_DIR / "wsl"
+WSL_SERVICE_PATH = WSL_DIR / "ba-autonomy-orchestrator.service"
+WSL_TIMER_PATH = WSL_DIR / "ba-autonomy-orchestrator.timer"
 
 # Values that are tuning, not credentials. BA_MAX_TOKENS contains "TOKEN" but
 # is a numeric budget, so the allowlist must win over the name heuristic.
@@ -224,3 +227,53 @@ def test_package_has_no_secret_artifacts() -> None:
         assert path.name not in forbidden_names, f"secret-like file: {path.name}"
         assert path.suffix not in {".pem", ".key", ".p12", ".pfx"}, path.name
         _assert_no_tokens(path.read_text(encoding="utf-8"), path.name)
+
+
+def _parse_unit(path: Path) -> configparser.ConfigParser:
+    parser = configparser.ConfigParser(interpolation=None, strict=False)
+    parser.optionxform = str
+    parser.read_string(_read(path))
+    return parser
+
+
+def test_wsl_heartbeat_files_exist() -> None:
+    for path in (WSL_SERVICE_PATH, WSL_TIMER_PATH):
+        assert path.is_file(), f"missing WSL heartbeat file: {path.name}"
+        assert not path.is_symlink(), f"WSL heartbeat file must not be a symlink: {path.name}"
+
+
+def test_wsl_service_runs_the_existing_orchestrator() -> None:
+    parser = _parse_unit(WSL_SERVICE_PATH)
+    service = parser["Service"]
+    assert service["ExecStart"].split() == [
+        "%h/projects/ba/.venv/bin/python",
+        "-m",
+        "autonomy.orchestrator",
+        "run",
+        "--max-tasks",
+        "1",
+    ]
+    assert service["WorkingDirectory"] == "%h/projects/ba"
+    assert service["Type"] == "oneshot"
+    assert "--dangerously-skip-permissions" not in service["ExecStart"]
+    assert (REPO_ROOT / "autonomy" / "orchestrator.py").is_file()
+    env_files = re.findall(r"^EnvironmentFile=(-?)(\S+)", _read(WSL_SERVICE_PATH), re.MULTILINE)
+    assert env_files
+    for _, path in env_files:
+        assert path.startswith("%h/.config/ba/"), path
+        assert path.endswith(".env"), path
+    for key, value in re.findall(
+        r"^Environment=(\w+)=(.*)$", _read(WSL_SERVICE_PATH), re.MULTILINE
+    ):
+        assert key in NON_SECRET_KEYS, f"unexpected WSL unit environment key {key}"
+        _assert_no_tokens(value, "WSL unit Environment")
+
+
+def test_wsl_timer_is_bounded_and_uses_the_service() -> None:
+    parser = _parse_unit(WSL_TIMER_PATH)
+    timer = parser["Timer"]
+    assert timer["Unit"] == "ba-autonomy-orchestrator.service"
+    assert timer["OnBootSec"] == "5min"
+    assert timer["OnUnitActiveSec"] == "30min"
+    assert timer["Persistent"] == "true"
+    assert parser["Install"]["WantedBy"] == "timers.target"

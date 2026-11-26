@@ -539,7 +539,7 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Результат | A PASS (код), D PASS (код)/NOT TESTED live; B/C/E FAIL/NOT TESTED; `.autonomy` и systemd user units/timers отсутствуют; Telegram API timeout |
 | Проверки | autonomy/devcontrol tests 94 passed, 1 skipped; full 981/12; `claude agents --json` — только текущая interactive-сессия |
 | Статус | **COMPLETED / AUDIT ONLY** |
-| Остаток | `AUTONOMY-CONTINUATION-001` — BLOCKED owner; timer не устанавливался |
+| Остаток | `AUTONOMY-CONTINUATION-001` — owner approved 2026-11-26; WSL units linked, timer disabled pending model credentials (`Not logged in`) |
 
 ## APPF-RUNTIME-REVIEW-001 — App F Runtime
 

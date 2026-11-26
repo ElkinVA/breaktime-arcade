@@ -145,6 +145,43 @@ systemctl --user start ba-autonomy-orchestrator.service
 
 Пакет не выполняет pull, миграции и деплой автоматически.
 
+## WSL heartbeat (owner-approved, 30 минут)
+
+Для локального WSL-репозитория `~/projects/ba` добавлен отдельный
+user-unit комплект `autonomy/vps/wsl/`:
+
+- `ba-autonomy-orchestrator.service` — тот же существующий
+  `autonomy.orchestrator run --max-tasks 1`, с путями `%h/projects/ba`,
+  venv Python и nvm `claude` в `PATH`;
+- `ba-autonomy-orchestrator.timer` — `OnBootSec=5min`,
+  `OnUnitActiveSec=30min`, `Persistent=true`.
+
+Владелец разрешил 30-минутный heartbeat, Pro architect/reviewer +
+Flash developer/QA и текущие лимиты (`max-tasks 1`,
+`BA_MAX_RUN_SECONDS=3600`). Установка — только через явную команду:
+
+```bash
+systemctl --user link "$HOME/projects/ba/autonomy/vps/wsl/ba-autonomy-orchestrator.service"
+systemctl --user link "$HOME/projects/ba/autonomy/vps/wsl/ba-autonomy-orchestrator.timer"
+systemctl --user daemon-reload
+# Сначала проверить один bounded-run:
+systemctl --user start ba-autonomy-orchestrator.service
+journalctl --user -u ba-autonomy-orchestrator.service -n 100 --no-pager
+# Включать timer только после успешного тестового запуска:
+systemctl --user enable --now ba-autonomy-orchestrator.timer
+```
+
+`~/.config/ba/deepseek.env` (0600) обязан содержать рабочие
+`ANTHROPIC_BASE_URL` и `ANTHROPIC_AUTH_TOKEN` (или `ANTHROPIC_API_KEY`).
+Симптом отсутствующих кредов в журнале — `Not logged in · Please run
+/login`; в этом случае timer не включать. `claude` в systemd должен
+находиться в `PATH`; unit уже добавляет nvm-каталог Node 22.
+
+WSL должен быть запущен; user timer не работает после завершения WSL
+или Windows. Для запуска после logout нужен `loginctl enable-linger`
+(решение владельца). `STOP`-файл `.autonomy/STOP` и `run.lock`
+остаются аварийным стопом и защитой от параллельных запусков.
+
 ## Проверка пакета
 
 Статические тесты разбирают unit и env-шаблон и проверяют отсутствие

@@ -2,6 +2,25 @@
 
 **Дата:** 2026-11-26
 
+## Autonomy heartbeat (2026-11-26)
+
+- Owner approved 30-минутный WSL systemd user timer для существующего
+  `autonomy.orchestrator` (Pro architect/reviewer + Flash developer/QA,
+  текущие лимиты). Units `autonomy/vps/wsl/*` связаны в
+  `~/.config/systemd/user`; `daemon-reload` выполнен.
+- **Timer НЕ включён.** Первый bounded-run: `architect failed: Not
+  logged in · Please run /login`; сервис не получил рабочие
+  `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN` из
+  `~/.config/ba/deepseek.env`. Задач не выполнено, state не изменялся.
+- Владельцу: обновить `~/.config/ba/deepseek.env` (0600), выполнить
+  `systemctl --user start ba-autonomy-orchestrator.service`, проверить
+  журнал; только после success — `systemctl --user enable --now
+  ba-autonomy-orchestrator.timer`. WSL должен быть запущен; Windows/WSL
+  autostart не настраивался.
+- **Статус:** PARTIAL / BLOCKED ON MODEL CREDENTIALS;
+  `docs/tasks/AUTONOMY-CONTINUATION-001_PLAN.md`,
+  `docs/status/BACKLOG.md`.
+
 ## Player submit/restart hardening (2026-11-26)
 
 - **ARCADE-SUBMIT-RESTART-HARDENING-001** (`80eabad`): exit отменяет

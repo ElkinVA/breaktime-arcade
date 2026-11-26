@@ -1,8 +1,24 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-26 (player submit/restart hardening;
-LR-3 reliability; LR-2b; CI restore; owner directive continuous full
-product development).
+**Дата актуализации:** 2026-11-26 (autonomy heartbeat; player
+submit/restart hardening; LR-3 reliability; LR-2b; CI restore; owner
+directive continuous full product development).
+
+## 0.0e. Autonomy heartbeat — 2026-11-26
+
+`AUTONOMY-CONTINUATION-001` — **PARTIAL / BLOCKED ON MODEL CREDENTIALS**.
+Owner approved 30-минутный WSL systemd user timer, Pro
+architect/reviewer + Flash developer/QA, текущие лимиты.
+- `autonomy/vps/wsl/ba-autonomy-orchestrator.service` и `.timer`
+  связаны в `~/.config/systemd/user`; `daemon-reload` выполнен.
+- Первый bounded-run: `architect failed: Not logged in · Please run
+  /login`; сервис не получил `ANTHROPIC_BASE_URL`/`ANTHROPIC_AUTH_TOKEN`
+  из `~/.config/ba/deepseek.env`. Задач не выполнено, state не менялся.
+- Timer **не включён**. Владельцу: обновить `~/.config/ba/deepseek.env`
+  (0600), проверить `systemctl --user start
+  ba-autonomy-orchestrator.service`, затем `enable --now ...timer`.
+- WSL должен быть запущен; Windows/WSL autostart не настраивался.
+  `STOP`, `RUN_LOCK`, worktree/paths checks остаются без изменений.
 
 ## 0.0d. Player submit/restart hardening — 2026-11-26
 
@@ -248,7 +264,8 @@ CODE-REVIEW ACCEPT + DELTA ACCEPT / CI #159 SUCCESS**.
 - **E:** `api.telegram.org:443` timeout; bot process/state отсутствуют →
   **FAIL/NOT TESTED**.
 - Минимальный timer для существующего orchestrator:
-  `docs/tasks/AUTONOMY-CONTINUATION-001_PLAN.md`, **BLOCKED — owner**.
+  `docs/tasks/AUTONOMY-CONTINUATION-001_PLAN.md`; owner approved
+  2026-11-26, units linked, timer disabled pending model credentials.
 
 ## 0.5. App F Runtime Review — 2026-11-23
 
