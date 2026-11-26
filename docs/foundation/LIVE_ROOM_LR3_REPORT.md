@@ -1,9 +1,9 @@
 # Live Room LR-3 report
 
-**Дата:** 2026-11-26. **Статус:** IMPLEMENTED; независимые code+security
-review ACCEPT, QA — PASS WITH RESERVATIONS, exact-commit CI в процессе.
-**Live Room не production-ready**, продуктовая приёмка владельца
-остаётся обязательной.
+**Дата:** 2026-11-26. **Статус:** IMPLEMENTED; code+security review
+ACCEPT; QA PASS WITH RESERVATIONS; exact-commit CI **#157 SUCCESS**
+(`e3c9d21`). **Live Room не production-ready**, продуктовая приёмка
+владельца остаётся обязательной.
 **Модели:** implement — `deepseek-flash[1m]`; independent reviews —
 `code-reviewer`/`security-auditor` (`deepseek-v4-pro`, text-only); QA —
 `qa-engineer` (`deepseek-flash[1m]`).
@@ -80,9 +80,11 @@ runtime `whos_undercover_live` старше исходника (в нём `#lobb
 (3/4 passed, host-loss timeout). Ad-hoc route-прогон текущего исходника
 (не входит в repo) также не завершил host-loss: после 30 первых
 browser-контекстов сработал `sessions` throttle (429). Exact-commit CI
-e2e seed'ит картридж из текущего исходника в свежей БД и должен
-выполнить сценарий целиком; до его success host-loss E2E считается
-**NOT VERIFIED**, а не PASS.
+**#157** (commit `e3c9d21`) seed'ил картридж из текущего исходника в
+свежей БД; job **e2e completed success**, `pytest tests/e2e -m e2e`
+прошёл целиком, включая real 125-s host-loss. Таким образом host-loss
+E2E **VERIFIED by CI**; локальная dev-среда остаётся непригодной для
+прямого прогона без перепубликации runtime/свежего throttle state.
 
 ### Observability
 
@@ -108,10 +110,13 @@ e2e seed'ит картридж из текущего исходника в св�
 - JS **40/40**, `check:js` clean; ruff/format clean; mypy clean (409).
 - Browser E2E в текущей dev-среде **NOT VERIFIED** (stale published
   runtime, in-container nginx topology, throttle exhaustion); exact-commit
-  CI e2e остаётся execution gate.
+  CI #157 job **e2e completed success**, включая real 125-s host-loss.
 - Финальный полный regression gate: **1324 passed, 17 skipped, exit 0**
   (640.78 s) на свежей test DB; skip — opt-in/E2E при выключенном
-  `BA_E2E` и аналогичные. Exact-commit CI — ожидается.
+  `BA_E2E` и аналогичные.
+- Exact-commit GitHub Actions: run **#157** на `e3c9d21` — success
+  (quality, frontend, e2e, image, django-next):
+  `https://github.com/ElkinVA/breaktime-arcade/actions/runs/45828666386`.
 
 ## Независимое review
 
@@ -137,15 +142,17 @@ e2e seed'ит картридж из текущего исходника в св�
   локально не выполнен (stale runtime; in-container nginx topology;
   30/30 `sessions` throttle после серии прогонов). RPS включает setup,
   throttle headroom `make e2e` — 26/30 контекстов, recovery-комната
-  `RUY8Q7` уже очищена. Это residuals; CI e2e должен доказать
-  host-loss на свежем runtime.
+  `RUY8Q7` уже очищена. Это residuals; exact-commit CI #157 e2e
+  completed success — host-loss выполнен на свежем runtime, reservation
+  закрыт для CI.
 - Reviews не заменяют продуктовую приёмку владельца.
 
 ## Остатки / ограничения
 
-- Host-loss browser E2E не подтверждён независимым выполнением в
-  текущей среде; exact-commit CI e2e — обязательный gate. До него
-  LR-3 не считается CI-stable.
+- Host-loss browser E2E подтверждён exact-commit CI #157 (job e2e
+  success, fresh published runtime); локальная dev-среда по-прежнему
+  требует перепубликации runtime/свежего throttle state для прямого
+  прогона. CI-green не означает product acceptance.
 - `make e2e` создаёт ~26 первых browser-контекстов против общего
   `sessions` bucket 30/hour; запас 4 контекста. Любой дополнительный
   play-сценарий/повтор в течение часа даёт 429. Не ослаблять throttle;

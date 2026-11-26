@@ -5,9 +5,9 @@
 `docs/status/BACKLOG.md`. **Точка старта:** `main = 3ee2f0e`, CI run #156
 success. **Статус:** IMPLEMENTED; code+security review ACCEPT; QA PASS
 WITH RESERVATIONS; full regression gate **1324 passed, 17 skipped,
-exit 0**; host-loss E2E и exact-commit GitHub Actions ещё должны быть
-подтверждены. Live Room не объявляется production-ready до завершения
-критериев и продуктовой приёмки владельца.
+exit 0**; exact-commit CI **#157 SUCCESS** (`e3c9d21`), включая
+host-loss E2E на fresh published runtime. Live Room не объявляется
+production-ready до продуктовой приёмки владельца.
 
 ## Цель
 
@@ -166,12 +166,11 @@ Product acceptance remains owner-only.
 - Load: `docs/foundation/LIVE_ROOM_LR3_LOAD_BASELINE.md`.
 - Recovery: `docs/foundation/LIVE_ROOM_LR3_RECOVERY.md`; real web/worker
   restart, two Celery expiry tasks through the worker.
-- Host-loss: 4 независимых контекста, real 125 s wait; сценарий
-  проверен чтением, но локально **NOT VERIFIED**: published dev runtime
-  старше source, in-container topology не достучалась до nginx, а
-  ad-hoc current-source route-прогон упёрся в 30/30 `sessions` throttle.
-  Exact-commit CI e2e (fresh DB + `make undercover-live-seed`) должен
-  выполнить его целиком; до success — не PASS.
+- Host-loss: 4 независимых контекста, real 125 s wait. Локальная
+  dev-среда NOT VERIFIED (stale published runtime; in-container topology;
+  30/30 `sessions` throttle). Exact-commit CI **#157** e2e job
+  **completed success** на fresh DB + `make undercover-live-seed`,
+  `pytest tests/e2e -m e2e` прошёл целиком, включая host-loss.
 - Observability: 4 negative/redaction tests; bounded command values.
 - Reviews: code-reviewer ACCEPT (must-fix race assertion fixed; delta
   ACCEPT), security-auditor ACCEPT (M1 residual), QA PASS WITH
@@ -182,10 +181,9 @@ Product acceptance remains owner-only.
 
 ## Остатки
 
-- Independent code/security reviews получены (ACCEPT); QA — PASS WITH
-  RESERVATIONS. Exact-commit GitHub Actions и host-loss E2E execution
-  (fresh published runtime) остаются обязательными до любой LR-3
-  acceptance claim.
+- Code/security reviews ACCEPT; QA PASS WITH RESERVATIONS; exact-commit
+  CI #157 success, включая host-loss E2E. CI-green не заменяет
+  продуктовую приёмку владельца.
 - Load numbers are service-layer, WSL2; RPS includes setup, not
   steady-state; not HTTP/production SLO.
 - E2E throttle headroom: ~26/30 first-visit contexts per `make e2e`;

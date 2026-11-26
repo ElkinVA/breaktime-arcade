@@ -94,12 +94,11 @@ Owner-директива 2026-11-26: Live Room — главный следующ
   create/join/lobby/reveal/clues/vote/tie/Mr. White/final/replay,
   reconnect/stale, en/ru fallback, 3 Playwright-сценария с 4–5
   независимыми contexts; CI seed текущего картриджа.
-- **LR-3 (code+security accepted; QA with reservations):** серверная
-  create-idempotency, PostgreSQL race suite, load baseline, restart/
-  repeat Celery, real 125-s host-loss committed E2E, безопасная
-  observability; full gate **1324/17** green. Host-loss E2E locally NOT
-  VERIFIED; exact-commit CI e2e on fresh published runtime обязателен.
-  Live Room не production-ready до product acceptance.
+- **LR-3 (code+security accepted; QA with reservations; CI #157
+  success):** серверная create-idempotency, PostgreSQL race suite, load
+  baseline, restart/repeat Celery, real 125-s host-loss E2E (CI #157),
+  безопасная observability; full gate **1324/17** green. Live Room не
+  production-ready до product acceptance владельца.
 - **LR-4 (next after LR-3 acceptance):** production deployment gates,
   further UX/content, and whole-product reliability.
 

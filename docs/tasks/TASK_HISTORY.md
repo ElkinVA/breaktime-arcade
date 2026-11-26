@@ -24,12 +24,12 @@
   4, recovery 3, Live Room 25, loadtest guard 1; QA independently
   executed 32 targeted + 26 existing/guard, reproduced load point
   1×8×10 s (69 reads, p95 128.8 ms, 0 errors); JS 40/40; ruff/mypy
-  clean. Host-loss E2E locally NOT VERIFIED (stale published runtime,
-  in-container topology, 30/30 sessions throttle); full gate **1324
-  passed, 17 skipped, exit 0** (640.78 s); exact-commit CI — ожидается.
-  **Статус:** IMPLEMENTED / CODE+SECURITY REVIEW ACCEPT / QA WITH
-  RESERVATIONS / FULL GATE GREEN / CI PENDING; product acceptance owner;
-  не production-ready.
+  clean. Host-loss E2E локально NOT VERIFIED (stale published runtime,
+  in-container topology, 30/30 sessions throttle), но exact-commit CI
+  **#157** e2e job success на fresh published runtime; full gate **1324
+  passed, 17 skipped, exit 0** (640.78 s). **Статус:** IMPLEMENTED /
+  CODE+SECURITY REVIEW ACCEPT / QA WITH RESERVATIONS / CI #157 SUCCESS;
+  product acceptance owner; не production-ready.
 - **Модели:** implement — `deepseek-flash[1m]`; reviews — `code-reviewer`/
   `security-auditor` (`deepseek-v4-pro`, text-only); QA — `qa-engineer`
   (`deepseek-flash[1m]`).

@@ -17,8 +17,8 @@
   125-s browser E2E (4 contexts) в committed test. Локальный host-loss
   **NOT VERIFIED**: published dev runtime старше source, in-container
   topology без nginx, ad-hoc current-source прогон упёрся в 30/30
-  `sessions` throttle. Exact-commit CI e2e (fresh DB +
-  `make undercover-live-seed`) — обязательный gate.
+  `sessions` throttle. Exact-commit CI **#157** (fresh DB +
+  `make undercover-live-seed`) e2e job **success**, включая host-loss.
 - **Observability:** safe structured events; 4 negative log-redaction
   tests; unknown command names сворачиваются в `other`.
 - **Reviews/QA:** code-reviewer ACCEPT (must-fix race assertion fixed;
@@ -27,9 +27,12 @@
   reproduced.
 - **Evidence:** idempotency 13, races 12, observability 4, recovery 3,
   Live Room 25, loadtest guard 1; JS 40/40; ruff/mypy clean; full gate
-  **1324 passed, 17 skipped, exit 0** (640.78 s). Host-loss E2E ждёт
-  exact-commit CI; **LR-3 не объявляется готовым**, продуктовая приёмка
-  владельца отдельно.
+  **1324 passed, 17 skipped, exit 0** (640.78 s). Exact-commit CI run
+  **#157** на `e3c9d21` — **success** (quality, frontend, e2e, image,
+  django-next), e2e включает host-loss:
+  `https://github.com/ElkinVA/breaktime-arcade/actions/runs/45828666386`.
+  LR-3 технически подтверждён, но **product acceptance владельца
+  остаётся**, Live Room не production-ready.
 
 ## Live Room LR-2b + CI restore (2026-11-26)
 

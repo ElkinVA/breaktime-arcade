@@ -28,8 +28,9 @@ owner directive continuous full product development).
   отклонением преждевременного и конкурентного claim, возвратом старого
   host без полномочий. Локально **NOT VERIFIED**: published dev runtime
   старше source, in-container topology без nginx, ad-hoc current-source
-  прогон упёрся в 30/30 `sessions` throttle. Exact-commit CI e2e
-  (fresh DB + `make undercover-live-seed`) обязан выполнить его целиком.
+  прогон упёрся в 30/30 `sessions` throttle. Exact-commit CI **#157**
+  (fresh DB + `make undercover-live-seed`) e2e job **success**,
+  host-loss выполнен.
 - **Observability:** structured events для create/join/command/read.slow/
   idempotency/stale/host/forfeit/expiry/cleanup; safe whitelist, no
   names/roles/words/votes/cookies/tokens/keys; negative caplog tests.
@@ -40,9 +41,10 @@ owner directive continuous full product development).
 - **Проверки:** idempotency 13, races 12, observability 4, recovery 3,
   existing Live Room 25, loadtest guard 1; JS 40/40; ruff/mypy clean;
   full gate **1324 passed, 17 skipped, exit 0** (640.78 s) на свежей
-  test DB. **Status:** IMPLEMENTED / REVIEW ACCEPT / QA WITH
-  RESERVATIONS / HOST-LOSS+CI PENDING; product acceptance owner; Live
-  Room не production-ready.
+  test DB; exact-commit CI **#157** (`e3c9d21`) — **success**.
+  **Status:** IMPLEMENTED / REVIEW ACCEPT / QA WITH RESERVATIONS /
+  CI #157 SUCCESS; product acceptance owner; Live Room не
+  production-ready.
 
 ## 0.0a. Live Room LR-2b — картридж и browser E2E (2026-11-26)
 

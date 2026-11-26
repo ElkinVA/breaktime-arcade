@@ -1338,9 +1338,9 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Цель | Доказать корректность Live Room при повторах, гонках, нагрузке, restart и Celery |
 | Область | `RoomCreateRequest`, API/SDK/host/live.js, PostgreSQL races, load, recovery, host-loss, observability |
 | Результат | Create idempotency strict subject+payload+TTL; 12 race tests; cleanup/read race fixed; real 125-s host-loss committed E2E; redacted events |
-| Проверки | idempotency 13; races 12; observability 4; recovery 3; Live 25; loadtest guard 1; QA executed 32 targeted + 26 existing/guard; load point reproduced; JS 40; ruff/mypy clean; full gate **1324 passed, 17 skipped, exit 0**; host-loss E2E locally NOT VERIFIED |
-| Статус | **IMPLEMENTED / CODE+SECURITY REVIEW ACCEPT / QA WITH RESERVATIONS / FULL GATE GREEN / CI PENDING**; product acceptance owner |
-| Остаток | Host-loss E2E execution on fresh published runtime via exact-commit CI; HTTP/production load, long soak, SIGKILL/Redis failure, throttle headroom 26/30, exact CI |
+| Проверки | idempotency 13; races 12; observability 4; recovery 3; Live 25; loadtest guard 1; QA executed 32 targeted + 26 existing/guard; load point reproduced; JS 40; ruff/mypy clean; full gate **1324 passed, 17 skipped, exit 0**; exact-commit CI **#157 success** (e2e incl. host-loss) |
+| Статус | **IMPLEMENTED / CODE+SECURITY REVIEW ACCEPT / QA WITH RESERVATIONS / CI #157 SUCCESS**; product acceptance owner |
+| Остаток | HTTP/production load, long soak, SIGKILL/Redis failure, throttle headroom 26/30, product acceptance |
 | Источник | `docs/foundation/LIVE_ROOM_LR3_REPORT.md`, `LIVE_ROOM_LR3_LOAD_BASELINE.md`, `LIVE_ROOM_LR3_RECOVERY.md`; модели: implement — `deepseek-flash[1m]`, reviews — `code-reviewer`/`security-auditor` (`deepseek-v4-pro`, text-only), QA — `qa-engineer` (`deepseek-flash[1m]`) |
 
 ## ARCADE-CI-AUTONOMY-RESTORE-001 — autonomy CI repair
