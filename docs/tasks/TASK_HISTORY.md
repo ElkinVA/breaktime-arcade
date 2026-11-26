@@ -9,6 +9,32 @@
 
 ## 1. Записи работ
 
+### ARCADE-LIVE-ROOM-001 — Live Room server backend (LR-0/LR-1)
+
+- **ID:** ARCADE-LIVE-ROOM-001.
+- **Назначение:** server-authoritative Live Room для Who's Undercover без
+  изменения BA-SDK-1.1 и Pass & Play.
+- **Результат:** `docs/decisions/ADR-LIVE-ROOM-001.md`; `apps/rooms`
+  (`Room`, `RoomMember`, `RoomCommand`, migration `0001_initial`); create/
+  join/leave; lobby ready/start; серверное назначение ролей/слов; private
+  viewer snapshots; reveal/clues/secret vote/tie/Mr. White/win/restart;
+  requestId + required expectedVersion; TTL и beat cleanup; host transfer и
+  stale-host claim; account-deletion scrub; CSRF/throttles/no-store.
+- **Security delta после review:** leave mid-game → forfeit и разрешение
+  фазы; host explicit leave → transfer; idle TTL в beat; replay после
+  expiry; раскрытие ролей только для FINISHED; repeat leave 204; cookie
+  identity на error-путях; повторный скан в anonymize_subject.
+- **Проверки:** `tests/integration/test_live_rooms.py` — 20 passed;
+  accounts — 25 passed; full gate **1281 passed, 15 skipped, exit 0
+  (577 s)**; ruff/format clean (501), mypy clean (406). LR-2/LR-3 не
+  реализованы; E2E/load/staging не проверялись.
+- **Статус:** **IMPLEMENTED / INDEPENDENT CODE + SECURITY REVIEW ACCEPT**;
+  не продуктовая приёмка. Остаток 5-min stale forfeit — LR-2 product/UX
+  sign-off; per-phase timeout отсутствует.
+- **Дата:** 2026-11-26.
+- **Следующий шаг:** LR-2 — additive SDK 1.2 room protocol, host bridge,
+  Live Room UI, two-browser E2E.
+
 ### ARCADE-P5-ARCHER-001 — Archer game
 
 - **ID:** ARCADE-P5-ARCHER-001.

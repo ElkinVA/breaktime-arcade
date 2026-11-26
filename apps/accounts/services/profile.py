@@ -129,6 +129,8 @@ def anonymize_user(user: User) -> None:
     from apps.gameplay.services.results import anonymize_user_results
     from apps.gameplay.services.storage import delete_user_storage
     from apps.ratings.services.voting import remove_user_ratings
+    from apps.rooms.models import Room
+    from apps.rooms.services.rooms import anonymize_subject
 
     open_states = {GameSession.STATE_CREATED, GameSession.STATE_ACTIVE}
     for session in (
@@ -160,6 +162,7 @@ def anonymize_user(user: User) -> None:
         subject_id=user.id,
     ).delete()
     remove_user_ratings(user)
+    anonymize_subject(Room.SUBJECT_USER, user.id)
 
     # R-049: a tombstone must not retain any authenticatable credential —
     # password hash, TOTP secret/counter or recovery codes.

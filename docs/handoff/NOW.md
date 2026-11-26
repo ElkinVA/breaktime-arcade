@@ -1,6 +1,33 @@
 # NOW — Breaktime Arcade
 
-**Дата:** 2026-11-25
+**Дата:** 2026-11-26
+
+## Live Room LR-0/LR-1 (2026-11-26)
+
+- Owner decision: **APPROVED — CONTINUOUS FULL PRODUCT DEVELOPMENT**
+  (`docs/decisions/OWNER_DECISIONS.md` A.13). Live Room — главный следующий
+  платформенный приоритет.
+- `docs/decisions/ADR-LIVE-ROOM-001.md`: PostgreSQL server authority, HTTP
+  polling, no Channels; SDK room protocol planned as additive 1.2.
+- Backend `apps/rooms`: create/join/leave, lobby ready/start, private
+  role/word delivery, sanitized snapshots, reveal/clues/secret vote/tie/
+  Mr. White/win/restart, idempotent requestId + required expectedVersion,
+  TTL 30 min/2 h/30 min idle, beat expiry + 24 h cleanup, host transfer and
+  stale-host claim (120 s), account-deletion scrub, CSRF + throttles +
+  `private, no-store`.
+- Independent security/code review found and we fixed: mid-game leave
+  deadlock (now forfeit/resolve), host single point (leave transfers; stale
+  host can be claimed; 5-min stale members are auto-forfeited on read), idle
+  TTL beat coverage, replay/expiry order, expired/abandoned role disclosure,
+  repeat leave idempotency, error-path anonymous cookie, anonymisation second
+  scan.
+- Tests: rooms **20 passed**; accounts **25 passed**; full gate **1281
+  passed, 15 skipped, exit 0 (577 s)**; ruff/format clean (501), mypy clean
+  (406). Independent code and security reviews **ACCEPT**; residual 5-min
+  stale forfeit needs LR-2 product/UX sign-off.
+- **Not implemented:** SDK 1.2 room messages, host bridge, Live Room UI,
+  two-browser E2E, load/staging. LR-2 is the next READY package; Live Room
+  is not marketed as ready.
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 

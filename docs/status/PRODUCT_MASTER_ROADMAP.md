@@ -7,18 +7,31 @@
 Этот документ — единая карта крупных этапов. Он не заменяет ТЗ, backlog и
 реестры; при конфликте приоритет у ТЗ и owner-решений.
 
+## 0. Owner priorities approved 2026-11-26
+
+1. **Live Room** — главный платформенный приоритет: спроектировать и
+   реализовать server-authoritative комнаты, не ломая BA-SDK-1.1 и
+   Pass & Play.
+2. **Who's Undercover?** — параллельная продуктовая полировка: 6 языков,
+   300+ проверенных пар, баланс, UX/анимации/звук, плейтесты.
+3. **Version evidence** — изолированная среда для проверки именно 1.0.1 без
+   обхода `V_PUBLISHED_UPDATE_BLOCKED`.
+4. **AI HQ** — no-progress/stuck detection, recovery, context preservation,
+   auto-next READY, weekly health metrics.
+5. **Platform release** — hosted CI evidence, genre catalog, production
+   checklist, monitoring, release readiness.
+
 ## 1. Фактическая точка старта
 
-- `main` = `0e7f141`, рабочее дерево чистое, `origin/main` синхронизирован.
-- Полный Python gate: **1259 passed, 14 skipped, exit 0**; browser E2E
-  **22 passed**; JS **31/31**; ruff/format/mypy clean; prod-style image
-  собирается с Playwright.
+- `main` = `27258e1`, рабочее дерево чистое, `origin/main` синхронизирован.
+- Полный Python gate: **1261 passed, 15 skipped, exit 0**; browser E2E
+  **25 passed**; JS **31/31 + 12/12 game core**; ruff/format/mypy clean;
+  prod-style image собирается с Playwright.
 - Работают: публичный каталог, аккаунты (partial), App F server slices,
   runtime/SDK, ZIP pipeline, CRM (partial), backup/restore, AI HQ sandbox,
   browser publish gate, isolated Redis broker, CI browser E2E.
-- Игры в `games-src`: `archer`, `neon_snake`, `probe`.
-  **Who's Undercover? отсутствует полностью** — это новая продуктовая игра,
-  а не восстановление утраченного кода.
+- Игры в `games-src`: `archer`, `neon_snake`, `probe`, `whos_undercover`
+  (Pass & Play 1.0.1, CODE-REVIEW ACCEPT).
 
 ## 2. Продуктовая инвентаризация
 
@@ -55,16 +68,22 @@
 от setup до replay на 360 px и desktop, JS-тесты и E2E зелёные, независимый
 review принят; Live Room явно помечен как зависимость платформы.
 
-### P1. Live Room (платформенная зависимость)
+### P1. Live Room (платформенный приоритет)
 
-Для игры на разных устройствах нужен новый контракт платформы: комната,
-код входа, host/player роли, синхронизация состояния, reconnect, лимиты и
-модерация. В BA-SDK-1.1 этого нет; game origin не может держать сервер.
-Без owner-решения и нового API Live Room не маркетируется как готовый.
+Owner-директива 2026-11-26: Live Room — главный следующий платформенный
+приоритет. BA-SDK-1.1 не содержит room API; game origin не может держать
+сервер. ADR-LIVE-ROOM-001 выбран и реализуется.
 
-Минимальный контракт-кандидат: `ba:room.create/join/state/command`,
-server-authoritative snapshot + sequence, host token, TTL, rate limits.
-Реализация — отдельный P1-пакет после product decision.
+- **LR-0/LR-1 (backend):** `apps/rooms` — Room/RoomMember/RoomCommand,
+  create/join/leave, lobby ready/start, server-authoritative роли/слова,
+  sanitized snapshots, reveal/clues/vote/tie/Mr. White/win/restart,
+  requestId/expectedVersion, TTL/cleanup, host transfer/stale-host claim,
+  account-deletion scrub, CSRF/throttles/no-store; integration tests.
+- **LR-2 (next):** additive SDK 1.2 room protocol, host bridge, Live Room
+  game UI, two-browser E2E.
+- **LR-3:** load/crash, observability, product acceptance.
+
+Live Room не маркетируется как готовый до LR-2/LR-3 и продуктовой приёмки.
 
 ### P2. Контент, баланс, арт, пользовательские тесты
 

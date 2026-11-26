@@ -931,6 +931,16 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **COMPLETED / CODE-REVIEW ACCEPT**; product acceptance owner |
 | Остаток | Live Room blocked on platform room API; 6 locales/300+ word pairs/playtests; hosted CI; local published-update guard blocks reimport of 1.0.1 in dev |
 
+## ARCADE-LIVE-ROOM-001 — server-authoritative Live Room backend
+
+| Поле | Значение |
+|---|---|
+| Тип | Platform backend; independent code review + security audit |
+| Результат | ADR-LIVE-ROOM-001; `apps/rooms` Room/RoomMember/RoomCommand, migration; create/join/leave, lobby start, private roles, reveal/clues/vote/tie/Mr. White/win/restart, idempotency/version, TTL+cleanup, host transfer/stale claim, account-deletion scrub |
+| Проверки | 20 targeted tests passed; accounts 25 passed; full gate **1281 passed, 15 skipped, exit 0 (577 s)**; ruff/format clean (501); mypy clean (406) |
+| Статус | **IMPLEMENTED / INDEPENDENT CODE + SECURITY REVIEW ACCEPT** |
+| Остаток | SDK 1.2/UI/two-browser E2E/load/staging not implemented; no per-phase timeout; 5-min stale forfeit product/UX sign-off; GET detail has sweep side effect; anonymize second-pass residual window; product acceptance owner |
+
 ## ARCADE-EXTERNAL-AUDIT-2026-11-25 — P1/P2 response
 
 | Поле | Значение |

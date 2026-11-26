@@ -1,7 +1,39 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-23 (P5 Archer; локальная сверка Claude;
-product acceptance remains owner-level).
+**Дата актуализации:** 2026-11-26 (Live Room LR-0/LR-1; owner directive
+continuous full product development).
+
+## 0.0. Live Room LR-0/LR-1 — server-authoritative backend (2026-11-26)
+
+- **ADR:** `docs/decisions/ADR-LIVE-ROOM-001.md` — PostgreSQL as system of
+  record, HTTP polling, no Channels/ASGI; additive SDK 1.2 planned.
+- **Backend:** `apps/rooms` models/migration `0001_initial`; create/join/
+  leave; lobby ready/start; server-side role/word assignment; per-viewer
+  sanitized snapshots; reveal/clues/secret vote/tie/Mr. White/win/restart;
+  `requestId` idempotency + required `expectedVersion`; TTL lobby 30 min /
+  active 2 h / idle 30 min; beat expiry + 24 h retention cleanup; host
+  transfer on leave and stale-host claim; account-deletion scrub; CSRF,
+  subject+IP throttles, `private, no-store`.
+- **Security corrections after independent review:** mid-game leave now
+  forfeits the player and resolves the phase instead of stalling; a player
+  that stops polling for 5 min is forfeited on the next read and a stale host
+  is replaced; explicit host leave transfers host; idle TTL is enforced by
+  beat; replay checks expiry first; expired/abandoned rooms reveal roles/
+  words only when `finished`; repeat leave is idempotent; create/join error
+  paths keep the anonymous identity cookie; anonymisation re-scans
+  concurrently created memberships.
+- **Tests:** `tests/integration/test_live_rooms.py` — 20 passed (includes
+  private roles, reveal/clues/vote, tie, Mr. White correct/wrong, restart,
+  reconnect, leave/forfeit, stale-player/stale-host sweep, host transfer/
+  claim, cleanup, TTL, unsupported game, payload/UTF-8 limits, deck parity,
+  account scrub). Account tests 25 passed. Full gate: **1281 passed,
+  15 skipped, exit 0 (577 s)**; ruff/format clean (501), mypy clean (406).
+- **Status:** `IMPLEMENTED / INDEPENDENT REVIEW ACCEPT`; not product
+  accepted. **LR-2 (SDK 1.2 room protocol + host bridge + Live Room UI +
+  two-browser E2E) and LR-3 (load/crash/observability) not implemented.**
+  No per-phase timeout; a player that stops polling for >5 min is forfeited
+  and returns as a spectator (LR-2 product/UX sign-off); no load/staging
+  test; Live Room is not marketed as ready.
 
 ## 0.1. P4 — фактическое состояние
 

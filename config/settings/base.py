@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.catalog",
     "apps.gameplay",
+    "apps.rooms",
     "apps.leaderboards",
     "apps.ratings",
     "apps.pipeline",
@@ -384,6 +385,11 @@ CELERY_BEAT_SCHEDULE: dict[str, dict[str, object]] = {
         "schedule": 60 * 60,
         "options": {"expires": 60 * 10},
     },
+    "rooms-expire": {
+        "task": "apps.rooms.tasks.expire_rooms",
+        "schedule": 60 * 5,
+        "options": {"expires": 60 * 4},
+    },
     "pipeline-cleanup-zip-uploads": {
         "task": "apps.pipeline.tasks.cleanup_zip_uploads",
         "schedule": 60 * 60,
@@ -435,6 +441,12 @@ REST_FRAMEWORK = {
         # Жалобы: 5/сутки на субъект, 30/сутки на IP (Приложение E).
         "reports": "5/day",
         "reports_ip": "30/day",
+        # Live Rooms: subject-first, IP secondary; every command is bounded.
+        "rooms_create": "10/hour",
+        "rooms_join": "60/hour",
+        "rooms_ip": "300/hour",
+        "rooms_read": "180/min",
+        "rooms_command": "120/min",
     },
     "UNAUTHENTICATED_USER": "django.contrib.auth.models.AnonymousUser",
 }
