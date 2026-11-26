@@ -53,6 +53,21 @@ class JsonFormatter(logging.Formatter):
             "worker",
             "worker_pid",
             "exitcode",
+            "room_id",
+            "room_version",
+            "room_status",
+            "phase",
+            "command",
+            "outcome",
+            "lock_wait_ms",
+            "member_count",
+            "expired_count",
+            "cleaned_count",
+            "forfeited_count",
+            "replayed",
+            "conflict",
+            "rows",
+            "query_count",
         ):
             value = getattr(record, key, None)
             if value is not None:

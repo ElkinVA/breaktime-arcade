@@ -175,6 +175,7 @@ const state = {
     polling: false,
     lang: "en",
     phase: "",
+    createRequestId: "",
     errorTimer: 0,
 };
 
@@ -283,6 +284,7 @@ function appendPlayerRow(list, player, extra = "") {
 function renderEntry() {
     showScreen("entry");
     $("leave-room").hidden = true;
+    $("claim-host").hidden = true;
 }
 
 function renderLobby(snapshot) {
@@ -312,7 +314,6 @@ function renderLobby(snapshot) {
           : unready
             ? t("waiting_table")
             : t("lobby_title");
-    $("lobby-claim").hidden = you.isHost;
 }
 
 function renderReveal(snapshot) {
@@ -459,6 +460,9 @@ function render() {
     const phaseChanged = state.phase !== snapshot.game.phase;
     state.phase = snapshot.game.phase;
     $("leave-room").hidden = snapshot.room.status === "finished";
+    $("claim-host").hidden = !(
+        !snapshot.you.isHost && ["lobby", "active"].includes(snapshot.room.status)
+    );
     if (snapshot.room.status === "lobby") {
         renderLobby(snapshot);
         return;
@@ -624,6 +628,10 @@ async function command(name, payload = {}) {
     }
 }
 
+function resetCreateIntent() {
+    state.createRequestId = "";
+}
+
 function validateCreate() {
     const max = Number($("create-max").value);
     const undercover = Number($("create-undercover").value);
@@ -649,17 +657,30 @@ async function createRoom() {
     clearError();
     state.busy = true;
     $("create-room").disabled = true;
+    if (!state.createRequestId) {
+        state.createRequestId = globalThis.crypto.randomUUID();
+    }
     try {
         const snapshot = await state.sdk.room.create({
             gameId: state.sdk.context.gameId,
+            requestId: state.createRequestId,
             name: $("create-name").value.trim() || undefined,
             maxPlayers: settings.max,
             undercoverCount: settings.undercover,
             mrWhite: settings.mrWhite,
         });
+        state.createRequestId = "";
         rememberRoom(snapshot);
         startPolling();
     } catch (error) {
+        const code = roomErrorCode(error);
+        if (
+            code === "E_IDEMPOTENCY_CONFLICT" ||
+            code === "E_IDEMPOTENCY_EXPIRED" ||
+            code === "E_IDEMPOTENCY_GONE"
+        ) {
+            state.createRequestId = "";
+        }
         handleRoomError(error);
     } finally {
         state.busy = false;
@@ -703,6 +724,7 @@ async function leaveRoom() {
     state.roomId = "";
     state.snapshot = null;
     state.phase = "";
+    state.createRequestId = "";
     void state.sdk?.storage.remove(STORAGE_KEY);
     try {
         await state.sdk.room.leave(room);
@@ -766,16 +788,26 @@ async function boot() {
 
 function wire() {
     $("create-warning").hidden = true;
-    $("create-max").addEventListener("change", validateCreate);
-    $("create-undercover").addEventListener("change", validateCreate);
-    $("create-mrwhite").addEventListener("change", validateCreate);
+    $("create-name").addEventListener("input", resetCreateIntent);
+    $("create-max").addEventListener("change", () => {
+        resetCreateIntent();
+        validateCreate();
+    });
+    $("create-undercover").addEventListener("change", () => {
+        resetCreateIntent();
+        validateCreate();
+    });
+    $("create-mrwhite").addEventListener("change", () => {
+        resetCreateIntent();
+        validateCreate();
+    });
     $("create-room").addEventListener("click", () => void createRoom());
     $("join-room").addEventListener("click", () => void joinRoom());
     $("lobby-ready").addEventListener("click", () => {
         void command("ready", { ready: !state.snapshot?.you?.ready });
     });
     $("lobby-start").addEventListener("click", () => void command("start"));
-    $("lobby-claim").addEventListener("click", () => void command("claim_host"));
+    $("claim-host").addEventListener("click", () => void command("claim_host"));
     $("reveal-ack").addEventListener("click", () => void command("reveal_ack"));
     $("clues-next").addEventListener("click", () => void command("advance_clue"));
     $("result-next").addEventListener("click", () => void command("advance"));

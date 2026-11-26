@@ -5,12 +5,14 @@ const { roomApiRequest } = await import("../../static/src/js/room_api.js");
 
 const ROOM = "018f6c2e-6f5a-7c31-9a44-4f1b6e9a0c13";
 const ENVELOPE = "018f6c2e-6f5a-7c31-9a44-4f1b6e9a0c14";
+const CREATE = "018f6c2e-6f5a-7c31-9a44-4f1b6e9a0c15";
 
 test("room API maps create camelCase options to the serializer fields", () => {
     const request = roomApiRequest(
         {
             op: "create",
             gameId: "whos_undercover",
+            requestId: CREATE,
             name: "Maya",
             maxPlayers: 8,
             undercoverCount: 2,
@@ -23,6 +25,7 @@ test("room API maps create camelCase options to the serializer fields", () => {
     assert.equal(request.path, "/api/v1/rooms");
     assert.equal(request.retry, false);
     assert.equal(request.body.game_id, "whos_undercover");
+    assert.equal(request.body.request_id, CREATE);
     assert.equal(request.body.name, "Maya");
     assert.equal(request.body.max_players, 8);
     assert.equal(request.body.undercover_count, 2);
@@ -74,6 +77,10 @@ test("room API maps join, state and leave", () => {
 test("room API rejects invalid ids and commands", () => {
     assert.throws(
         () => roomApiRequest({ op: "state", roomId: "bad" }, ENVELOPE),
+        (error) => error.code === "E_INVALID_REQUEST",
+    );
+    assert.throws(
+        () => roomApiRequest({ op: "create", gameId: "whos_undercover", requestId: "bad" }, ENVELOPE),
         (error) => error.code === "E_INVALID_REQUEST",
     );
     assert.throws(

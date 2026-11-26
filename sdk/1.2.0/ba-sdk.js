@@ -574,7 +574,11 @@
 
         room = {
             create: async (options = {}) => {
-                if (typeof options.gameId !== "string" || !options.gameId) {
+                if (
+                    typeof options.gameId !== "string" ||
+                    !options.gameId ||
+                    (options.requestId !== undefined && !isUuid(options.requestId))
+                ) {
                     throw new Error("BA_SDK_INVALID_ROOM");
                 }
                 return this.request(
@@ -582,6 +586,9 @@
                     {
                         op: "create",
                         gameId: options.gameId,
+                        ...(options.requestId !== undefined
+                            ? { requestId: options.requestId }
+                            : {}),
                         ...(options.name !== undefined ? { name: options.name } : {}),
                         ...(options.maxPlayers !== undefined
                             ? { maxPlayers: options.maxPlayers }

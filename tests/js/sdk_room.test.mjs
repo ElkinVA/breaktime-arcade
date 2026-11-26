@@ -9,6 +9,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
 const SESSION = "018f6c2e-6f5a-7c31-9a44-4f1b6e9a0c12";
 const ROOM = "018f6c2e-6f5a-7c31-9a44-4f1b6e9a0c13";
+const CREATE = "018f6c2e-6f5a-7c31-9a44-4f1b6e9a0c15";
 const PORTAL = "https://portal.test";
 const source = readFileSync(resolve(root, "sdk/1.2.0/ba-sdk.js"), "utf8");
 
@@ -129,12 +130,14 @@ test("SDK 1.2 rejects invalid room ids and creates with camelCase options", asyn
     await assert.rejects(() => sdk.room.state("bad"), /BA_SDK_INVALID_ROOM/);
     const promise = sdk.room.create({
         gameId: "whos_undercover",
+        requestId: CREATE,
         maxPlayers: 8,
         undercoverCount: 2,
         mrWhite: true,
     });
     const request = roomRequest(env);
     assert.equal(request.payload.op, "create");
+    assert.equal(request.payload.requestId, CREATE);
     assert.equal(request.payload.maxPlayers, 8);
     assert.equal(request.payload.undercoverCount, 2);
     assert.equal(request.payload.mrWhite, true);

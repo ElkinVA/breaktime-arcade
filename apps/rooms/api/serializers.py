@@ -14,6 +14,7 @@ class RoomCreateSerializer(serializers.Serializer):
     mr_white = serializers.BooleanField(default=False)
     category_id = serializers.CharField(max_length=32, required=False, allow_blank=True)
     name = serializers.CharField(max_length=24, required=False, allow_blank=True)
+    requestId = serializers.UUIDField(required=False)
 
 
 class RoomJoinSerializer(serializers.Serializer):

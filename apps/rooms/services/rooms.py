@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+import logging
 import secrets
+import time
 from datetime import datetime, timedelta
-from typing import Any, cast
+from functools import wraps
+from typing import Any, Callable, cast
 from uuid import UUID, uuid4
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
@@ -26,7 +32,7 @@ from apps.rooms.games.whos_undercover import (
     GameSetupError,
     assign_roles,
 )
-from apps.rooms.models import Room, RoomCommand, RoomMember
+from apps.rooms.models import Room, RoomCommand, RoomCreateRequest, RoomMember
 
 LOBBY_TTL_SECONDS = 30 * 60
 ACTIVE_TTL_SECONDS = 2 * 60 * 60
@@ -38,6 +44,8 @@ LIVE_ROOM_GAMES = frozenset({"whos_undercover", "whos_undercover_live"})
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LENGTH = 6
 MAX_ROOM_ATTEMPTS = 8
+
+logger = logging.getLogger("apps.rooms")
 
 
 class RoomError(Exception):
@@ -51,6 +59,95 @@ class RoomError(Exception):
 class RoomStale(RoomError):
     def __init__(self) -> None:
         super().__init__("E_ROOM_STALE", "Room state changed", 409)
+
+
+RoomResult = dict[str, Any]
+RoomResultFunc = Callable[..., RoomResult]
+
+
+def _observe_command(func: RoomResultFunc) -> RoomResultFunc:
+    """Log command outcome and latency without touching the command payload."""
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> RoomResult:
+        started = time.perf_counter()
+        command = kwargs.get("command")
+        room_id = kwargs.get("room_id")
+        if room_id is None and len(args) > 1:
+            room_id = args[1]
+        try:
+            result = func(*args, **kwargs)
+        except RoomError as exc:
+            logger.warning(
+                "room.command",
+                extra={
+                    "event": "room.command",
+                    "outcome": "error",
+                    "error_code": exc.code,
+                    "command": command,
+                    "room_id": str(room_id) if room_id is not None else None,
+                    "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                },
+            )
+            if exc.code == "E_ROOM_STALE":
+                logger.warning(
+                    "room.stale_conflict",
+                    extra={
+                        "event": "room.stale_conflict",
+                        "outcome": "rejected",
+                        "command": command,
+                        "room_id": str(room_id) if room_id is not None else None,
+                    },
+                )
+            raise
+        game = result.get("game") if isinstance(result, dict) else None
+        room = result.get("room") if isinstance(result, dict) else None
+        logger.info(
+            "room.command",
+            extra={
+                "event": "room.command",
+                "outcome": "ok",
+                "command": command,
+                "room_id": str(room_id) if room_id is not None else None,
+                "phase": game.get("phase") if isinstance(game, dict) else None,
+                "room_version": room.get("version") if isinstance(room, dict) else None,
+                "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+            },
+        )
+        return result
+
+    return wrapper
+
+
+def _observe_read(func: RoomResultFunc) -> RoomResultFunc:
+    """Log only slow reads; normal polling must not flood the log."""
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> RoomResult:
+        started = time.perf_counter()
+        try:
+            result = func(*args, **kwargs)
+        except RoomError:
+            raise
+        duration_ms = (time.perf_counter() - started) * 1000
+        threshold = int(getattr(settings, "ROOM_SLOW_LOG_MS", 500))
+        if duration_ms >= threshold:
+            room_id = kwargs.get("room_id")
+            if room_id is None and len(args) > 1:
+                room_id = args[1]
+            room = result.get("room") if isinstance(result, dict) else None
+            logger.warning(
+                "room.read.slow",
+                extra={
+                    "event": "room.read.slow",
+                    "room_id": str(room_id) if room_id is not None else None,
+                    "room_version": room.get("version") if isinstance(room, dict) else None,
+                    "duration_ms": round(duration_ms, 2),
+                },
+            )
+        return result
+
+    return wrapper
 
 
 def _now(value: datetime | None = None) -> datetime:
@@ -236,6 +333,107 @@ def _speaker_id(state: dict[str, Any]) -> str | None:
     return str(alive[index].get("id"))
 
 
+def _create_payload_hash(
+    *,
+    game_id: str,
+    max_players: int,
+    undercover_count: int,
+    mr_white: bool,
+    category_id: str | None,
+    intent_name: str,
+) -> str:
+    """Hash only the declared create intent, never fallback identity data.
+
+    The display name used when the client omits ``name`` comes from the
+    server-side profile and can change between retries. The intent hash keeps
+    that retry stable; an explicit different name still conflicts.
+    """
+    payload = {
+        "category_id": category_id or None,
+        "game_id": game_id,
+        "max_players": max_players,
+        "mr_white": bool(mr_white),
+        "name": intent_name,
+        "undercover_count": undercover_count,
+    }
+    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _replay_create_request(
+    record: RoomCreateRequest,
+    *,
+    subject_type: str,
+    subject_id: UUID,
+    payload_hash: str,
+    current: datetime,
+) -> tuple[Room, RoomMember]:
+    if record.expires_at <= current:
+        logger.info(
+            "room.idempotency.conflict",
+            extra={
+                "event": "room.idempotency.conflict",
+                "outcome": "expired",
+                "room_id": str(record.room_id) if record.room_id else None,
+            },
+        )
+        raise RoomError("E_IDEMPOTENCY_EXPIRED", "Create request has expired", 409)
+    if record.subject_type != subject_type or record.subject_id != subject_id:
+        logger.warning(
+            "room.idempotency.conflict",
+            extra={
+                "event": "room.idempotency.conflict",
+                "outcome": "subject",
+                "room_id": str(record.room_id) if record.room_id else None,
+            },
+        )
+        raise RoomError(
+            "E_IDEMPOTENCY_CONFLICT",
+            "Create request belongs to another subject",
+            409,
+        )
+    if record.payload_hash != payload_hash:
+        logger.warning(
+            "room.idempotency.conflict",
+            extra={
+                "event": "room.idempotency.conflict",
+                "outcome": "payload",
+                "room_id": str(record.room_id) if record.room_id else None,
+            },
+        )
+        raise RoomError("E_IDEMPOTENCY_CONFLICT", "Create request payload differs", 409)
+    if record.room_id is None:
+        logger.info(
+            "room.idempotency.conflict",
+            extra={"event": "room.idempotency.conflict", "outcome": "gone"},
+        )
+        raise RoomError("E_IDEMPOTENCY_GONE", "Created room is no longer available", 410)
+    room = record.room
+    if room is None:
+        logger.info(
+            "room.idempotency.conflict",
+            extra={"event": "room.idempotency.conflict", "outcome": "gone"},
+        )
+        raise RoomError("E_IDEMPOTENCY_GONE", "Created room is no longer available", 410)
+    member = _member_for_subject(room, subject_type, subject_id)
+    if member is None or not member.active:
+        logger.info(
+            "room.idempotency.conflict",
+            extra={"event": "room.idempotency.conflict", "outcome": "gone"},
+        )
+        raise RoomError("E_IDEMPOTENCY_GONE", "Created room member is no longer active", 410)
+    logger.info(
+        "room.idempotency.replay",
+        extra={
+            "event": "room.idempotency.replay",
+            "outcome": "replayed",
+            "room_id": str(room.id),
+            "game_id": room.game.technical_id,
+        },
+    )
+    return room, member
+
+
 def create_room(
     request: HttpRequest,
     response: HttpResponse,
@@ -246,6 +444,7 @@ def create_room(
     mr_white: bool = False,
     category_id: str | None = None,
     name: str | None = None,
+    request_id: UUID | None = None,
 ) -> tuple[Room, RoomMember]:
     if not MIN_PLAYERS <= max_players <= MAX_PLAYERS:
         raise RoomError("E_PLAYERS", "Room size is invalid")
@@ -254,6 +453,30 @@ def create_room(
     infiltrators = undercover_count + (1 if mr_white else 0)
     if max_players - infiltrators <= infiltrators:
         raise RoomError("E_BALANCE", "Too many infiltrators for this room size")
+
+    subject_type, subject_id, fallback_name = _subject(request, response)
+    display_name = _clean_name(name, fallback_name)
+    intent_name = _clean_name(name, "")
+    current = _now()
+    payload_hash = _create_payload_hash(
+        game_id=game_id,
+        max_players=max_players,
+        undercover_count=undercover_count,
+        mr_white=mr_white,
+        category_id=category_id,
+        intent_name=intent_name,
+    )
+    if request_id is not None:
+        existing = RoomCreateRequest.objects.select_related("room").filter(key=request_id).first()
+        if existing is not None:
+            return _replay_create_request(
+                existing,
+                subject_type=subject_type,
+                subject_id=subject_id,
+                payload_hash=payload_hash,
+                current=current,
+            )
+
     game = (
         Game.objects.select_related("current_version")
         .filter(
@@ -265,10 +488,8 @@ def create_room(
     )
     if game is None or game.current_version is None:
         raise RoomError("E_GAME_INVALID", "Game is not available", 404)
-    subject_type, subject_id, fallback_name = _subject(request, response)
-    display_name = _clean_name(name, fallback_name)
-    current = _now()
     language = get_language() or game.default_language
+    ttl_seconds = int(getattr(settings, "ROOM_IDEMPOTENCY_TTL_SECONDS", 7 * 24 * 60 * 60))
     last_error: IntegrityError | None = None
     for _ in range(MAX_ROOM_ATTEMPTS):
         try:
@@ -303,8 +524,40 @@ def create_room(
                     ready=True,
                     last_seen_at=current,
                 )
+                if request_id is not None:
+                    RoomCreateRequest.objects.create(
+                        key=request_id,
+                        subject_type=subject_type,
+                        subject_id=subject_id,
+                        payload_hash=payload_hash,
+                        room=room,
+                        member_id=member.id,
+                        expires_at=current + timedelta(seconds=ttl_seconds),
+                    )
+            logger.info(
+                "room.create",
+                extra={
+                    "event": "room.create",
+                    "outcome": "created_idempotent" if request_id else "created",
+                    "room_id": str(room.id),
+                    "game_id": game.technical_id,
+                    "room_status": room.status,
+                },
+            )
             return room, member
         except IntegrityError as exc:
+            if request_id is not None:
+                existing = (
+                    RoomCreateRequest.objects.select_related("room").filter(key=request_id).first()
+                )
+                if existing is not None:
+                    return _replay_create_request(
+                        existing,
+                        subject_type=subject_type,
+                        subject_id=subject_id,
+                        payload_hash=payload_hash,
+                        current=current,
+                    )
             last_error = exc
     raise RoomError("E_ROOM_CREATE", "Could not allocate a room code", 503) from last_error
 
@@ -342,6 +595,16 @@ def join_room(
             if room.status == Room.STATUS_LOBBY:
                 room.expires_at = current + timedelta(seconds=LOBBY_TTL_SECONDS)
             room.save(update_fields=["version", "last_activity_at", "expires_at", "updated_at"])
+            logger.info(
+                "room.join",
+                extra={
+                    "event": "room.join",
+                    "outcome": "reactivated" if reactivated else "rejoined",
+                    "room_id": str(room.id),
+                    "game_id": room.game.technical_id,
+                    "room_status": room.status,
+                },
+            )
             return room, member
         if room.status == Room.STATUS_ACTIVE:
             raise RoomError("E_ROOM_STARTED", "Room has already started", 409)
@@ -361,6 +624,16 @@ def join_room(
         if room.status == Room.STATUS_LOBBY:
             room.expires_at = current + timedelta(seconds=LOBBY_TTL_SECONDS)
         room.save(update_fields=["version", "last_activity_at", "expires_at", "updated_at"])
+    logger.info(
+        "room.join",
+        extra={
+            "event": "room.join",
+            "outcome": "joined",
+            "room_id": str(room.id),
+            "game_id": room.game.technical_id,
+            "room_status": room.status,
+        },
+    )
     return room, member
 
 
@@ -375,18 +648,28 @@ def get_membership(request: HttpRequest, room_id: UUID) -> tuple[Room, RoomMembe
     return room, member
 
 
+@_observe_read
 def read_room(request: HttpRequest, room_id: UUID) -> dict[str, Any]:
     room, member = get_membership(request, room_id)
     current = _now()
     with transaction.atomic():
-        locked = Room.objects.select_for_update().get(pk=room.pk)
+        try:
+            locked = Room.objects.select_for_update().get(pk=room.pk)
+        except Room.DoesNotExist as exc:
+            # Cleanup can delete a finished room between the membership read
+            # and the lock acquisition. Return the same public outcome as a
+            # missing room instead of leaking a DoesNotExist/500.
+            raise RoomError("E_ROOM_NOT_FOUND", "Room not found", 404) from exc
         _expire_if_needed(locked, current)
         if member.active and (current - member.last_seen_at).total_seconds() >= 10:
             member.last_seen_at = current
             member.save(update_fields=["last_seen_at", "updated_at"])
         changed = _sweep_stale_members(locked, current)
         if changed:
-            member.refresh_from_db()
+            try:
+                member.refresh_from_db()
+            except RoomMember.DoesNotExist as exc:
+                raise RoomError("E_ROOM_NOT_FOUND", "Room is no longer available", 404) from exc
             locked.version += 1
         if changed or (current - locked.last_activity_at).total_seconds() >= 60:
             locked.last_activity_at = current
@@ -428,8 +711,9 @@ def leave_room(request: HttpRequest, room_id: UUID) -> None:
             raise RoomError("E_NOT_MEMBER", "Not a room member", 403)
         if not current_member.active:
             return
+        forfeited = False
         if current_member.role != RoomMember.ROLE_HOST and locked.status == Room.STATUS_ACTIVE:
-            _forfeit_player(locked, current_member)
+            forfeited = _forfeit_player(locked, current_member)
         current_member.active = False
         current_member.last_seen_at = current
         promoted: RoomMember | None = None
@@ -454,7 +738,27 @@ def leave_room(request: HttpRequest, room_id: UUID) -> None:
                 current_member.role = RoomMember.ROLE_PLAYER
                 locked.host_subject_type = promoted.subject_type
                 locked.host_subject_id = promoted.subject_id
+                logger.info(
+                    "room.host.transfer",
+                    extra={
+                        "event": "room.host.transfer",
+                        "outcome": "explicit_leave",
+                        "room_id": str(locked.id),
+                        "room_status": locked.status,
+                    },
+                )
         current_member.save(update_fields=["active", "last_seen_at", "role", "updated_at"])
+        if forfeited:
+            logger.info(
+                "room.forfeit",
+                extra={
+                    "event": "room.forfeit",
+                    "outcome": "explicit_leave",
+                    "forfeited_count": 1,
+                    "room_id": str(locked.id),
+                    "room_status": locked.status,
+                },
+            )
         if locked.state.get("phase") == "game_over":
             locked.status = Room.STATUS_FINISHED
             locked.finished_at = locked.finished_at or current
@@ -472,8 +776,18 @@ def leave_room(request: HttpRequest, room_id: UUID) -> None:
                 "updated_at",
             ]
         )
+    logger.info(
+        "room.leave",
+        extra={
+            "event": "room.leave",
+            "outcome": "left",
+            "room_id": str(locked.id),
+            "room_status": locked.status,
+        },
+    )
 
 
+@_observe_command
 def execute_command(
     request: HttpRequest,
     room_id: UUID,
@@ -614,6 +928,15 @@ def _command_claim_host(room: Room, member: RoomMember, current: datetime) -> No
     member.save(update_fields=["role", "updated_at"])
     room.host_subject_type = member.subject_type
     room.host_subject_id = member.subject_id
+    logger.info(
+        "room.host.claim",
+        extra={
+            "event": "room.host.claim",
+            "outcome": "claimed",
+            "room_id": str(room.id),
+            "room_status": room.status,
+        },
+    )
 
 
 def _player(state: dict[str, Any], member: RoomMember) -> dict[str, Any] | None:
@@ -865,10 +1188,30 @@ def _sweep_stale_members(room: Room, current: datetime) -> bool:
             member.role = RoomMember.ROLE_PLAYER
             room.host_subject_type = successor.subject_type
             room.host_subject_id = successor.subject_id
+            logger.info(
+                "room.host.transfer",
+                extra={
+                    "event": "room.host.transfer",
+                    "outcome": "stale_sweep",
+                    "room_id": str(room.id),
+                    "room_status": room.status,
+                },
+            )
         _forfeit_player(room, member)
         member.active = False
         member.save(update_fields=["active", "role", "updated_at"])
         changed = True
+    if changed:
+        logger.info(
+            "room.forfeit",
+            extra={
+                "event": "room.forfeit",
+                "outcome": "stale_sweep",
+                "forfeited_count": len(stale),
+                "room_id": str(room.id),
+                "room_status": room.status,
+            },
+        )
     if room.state.get("phase") == "game_over":
         room.status = Room.STATUS_FINISHED
         room.finished_at = room.finished_at or current
@@ -1000,6 +1343,7 @@ def anonymize_subject(subject_type: str, subject_id: UUID) -> int:
 def expire_rooms(*, now: datetime | None = None) -> int:
     current = _now(now)
     idle_cutoff = current - timedelta(seconds=IDLE_TTL_SECONDS)
+    started = time.perf_counter()
     with transaction.atomic():
         rooms = list(
             Room.objects.select_for_update()
@@ -1011,12 +1355,34 @@ def expire_rooms(*, now: datetime | None = None) -> int:
         )
         for room in rooms:
             _expire_if_needed(room, current)
+    logger.info(
+        "room.expire",
+        extra={
+            "event": "room.expire",
+            "outcome": "completed",
+            "expired_count": len(rooms),
+            "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+        },
+    )
     return len(rooms)
+
+
+def cleanup_create_requests(*, now: datetime | None = None) -> int:
+    """Delete expired create idempotency records.
+
+    The TTL is deliberately longer than room retention, so an expired record
+    is only reclaimed after the room and the client retry window are gone.
+    """
+    current = _now(now)
+    with transaction.atomic():
+        deleted, _ = RoomCreateRequest.objects.filter(expires_at__lt=current).delete()
+    return int(deleted)
 
 
 def cleanup_rooms(*, now: datetime | None = None, retention_hours: int = 24) -> int:
     current = _now(now)
     cutoff = current - timedelta(hours=retention_hours)
+    started = time.perf_counter()
     with transaction.atomic():
         room_ids = list(
             Room.objects.select_for_update(skip_locked=True)
@@ -1028,4 +1394,15 @@ def cleanup_rooms(*, now: datetime | None = None, retention_hours: int = 24) -> 
         )
         if room_ids:
             Room.objects.filter(pk__in=room_ids).delete()
+    idempotency_cleaned = cleanup_create_requests(now=current)
+    logger.info(
+        "room.cleanup",
+        extra={
+            "event": "room.cleanup",
+            "outcome": "completed",
+            "cleaned_count": len(room_ids),
+            "rows": idempotency_cleaned,
+            "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+        },
+    )
     return len(room_ids)

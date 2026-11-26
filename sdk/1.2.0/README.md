@@ -46,6 +46,7 @@ await ba.storage.set(key, value);
 await ba.storage.remove(key);
 const room = await ba.room.create({
   gameId: "whos_undercover",
+  requestId: "018f6c2e-6f5a-7c31-9a44-4f1b6e9a0c15",
   maxPlayers: 8,
   undercoverCount: 1,
   mrWhite: false,
@@ -62,8 +63,11 @@ ba.fail(code, message);
 **Retry contract:** `room.command` accepts an optional stable `requestId` as
 its fifth argument. Reuse it when retrying after a timeout so the server can
 deduplicate the command. If the response is `E_ROOM_STALE`, re-read
-`room.state`, then retry with the current `room.version`. `create` is not
-idempotent; do not retry it blindly after a lost response.
+`room.state`, then retry with the current `room.version`. `room.create`
+accepts an optional stable `requestId`; reuse it for every retry of the same
+create intent. The server returns the same room for the same subject and
+payload, and rejects a key reused with different parameters or from another
+subject. Do not use a create key as an access token.
 
 Источник: BA-GAME-2.2 §6.
 

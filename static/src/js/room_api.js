@@ -22,12 +22,16 @@ export function roomApiRequest(payload, envelopeRequestId) {
         if (typeof payload.gameId !== "string" || !payload.gameId) {
             throw invalid("gameId is required");
         }
+        if (payload.requestId !== undefined && !isUuid(payload.requestId)) {
+            throw invalid("requestId is invalid");
+        }
         return {
             method: "POST",
             path: ROOM_BASE,
             retry: false,
             body: {
                 game_id: payload.gameId,
+                ...(payload.requestId !== undefined ? { request_id: payload.requestId } : {}),
                 ...(payload.name !== undefined ? { name: payload.name } : {}),
                 ...(payload.maxPlayers !== undefined
                     ? { max_players: payload.maxPlayers }

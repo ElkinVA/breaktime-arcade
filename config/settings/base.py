@@ -451,6 +451,14 @@ REST_FRAMEWORK = {
     "UNAUTHENTICATED_USER": "django.contrib.auth.models.AnonymousUser",
 }
 
+# --- Live Room idempotency ------------------------------------------------
+# A create replay must be accepted at least as long as a room can be
+# retained, so a lost response cannot create a duplicate intent.
+ROOM_IDEMPOTENCY_TTL_SECONDS = env_int(
+    "ROOM_IDEMPOTENCY_TTL_SECONDS", 7 * 24 * 60 * 60
+)
+ROOM_SLOW_LOG_MS = env_int("ROOM_SLOW_LOG_MS", 500)
+
 # --- Рейтинг: формула WR (§2.8) -----------------------------------------
 # WR = (v / (v + m)) * R + (m / (v + m)) * C
 RATING_WR_M = env_int("RATING_WR_M", 20)

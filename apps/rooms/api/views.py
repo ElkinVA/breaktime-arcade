@@ -80,6 +80,7 @@ class RoomCreateView(RoomAPIView):
                 mr_white=data["mr_white"],
                 category_id=data.get("category_id") or None,
                 name=data.get("name") or None,
+                request_id=data.get("requestId"),
             )
         except RoomError as exc:
             return _error(exc, response)
