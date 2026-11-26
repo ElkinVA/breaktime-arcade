@@ -28,9 +28,9 @@
   accounts — 25 passed; full gate **1281 passed, 15 skipped, exit 0
   (577 s)**; ruff/format clean (501), mypy clean (406). LR-2/LR-3 не
   реализованы; E2E/load/staging не проверялись.
-- **Статус:** **IMPLEMENTED / INDEPENDENT CODE + SECURITY REVIEW ACCEPT**;
-  не продуктовая приёмка. Остаток 5-min stale forfeit — LR-2 product/UX
-  sign-off; per-phase timeout отсутствует.
+- **Статус:** **IMPLEMENTED / INDEPENDENT CODE + SECURITY REVIEW ACCEPT**
+  (`c6daf09`); не продуктовая приёмка. Остаток 5-min stale forfeit — LR-2
+  product/UX sign-off; per-phase timeout отсутствует.
 - **Дата:** 2026-11-26.
 - **Следующий шаг:** LR-2 — additive SDK 1.2 room protocol, host bridge,
   Live Room UI, two-browser E2E.

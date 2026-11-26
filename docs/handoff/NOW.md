@@ -4,6 +4,8 @@
 
 ## Live Room LR-0/LR-1 (2026-11-26)
 
+- Package commit **`c6daf09`**; Live Room backend LR-0/LR-1 is implemented
+  and independently reviewed (code + security ACCEPT).
 - Owner decision: **APPROVED — CONTINUOUS FULL PRODUCT DEVELOPMENT**
   (`docs/decisions/OWNER_DECISIONS.md` A.13). Live Room — главный следующий
   платформенный приоритет.

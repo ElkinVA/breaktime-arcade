@@ -23,10 +23,11 @@
 
 ## 1. Фактическая точка старта
 
-- `main` = `27258e1`, рабочее дерево чистое, `origin/main` синхронизирован.
-- Полный Python gate: **1261 passed, 15 skipped, exit 0**; browser E2E
-  **25 passed**; JS **31/31 + 12/12 game core**; ruff/format/mypy clean;
-  prod-style image собирается с Playwright.
+- `main` = `c6daf09` (Live Room LR-0/LR-1 backend), рабочее дерево чистое,
+  `origin/main` синхронизируется push.
+- Полный Python gate: **1281 passed, 15 skipped, exit 0 (577 s)**; browser
+  E2E **25 passed** (last recorded); JS **31/31 + 12/12 game core**;
+  ruff/format clean (501), mypy clean (406).
 - Работают: публичный каталог, аккаунты (partial), App F server slices,
   runtime/SDK, ZIP pipeline, CRM (partial), backup/restore, AI HQ sandbox,
   browser publish gate, isolated Redis broker, CI browser E2E.
