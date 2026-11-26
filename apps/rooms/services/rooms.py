@@ -45,8 +45,25 @@ LIVE_ROOM_GAMES = frozenset({"whos_undercover", "whos_undercover_live"})
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 CODE_LENGTH = 6
 MAX_ROOM_ATTEMPTS = 8
+SAFE_COMMAND_VALUES = frozenset(
+    {
+        "ready",
+        "start",
+        "reveal_ack",
+        "advance_clue",
+        "vote",
+        "advance",
+        "mrwhite_guess",
+        "restart",
+        "claim_host",
+    }
+)
 
 logger = logging.getLogger("apps.rooms")
+
+
+def _safe_command(value: object) -> str:
+    return str(value) if value in SAFE_COMMAND_VALUES else "other"
 
 
 class RoomError(Exception):
@@ -72,7 +89,7 @@ def _observe_command(func: RoomResultFunc) -> RoomResultFunc:
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> RoomResult:
         started = time.perf_counter()
-        command = kwargs.get("command")
+        command = _safe_command(kwargs.get("command"))
         room_id = kwargs.get("room_id")
         if room_id is None and len(args) > 1:
             room_id = args[1]
@@ -733,7 +750,7 @@ def leave_room(request: HttpRequest, room_id: UUID) -> None:
                 locked.finished_at = current
             else:
                 if locked.status == Room.STATUS_ACTIVE:
-                    _forfeit_player(locked, current_member)
+                    forfeited = _forfeit_player(locked, current_member)
                 promoted.role = RoomMember.ROLE_HOST
                 promoted.save(update_fields=["role", "updated_at"])
                 current_member.role = RoomMember.ROLE_PLAYER

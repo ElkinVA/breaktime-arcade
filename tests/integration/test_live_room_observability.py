@@ -171,6 +171,15 @@ def test_room_logs_do_not_contain_names_roles_words_votes_or_keys(
             request_id=None,
             expected_version=None,
         )
+    with pytest.raises(RoomError):
+        execute_command(
+            _request(guest),
+            room.id,
+            command="attacker-controlled-command",
+            payload={"targetId": "private-target"},
+            request_id=None,
+            expected_version=None,
+        )
     read_room(_request(host), room.id)
     leave_room(_request(guest), room.id)
 
@@ -193,6 +202,7 @@ def test_room_logs_do_not_contain_names_roles_words_votes_or_keys(
         "Sensitive Guest",
         key,
         "private-target",
+        "attacker-controlled-command",
         "ba_anon",
         "csrftoken",
     ):
