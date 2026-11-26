@@ -70,3 +70,14 @@ def test_play_shell_has_no_session_or_ticket_material() -> None:
     assert "ticket" not in body
     assert "sessionId" not in body
     assert not GameSession.objects.exists()
+
+
+@pytest.mark.django_db
+def test_play_page_pins_the_site_language_for_the_session_api() -> None:
+    from django.conf import settings
+
+    _game()
+    response = Client().get("/ru/games/play-runtime/play/")
+
+    assert response.status_code == 200
+    assert response.cookies[settings.LANGUAGE_COOKIE_NAME].value == "ru"

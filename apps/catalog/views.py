@@ -15,6 +15,7 @@ from django.http import (
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
+from django.utils.translation import get_language
 
 from apps.catalog.models import GameAsset, Genre, GenreTranslation
 from apps.catalog.services.catalog import (
@@ -235,6 +236,20 @@ def game_play(request: HttpRequest, slug: str) -> TemplateResponse:
         },
     )
     response["Cache-Control"] = "no-store"
+    # The session API is unprefixed; without this cookie LocaleMiddleware
+    # would fall back to Accept-Language and the game context would disagree
+    # with the /<language>/ page (BA-PLAT language invariant).
+    language = get_language() or game.default_language
+    if language in dict(settings.LANGUAGES):
+        response.set_cookie(
+            settings.LANGUAGE_COOKIE_NAME,
+            language,
+            max_age=settings.LANGUAGE_COOKIE_AGE,
+            domain=settings.LANGUAGE_COOKIE_DOMAIN,
+            path="/",
+            secure=request.is_secure(),
+            samesite=settings.LANGUAGE_COOKIE_SAMESITE,
+        )
     return response
 
 
