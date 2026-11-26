@@ -59,6 +59,12 @@ ba.exit();
 ba.fail(code, message);
 ```
 
+**Retry contract:** `room.command` accepts an optional stable `requestId` as
+its fifth argument. Reuse it when retrying after a timeout so the server can
+deduplicate the command. If the response is `E_ROOM_STALE`, re-read
+`room.state`, then retry with the current `room.version`. `create` is not
+idempotent; do not retry it blindly after a lost response.
+
 Источник: BA-GAME-2.2 §6.
 
 ## Сообщения
@@ -78,12 +84,14 @@ ba.fail(code, message);
 - `ba:newSession`
 - `ba:exit`
 - `ba:error`
+- `ba:room`
 
 Платформа → игра:
 
 - `ba:context`
 - `ba:result`
 - `ba:leaderboard:data`
+- `ba:room:data`
 - `ba:storage:data`
 - `ba:session`
 - `ba:pause`

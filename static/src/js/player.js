@@ -1,5 +1,6 @@
 /* Portal-side player host. Owns the launch ticket and talks to the APIs. */
-import { HostBridge, isUuid } from "./host_protocol.js";
+import { HostBridge } from "./host_protocol.js";
+import { roomApiRequest } from "./room_api.js";
 
 const API_TIMEOUT_MS = 10_000;
 
@@ -366,99 +367,23 @@ if (frame) {
     }
 
     async function roomRequest(requestId, payload) {
-        const op = payload?.op;
-        const roomPath = (roomId) => `/api/v1/rooms/${encodeURIComponent(roomId)}`;
         try {
-            if (op === "create") {
-                if (typeof payload.gameId !== "string" || !payload.gameId) {
-                    throw Object.assign(new Error("gameId is required"), {
-                        code: "E_INVALID_REQUEST",
-                    });
-                }
-                const body = {
-                    game_id: payload.gameId,
-                    ...(payload.name !== undefined ? { name: payload.name } : {}),
-                    ...(payload.maxPlayers !== undefined
-                        ? { max_players: payload.maxPlayers }
-                        : {}),
-                    ...(payload.undercoverCount !== undefined
-                        ? { undercover_count: payload.undercoverCount }
-                        : {}),
-                    ...(payload.mrWhite !== undefined ? { mr_white: payload.mrWhite } : {}),
-                    ...(payload.categoryId !== undefined
-                        ? { category_id: payload.categoryId }
-                        : {}),
-                };
-                const result = await api("/api/v1/rooms", {
-                    method: "POST",
-                    headers: headers(),
-                    body: JSON.stringify(body),
-                    retry: false,
-                });
-                bridge.sendRoomData(requestId, result.payload);
-                return;
+            if (payload?.op === "create" && payload.gameId !== gameId) {
+                const error = new Error("room game does not match the active game");
+                error.code = "E_INVALID_REQUEST";
+                throw error;
             }
-            if (op === "join") {
-                const result = await api("/api/v1/rooms/join", {
-                    method: "POST",
-                    headers: headers(),
-                    body: JSON.stringify({
-                        code: payload.code,
-                        ...(payload.name !== undefined ? { name: payload.name } : {}),
-                    }),
-                    retry: false,
-                });
-                bridge.sendRoomData(requestId, result.payload);
-                return;
+            const request = roomApiRequest(payload, requestId);
+            const options = {
+                method: request.method,
+                headers: headers(),
+                retry: request.retry,
+            };
+            if (request.body !== null) {
+                options.body = JSON.stringify(request.body);
             }
-            if (!isUuid(payload.roomId)) {
-                throw Object.assign(new Error("roomId is required"), { code: "E_INVALID_REQUEST" });
-            }
-            if (op === "state") {
-                const result = await api(roomPath(payload.roomId), {
-                    method: "GET",
-                    headers: headers(),
-                });
-                bridge.sendRoomData(requestId, result.payload);
-                return;
-            }
-            if (op === "command") {
-                if (
-                    typeof payload.command !== "string" ||
-                    !payload.command ||
-                    !Number.isInteger(payload.expectedVersion)
-                ) {
-                    throw Object.assign(new Error("invalid room command"), {
-                        code: "E_INVALID_REQUEST",
-                    });
-                }
-                const result = await api(`${roomPath(payload.roomId)}/commands`, {
-                    method: "POST",
-                    headers: headers(),
-                    body: JSON.stringify({
-                        command: payload.command,
-                        payload: payload.commandPayload ?? {},
-                        requestId: isUuid(payload.requestId) ? payload.requestId : requestId,
-                        expectedVersion: payload.expectedVersion,
-                    }),
-                    retry: false,
-                });
-                bridge.sendRoomData(requestId, result.payload);
-                return;
-            }
-            if (op === "leave") {
-                await api(`${roomPath(payload.roomId)}/leave`, {
-                    method: "POST",
-                    headers: headers(),
-                    body: JSON.stringify({}),
-                    retry: false,
-                });
-                bridge.sendRoomData(requestId, {});
-                return;
-            }
-            throw Object.assign(new Error("unsupported room operation"), {
-                code: "E_INVALID_REQUEST",
-            });
+            const result = await api(request.path, options);
+            bridge.sendRoomData(requestId, result.payload ?? {});
         } catch (error) {
             bridge.sendError(requestId, error.code || "E_INTERNAL", error.message || "room error");
         }

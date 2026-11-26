@@ -32,7 +32,7 @@ class RoomCommandSerializer(serializers.Serializer):
             raise serializers.ValidationError("payload must be an object")
         try:
             encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError, RecursionError) as exc:
             raise serializers.ValidationError("payload is not valid UTF-8 JSON") from exc
         if len(encoded) > MAX_COMMAND_PAYLOAD_BYTES:
             raise serializers.ValidationError("payload is too large")

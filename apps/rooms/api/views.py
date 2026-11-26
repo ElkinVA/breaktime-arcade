@@ -3,6 +3,8 @@ from __future__ import annotations
 from uuid import UUID
 
 from rest_framework.authentication import SessionAuthentication  # type: ignore[import-untyped]
+from rest_framework.exceptions import ParseError  # type: ignore[import-untyped]
+from rest_framework.parsers import JSONParser  # type: ignore[import-untyped]
 from rest_framework.permissions import AllowAny  # type: ignore[import-untyped]
 from rest_framework.response import Response  # type: ignore[import-untyped]
 from rest_framework.views import APIView  # type: ignore[import-untyped]
@@ -30,8 +32,18 @@ class RoomIpThrottle(IpRateThrottle):
     scope = "rooms_ip"
 
 
+class RoomJSONParser(JSONParser):
+    def parse(self, stream, media_type=None, parser_context=None):
+        try:
+            return super().parse(stream, media_type, parser_context)
+        except RecursionError as exc:
+            raise ParseError("request nesting is too deep") from exc
+
+
 class RoomAPIView(APIView):
     """Room payloads contain private roles, so never allow shared/browser caching."""
+
+    parser_classes = [RoomJSONParser]
 
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)

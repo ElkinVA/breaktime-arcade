@@ -391,6 +391,23 @@ def test_commands_are_idempotent_and_stale_versions_are_rejected() -> None:
     )
     assert invalid_utf8.status_code == 400
     assert invalid_utf8.json()["code"] == "E_INVALID_REQUEST"
+    nested = "[" * 1500 + "]" * 1500
+    deeply_nested = (
+        '{"command":"ready","payload":{"x":'
+        + nested
+        + '},"requestId":"'
+        + str(uuid4())
+        + '","expectedVersion":'
+        + str(after)
+        + "}"
+    )
+    nested_response = player_client.post(
+        f"{API}/{room_id}/commands",
+        data=deeply_nested,
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=player_csrf,
+    )
+    assert nested_response.status_code == 400
 
 
 @pytest.mark.django_db
