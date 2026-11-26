@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -48,6 +49,7 @@ from autonomy.state import (
 
 ROOT = Path(__file__).resolve().parents[1]
 STATE_ROOT = Path(__file__).resolve().parents[1] / ".autonomy"
+ChecksRunner = Callable[[Path], tuple[str, list[str]]]
 STOP_FILE = STATE_ROOT / "STOP"
 EVIDENCE_ROOT = STATE_ROOT / "evidence"
 RUN_LOCK = STATE_ROOT / "run.lock"
@@ -565,12 +567,16 @@ class Orchestrator:
         worktrees: bool = True,
         budget: Budget | None = None,
         notifier: Notifier | None = None,
+        checks_runner: ChecksRunner | None = None,
     ) -> None:
         self.runner = runner
         self.store = store or StateStore(STATE_ROOT)
         self.commit = commit
         self.worktrees = worktrees
         self.budget = budget or Budget.from_env()
+        # The trusted product-check runner is injectable so lifecycle tests can
+        # use a disposable git repository without weakening production checks.
+        self.checks_runner = checks_runner or _run_orchestrator_checks
         # Explicit injection keeps tests and library callers send-free; the
         # CLI enables the owner-configured notifier via ``Notifier.from_env``.
         self.notifier = notifier if notifier is not None else Notifier.disabled()
@@ -854,7 +860,7 @@ class Orchestrator:
             candidate = _commit_candidate(task, files, worktree)
             self.store.set_candidate(task.id, candidate)
             qa_worktree, _ = _create_worktree(task, base=candidate)
-            checks, failed_checks = _run_orchestrator_checks(qa_worktree)
+            checks, failed_checks = self.checks_runner(qa_worktree)
             if failed_checks:
                 _discard_worktrees(worktree, qa_worktree)
                 self.store.set_worktree(task.id, None, None)

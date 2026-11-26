@@ -18,6 +18,7 @@ import ctypes
 import os
 import shutil
 import stat
+import sys
 from pathlib import Path
 
 PR_SET_NO_NEW_PRIVS = 38
@@ -230,6 +231,29 @@ def apply_landlock(
         os.close(ruleset_fd)
 
 
+def interpreter_read_roots(executable: str | None = None) -> tuple[Path, ...]:
+    """Return the narrow Python runtime roots needed to exec the interpreter.
+
+    A venv executable is commonly ``<repo>/.venv/bin/python``; without an
+    execute grant the Landlock child cannot even start Python, and the
+    worktree is the only writable root. Grant the interpreter prefix (and its
+    base prefix for the stdlib), never the host HOME or an arbitrary ancestor.
+    """
+    path = Path(executable or sys.executable).resolve()
+    candidates = {
+        Path(sys.prefix).resolve(),
+        Path(sys.base_prefix).resolve(),
+        path.parent,
+    }
+    roots: list[Path] = []
+    for candidate in candidates:
+        if candidate == Path("/") or candidate == Path.home().resolve():
+            continue
+        if candidate.is_dir() and candidate not in roots:
+            roots.append(candidate)
+    return tuple(roots)
+
+
 def node_read_root(claude_path: str | None = None) -> Path | None:
     """Return the directory that contains the Node/Claude runtime, if any."""
     claude = claude_path or shutil.which("claude")
@@ -270,7 +294,11 @@ def sandbox_preexec(
         try:
             if namespaces:
                 enter_private_namespaces()
-            extra = tuple(path for path in (node_read_root(claude_path),) if path is not None)
+            extra = tuple(
+                path
+                for path in (*interpreter_read_roots(), node_read_root(claude_path))
+                if path is not None
+            )
             apply_landlock(worktree=worktree, home=home, temp=temp, extra_read_roots=extra)
         except BaseException:
             os._exit(SANDBOX_FAILURE_EXIT)

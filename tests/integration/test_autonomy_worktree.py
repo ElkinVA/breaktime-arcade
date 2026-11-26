@@ -76,6 +76,17 @@ def _store(state_dir: Path) -> StateStore:
     return store
 
 
+def _orchestrator(runner: FakeRunner, store: StateStore) -> Orchestrator:
+    """Lifecycle tests use a disposable repo; product checks are covered
+    separately by the trusted-check runner and by CI integration."""
+    return Orchestrator(
+        runner,
+        store,
+        worktrees=True,
+        checks_runner=lambda _: ("lifecycle test checks stubbed", []),
+    )
+
+
 class FakeRunner:
     """Writes a candidate file and lets the test perturb main before review."""
 
@@ -167,6 +178,30 @@ class FakeRunner:
         )
 
 
+def test_failed_trusted_checks_block_before_qa_and_clean_worktrees(
+    git_repo: tuple[Path, Path, Path],
+) -> None:
+    root, worktrees, state_dir = git_repo
+    base = _git(root, "rev-parse", "HEAD")
+    store = _store(state_dir)
+    runner = FakeRunner()
+
+    report = Orchestrator(
+        runner,
+        store,
+        worktrees=True,
+        checks_runner=lambda _: ("pytest failed", ["pytest"]),
+    ).run_once(propose=False)
+
+    assert report["status"] == "retry", report
+    assert report["checks"] == ["pytest"]
+    assert runner.calls == ["developer"]
+    assert _git(root, "rev-parse", "HEAD") == base
+    assert store.get(TASK_ID).status == READY  # type: ignore[union-attr]
+    assert store.get(TASK_ID).worktree is None  # type: ignore[union-attr]
+    assert not any(worktrees.iterdir())
+
+
 def test_worktree_accept_commits_candidate_and_fast_forwards(
     git_repo: tuple[Path, Path, Path],
 ) -> None:
@@ -175,7 +210,7 @@ def test_worktree_accept_commits_candidate_and_fast_forwards(
     store = _store(state_dir)
     runner = FakeRunner()
 
-    report = Orchestrator(runner, store, worktrees=True).run_once(propose=False)
+    report = _orchestrator(runner, store).run_once(propose=False)
 
     assert report["status"] == "completed", report
     candidate = report["candidate"]
@@ -203,7 +238,7 @@ def test_worktree_reject_discards_candidate_and_keeps_main_unchanged(
     store = _store(state_dir)
     runner = FakeRunner(verdict="reject")
 
-    report = Orchestrator(runner, store, worktrees=True).run_once(propose=False)
+    report = _orchestrator(runner, store).run_once(propose=False)
 
     assert report["status"] == "retry", report
     assert runner.reviewed_head is not None
@@ -226,7 +261,7 @@ def test_malformed_reviewer_json_never_merges(
     store = _store(state_dir)
     runner = FakeRunner(review_result='{"verdict":"accept","findings": [')
 
-    report = Orchestrator(runner, store, worktrees=True).run_once(propose=False)
+    report = _orchestrator(runner, store).run_once(propose=False)
 
     assert report["status"] == "retry", report
     assert report["review"]["verdict"] == "reject"
@@ -248,9 +283,7 @@ def test_merge_base_drift_blocks_with_reason_and_removes_worktree(
         _git(root, "commit", "-q", "-m", "main moved")
         observed["head"] = _git(root, "rev-parse", "HEAD")
 
-    report = Orchestrator(FakeRunner(before_verdict=move_main), store, worktrees=True).run_once(
-        propose=False
-    )
+    report = _orchestrator(FakeRunner(before_verdict=move_main), store).run_once(propose=False)
 
     assert report["status"] == "blocked", report
     assert "merge base drift" in report["reason"]
@@ -273,9 +306,7 @@ def test_dirty_main_blocks_with_reason_and_removes_worktree(
     def dirty_main() -> None:
         (root / "README.md").write_text("dirty\n", encoding="utf-8")
 
-    report = Orchestrator(FakeRunner(before_verdict=dirty_main), store, worktrees=True).run_once(
-        propose=False
-    )
+    report = _orchestrator(FakeRunner(before_verdict=dirty_main), store).run_once(propose=False)
 
     assert report["status"] == "blocked", report
     assert "dirty" in report["reason"]
@@ -306,7 +337,7 @@ def test_merge_failure_blocks_with_reason_and_removes_worktree(
 
     monkeypatch.setattr(orchestrator, "_git", failing_git)
 
-    report = Orchestrator(FakeRunner(), store, worktrees=True).run_once(propose=False)
+    report = _orchestrator(FakeRunner(), store).run_once(propose=False)
 
     assert report["status"] == "blocked", report
     assert "fast-forward merge failed" in report["reason"]
@@ -337,7 +368,7 @@ def test_recovery_removes_orphan_worktrees_and_resumes_without_duplicates(
     (leftover / "tmp.txt").write_text("leftover", encoding="utf-8")
 
     runner = FakeRunner()
-    report = Orchestrator(runner, store, worktrees=True).run_once(propose=False)
+    report = _orchestrator(runner, store).run_once(propose=False)
 
     assert report["status"] == "completed", report
     assert runner.calls == ["developer", "qa", "reviewer"]
@@ -352,7 +383,7 @@ def test_recovery_removes_orphan_worktrees_and_resumes_without_duplicates(
 
     # A second iteration must be idle: recovery did not leave a duplicate
     # READY/RUNNING copy of the task behind.
-    again = Orchestrator(runner, store, worktrees=True).run_once(propose=False)
+    again = _orchestrator(runner, store).run_once(propose=False)
     assert again["status"] == "idle"
     assert runner.calls.count("developer") == 1
     assert store.get(TASK_ID).status == COMPLETED  # type: ignore[union-attr]
@@ -366,7 +397,7 @@ def test_propose_runs_architect_in_disposable_worktree_and_cleans_up(
     store = StateStore(state_dir)
     runner = FakeRunner()
 
-    added = Orchestrator(runner, store, worktrees=True).propose()
+    added = _orchestrator(runner, store).propose()
 
     assert added == []
     # The Architect callback asserted cwd/.git while the worktree existed.
