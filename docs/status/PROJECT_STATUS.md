@@ -1,9 +1,9 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-26 (Live Room LR-0/LR-1; owner directive
-continuous full product development).
+**Дата актуализации:** 2026-11-26 (Live Room LR-0/LR-1/LR-2a; owner
+directive continuous full product development).
 
-## 0.0. Live Room LR-0/LR-1 — server-authoritative backend (2026-11-26)
+## 0.0. Live Room LR-0/LR-1/LR-2a — backend and transport (2026-11-26)
 
 - **ADR:** `docs/decisions/ADR-LIVE-ROOM-001.md` — PostgreSQL as system of
   record, HTTP polling, no Channels/ASGI; additive SDK 1.2 planned.
@@ -22,18 +22,26 @@ continuous full product development).
   words only when `finished`; repeat leave is idempotent; create/join error
   paths keep the anonymous identity cookie; anonymisation re-scans
   concurrently created memberships.
+- **LR-2a transport (commit `ecd4346` + `80fbcc2`):** additive SDK 1.2
+  `ba:room` / `ba:room:data` schemas, `sdk/1.2.0` `room.create/join/state/
+  command/leave`, host bridge room calls through CSRF/session API, tested
+  `room_api` mapping, nested-JSON 400 guard, separate room rate bucket,
+  stable command requestId. SDK 1.1 and Pass & Play unchanged; independent
+  code + security review **ACCEPT** with fixes applied.
 - **Tests:** `tests/integration/test_live_rooms.py` — 20 passed (includes
   private roles, reveal/clues/vote, tie, Mr. White correct/wrong, restart,
   reconnect, leave/forfeit, stale-player/stale-host sweep, host transfer/
   claim, cleanup, TTL, unsupported game, payload/UTF-8 limits, deck parity,
-  account scrub). Account tests 25 passed. Full gate: **1281 passed,
-  15 skipped, exit 0 (577 s)**; ruff/format clean (501), mypy clean (406).
-- **Status:** `IMPLEMENTED / INDEPENDENT REVIEW ACCEPT`; not product
-  accepted. **LR-2 (SDK 1.2 room protocol + host bridge + Live Room UI +
-  two-browser E2E) and LR-3 (load/crash/observability) not implemented.**
-  No per-phase timeout; a player that stops polling for >5 min is forfeited
-  and returns as a spectator (LR-2 product/UX sign-off); no load/staging
-  test; Live Room is not marketed as ready.
+  account scrub). Account tests 25 passed; JS **40/40**. Full gate:
+  **1281 passed, 15 skipped, exit 0 (617 s)**; ruff/format clean (501),
+  mypy clean (406).
+- **Status:** backend LR-0/LR-1 and transport LR-2a
+  `IMPLEMENTED / INDEPENDENT REVIEW ACCEPT`; not product accepted.
+  **LR-2b (Live Room game UI + two-browser E2E) and LR-3 (load/crash/
+  observability) not implemented.** No per-phase timeout; a player that
+  stops polling for >5 min is forfeited and returns as a spectator (LR-2
+  product/UX sign-off); no load/staging test; Live Room is not marketed as
+  ready.
 
 ## 0.1. P4 — фактическое состояние
 

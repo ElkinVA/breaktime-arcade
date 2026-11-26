@@ -23,11 +23,11 @@
 
 ## 1. Фактическая точка старта
 
-- `main` = `c6daf09` (Live Room LR-0/LR-1 backend), рабочее дерево чистое,
-  `origin/main` синхронизируется push.
-- Полный Python gate: **1281 passed, 15 skipped, exit 0 (577 s)**; browser
-  E2E **25 passed** (last recorded); JS **31/31 + 12/12 game core**;
-  ruff/format clean (501), mypy clean (406).
+- `main` = `80fbcc2` (Live Room backend + additive SDK 1.2 transport),
+  рабочее дерево чистое, `origin/main` синхронизируется push.
+- Полный Python gate: **1281 passed, 15 skipped, exit 0 (617 s)**; JS
+  **40/40**; browser E2E **25 passed** (last recorded); ruff/format clean
+  (501), mypy clean (406).
 - Работают: публичный каталог, аккаунты (partial), App F server slices,
   runtime/SDK, ZIP pipeline, CRM (partial), backup/restore, AI HQ sandbox,
   browser publish gate, isolated Redis broker, CI browser E2E.
@@ -80,11 +80,13 @@ Owner-директива 2026-11-26: Live Room — главный следующ
   sanitized snapshots, reveal/clues/vote/tie/Mr. White/win/restart,
   requestId/expectedVersion, TTL/cleanup, host transfer/stale-host claim,
   account-deletion scrub, CSRF/throttles/no-store; integration tests.
-- **LR-2 (next):** additive SDK 1.2 room protocol, host bridge, Live Room
-  game UI, two-browser E2E.
+- **LR-2a (transport, done):** additive SDK 1.2 `ba:room`/`ba:room:data`,
+  `room.create/join/state/command/leave`, CSRF host bridge, tested mapping,
+  nested-JSON guard, separate rate bucket; SDK 1.1 and Pass & Play unchanged.
+- **LR-2b (next):** Live Room game UI and two-browser E2E.
 - **LR-3:** load/crash, observability, product acceptance.
 
-Live Room не маркетируется как готовый до LR-2/LR-3 и продуктовой приёмки.
+Live Room не маркетируется как готовый до LR-2b/LR-3 и продуктовой приёмки.
 
 ### P2. Контент, баланс, арт, пользовательские тесты
 

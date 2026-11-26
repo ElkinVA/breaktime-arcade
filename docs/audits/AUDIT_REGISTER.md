@@ -937,9 +937,19 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 |---|---|
 | Тип | Platform backend; independent code review + security audit |
 | Результат | ADR-LIVE-ROOM-001; `apps/rooms` Room/RoomMember/RoomCommand, migration; create/join/leave, lobby start, private roles, reveal/clues/vote/tie/Mr. White/win/restart, idempotency/version, TTL+cleanup, host transfer/stale claim, account-deletion scrub |
-| Проверки | 20 targeted tests passed; accounts 25 passed; full gate **1281 passed, 15 skipped, exit 0 (577 s)**; ruff/format clean (501); mypy clean (406) |
+| Проверки | 20 targeted tests passed; accounts 25 passed; full gate **1281 passed, 15 skipped, exit 0 (617 s)**; ruff/format clean (501); mypy clean (406) |
 | Статус | **IMPLEMENTED / INDEPENDENT CODE + SECURITY REVIEW ACCEPT** |
-| Остаток | SDK 1.2/UI/two-browser E2E/load/staging not implemented; no per-phase timeout; 5-min stale forfeit product/UX sign-off; GET detail has sweep side effect; anonymize second-pass residual window; product acceptance owner |
+| Остаток | LR-2b UI/two-browser E2E and LR-3 load/staging not implemented; no per-phase timeout; 5-min stale forfeit product/UX sign-off; GET detail has sweep side effect; anonymize second-pass residual window; product acceptance owner |
+
+## ARCADE-LIVE-ROOM-002 — additive SDK 1.2 room transport
+
+| Поле | Значение |
+|---|---|
+| Тип | SDK/host transport; independent code review + security audit |
+| Результат | `ba:room`/`ba:room:data` schemas; `sdk/1.2.0` room methods and 120/min bucket; CSRF host bridge; tested camelCase mapping (`room_api`); nested-JSON 400 guard; stable requestId/E_ROOM_STALE contract |
+| Проверки | JS **40/40**; targeted Python 36 + pipeline 42; full gate **1281 passed, 15 skipped, exit 0 (617 s)**; ruff 501; mypy 406; independent reviews ACCEPT |
+| Статус | **IMPLEMENTED / INDEPENDENT CODE + SECURITY REVIEW ACCEPT** (`ecd4346` + `80fbcc2`) |
+| Остаток | LR-2b UI/two-browser E2E; create idempotency/IP secondary command throttle deferred to LR-3; host→game schema parity hand-maintained; names must be rendered via textContent in UI |
 
 ## ARCADE-EXTERNAL-AUDIT-2026-11-25 — P1/P2 response
 

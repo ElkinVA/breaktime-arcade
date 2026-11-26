@@ -2,10 +2,11 @@
 
 **Дата:** 2026-11-26
 
-## Live Room LR-0/LR-1 (2026-11-26)
+## Live Room LR-0/LR-1/LR-2a (2026-11-26)
 
-- Package commit **`c6daf09`**; Live Room backend LR-0/LR-1 is implemented
-  and independently reviewed (code + security ACCEPT).
+- Package commits **`c6daf09`** (backend), **`ecd4346`** (SDK 1.2
+  transport), **`80fbcc2`** (bridge/nested-JSON hardening). Backend and
+  transport are independently reviewed (code + security ACCEPT).
 - Owner decision: **APPROVED — CONTINUOUS FULL PRODUCT DEVELOPMENT**
   (`docs/decisions/OWNER_DECISIONS.md` A.13). Live Room — главный следующий
   платформенный приоритет.
@@ -23,13 +24,15 @@
   TTL beat coverage, replay/expiry order, expired/abandoned role disclosure,
   repeat leave idempotency, error-path anonymous cookie, anonymisation second
   scan.
-- Tests: rooms **20 passed**; accounts **25 passed**; full gate **1281
-  passed, 15 skipped, exit 0 (577 s)**; ruff/format clean (501), mypy clean
-  (406). Independent code and security reviews **ACCEPT**; residual 5-min
-  stale forfeit needs LR-2 product/UX sign-off.
-- **Not implemented:** SDK 1.2 room messages, host bridge, Live Room UI,
-  two-browser E2E, load/staging. LR-2 is the next READY package; Live Room
-  is not marketed as ready.
+- **LR-2a transport:** schemas `ba:room`/`ba:room:data`, `sdk/1.2.0`
+  `room.create/join/state/command/leave`, host bridge via CSRF/session API,
+  tested camelCase mapping, separate room rate bucket, stable requestId,
+  nested-JSON 400 guard. SDK 1.1 and Pass & Play remain unchanged.
+- Tests: rooms **20 passed**; accounts **25 passed**; JS **40/40**; full gate
+  **1281 passed, 15 skipped, exit 0 (617 s)**; ruff/format clean (501), mypy
+  clean (406). Residual 5-min stale forfeit needs LR-2 product/UX sign-off.
+- **Not implemented:** Live Room game UI, two-browser E2E, load/staging.
+  **LR-2b is the next READY package**; Live Room is not marketed as ready.
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 

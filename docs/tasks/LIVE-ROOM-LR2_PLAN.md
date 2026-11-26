@@ -1,7 +1,9 @@
 # LIVE-ROOM-LR2 — SDK 1.2 room protocol + host bridge + UI
 
 **Дата:** 2026-11-26. **Основание:** `docs/decisions/ADR-LIVE-ROOM-001.md`,
-owner directive 2026-11-26. **Статус:** PLAN / READY после приёмки LR-0/LR-1.
+owner directive 2026-11-26. **Статус:** LR-2a (schemas, SDK 1.2, host bridge,
+mapping tests) **IMPLEMENTED / CODE+SECURITY REVIEW ACCEPT** (`ecd4346` +
+`80fbcc2`); LR-2b (game UI + two-browser E2E) **READY**.
 
 ## Цель
 

@@ -26,14 +26,33 @@
   identity на error-путях; повторный скан в anonymize_subject.
 - **Проверки:** `tests/integration/test_live_rooms.py` — 20 passed;
   accounts — 25 passed; full gate **1281 passed, 15 skipped, exit 0
-  (577 s)**; ruff/format clean (501), mypy clean (406). LR-2/LR-3 не
+  (617 s)**; ruff/format clean (501), mypy clean (406). LR-2b/LR-3 не
   реализованы; E2E/load/staging не проверялись.
 - **Статус:** **IMPLEMENTED / INDEPENDENT CODE + SECURITY REVIEW ACCEPT**
   (`c6daf09`); не продуктовая приёмка. Остаток 5-min stale forfeit — LR-2
   product/UX sign-off; per-phase timeout отсутствует.
 - **Дата:** 2026-11-26.
-- **Следующий шаг:** LR-2 — additive SDK 1.2 room protocol, host bridge,
-  Live Room UI, two-browser E2E.
+- **Следующий шаг:** LR-2b — Live Room UI, two-browser E2E; LR-3 —
+  load/crash/observability.
+
+### ARCADE-LIVE-ROOM-002 — additive SDK 1.2 room transport
+
+- **ID:** ARCADE-LIVE-ROOM-002.
+- **Назначение:** аддитивный канал Live Room для статических картриджей без
+  изменения SDK 1.1 и Pass & Play.
+- **Результат:** `schemas/messages/ba_room.json` и `ba_room_data.json`;
+  generated host registry; `sdk/1.2.0` с `room.create/join/state/command/
+  leave` и отдельным 120/min bucket; host bridge `ba:room` через
+  CSRF/session API; extracted/tested `static/src/js/room_api.js`;
+  nested-JSON 400 guard; `E_ROOM_STALE`/stable-requestId contract.
+- **Проверки:** JS **40/40**; targeted Python 36 + pipeline 42; full gate
+  **1281 passed, 15 skipped, exit 0 (617 s)**; ruff 501, mypy 406;
+  independent code + security review **ACCEPT** with fixes applied
+  (`80fbcc2`).
+- **Статус:** **IMPLEMENTED / INDEPENDENT CODE + SECURITY REVIEW ACCEPT**
+  (`ecd4346` + `80fbcc2`); UI/E2E не реализованы; product acceptance owner.
+- **Дата:** 2026-11-26.
+- **Следующий шаг:** LR-2b — Live Room game UI и two-browser E2E.
 
 ### ARCADE-P5-ARCHER-001 — Archer game
 

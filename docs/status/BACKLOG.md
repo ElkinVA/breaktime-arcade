@@ -11,7 +11,8 @@
 | ID | Пакет | Приоритет | Статус | Зависимости / границы |
 |---|---|---|---|---|
 | ARCADE-PRODUCT-ACCEPTANCE-001 | E2E/product acceptance P0–P3 | Critical | **PASS (dev); external production actions owner** | 18 E2E; 930 fresh gate; ZIP isolation PASS; real game/legal/email/staging/deploy external |
-| ARCADE-LIVE-ROOM-001 | Server-authoritative Live Room LR-0/LR-1: rooms, private roles, phases, vote, reconnect, TTL, cleanup | Critical | **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT** | `apps/rooms` + migration; 20 targeted tests; forfeit/host transfer/stale claim/stale sweep; no SDK 1.2/UI/two-browser E2E/load/staging; LR-2 next |
+| ARCADE-LIVE-ROOM-001 | Server-authoritative Live Room LR-0/LR-1: rooms, private roles, phases, vote, reconnect, TTL, cleanup | Critical | **IMPLEMENTED / INDEPENDENT REVIEW ACCEPT** | `apps/rooms` + migration; 20 targeted tests; forfeit/host transfer/stale claim/stale sweep; no UI/two-browser E2E/load/staging; LR-2 next |
+| ARCADE-LIVE-ROOM-002 | Additive SDK 1.2 Live Room transport + host bridge | Critical | **IMPLEMENTED / INDEPENDENT CODE+SECURITY REVIEW ACCEPT** (`ecd4346` + `80fbcc2`) | `ba:room`/`ba:room:data`, SDK 1.2 methods, CSRF host bridge, tested mapping, nested-JSON guard; JS 40; create idempotency and LR-2b UI/E2E remain |
 | ARCADE-P5-ARCHER-001 | Full Archer game, SDK, ZIP, live CRM E2E | Critical | **IMPLEMENTED / PRO REVIEW ACCEPT; product owner** | `games-src/archer` v1.3.3; fresh 981/12; E2E 18; live result 156 rank 3; source prototype absent; staging/prod NOT TESTED |
 | ARCADE-P4-STORAGE-001 | System-wide ZIP quota, free-space fail-closed, retention cleanup | Critical | **TECHNICALLY ACCEPTED / Pro-accepted** (`0ba8bfe`, `16fb095`) | hard FS quota/staging/load NOT TESTED |
 | ARCADE-P4-A3-R041 | Sync import-wait analysis/decision | Major | **ANALYSED — keep sync** | `docs/audits/R-041_SYNC_WAIT_ANALYSIS.md` |
