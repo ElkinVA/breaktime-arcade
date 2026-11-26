@@ -1,0 +1,57 @@
+{
+  "cartridge": 1,
+  "id": "whos_undercover",
+  "version": "1.0.1",
+  "sdkVersion": "1.1.0",
+  "protocol": 1,
+  "name": "Who's Undercover?",
+  "entry": "index.html",
+  "genre": "casual",
+  "tags": ["party", "social", "deduction", "words", "local-multiplayer"],
+  "supportedLanguages": ["en", "ru"],
+  "defaultLanguage": "en",
+  "mobileSupport": true,
+  "orientation": "any",
+  "estimatedPlayMinutes": 10,
+  "theme": {"accent": "#E8B66B"},
+  "score": {
+    "type": "integer",
+    "unit": "points",
+    "direction": "higher_is_better",
+    "minValue": 0,
+    "maxValue": 100,
+    "schemaVersion": 1
+  },
+  "limits": {
+    "minPlaytimeSeconds": 30,
+    "maxSessionSeconds": 7200,
+    "pauseOnBlur": true
+  },
+  "capabilities": {
+    "wasm": false,
+    "pointerLock": false,
+    "storage": "sdk",
+    "externalOrigins": []
+  },
+  "leaderboard": {
+    "enabled": false,
+    "claimedVerification": "client_reported"
+  },
+  "assets": {
+    "cover": "assets/cover.webp",
+    "screenshots": ["assets/screen-1.webp", "assets/screen-2.webp"],
+    "critical": [
+      "index.html",
+      "css/style.css",
+      "js/ba-sdk.js",
+      "js/rng.js",
+      "js/core.js",
+      "js/game.js",
+      "locales/en.json"
+    ],
+    "criticalPathBytes": 27070
+  },
+  "credits": [
+    {"author": "Breaktime Arcade", "license": "CC0-1.0", "aiGenerated": true}
+  ]
+}

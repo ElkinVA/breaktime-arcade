@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0d1117">
+  <title>Who's Undercover?</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true">
+    <span class="spotlight spotlight-a"></span>
+    <span class="spotlight spotlight-b"></span>
+    <span class="grain"></span>
+  </div>
+
+  <main id="app" class="app" data-phase="boot">
+    <section id="boot-screen" class="screen screen-boot" aria-live="polite">
+      <div class="panel boot-panel">
+        <p class="eyebrow" data-i18n="kicker"></p>
+        <h1 class="brand">Who's Undercover?</h1>
+        <p id="boot-message" class="muted" data-i18n="loading">Opening the envelope…</p>
+        <div class="loader" aria-hidden="true"><span></span><span></span><span></span></div>
+      </div>
+    </section>
+
+    <section id="setup-screen" class="screen" hidden>
+      <header class="screen-head">
+        <p class="eyebrow" data-i18n="kicker"></p>
+        <h1 data-i18n="setup_title"></h1>
+        <p class="lede" data-i18n="setup_subtitle"></p>
+      </header>
+
+      <div class="setup-grid">
+        <div class="panel setup-players">
+          <div class="panel-head">
+            <h2 data-i18n="players_label"></h2>
+            <span id="player-count" class="pill"></span>
+          </div>
+          <ol id="player-list" class="player-list"></ol>
+          <div class="row-actions">
+            <button id="add-player" class="btn btn-ghost" type="button" data-i18n="add_player"></button>
+            <button id="reset-settings" class="btn btn-quiet" type="button" data-i18n="reset_settings"></button>
+          </div>
+        </div>
+
+        <div class="panel setup-rules">
+          <div class="field">
+            <label for="undercover-count" data-i18n="undercover_label"></label>
+            <select id="undercover-count"></select>
+            <p class="hint" data-i18n="undercover_hint"></p>
+          </div>
+          <label class="switch-row" for="mr-white">
+            <span>
+              <strong data-i18n="mrwhite_label"></strong>
+              <small data-i18n="mrwhite_hint"></small>
+            </span>
+            <input id="mr-white" type="checkbox">
+            <span class="switch" aria-hidden="true"></span>
+          </label>
+          <div class="field">
+            <label for="category" data-i18n="category_label"></label>
+            <select id="category"></select>
+          </div>
+          <div class="field">
+            <label for="timer" data-i18n="timer_label"></label>
+            <select id="timer"></select>
+          </div>
+        </div>
+      </div>
+
+      <p id="setup-error" class="form-error" role="alert" hidden></p>
+      <div class="setup-footer">
+        <p class="privacy-note"><span aria-hidden="true">◈</span> <span data-i18n="privacy_note"></span></p>
+        <button id="start-game" class="btn btn-primary btn-large" type="button" data-i18n="start_game"></button>
+      </div>
+    </section>
+
+    <section id="reveal-screen" class="screen screen-reveal" hidden>
+      <div id="reveal-handoff" class="panel handoff-panel">
+        <p class="eyebrow" data-i18n="kicker"></p>
+        <h2 id="reveal-handoff-title"></h2>
+        <p id="reveal-handoff-text" class="lede"></p>
+        <button id="reveal-open" class="btn btn-primary btn-large" type="button"></button>
+      </div>
+
+      <div id="reveal-card" class="secret-card" aria-live="polite" aria-atomic="true" hidden>
+        <div class="secret-top">
+          <span id="reveal-player-label" class="pill"></span>
+          <span class="secret-privacy">◈</span>
+        </div>
+        <p id="reveal-role" class="role-name"></p>
+        <div class="secret-word-block">
+          <span class="word-label" data-i18n="word_label"></span>
+          <strong id="reveal-word" class="secret-word"></strong>
+        </div>
+        <p id="reveal-hint" class="secret-hint"></p>
+        <button id="reveal-hide" class="btn btn-primary btn-large" type="button" data-i18n="hide_and_pass"></button>
+        <p id="reveal-last" class="small muted" data-i18n="last_player" hidden></p>
+      </div>
+    </section>
+
+    <section id="board-screen" class="screen screen-board" hidden>
+      <header class="board-head">
+        <div>
+          <p id="board-round" class="eyebrow"></p>
+          <h2 id="board-alive" class="board-alive"></h2>
+        </div>
+        <div class="board-tools">
+          <button id="sound-toggle" class="icon-btn" type="button" aria-pressed="true"></button>
+          <button id="projector-toggle" class="icon-btn icon-btn-wide" type="button" data-i18n="projector"></button>
+        </div>
+      </header>
+
+      <div class="board-grid">
+        <div class="panel speaker-panel">
+          <p id="board-speaker-label" class="eyebrow" data-i18n="board_speaker"></p>
+          <h1 id="speaker-name" class="speaker-name"></h1>
+          <p class="lede" data-i18n="clue_prompt"></p>
+          <div id="clue-timer" class="clue-timer" hidden>
+            <span id="clue-timer-value">60</span><small>s</small>
+          </div>
+          <div class="board-actions">
+            <button id="next-clue" class="btn btn-primary" type="button" data-i18n="next_clue"></button>
+            <button id="start-vote" class="btn btn-secondary" type="button" data-i18n="start_vote" hidden></button>
+          </div>
+        </div>
+        <div class="panel roster-panel">
+          <div class="panel-head">
+            <h3 data-i18n="players_label"></h3>
+            <span id="roster-count" class="pill"></span>
+          </div>
+          <ul id="roster" class="roster"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="vote-screen" class="screen screen-vote" hidden>
+      <div id="vote-handoff" class="panel handoff-panel">
+        <p class="eyebrow" data-i18n="kicker"></p>
+        <h2 id="vote-handoff-title"></h2>
+        <p id="vote-handoff-text" class="lede"></p>
+        <button id="vote-open" class="btn btn-primary btn-large" type="button"></button>
+      </div>
+
+      <div id="vote-ballot" class="panel ballot-panel" hidden>
+        <div class="panel-head">
+          <h2 data-i18n="vote_choose"></h2>
+          <span id="vote-progress" class="pill"></span>
+        </div>
+        <div id="vote-targets" class="vote-targets"></div>
+        <button id="vote-confirm" class="btn btn-primary btn-large" type="button" disabled data-i18n="vote_confirm"></button>
+      </div>
+    </section>
+
+    <section id="vote-result-screen" class="screen screen-result" hidden>
+      <div class="panel result-panel">
+        <p class="eyebrow" data-i18n="vote_result_title"></p>
+        <h1 id="vote-result-title"></h1>
+        <p id="vote-result-role" class="lede"></p>
+        <button id="vote-continue" class="btn btn-primary btn-large" type="button" data-i18n="vote_continue"></button>
+      </div>
+    </section>
+
+    <section id="mrwhite-screen" class="screen screen-result" hidden>
+      <div class="panel result-panel">
+        <p class="eyebrow" data-i18n="mrwhite_guess_title"></p>
+        <h1 id="mrwhite-name"></h1>
+        <p id="mrwhite-hint" class="lede"></p>
+        <form id="mrwhite-form" class="guess-form">
+          <label class="sr-only" for="mrwhite-guess" data-i18n="mrwhite_guess_placeholder"></label>
+          <input id="mrwhite-guess" type="text" autocomplete="off" maxlength="40" data-i18n-placeholder="mrwhite_guess_placeholder">
+          <button class="btn btn-primary" type="submit" data-i18n="mrwhite_guess_submit"></button>
+        </form>
+      </div>
+    </section>
+
+    <section id="gameover-screen" class="screen screen-gameover" hidden>
+      <header class="screen-head">
+        <p class="eyebrow" data-i18n="reveal_roles"></p>
+        <h1 id="winner-title"></h1>
+        <p id="winner-reason" class="lede"></p>
+      </header>
+      <div class="panel reveal-table-panel">
+        <div class="word-pair">
+          <div><span data-i18n="word_civilian"></span><strong id="civilian-word"></strong></div>
+          <div><span data-i18n="word_undercover"></span><strong id="undercover-word"></strong></div>
+        </div>
+        <ul id="final-roster" class="final-roster"></ul>
+      </div>
+      <div class="panel history-panel">
+        <h2 data-i18n="history_title"></h2>
+        <ol id="history-list" class="history-list"></ol>
+      </div>
+      <div class="over-actions">
+        <button id="play-again" class="btn btn-primary btn-large" type="button" data-i18n="play_again"></button>
+        <button id="new-game" class="btn btn-secondary" type="button" data-i18n="new_game"></button>
+      </div>
+    </section>
+
+    <p id="toast" class="toast" role="status" aria-live="polite" hidden></p>
+  </main>
+
+  <script src="js/ba-sdk.js"></script>
+  <script src="js/rng.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "Who's Undercover?",
+  "shortDescription": "A one-device party of secret words, shaky clues and one perfect bluff.",
+  "description": "Who's Undercover? turns one phone or tablet into a complete social deduction table for four to twelve players. Everyone receives a secret word — except the Undercover players, whose word is close but different, and Mr. White, who has no word at all. Pass the device privately to read your card, then each player gives one short clue. The table debates, passes the device again for a secret vote, and learns who was eliminated. Civilians win when every infiltrator is gone; the Undercover team wins when it matches the civilians; and a caught Mr. White gets one guess at the civilian word to steal the whole game. The game ships with ten word decks, two clean handoff screens, a clue timer, sound, a projector view for a shared screen, and a full role reveal at the end. No accounts, no second device and no internet round-trips are needed inside the table: the platform SDK handles the session and the game keeps every secret in the current device until the final reveal. Designed for a sofa, a café table or a party room, with large touch targets, keyboard support and a layout that stays readable on a 360 px phone.",
+  "instructions": "Pass the device to each player to reveal their secret role and word. Give one word or short phrase as a clue without saying your word. After everyone has spoken, pass the device to each player for a secret vote. Eliminate the players who sound suspicious. Civilians win when all infiltrators are out; infiltrators win when they match the civilians; a caught Mr. White gets one guess at the civilian word.",
+  "controls": "Touch or mouse: tap the large primary buttons and player cards. Keyboard: Tab to move, Enter or Space to activate. The device is passed privately between role reveals and votes.",
+  "seoTitle": "Who's Undercover? — party word deduction game",
+  "seoDescription": "Play Who's Undercover? on one device: secret roles, word clues, secret votes and one perfect bluff for 4–12 players. Free in your browser.",
+  "coverAlt": "A noir party table with a spotlight, secret role cards and the words civilian and undercover.",
+  "screenshotAlts": [
+    "Who's Undercover? setup screen with player names, undercover count and word deck selection.",
+    "Who's Undercover? public clue board with a speaker spotlight, timer and alive players."
+  ]
+}
