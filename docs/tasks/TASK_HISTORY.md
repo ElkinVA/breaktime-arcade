@@ -9,6 +9,34 @@
 
 ## 1. Записи работ
 
+### ARCADE-SUBMIT-RESTART-HARDENING-001 — exit/restart boundary
+
+- **ID:** ARCADE-SUBMIT-RESTART-HARDENING-001.
+- **Назначение:** закрыть code-reviewer minors 2–4 пакета
+  ARCADE-SUBMIT-RESTART-001: exit во время pending newSession, тесты
+  exit/двух restart/позднего submit, молчаливый boundary submit,
+  недостижимый `exited` state.
+- **Результат:** `exitRequested` отменяет queued newSession и закрывает
+  replacement, созданный в гонке; `HostBridge.markExited()` делает
+  `exited` терминальным, а `sendResult`/`sendSession` больше не могут
+  переоткрыть состояние; boundary submit получает
+  `E_SESSION_FINISHED` вместо silent drop; убран redundant `setSession`.
+- **Проверки:** JS **45/45**, `check:js` clean, player/SDK Python
+  contracts **15 passed**; тесты: два быстрых restart, exit vs pending
+  restart, late submit за границей close, терминальный exited state.
+  Полный Python gate не перезапускался для JS-only изменения; CI —
+  обязательный финальный gate.
+- **Статус:** COMPLETED / CODE-REVIEW ACCEPT + delta ACCEPT; browser
+  E2E/staging NOT TESTED; CI pending.
+- **Остатки:** duplicate close в двух interleavings (server close
+  idempotent 204); exit-during-create тестом не покрыт; surfaced
+  `E_SESSION_FINISHED` часто гасится SDK `cancelPending`; 30-s heartbeat
+  после exit (pre-existing).
+- **Модели:** implement — `deepseek-flash[1m]`; review — `code-reviewer`
+  (`deepseek-v4-pro`, text-only).
+- **Commit:** `80eabad`.
+- **Дата:** 2026-11-26.
+
 ### ARCADE-LIVE-ROOM-004 — LR-3 reliability, idempotency and load
 
 - **ID:** ARCADE-LIVE-ROOM-004.

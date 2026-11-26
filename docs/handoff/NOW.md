@@ -2,6 +2,23 @@
 
 **Дата:** 2026-11-26
 
+## Player submit/restart hardening (2026-11-26)
+
+- **ARCADE-SUBMIT-RESTART-HARDENING-001** (`80eabad`): exit отменяет
+  queued `newSession` и закрывает replacement, созданный в гонке;
+  `HostBridge.markExited()` делает `exited` терминальным
+  (`sendResult`/`sendSession` не переоткрывают); boundary submit
+  получает `E_SESSION_FINISHED` вместо silent drop; redundant
+  `setSession` удалён.
+- **Проверки:** JS **45/45**, `check:js` clean, player/SDK contracts
+  **15 passed**; полный Python gate не перезапускался для JS-only
+  изменения, CI — обязательный финальный gate.
+- **Статус:** COMPLETED / CODE-REVIEW ACCEPT + DELTA ACCEPT; CI pending.
+  Остатки: duplicate close (idempotent 204), exit-during-create test
+  gap, `E_SESSION_FINISHED` часто гасится SDK `cancelPending`, 30-s
+  heartbeat после exit. Browser E2E/staging NOT TESTED; продуктовая
+  приёмка владельца.
+
 ## Live Room LR-3 (2026-11-26)
 
 - **Idempotency:** `RoomCreateRequest` + migration `0002`; SDK 1.2 create

@@ -1,7 +1,25 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-26 (LR-3 reliability; LR-2b; CI restore;
-owner directive continuous full product development).
+**Дата актуализации:** 2026-11-26 (player submit/restart hardening;
+LR-3 reliability; LR-2b; CI restore; owner directive continuous full
+product development).
+
+## 0.0d. Player submit/restart hardening — 2026-11-26
+
+`ARCADE-SUBMIT-RESTART-HARDENING-001` (`80eabad`) — **COMPLETED /
+CODE-REVIEW ACCEPT + DELTA ACCEPT**; CI pending.
+- exit отменяет queued `newSession` и закрывает replacement, созданный в
+  гонке; `HostBridge.markExited()` делает `exited` терминальным, а
+  `sendResult`/`sendSession` не могут переоткрыть состояние.
+- boundary submit получает `E_SESSION_FINISHED` вместо silent drop;
+  redundant `setSession` удалён.
+- JS **45/45**, `check:js` clean, player/SDK contracts **15 passed**;
+  полный Python gate не перезапускался для JS-only изменения, CI —
+  обязательный финальный gate.
+- Остатки: duplicate close в двух interleavings (idempotent 204);
+  exit-during-create тестом не покрыт; `E_SESSION_FINISHED` часто
+  гасится SDK `cancelPending`; 30-s heartbeat после exit (pre-existing).
+  Browser E2E/staging NOT TESTED; продуктовая приёмка владельца.
 
 ## 0.0c. Live Room LR-3 — reliability, idempotency, load (2026-11-26)
 
@@ -856,9 +874,11 @@ leaderboard/storage-ответы по-прежнему отбрасываютс�
 Проверки: обновлённый `player_race` (JS **31/31**), `check:js` clean,
 player contract 4 passed. Модели: реализация — `deepseek-flash[1m]`,
 review — `code-reviewer` (`deepseek-v4-pro`, text-only), ACCEPT. Остатки
-вынесены в `ARCADE-SUBMIT-RESTART-HARDENING-001` (exit vs pending
-newSession, тесты exit/двойного restart/позднего submit, молчаливый дроп
-граничного submit); реальный browser E2E и staging NOT TESTED.
+закрыты в `ARCADE-SUBMIT-RESTART-HARDENING-001` (`80eabad`, JS 45/45,
+code-review ACCEPT + delta): exit vs pending newSession, тесты
+exit/двойного restart/позднего submit, boundary submit surfaced,
+терминальный `exited` state. Остаются duplicate idempotent close и
+exit-during-create test gap; реальный browser E2E и staging NOT TESTED.
 
 ## 0.52. Nightly rating aggregate recalc — 2026-11-25
 
