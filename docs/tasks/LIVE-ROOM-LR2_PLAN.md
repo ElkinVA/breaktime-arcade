@@ -3,7 +3,8 @@
 **Дата:** 2026-11-26. **Основание:** `docs/decisions/ADR-LIVE-ROOM-001.md`,
 owner directive 2026-11-26. **Статус:** LR-2a (schemas, SDK 1.2, host bridge,
 mapping tests) **IMPLEMENTED / CODE+SECURITY REVIEW ACCEPT** (`ecd4346` +
-`80fbcc2`); LR-2b (game UI + two-browser E2E) **READY**.
+`80fbcc2`); LR-2b (game UI + multi-browser E2E) **IMPLEMENTED /
+INDEPENDENT CODE+SECURITY REVIEW ACCEPT**; остатки — LR-3.
 
 ## Цель
 
@@ -78,3 +79,17 @@ BA-SDK-1.1 не меняются.
   blocked; do not bypass `V_PUBLISHED_UPDATE_BLOCKED`.
 - 5-min stale forfeit and 120-s host claim need product/UX sign-off.
 - Polling load and mobile background behavior need LR-3/load checks.
+
+## Evidence (2026-11-26)
+
+- Cartridge: `games-src/whos_undercover_live` 1.0.0, SDK `^1.2`; CI
+  `make undercover-live-seed` uses the real ZIP pipeline.
+- Tests: integration 25 passed; package 5 passed; Playwright 3 scenarios
+  with 4–5 independent contexts; JS 40/40; ruff/format clean; mypy 406;
+  full Python gate — см. `docs/foundation/UNDERCOVER_LIVE_LR2B_REPORT.md`.
+- Review: code-reviewer and security-auditor final delta ACCEPT.
+- Not covered: host-loss E2E with real 120-s window, server create
+  idempotency, LR-3 load/crash/observability; product acceptance owner.
+- CI run #155 на `2c9d8f7` — **completed success** (quality/frontend/e2e/
+  image/django-next); e2e job сеял текущий runtime в свежей БД; local dev
+  runtime не перезаписывался из-за published-update guard.

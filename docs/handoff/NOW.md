@@ -2,6 +2,40 @@
 
 **Дата:** 2026-11-26
 
+## Live Room LR-2b + CI restore (2026-11-26)
+
+- **CI Stage 1:** commit **`f89ece6`** восстановил Landlock-доступ к
+  interpreter roots и тестовый `checks_runner`; GitHub Actions run
+  **#154** на этом коммите завершился success (quality, frontend, e2e,
+  image, django-next):
+  `https://github.com/ElkinVA/breaktime-arcade/actions/runs/45786462804`.
+- **LR-2b:** новый картридж `games-src/whos_undercover_live` 1.0.0
+  (SDK `^1.2`): create/join по коду, lobby readiness, приватный reveal,
+  clues, secret vote, tie, Mr. White guess, final reveal/replay,
+  reconnect, stale retry с тем же requestId (до трёх коллизий), en/ru +
+  fallback-бейдж, server-side `E_BALANCE`/`E_UNDERCOVER`/`E_PLAYERS`.
+- **E2E:** три Playwright-сценария с 4–5 независимыми browser contexts:
+  civilian win + replay, истинная ничья 2:2 + раунд 2, Mr. White крадёт
+  игру; проверяется отсутствие чужих слов на reveal screen.
+- **Проверки:** rooms integration **25 passed**; package **5 passed**;
+  browser **3 passed** (финальный source-harness — 3 passed); JS **40/40**;
+  full Python gate **1291 passed, 17 skipped, exit 0 (814 s)**;
+  ruff/format clean; mypy clean (406). Code commit пакета — **`2c9d8f7`**.
+- **Independent review:** code-reviewer ACCEPT (critical Mr. White input
+  bug найден и исправлен; tie-сценарий исправлен); security-auditor ACCEPT
+  без must-fix; delta-подтверждение — в отчёте
+  `docs/foundation/UNDERCOVER_LIVE_LR2B_REPORT.md`.
+- **CI exact commit:** code commit **`2c9d8f7`**; GitHub Actions run
+  **#155** `https://github.com/ElkinVA/breaktime-arcade/actions/runs/45801918631`
+  — **completed success** (quality, frontend, e2e, image, django-next).
+- **Модели:** Flash `deepseek-flash[1m]` — реализация/тесты; Pro
+  `code-reviewer`/`security-auditor` (`deepseek-v4-pro`, text-only) —
+  независимые проверки.
+- **Остатки:** LR-3 load/crash/observability; host-loss E2E с реальным
+  120-секундным окном; server-side create idempotency; продуктовая
+  приёмка 5-мин forfeit и 120-с host claim. Live Room не выдаётся за
+  production-ready.
+
 ## Live Room LR-0/LR-1/LR-2a (2026-11-26)
 
 - Package commits **`c6daf09`** (backend), **`ecd4346`** (SDK 1.2
@@ -32,7 +66,8 @@
   **1281 passed, 15 skipped, exit 0 (617 s)**; ruff/format clean (501), mypy
   clean (406). Residual 5-min stale forfeit needs LR-2 product/UX sign-off.
 - **Not implemented:** Live Room game UI, two-browser E2E, load/staging.
-  **LR-2b is the next READY package**; Live Room is not marketed as ready.
+  **LR-2b was the next READY package (delivered in ARCADE-LIVE-ROOM-003)**;
+  Live Room is not marketed as ready.
 
 ## Актуальная сводка автономного цикла (2026-11-25)
 

@@ -1,6 +1,6 @@
 # TASK_HISTORY — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-20 (BA-ZIP-PREFLIGHT-001).
+**Дата актуализации:** 2026-11-26 (LR-2b и CI restore).
 Хронология подтверждённых работ и аудитов. Запись не является приёмкой.
 Точные даты ранних работ в постоянных файлах не зафиксированы; ниже указано
 «дата не зафиксирована», а не выдуманная дата. Статусы: `COMPLETED`,
@@ -8,6 +8,61 @@
 `NOT_ACCEPTED`.
 
 ## 1. Записи работ
+
+### ARCADE-CI-AUTONOMY-RESTORE-001 — CI green for autonomy
+
+- **ID:** ARCADE-CI-AUTONOMY-RESTORE-001.
+- **Назначение:** восстановить зелёный CI после run #153 (7 worktree и
+  Landlock failures) без ослабления sandbox/checks.
+- **Результат:** `f89ece6`: `interpreter_read_roots()` добавляет только
+  `sys.prefix`/`sys.base_prefix`/parent interpreter, исключая `/` и host
+  HOME; `Orchestrator` принимает test-only `checks_runner`, production
+  оставляет `_run_orchestrator_checks`; regression test проверяет, что
+  failed trusted checks блокируют QA и очищают worktrees.
+- **Проверки:** autonomy targeted **101 passed**; GitHub Actions run
+  **#154** на `f89ece6` — **success** (quality, frontend, e2e, image,
+  django-next):
+  `https://github.com/ElkinVA/breaktime-arcade/actions/runs/45786462804`.
+  Independent code/security review ACCEPT; Landlock не получает host home,
+  `/`, docker socket; injection недоступна untrusted repo.
+- **Статус:** **COMPLETED / CI VERIFIED / REVIEW ACCEPT**.
+- **Дата:** 2026-11-26.
+
+### ARCADE-LIVE-ROOM-003 — Live Room LR-2b cartridge and browser E2E
+
+- **ID:** ARCADE-LIVE-ROOM-003.
+- **Назначение:** завершить Live Room LR-2b: отдельная игра
+  `whos_undercover_live`, host/player экраны, все фазы, reconnect/stale,
+  приватность и реальные multi-browser E2E без нового room API.
+- **Результат:** `games-src/whos_undercover_live` 1.0.0 (SDK `^1.2`):
+  create/join по коду, lobby readiness/start, приватный reveal, clues,
+  secret vote, tie, Mr. White guess, final reveal/replay, en/ru +
+  fallback-бейдж, stale retry с тем же requestId (до трёх коллизий),
+  stopPolling/roomId guards. `js/live.js` использует только SDK
+  room.create/join/state/command/leave и sdk.storage. Server:
+  `E_BALANCE`/`E_UNDERCOVER`/`E_PLAYERS` на create; start/restart
+  перепроверяют фактический стол. CI: `make undercover-live-seed`,
+  `seed_dev_game` через настоящий pipeline.
+- **Проверки:** `tests/integration/test_live_rooms.py` — **25 passed**;
+  `tests/unit/test_whos_undercover_live_package.py` — **5 passed**;
+  `tests/e2e/test_live_rooms_e2e.py` — **3 passed** с 4–5 независимыми
+  browser contexts (civilian win/replay, true 2:2 tie/round 2, Mr. White
+  steal) и privacy assertion; финальный current-source harness — **3
+  passed**; JS **40/40**; ruff/format clean; mypy 406; full Python gate
+  **1291 passed, 17 skipped, exit 0 (814 s)**.
+- **Review:** независимые code-reviewer и security-auditor — **ACCEPT**
+  (delta подтверждён); must-fix нет. Найдены и исправлены: очистка ввода
+  Mr. White каждым poll, двойной create/join, устаревшие async-записи;
+  tie-сценарий исправлен на истинную ничью 2:2.
+- **Статус:** **IMPLEMENTED / INDEPENDENT CODE+SECURITY REVIEW ACCEPT**;
+  product acceptance owner. LR-3/load/host-loss E2E/create idempotency
+  остаются; Live Room не production-ready.
+- **Модели:** Flash `deepseek-flash[1m]`; Pro reviewers code/security
+  (`deepseek-v4-pro`, text-only).
+- **Commit:** `2c9d8f7`; GitHub Actions run **#155** на этом коммите —
+  **completed success** (quality/frontend/e2e/image/django-next,
+  `https://github.com/ElkinVA/breaktime-arcade/actions/runs/45801918631`).
+- **Дата:** 2026-11-26.
 
 ### ARCADE-LIVE-ROOM-001 — Live Room server backend (LR-0/LR-1)
 

@@ -6,10 +6,18 @@
 
 ## Что проверено
 
-- Полный Python gate: **1261 passed, 15 skipped, exit 0** (reuse-DB, 12:13).
-- Browser E2E: **25 passed** (включая новый Who's Undercover? Pass & Play:
-  setup → роли → подсказки → тайное голосование → победа/replay, 360 px,
-  ru-локаль и projector); Playwright Chromium.
+- Полный Python gate (LR-2b): **1291 passed, 17 skipped, exit 0
+  (814 s)**; предыдущий checkpoint — 1261 passed, 15 skipped.
+- Browser E2E: **25 passed** Pass & Play/portal + **3 passed** Live Room
+  LR-2b (4–5 независимых contexts; civilian win/replay, true 2:2 tie,
+  Mr. White steal); финальный current-source harness — **3 passed**;
+  Playwright Chromium.
+- Live Room LR-2b: `games-src/whos_undercover_live` 1.0.0, SDK `^1.2`,
+  create/join/lobby/reveal/clues/vote/tie/Mr. White/final/replay,
+  reconnect/stale; independent code+security review ACCEPT; hosted CI
+  run #155 — success.
+- CI Stage 1: `f89ece6`, GitHub Actions run #154 — success
+  (quality/frontend/e2e/image/django-next).
 - JS: **31/31 + 12/12 game core**; ruff/format clean (488); mypy clean (394).
 - Prod-style image (`INSTALL_DEV=false`): Playwright 1.65.1 и Chromium
   присутствуют, pytest отсутствует; сборка PASS.
@@ -32,7 +40,8 @@
 | Обновление published/hidden/archived игр | блокируется до draft isolation §4.1 | владелец: решение по схеме/приоритету |
 | PB `is_public` семантика | не выбрана | владелец: продуктовое решение |
 | Redis auth внутри `zipnet` | нет; граница — сеть | при необходимости отдельное решение |
-| CI browser E2E | job добавлен, локально 22/22; hosted run **NOT EXECUTED** | первый push/run и required check |
+| CI browser E2E | run #154 на `f89ece6` — success; run #155 на LR-2b commit `2c9d8f7` — **success** (включая e2e) | следующий CI run; required check |
+| Live Room LR-3 | load/crash/observability, host-loss E2E, server create idempotency не реализованы | отдельный LR-3 пакет |
 | UX | шапка плеера показывает название игры и переносится на мобильном; локализация ошибок старта и продуктовая restart-кнопка — остаток | отдельные UX-задачи |
 | Юридические тексты, email-провайдер, права на игры | не выполнялись | владелец |
 
@@ -54,7 +63,9 @@ make test
 
 ## Следующий безопасный шаг
 
-1. Дождаться первого hosted CI run и включить `e2e` в required checks.
-2. Продуктовая приёмка владельцем dev/demo-сценариев.
-3. Решить draft isolation §4.1 и PB `is_public`; после этого — UX-полировка
-   и production deploy по owner-чеклисту.
+1. Hosted CI run #155 на LR-2b коммите подтверждён; включить `e2e` в
+   required checks.
+2. Продуктовая приёмка владельцем dev/demo-сценариев, включая Live Room
+   forfeit/host-claim UX.
+3. LR-3: load/crash/observability и host-loss E2E; затем draft isolation
+   §4.1, PB `is_public` и production deploy по owner-чеклисту.

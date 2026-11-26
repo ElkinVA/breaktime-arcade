@@ -1330,3 +1330,29 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Проверки | QA fail с конкретным evidence; parity test/check:schemas уже защищают drift |
 | Статус | **BLOCKED — infra/owner decision**; продуктовая функциональность не затронута |
 | Источник | `.autonomy/state.json`, QA evidence |
+
+## ARCADE-CI-AUTONOMY-RESTORE-001 — autonomy CI repair
+
+| Поле | Значение |
+|---|---|
+| Цель | Восстановить green CI после run #153 без ослабления sandbox/checks |
+| Область | `autonomy/landlock.py`, `autonomy/orchestrator.py`, worktree tests, GitHub Actions |
+| Результат | `f89ece6`: targeted interpreter read roots; test-only `checks_runner`; regression failed-checks block |
+| Проверки | autonomy 101 passed; run #154 на `f89ece6` — success (quality/frontend/e2e/image/django-next); independent code+security ACCEPT |
+| Статус | **COMPLETED / CI VERIFIED / REVIEW ACCEPT** |
+| Остаток | Landlock runtime на ином kernel; production deploy не проверялся |
+| Источник | commit `f89ece6`; run `https://github.com/ElkinVA/breaktime-arcade/actions/runs/45786462804` |
+
+## ARCADE-LIVE-ROOM-003 — Live Room LR-2b
+
+| Поле | Значение |
+|---|---|
+| Цель | Отдельный Live Room картридж, все фазы, reconnect/stale, приватность, multi-browser E2E |
+| Область | `games-src/whos_undercover_live`, `apps/rooms` create validation, E2E, CI seed |
+| Результат | `whos_undercover_live` 1.0.0 SDK `^1.2`; E_BALANCE/E_UNDERCOVER; stale retry; en/ru fallback; 3 Playwright scenarios |
+| Проверки | integration 25; package 5; browser 3 (+ current-source harness 3); JS 40; ruff/format clean; mypy 406; full gate **1291 passed, 17 skipped, exit 0 (814 s)** |
+| Найдено и исправлено | Mr. White input wipe on poll; double create/join; stale async writes; tie scenario not true 2:2 |
+| Остаточные minor | side-effecting GET room read; no IP-secondary command bucket; bool coercion `ready` (pre-existing) |
+| Статус | **IMPLEMENTED / INDEPENDENT CODE+SECURITY REVIEW ACCEPT**; product acceptance owner |
+| Остаток | LR-3 load/crash/observability; host-loss E2E; server create idempotency; 5-min forfeit/120-s claim UX sign-off |
+| Источник | `docs/foundation/UNDERCOVER_LIVE_LR2B_REPORT.md`; commit `2c9d8f7`; E2E tests; CI run #155 — success (`https://github.com/ElkinVA/breaktime-arcade/actions/runs/45801918631`) |

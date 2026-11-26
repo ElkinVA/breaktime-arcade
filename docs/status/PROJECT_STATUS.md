@@ -1,7 +1,52 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-26 (Live Room LR-0/LR-1/LR-2a; owner
-directive continuous full product development).
+**Дата актуализации:** 2026-11-26 (Live Room LR-2b; CI restore;
+owner directive continuous full product development).
+
+## 0.0a. Live Room LR-2b — картридж и browser E2E (2026-11-26)
+
+- **Картридж:** `games-src/whos_undercover_live` 1.0.0, manifest SDK
+  `^1.2`; create/join по коду, lobby readiness/start, приватный reveal,
+  clues, secret vote, tie, Mr. White guess, final reveal/replay,
+  reconnect, stale retry с тем же requestId (до трёх коллизий), en/ru +
+  fallback-бейдж. Добавлена `make undercover-live-seed`; CI e2e job
+  сеет картридж через настоящий ZIP pipeline в свежей БД.
+- **Server:** create-time `E_BALANCE` (мирных должно быть больше
+  infiltrators), `E_UNDERCOVER` 1..3, `E_PLAYERS` 4..12; start/restart
+  повторно проверяют фактическое число игроков. Snapshot остаётся
+  viewer-scoped; чужие роли/слова не попадают в браузер.
+- **E2E:** 3 Playwright-сценария с 4–5 независимыми contexts:
+  civilian win + replay, истинная ничья 2:2 + раунд 2, Mr. White steal;
+  проверка отсутствия чужих слов на reveal screen.
+- **Проверки:** integration **25 passed**; package **5 passed**; browser
+  **3 passed** (+ финальный current-source harness **3 passed**); JS
+  **40/40**; full Python gate **1291 passed, 17 skipped, exit 0 (814 s)**;
+  ruff/format clean; mypy 406. Code commit пакета — **`2c9d8f7`**.
+- **Review:** code-reviewer final delta **ACCEPT**; security-auditor final
+  delta **ACCEPT**, must-fix нет (два minor приняты остаточными).
+  Продуктовая приёмка владельца обязательна. CI exact commit:
+  **`2c9d8f7`**, hosted run **#155**
+  `https://github.com/ElkinVA/breaktime-arcade/actions/runs/45801918631`
+  — **completed success** (quality/frontend/e2e/image/django-next).
+- **Не готово:** LR-3 load/crash/observability, host-loss E2E с реальным
+  120-секундным окном, server-side create idempotency; 5-минутный
+  forfeit и 120-секундный claim требуют product/UX sign-off. Live Room
+  не маркетируется как готовый.
+
+## 0.0b. CI restore — autonomy tests (2026-11-26)
+
+- Commit **`f89ece6`**: `interpreter_read_roots()` adds only
+  `sys.prefix`/`sys.base_prefix`/interpreter parent to Landlock read
+  roots (excludes `/` and host HOME); `Orchestrator` accepts an injected
+  `checks_runner` for disposable-repo lifecycle tests while production
+  keeps `_run_orchestrator_checks`; regression test asserts failed trusted
+  checks block QA and clean worktrees.
+- GitHub Actions run **#154** на `f89ece6` — **success**: quality,
+  frontend, e2e, image, django-next:
+  `https://github.com/ElkinVA/breaktime-arcade/actions/runs/45786462804`.
+- Independent code/security review: ACCEPT (Landlock grants only
+  interpreter roots; no new host-secret/docker access; injection is
+  production-internal and cannot skip trusted checks from untrusted repos).
 
 ## 0.0. Live Room LR-0/LR-1/LR-2a — backend and transport (2026-11-26)
 
@@ -37,11 +82,10 @@ directive continuous full product development).
   mypy clean (406).
 - **Status:** backend LR-0/LR-1 and transport LR-2a
   `IMPLEMENTED / INDEPENDENT REVIEW ACCEPT`; not product accepted.
-  **LR-2b (Live Room game UI + two-browser E2E) and LR-3 (load/crash/
-  observability) not implemented.** No per-phase timeout; a player that
-  stops polling for >5 min is forfeited and returns as a spectator (LR-2
-  product/UX sign-off); no load/staging test; Live Room is not marketed as
-  ready.
+  **LR-2b delivered in 0.0a; LR-3 (load/crash/observability) remains.**
+  No per-phase timeout; a player that stops polling for >5 min is forfeited
+  and returns as a spectator (LR-2 product/UX sign-off); no load/staging
+  test; Live Room is not marketed as ready.
 
 ## 0.1. P4 — фактическое состояние
 

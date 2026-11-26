@@ -23,16 +23,23 @@
 
 ## 1. Фактическая точка старта
 
-- `main` = `80fbcc2` (Live Room backend + additive SDK 1.2 transport),
-  рабочее дерево чистое, `origin/main` синхронизируется push.
-- Полный Python gate: **1281 passed, 15 skipped, exit 0 (617 s)**; JS
-  **40/40**; browser E2E **25 passed** (last recorded); ruff/format clean
-  (501), mypy clean (406).
+- LR-2b code commit **`2c9d8f7`** (Live Room cartridge + E2E); GitHub
+  Actions run **#155** — success (quality/frontend/e2e/image/django-next);
+  перед ним `f89ece6` (CI restore), `80fbcc2` (backend + SDK 1.2 transport).
+  `origin/main` синхронизируется push.
+- Полный Python gate (LR-2b): **1291 passed, 17 skipped, exit 0 (814 s)**;
+  JS **40/40**; browser E2E **25 + Live 3** (+ current-source harness 3);
+  ruff/format clean (503), mypy clean (406).
 - Работают: публичный каталог, аккаунты (partial), App F server slices,
   runtime/SDK, ZIP pipeline, CRM (partial), backup/restore, AI HQ sandbox,
   browser publish gate, isolated Redis broker, CI browser E2E.
-- Игры в `games-src`: `archer`, `neon_snake`, `probe`, `whos_undercover`
-  (Pass & Play 1.0.1, CODE-REVIEW ACCEPT).
+- Игры в `games-src`: `archer`, `neon_snake`, `probe`,
+  `whos_undercover` (Pass & Play 1.0.1), `whos_undercover_live` (Live Room
+  LR-2b 1.0.0, SDK ^1.2, independent review ACCEPT).
+- Live Room LR-2b: отдельный картридж, все фазы, reconnect/stale retry,
+  en/ru fallback, 4–5-context Playwright E2E; CI seed через настоящий
+  pipeline. WebSocket/Channels не вводились; server authority остаётся в
+  `apps/rooms`.
 
 ## 2. Продуктовая инвентаризация
 
@@ -83,10 +90,14 @@ Owner-директива 2026-11-26: Live Room — главный следующ
 - **LR-2a (transport, done):** additive SDK 1.2 `ba:room`/`ba:room:data`,
   `room.create/join/state/command/leave`, CSRF host bridge, tested mapping,
   nested-JSON guard, separate rate bucket; SDK 1.1 and Pass & Play unchanged.
-- **LR-2b (next):** Live Room game UI and two-browser E2E.
-- **LR-3:** load/crash, observability, product acceptance.
+- **LR-2b (done):** отдельный картридж `whos_undercover_live` 1.0.0,
+  create/join/lobby/reveal/clues/vote/tie/Mr. White/final/replay,
+  reconnect/stale, en/ru fallback, 3 Playwright-сценария с 4–5
+  независимыми contexts; CI seed текущего картриджа.
+- **LR-3 (next):** load/crash, observability, host-loss E2E, серверная
+  create-идемпотентность, product acceptance.
 
-Live Room не маркетируется как готовый до LR-2b/LR-3 и продуктовой приёмки.
+Live Room не маркетируется как готовый до LR-3 и продуктовой приёмки.
 
 ### P2. Контент, баланс, арт, пользовательские тесты
 
