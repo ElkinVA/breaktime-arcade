@@ -7,9 +7,10 @@ import json
 import logging
 import secrets
 import time
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Any, Callable, cast
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from django.conf import settings

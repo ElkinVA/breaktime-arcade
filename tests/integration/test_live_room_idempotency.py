@@ -273,6 +273,26 @@ def test_failed_create_before_commit_leaves_no_idempotency_record() -> None:
 
 
 @pytest.mark.django_db
+def test_finished_room_replay_returns_the_same_closed_room() -> None:
+    _game()
+    client, csrf = _client()
+    payload = _payload()
+    created = _post(client, csrf, payload)
+    assert created.status_code == 201, created.content
+    room_id = created.json()["room"]["id"]
+    Room.objects.filter(pk=room_id).update(
+        status=Room.STATUS_FINISHED,
+        finished_at=timezone.now(),
+    )
+
+    replay = _post(client, csrf, payload)
+    assert replay.status_code == 201, replay.content
+    assert replay.json()["room"]["id"] == room_id
+    assert replay.json()["room"]["status"] == Room.STATUS_FINISHED
+    assert Room.objects.count() == 1
+
+
+@pytest.mark.django_db
 def test_room_code_collision_is_retried_without_orphan_record(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

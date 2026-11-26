@@ -6,6 +6,7 @@
 
 const SDK = globalThis.BreaktimeArcade;
 const STORAGE_KEY = "whos_undercover.live.room";
+const CREATE_INTENT_KEY = "whos_undercover.live.create";
 const ROOM_POLL_MS = 1200;
 
 const STRINGS = {
@@ -513,6 +514,7 @@ function forgetRoom() {
     state.snapshot = null;
     state.phase = "";
     void state.sdk?.storage.remove(STORAGE_KEY);
+    void state.sdk?.storage.remove(CREATE_INTENT_KEY);
     setConnection("offline");
     renderEntry();
 }
@@ -630,6 +632,40 @@ async function command(name, payload = {}) {
 
 function resetCreateIntent() {
     state.createRequestId = "";
+    void state.sdk?.storage.remove(CREATE_INTENT_KEY);
+}
+
+function createIntentPayload(settings) {
+    return {
+        requestId: state.createRequestId,
+        name: $("create-name").value.trim(),
+        maxPlayers: settings.max,
+        undercoverCount: settings.undercover,
+        mrWhite: settings.mrWhite,
+    };
+}
+
+async function rememberCreateIntent(settings) {
+    if (!state.sdk) {
+        return;
+    }
+    try {
+        await state.sdk.storage.set(
+            CREATE_INTENT_KEY,
+            JSON.stringify(createIntentPayload(settings)),
+        );
+    } catch {
+        /* storage is best-effort; the server still owns idempotency */
+    }
+}
+
+async function forgetCreateIntent() {
+    state.createRequestId = "";
+    try {
+        await state.sdk?.storage.remove(CREATE_INTENT_KEY);
+    } catch {
+        /* best-effort */
+    }
 }
 
 function validateCreate() {
@@ -660,6 +696,7 @@ async function createRoom() {
     if (!state.createRequestId) {
         state.createRequestId = globalThis.crypto.randomUUID();
     }
+    await rememberCreateIntent(settings);
     try {
         const snapshot = await state.sdk.room.create({
             gameId: state.sdk.context.gameId,
@@ -669,7 +706,7 @@ async function createRoom() {
             undercoverCount: settings.undercover,
             mrWhite: settings.mrWhite,
         });
-        state.createRequestId = "";
+        await forgetCreateIntent();
         rememberRoom(snapshot);
         startPolling();
     } catch (error) {
@@ -679,7 +716,7 @@ async function createRoom() {
             code === "E_IDEMPOTENCY_EXPIRED" ||
             code === "E_IDEMPOTENCY_GONE"
         ) {
-            state.createRequestId = "";
+            await forgetCreateIntent();
         }
         handleRoomError(error);
     } finally {
@@ -726,6 +763,7 @@ async function leaveRoom() {
     state.phase = "";
     state.createRequestId = "";
     void state.sdk?.storage.remove(STORAGE_KEY);
+    void state.sdk?.storage.remove(CREATE_INTENT_KEY);
     try {
         await state.sdk.room.leave(room);
     } catch {
@@ -745,6 +783,40 @@ function startPolling() {
 function stopPolling() {
     globalThis.clearInterval(startPolling.timer);
     startPolling.timer = undefined;
+}
+
+async function restoreCreateIntent() {
+    if (!state.sdk) {
+        return;
+    }
+    try {
+        const raw = await state.sdk.storage.get(CREATE_INTENT_KEY);
+        if (!raw) {
+            return;
+        }
+        const intent = JSON.parse(raw);
+        if (
+            !intent ||
+            typeof intent.requestId !== "string" ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+                intent.requestId,
+            )
+        ) {
+            return;
+        }
+        state.createRequestId = intent.requestId;
+        $("create-name").value = typeof intent.name === "string" ? intent.name : "";
+        if (Number.isInteger(intent.maxPlayers)) {
+            $("create-max").value = String(intent.maxPlayers);
+        }
+        if (Number.isInteger(intent.undercoverCount)) {
+            $("create-undercover").value = String(intent.undercoverCount);
+        }
+        $("create-mrwhite").checked = Boolean(intent.mrWhite);
+        validateCreate();
+    } catch {
+        /* malformed old intent is ignored */
+    }
 }
 
 async function boot() {
@@ -779,6 +851,7 @@ async function boot() {
                 }
             }
         } else {
+            await restoreCreateIntent();
             renderEntry();
         }
     } catch (error) {

@@ -23,9 +23,12 @@ The server owns the room and every rule. The cartridge only renders the
 viewer-scoped snapshot and sends intents through the SDK 1.2 room transport.
 Reloading the page restores the same room and private role from the SDK
 storage; the server rejects stale commands and the client refreshes and
-retries the same request id (up to three collisions). Role words, other
-players' roles and the vote choices never reach a player who is not entitled
-to them.
+retries the same request id (up to three collisions). Room creation carries
+a stable client request id, so a lost response can be retried without
+creating a second room; the key is not an access token. A player can use the
+top-bar Claim host control after the host has been silent for the configured
+120-second window. Role words, other players' roles and the vote choices
+never reach a player who is not entitled to them.
 
 ## Package
 

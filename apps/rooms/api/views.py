@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from uuid import UUID
 
 from rest_framework.authentication import SessionAuthentication  # type: ignore[import-untyped]
@@ -26,6 +27,8 @@ from apps.rooms.services.rooms import (
     read_room,
     snapshot,
 )
+
+logger = logging.getLogger("apps.rooms")
 
 
 class RoomIpThrottle(IpRateThrottle):
@@ -83,6 +86,14 @@ class RoomCreateView(RoomAPIView):
                 request_id=data.get("requestId"),
             )
         except RoomError as exc:
+            logger.warning(
+                "room.create",
+                extra={
+                    "event": "room.create",
+                    "outcome": "error",
+                    "error_code": exc.code,
+                },
+            )
             return _error(exc, response)
         response.data = snapshot(room, member)
         return response
@@ -108,6 +119,14 @@ class RoomJoinView(RoomAPIView):
                 name=data.get("name") or None,
             )
         except RoomError as exc:
+            logger.info(
+                "room.join",
+                extra={
+                    "event": "room.join",
+                    "outcome": "error",
+                    "error_code": exc.code,
+                },
+            )
             return _error(exc, response)
         response.status_code = 200
         response.data = snapshot(room, member)
@@ -124,6 +143,15 @@ class RoomDetailView(RoomAPIView):
         try:
             return Response(read_room(request, room_id))
         except RoomError as exc:
+            logger.info(
+                "room.read",
+                extra={
+                    "event": "room.read",
+                    "outcome": "error",
+                    "error_code": exc.code,
+                    "room_id": str(room_id),
+                },
+            )
             return _error(exc)
 
 

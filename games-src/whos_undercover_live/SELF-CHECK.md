@@ -18,6 +18,8 @@
 ## Privacy and authority
 
 - [x] The server owns roles, words, votes, phases and the winner in PostgreSQL.
+- [x] Room create carries a stable idempotency key; replay is scoped to
+      the same subject and payload, and the key is not an access token.
 - [x] Snapshots are viewer-scoped: another player's role and word are absent
       until elimination or the final reveal.
 - [x] The iframe receives no portal cookies, launch ticket or secret material.

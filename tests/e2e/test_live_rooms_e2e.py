@@ -331,3 +331,54 @@ def test_caught_mr_white_can_steal_the_game(browser: Browser) -> None:
     finally:
         for context in contexts:
             context.close()
+
+
+def test_host_loss_requires_the_real_120_second_window(browser: Browser) -> None:
+    contexts: list[BrowserContext] = []
+    pages: list[Page] = []
+    try:
+        contexts, pages, frames, _, _, _ = _setup_four_players(browser)
+        _ack_reveal_and_wait_for_clues(pages, frames, pages[0])
+
+        # A guest cannot take over while the host is still within the window.
+        pages[1].bring_to_front()
+        frames[1].locator("#claim-host").click()
+        pages[1].wait_for_timeout(900)
+        expect(frames[1].locator("#claim-host")).to_be_visible()
+        expect(frames[1].locator("#clues-next")).to_be_hidden()
+
+        # Close the host tab, not the browser context: the identity survives
+        # for the later reconnect while its last_seen_at stops advancing.
+        pages[0].close()
+        pages[1].bring_to_front()
+        pages[1].wait_for_timeout(125_000)
+
+        # Two guests attempt the takeover; the server lock must leave exactly
+        # one host and the other attempt must be rejected.
+        pages[1].bring_to_front()
+        frames[1].locator("#claim-host").click()
+        pages[2].bring_to_front()
+        frames[2].locator("#claim-host").click()
+        for _ in range(10):
+            if any(frame.locator("#clues-next").is_visible() for frame in frames[1:]):
+                break
+            pages[1].bring_to_front()
+            pages[1].wait_for_timeout(700)
+        hosts = [frame for frame in frames[1:] if frame.locator("#clues-next").is_visible()]
+        assert len(hosts) == 1
+        assert (
+            frames[1].locator("#claim-host").is_visible()
+            != frames[2].locator("#claim-host").is_visible()
+        )
+
+        # The old host returns with its identity but without host powers.
+        returned = contexts[0].new_page()
+        returned.goto(GAME_URL, wait_until="domcontentloaded")
+        returned_frame = returned.frame_locator("#game-frame")
+        returned.bring_to_front()
+        _wait_for_frame(returned_frame, "#clues-screen")
+        expect(returned_frame.locator("#clues-next")).to_be_hidden()
+        expect(returned_frame.locator("#claim-host")).to_be_visible()
+    finally:
+        for context in contexts:
+            context.close()
