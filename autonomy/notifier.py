@@ -38,6 +38,8 @@ TASK_BLOCKED = "task_blocked"
 RUN_BUDGET_STOP = "run_budget_stop"
 RUN_STOPPED = "run_stopped"
 FATAL_ERROR = "fatal_error"
+OWNER_ACTION_REQUIRED = "owner_action_required"
+MILESTONE_COMPLETED = "milestone_completed"
 
 _KIND_PREFIX = {
     TASK_COMPLETED: "✅ Задача завершена",
@@ -46,6 +48,8 @@ _KIND_PREFIX = {
     RUN_BUDGET_STOP: "⏹ Остановка по бюджету",
     RUN_STOPPED: "⏹ Запуск остановлен",
     FATAL_ERROR: "🚨 Фатальная ошибка оркестратора",
+    OWNER_ACTION_REQUIRED: "⏸ Требуется решение владельца",
+    MILESTONE_COMPLETED: "🏁 Крупный этап завершён",
 }
 
 

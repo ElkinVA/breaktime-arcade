@@ -8,14 +8,18 @@ import argparse
 import contextlib
 import fcntl
 import json
+import os
 import shlex
 import shutil
 import subprocess
 import sys
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from devcontrol.telegram import sanitize_text
 
 from autonomy.budget import (
     MAX_TASKS,
@@ -24,9 +28,20 @@ from autonomy.budget import (
     BudgetStop,
     BudgetTracker,
 )
+from autonomy.gate import (
+    KIND_MILESTONE,
+    OwnerActionRequired,
+    clear_gate,
+    load_gate,
+    mark_notified,
+    paused_report,
+    set_gate,
+)
 from autonomy.metrics import compute_metrics
 from autonomy.notifier import (
     FATAL_ERROR,
+    MILESTONE_COMPLETED,
+    OWNER_ACTION_REQUIRED,
     RUN_BUDGET_STOP,
     RUN_STOPPED,
     TASK_BLOCKED,
@@ -46,6 +61,13 @@ from autonomy.state import (
     StateStore,
     Task,
 )
+from autonomy.status_report import derive_status, write_last_report
+from autonomy.windows_notify import send_toast
+
+
+def _dump(value: Any) -> str:
+    return sanitize_text(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
+
 
 ROOT = Path(__file__).resolve().parents[1]
 STATE_ROOT = Path(__file__).resolve().parents[1] / ".autonomy"
@@ -471,6 +493,52 @@ def _sandbox_commands() -> list[str]:
     ]
 
 
+def _append_event(root: Path, payload: dict[str, Any]) -> None:
+    events = Path(root) / "events.jsonl"
+    events.parent.mkdir(parents=True, exist_ok=True)
+    with events.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def _notify_gate_once(
+    store: StateStore,
+    gate: Any,
+    report: dict[str, Any],
+    notifier: Notifier,
+    windows_notifier: Callable[[str, str], object] | None = None,
+) -> None:
+    if windows_notifier is None:
+        windows_notifier = send_toast
+    current = load_gate(store.root)
+    if current is None or current.notified_at is not None:
+        return
+    delivered = False
+    kind = MILESTONE_COMPLETED if gate.kind == KIND_MILESTONE else OWNER_ACTION_REQUIRED
+    with contextlib.suppress(Exception):
+        result = notifier.notify(
+            NotificationEvent(
+                kind,
+                status="paused",
+                reason=gate.reason,
+                detail=gate.requested_action,
+            )
+        )
+        delivered = getattr(result, "status", None) == "sent"
+    title = (
+        "Breaktime Arcade: этап завершён"
+        if gate.kind == KIND_MILESTONE
+        else "Breaktime Arcade: требуется решение"
+    )
+    message = gate.reason
+    if gate.requested_action:
+        message = f"{message}\n{gate.requested_action}"
+    with contextlib.suppress(Exception):
+        toast = windows_notifier(title, message)
+        delivered = delivered or getattr(toast, "status", None) == "sent"
+    if delivered:
+        mark_notified(store.root)
+
+
 def _run_orchestrator_checks(worktree: Path) -> tuple[str, list[str]]:
     """Run the trusted sandbox checks in the parent, outside the model sandbox.
 
@@ -568,6 +636,7 @@ class Orchestrator:
         budget: Budget | None = None,
         notifier: Notifier | None = None,
         checks_runner: ChecksRunner | None = None,
+        windows_notifier: Callable[[str, str], object] | None = None,
     ) -> None:
         self.runner = runner
         self.store = store or StateStore(STATE_ROOT)
@@ -580,6 +649,7 @@ class Orchestrator:
         # Explicit injection keeps tests and library callers send-free; the
         # CLI enables the owner-configured notifier via ``Notifier.from_env``.
         self.notifier = notifier if notifier is not None else Notifier.disabled()
+        self.windows_notifier = windows_notifier or send_toast
         self._fatal_notified: BaseException | None = None
 
     def _account(
@@ -605,6 +675,17 @@ class Orchestrator:
             retry_count=max(0, task.attempts - 1),
         )
 
+    def _paused_if_gated(self) -> dict[str, Any] | None:
+        gate = load_gate(self.store.root)
+        if gate is None:
+            return None
+        report = paused_report(gate)
+        self._write_event(report)
+        self._notify_gate(gate, report)
+        with contextlib.suppress(Exception):
+            write_last_report(self.store, report)
+        return report
+
     def _reconcile(self) -> None:
         journal_root = getattr(self.runner, "journal_root", self.store.root)
         with contextlib.suppress(Exception):
@@ -618,6 +699,9 @@ class Orchestrator:
             raise BudgetReached(stop)
 
     def propose(self, tracker: BudgetTracker | None = None) -> list[Task]:
+        gate = load_gate(self.store.root)
+        if gate is not None:
+            raise OwnerActionRequired(paused_report(gate))
         tracker = tracker or BudgetTracker(self.budget)
         prompt = _architect_prompt(self.store)
         worktree: Path | None = None
@@ -633,9 +717,15 @@ class Orchestrator:
                         acceptance=["planning runs in a disposable worktree"],
                     )
                 )
+                gate = load_gate(self.store.root)
+                if gate is not None:
+                    raise OwnerActionRequired(paused_report(gate))
                 result = self.runner.architect(prompt, cwd=worktree, context=InvocationContext())
             else:
                 # Test/legacy mode keeps the original prompt-only signature.
+                gate = load_gate(self.store.root)
+                if gate is not None:
+                    raise OwnerActionRequired(paused_report(gate))
                 result = self.runner.architect(prompt, context=InvocationContext())
         finally:
             if worktree is not None:
@@ -716,6 +806,18 @@ class Orchestrator:
         raw_usage = report.get("usage")
         usage = raw_usage if isinstance(raw_usage, dict) else None
         review_reason = self._review_reason(report.get("review"))
+        if status == "paused":
+            gate = report.get("gate")
+            gate = gate if isinstance(gate, dict) else {}
+            kind = (
+                MILESTONE_COMPLETED if gate.get("kind") == KIND_MILESTONE else OWNER_ACTION_REQUIRED
+            )
+            return NotificationEvent(
+                kind,
+                status="paused",
+                reason=self._text(gate.get("reason")) or "OWNER_ACTION_REQUIRED",
+                detail=self._text(gate.get("requested_action")),
+            )
         if status == "completed":
             return NotificationEvent(
                 TASK_COMPLETED,
@@ -770,11 +872,17 @@ class Orchestrator:
             )
         return None
 
+    def _notify_gate(self, gate: Any, report: dict[str, Any]) -> None:
+        """Notify once per gate; repeated timer firings stay silent."""
+        with contextlib.suppress(Exception):
+            _notify_gate_once(self.store, gate, report, self.notifier, self.windows_notifier)
+
     def notify_report(self, report: dict[str, Any]) -> None:
         """Emit a notification for a report; never affects the run outcome."""
         with contextlib.suppress(Exception):
+            write_last_report(self.store, report)
             event = self._event_for_report(report)
-            if event is not None:
+            if event is not None and report.get("status") != "paused":
                 self.notifier.notify(event)
 
     def notify_fatal(self, error: BaseException) -> None:
@@ -783,6 +891,21 @@ class Orchestrator:
             return
         self._fatal_notified = error
         with contextlib.suppress(Exception):
+            self._write_event(
+                {
+                    "event": "fatal_error",
+                    "at": datetime.now(UTC).isoformat(),
+                    "reason": type(error).__name__,
+                }
+            )
+            write_last_report(
+                self.store,
+                {
+                    "status": "fatal_error",
+                    "reason": type(error).__name__,
+                    "detail": str(error),
+                },
+            )
             self.notifier.notify(
                 NotificationEvent(
                     FATAL_ERROR,
@@ -790,6 +913,10 @@ class Orchestrator:
                     reason=type(error).__name__,
                     detail=str(error),
                 )
+            )
+            self.windows_notifier(
+                "Breaktime Arcade: критическая ошибка",
+                type(error).__name__,
             )
 
     def _run_once(
@@ -801,13 +928,39 @@ class Orchestrator:
             report = stop.to_report()
             self._write_event(report)
             return report
+        if (self.store.root / "STOP").exists():
+            report = {"status": "stopped", "reason": "STOP file"}
+            self._write_event(report)
+            return report
+        paused = self._paused_if_gated()
+        if paused is not None:
+            return paused
+        self._write_event(
+            {
+                "event": "run_started",
+                "pid": os.getpid(),
+                "at": datetime.now(UTC).isoformat(),
+            }
+        )
         self.store.recover_running()
         self._reconcile()
         self._cleanup_orphan_worktrees()
+        paused = self._paused_if_gated()
+        if paused is not None:
+            return paused
         task = self.store.claim_next()
         if task is None and propose:
             try:
                 self.propose(tracker=tracker)
+            except OwnerActionRequired as exc:
+                report = exc.report
+                self._write_event(report)
+                current_gate = load_gate(self.store.root)
+                if current_gate is not None:
+                    self._notify_gate(current_gate, report)
+                with contextlib.suppress(Exception):
+                    write_last_report(self.store, report)
+                return report
             except BudgetReached as exc:
                 report = exc.stop.to_report(phase="architect")
                 self._write_event(report)
@@ -822,6 +975,10 @@ class Orchestrator:
             self._write_event(report)
             return report
 
+        paused = self._paused_if_gated()
+        if paused is not None:
+            self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+            return paused
         report = (
             self._run_isolated(task, tracker)
             if self.worktrees
@@ -848,6 +1005,12 @@ class Orchestrator:
         try:
             worktree, base = _create_worktree(task)
             self.store.set_worktree(task.id, str(worktree), base)
+            paused = self._paused_if_gated()
+            if paused is not None:
+                _discard_worktrees(worktree)
+                self.store.set_worktree(task.id, None, None)
+                self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                return paused
             developer = self.runner.developer(
                 _developer_prompt(task), cwd=worktree, context=self._context(task)
             )
@@ -860,8 +1023,20 @@ class Orchestrator:
             candidate = _commit_candidate(task, files, worktree)
             self.store.set_candidate(task.id, candidate)
             qa_worktree, _ = _create_worktree(task, base=candidate)
+            paused = self._paused_if_gated()
+            if paused is not None:
+                _discard_worktrees(worktree, qa_worktree)
+                self.store.set_worktree(task.id, None, None)
+                self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                return paused
             checks, failed_checks = self.checks_runner(qa_worktree)
             if failed_checks:
+                paused = self._paused_if_gated()
+                if paused is not None:
+                    _discard_worktrees(worktree, qa_worktree)
+                    self.store.set_worktree(task.id, None, None)
+                    self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                    return paused
                 _discard_worktrees(worktree, qa_worktree)
                 self.store.set_worktree(task.id, None, None)
                 worktree = None
@@ -875,6 +1050,12 @@ class Orchestrator:
                     "task": task.id,
                     "checks": failed_checks,
                 }
+            paused = self._paused_if_gated()
+            if paused is not None:
+                _discard_worktrees(worktree, qa_worktree)
+                self.store.set_worktree(task.id, None, None)
+                self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                return paused
             self.store.transition(
                 task.id,
                 QA,
@@ -890,6 +1071,12 @@ class Orchestrator:
             self._account(task.id, qa, tracker)
             self._guard(tracker)
             if not _qa_passed(qa):
+                paused = self._paused_if_gated()
+                if paused is not None:
+                    _discard_worktrees(worktree, qa_worktree)
+                    self.store.set_worktree(task.id, None, None)
+                    self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                    return paused
                 self.store.record_qa_failure(task.id)
                 _discard_worktrees(worktree, qa_worktree)
                 self.store.set_worktree(task.id, None, None)
@@ -901,6 +1088,12 @@ class Orchestrator:
                     "task": task.id,
                     "qa": "fail",
                 }
+            paused = self._paused_if_gated()
+            if paused is not None:
+                _discard_worktrees(worktree, qa_worktree)
+                self.store.set_worktree(task.id, None, None)
+                self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                return paused
             self.store.transition(
                 task.id, REVIEW, session_id=qa.session_id, model=qa.model, evidence=qa.evidence_path
             )
@@ -917,6 +1110,12 @@ class Orchestrator:
             self._account(task.id, review, tracker)
             verdict = _reviewer_verdict(review.result)
             if verdict.get("verdict") != "accept":
+                paused = self._paused_if_gated()
+                if paused is not None:
+                    _discard_worktrees(worktree, qa_worktree)
+                    self.store.set_worktree(task.id, None, None)
+                    self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                    return paused
                 _discard_worktrees(worktree, qa_worktree)
                 self.store.set_worktree(task.id, None, None)
                 worktree = None
@@ -928,6 +1127,12 @@ class Orchestrator:
                     "task": task.id,
                     "review": verdict,
                 }
+            paused = self._paused_if_gated()
+            if paused is not None:
+                _discard_worktrees(worktree, qa_worktree)
+                self.store.set_worktree(task.id, None, None)
+                self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                return paused
             merged = _merge_candidate(candidate, base)
             completed = self.store.transition(
                 task.id,
@@ -983,6 +1188,10 @@ class Orchestrator:
         files: list[str] = []
         staged = False
         try:
+            paused = self._paused_if_gated()
+            if paused is not None:
+                self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                return paused
             developer = self.runner.developer(_developer_prompt(task), context=self._context(task))
             _validate_self_check(developer)
             files = _changed_files(ROOT) if self.commit else _developer_files(developer)
@@ -995,10 +1204,18 @@ class Orchestrator:
                 model=developer.model,
                 evidence=developer.evidence_path,
             )
+            paused = self._paused_if_gated()
+            if paused is not None:
+                self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                return paused
             qa = self.runner.qa(_qa_prompt(task, developer), context=self._context(task))
             self._account(task.id, qa, tracker)
             self._guard(tracker)
             if not _qa_passed(qa):
+                paused = self._paused_if_gated()
+                if paused is not None:
+                    self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                    return paused
                 self.store.record_qa_failure(task.id)
                 retried = self.store.retry(task.id, f"QA: {qa.result[:4000]}")
                 return {
@@ -1009,9 +1226,19 @@ class Orchestrator:
             self.store.transition(
                 task.id, REVIEW, session_id=qa.session_id, model=qa.model, evidence=qa.evidence_path
             )
+            paused = self._paused_if_gated()
+            if paused is not None:
+                if staged:
+                    _unstage(files)
+                self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                return paused
             base = _head() if self.commit else "no-git-test"
             candidate: str | None = None
             if self.commit:
+                paused = self._paused_if_gated()
+                if paused is not None:
+                    self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                    return paused
                 try:
                     _stage_task(files)
                 except Exception:
@@ -1020,6 +1247,12 @@ class Orchestrator:
                 staged = True
                 _commit_staged(task, files)
                 candidate = _head()
+            paused = self._paused_if_gated()
+            if paused is not None:
+                if staged:
+                    _unstage(files)
+                self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                return paused
             review = self.runner.reviewer(
                 _reviewer_prompt(
                     task, developer, qa, _git_diff(files, base=base, candidate=candidate, root=ROOT)
@@ -1031,6 +1264,10 @@ class Orchestrator:
             if verdict.get("verdict") != "accept":
                 if staged:
                     _unstage(files)
+                paused = self._paused_if_gated()
+                if paused is not None:
+                    self.store.release(task.id, "OWNER_ACTION_REQUIRED")
+                    return paused
                 self.store.record_review_rejection(task.id)
                 retried = self.store.retry(task.id, json.dumps(verdict, ensure_ascii=False)[:4000])
                 return {
@@ -1097,7 +1334,7 @@ class Orchestrator:
                 break
             report = self.run_once(propose=propose, tracker=tracker)
             reports.append(report)
-            if report["status"] in {"idle", "stopped"}:
+            if report["status"] in {"idle", "stopped", "paused"}:
                 budget_stopped = budget_stopped or report.get("reason") == "BUDGET"
                 break
         attempted = [report for report in reports if report.get("task")]
@@ -1136,6 +1373,16 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("status")
     sub.add_parser("metrics")
     sub.add_parser("propose")
+    pause = sub.add_parser("pause")
+    pause.add_argument("--reason", required=True)
+    pause.add_argument("--action", default=None)
+    pause.add_argument("--recommendation", default=None)
+    checkpoint = sub.add_parser("checkpoint")
+    checkpoint.add_argument("--milestone", required=True)
+    checkpoint.add_argument("--reason", default="milestone completed")
+    checkpoint.add_argument("--action", default=None)
+    checkpoint.add_argument("--recommendation", default=None)
+    sub.add_parser("resume")
     enqueue = sub.add_parser("enqueue")
     enqueue.add_argument("--id", required=True)
     enqueue.add_argument("--title", required=True)
@@ -1148,7 +1395,47 @@ def main(argv: list[str] | None = None) -> int:
 
     store = StateStore(STATE_ROOT)
     if args.command == "status":
-        print(json.dumps(store.snapshot(), ensure_ascii=False, indent=2, sort_keys=True))
+        try:
+            report = derive_status(store)
+        except Exception as exc:  # noqa: BLE001 - status must fail closed
+            print(_dump({"status": "STOPPED_ERROR", "reason": type(exc).__name__}))
+            return 2
+        print(_dump(report))
+        return 0
+    if args.command in {"pause", "checkpoint"}:
+        if args.command == "checkpoint":
+            gate = set_gate(
+                store.root,
+                reason=args.reason,
+                kind=KIND_MILESTONE,
+                milestone=args.milestone,
+                requested_action=args.action,
+                recommendation=args.recommendation,
+            )
+        else:
+            gate = set_gate(
+                store.root,
+                reason=args.reason,
+                requested_action=args.action,
+                recommendation=args.recommendation,
+            )
+        report = paused_report(gate)
+        _append_event(
+            store.root,
+            {
+                "event": "checkpoint" if args.command == "checkpoint" else "owner_action_required",
+                **report,
+            },
+        )
+        _notify_gate_once(store, gate, report, Notifier.from_env())
+        with contextlib.suppress(Exception):
+            write_last_report(store, report)
+        print(_dump(derive_status(store)))
+        return 0
+    if args.command == "resume":
+        cleared = clear_gate(store.root)
+        _append_event(store.root, {"event": "owner_action_cleared", "cleared": cleared})
+        print(_dump(derive_status(store)))
         return 0
     if args.command == "metrics":
         print(json.dumps(compute_metrics(store), ensure_ascii=False, indent=2, sort_keys=True))
@@ -1158,13 +1445,17 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError:
-                print(json.dumps({"status": "locked", "reason": "a run is active"}))
+                print(_dump({"status": "locked", "reason": "a run is active"}))
                 return 3
+            lock.seek(0)
+            lock.truncate()
+            lock.write(str(os.getpid()))
+            lock.flush()
             recovered = store.recover_running()
             with contextlib.suppress(Exception):
                 reconcile_invocations(store.root)
             _cleanup_worktrees()
-        print(json.dumps([task.to_dict() for task in recovered], ensure_ascii=False, indent=2))
+        print(_dump([task.to_dict() for task in recovered]))
         return 0
     orchestrator = Orchestrator(
         ClaudeRunner(journal_root=store.root),
@@ -1182,33 +1473,40 @@ def main(argv: list[str] | None = None) -> int:
             dependencies=args.dependency,
         )
         added = store.enqueue([task])
-        print(json.dumps([item.to_dict() for item in added], ensure_ascii=False, indent=2))
+        print(_dump([item.to_dict() for item in added]))
         return 0
     if args.command == "propose":
         try:
             proposed = orchestrator.propose()
+        except OwnerActionRequired as exc:
+            print(_dump(exc.report))
+            return 0
         except BudgetReached as exc:
             report = exc.stop.to_report(phase="architect")
             orchestrator.notify_report(report)
-            print(json.dumps(report, ensure_ascii=False, indent=2))
+            print(_dump(report))
             return 2
         except Exception as exc:
             orchestrator.notify_fatal(exc)
             raise
-        print(json.dumps([task.to_dict() for task in proposed], ensure_ascii=False, indent=2))
+        print(_dump([task.to_dict() for task in proposed]))
         return 0
     with RUN_LOCK.open("a+") as lock:
         try:
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            print(json.dumps({"status": "locked", "reason": "another orchestrator is running"}))
+            print(_dump({"status": "locked", "reason": "another orchestrator is running"}))
             return 3
+        lock.seek(0)
+        lock.truncate()
+        lock.write(str(os.getpid()))
+        lock.flush()
         try:
             reports = orchestrator.run(args.max_tasks, propose=not args.no_propose)
         except Exception as exc:
             orchestrator.notify_fatal(exc)
             raise
-    print(json.dumps(reports, ensure_ascii=False, indent=2, sort_keys=True))
+    print(_dump(reports))
     return 0 if all(item["status"] != "blocked" for item in reports) else 2
 
 
