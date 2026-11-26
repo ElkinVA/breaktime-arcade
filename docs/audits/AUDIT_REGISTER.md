@@ -1012,8 +1012,8 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 |---|---|
 | Тип | §6.1 player/SDK hardening; code-reviewer ACCEPT + delta ACCEPT |
 | Результат | exit отменяет pending newSession и закрывает replacement, созданный в гонке; `exited` host state достижим и терминален (`sendResult`/`sendSession` не переоткрывают); boundary submit получает `E_SESSION_FINISHED` вместо silent drop; redundant `setSession` удалён |
-| Проверки | JS **45/45**, `check:js` clean, player/SDK contracts **15 passed**; тесты: два быстрых restart, exit vs pending restart, late submit за границей close, терминальный exited state |
-| Статус | **COMPLETED / CODE-REVIEW ACCEPT**; browser E2E/staging NOT TESTED |
+| Проверки | JS **45/45**, `check:js` clean, player/SDK contracts **15 passed**; тесты: два быстрых restart, exit vs pending restart, late submit за границей close, терминальный exited state; exact-commit CI **#159 success** (quality/frontend/e2e/image/django-next) |
+| Статус | **COMPLETED / CODE-REVIEW ACCEPT + DELTA ACCEPT / CI #159 SUCCESS**; browser E2E/staging NOT TESTED |
 | Остаток | duplicate close в двух interleavings (server close idempotent 204); exit-during-create тестом не покрыт; `E_SESSION_FINISHED` часто гасится SDK `cancelPending`; 30-s heartbeat после exit (pre-existing) |
 | Источник | commit `80eabad`; модели: implement — `deepseek-flash[1m]`, review — `code-reviewer` (`deepseek-v4-pro`, text-only) |
 

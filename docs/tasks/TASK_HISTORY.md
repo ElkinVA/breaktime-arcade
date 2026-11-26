@@ -24,10 +24,10 @@
 - **Проверки:** JS **45/45**, `check:js` clean, player/SDK Python
   contracts **15 passed**; тесты: два быстрых restart, exit vs pending
   restart, late submit за границей close, терминальный exited state.
-  Полный Python gate не перезапускался для JS-only изменения; CI —
-  обязательный финальный gate.
-- **Статус:** COMPLETED / CODE-REVIEW ACCEPT + delta ACCEPT; browser
-  E2E/staging NOT TESTED; CI pending.
+  Exact-commit CI **#159** — success (quality, frontend, e2e, image,
+  django-next), включая full Python gate.
+- **Статус:** COMPLETED / CODE-REVIEW ACCEPT + DELTA ACCEPT / CI #159
+  SUCCESS; browser E2E/staging NOT TESTED.
 - **Остатки:** duplicate close в двух interleavings (server close
   idempotent 204); exit-during-create тестом не покрыт; surfaced
   `E_SESSION_FINISHED` часто гасится SDK `cancelPending`; 30-s heartbeat

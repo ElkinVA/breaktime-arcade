@@ -11,11 +11,12 @@
   получает `E_SESSION_FINISHED` вместо silent drop; redundant
   `setSession` удалён.
 - **Проверки:** JS **45/45**, `check:js` clean, player/SDK contracts
-  **15 passed**; полный Python gate не перезапускался для JS-only
-  изменения, CI — обязательный финальный gate.
-- **Статус:** COMPLETED / CODE-REVIEW ACCEPT + DELTA ACCEPT; CI pending.
-  Остатки: duplicate close (idempotent 204), exit-during-create test
-  gap, `E_SESSION_FINISHED` часто гасится SDK `cancelPending`, 30-s
+  **15 passed**; exact-commit CI **#159** (`80eabad`) — **success**
+  (quality, frontend, e2e, image, django-next), включая full Python gate:
+  https://github.com/ElkinVA/breaktime-arcade/actions/runs/45837754405
+- **Статус:** COMPLETED / CODE-REVIEW ACCEPT + DELTA ACCEPT / CI #159
+  SUCCESS. Остатки: duplicate close (idempotent 204), exit-during-create
+  test gap, `E_SESSION_FINISHED` часто гасится SDK `cancelPending`, 30-s
   heartbeat после exit. Browser E2E/staging NOT TESTED; продуктовая
   приёмка владельца.
 

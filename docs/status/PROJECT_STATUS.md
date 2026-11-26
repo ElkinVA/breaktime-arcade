@@ -7,15 +7,15 @@ product development).
 ## 0.0d. Player submit/restart hardening — 2026-11-26
 
 `ARCADE-SUBMIT-RESTART-HARDENING-001` (`80eabad`) — **COMPLETED /
-CODE-REVIEW ACCEPT + DELTA ACCEPT**; CI pending.
+CODE-REVIEW ACCEPT + DELTA ACCEPT / CI #159 SUCCESS**.
 - exit отменяет queued `newSession` и закрывает replacement, созданный в
   гонке; `HostBridge.markExited()` делает `exited` терминальным, а
   `sendResult`/`sendSession` не могут переоткрыть состояние.
 - boundary submit получает `E_SESSION_FINISHED` вместо silent drop;
   redundant `setSession` удалён.
 - JS **45/45**, `check:js` clean, player/SDK contracts **15 passed**;
-  полный Python gate не перезапускался для JS-only изменения, CI —
-  обязательный финальный gate.
+  exact-commit CI **#159** (`80eabad`) — **success** (quality, frontend,
+  e2e, image, django-next), включая full Python gate.
 - Остатки: duplicate close в двух interleavings (idempotent 204);
   exit-during-create тестом не покрыт; `E_SESSION_FINISHED` часто
   гасится SDK `cancelPending`; 30-s heartbeat после exit (pre-existing).
