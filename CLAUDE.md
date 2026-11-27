@@ -7,16 +7,20 @@ Provenance: ../ai-dev/docs/project-reference/README.md.
 При конфликте: ТЗ > фактический код > handoff. Не выдумывать требования,
 endpoints, поля, версии и результаты проверок.
 
-## Текущее состояние: КАРКАС, не MVP
-Актуальная панорама — `docs/status/PROJECT_STATUS.md` и `docs/handoff/NOW.md`.
-Реализованы срезы: core, accounts §2.10 (**PARTIAL**), 2FA staff (**PARTIAL**),
-catalog (**PARTIAL**: published-only, фильтры, поиск, detail/genre/HTMX),
-i18n (6 языков), theme, CRM backup/restore-check, dev-lite/staging nginx.
-App F server slices — session/result/leaderboard/storage/playtime/ratings/
-popularity — реализованы и ожидают продуктовой приёмки. App F runtime/SDK/
-player и `games-src` **не реализованы**; `schemas/*.json` содержат DRAFT
-App F; `sdk/1.1.0/ba-sdk.js` пуст.
-Views каталога — частично, CRM — stub. Не считать это принятой функциональностью.
+## Актуальное состояние проекта
+Состояние реализации постоянно меняется. Не хранить в этом файле
+перечень реализованных и нереализованных функций, который быстро устаревает.
+Перед началом каждой задачи обязательно сверяться с актуальными документами:
+docs/handoff/NOW.md — последняя передача работы и текущее состояние.
+docs/status/PROJECT_STATUS.md — реализованные компоненты, фактические результаты проверок, остаточные риски и ограничения.
+docs/status/BACKLOG.md — приоритеты, READY, DEFERRED и BLOCKED задачи.
+При расхождении исторических записей и текущего состояния проверять:
+Текущий код и структуру проекта.
+Последние тесты и результаты CI для соответствующего commit.
+Актуальный NOW и PROJECT_STATUS.
+Acceptance criteria конкретной задачи.
+Не считать функцию готовой только потому, что она описана в документации или имеет статус IMPLEMENTED. Отличать техническую реализацию, независимую техническую приёмку и продуктовую приёмку владельца.
+Исторические аудиты, старые записи handoff и датированные снимки не считать описанием текущего состояния, если их дата и commit не соответствуют текущей версии проекта.
 
 ## AI workflow (обязательно)
 - Сначала `docs/handoff/NOW.md` + `PROJECT_STATUS.md` + `BACKLOG.md`;
@@ -113,7 +117,9 @@ Unique constraint != immutability: immutable поля защищать серв�
 
 ## Безопасность
 API deny-by-default; public endpoints открываются явно.
-ВНИМАНИЕ: сейчас в base.py стоит AllowAny — это известный дефект, не норма.
+Глобальная DRF permission — IsAuthenticated (deny-by-default).
+Публичные endpoints должны явно объявлять AllowAny там, где это предусмотрено ТЗ.
+Не ослаблять разрешения ради обхода ошибок.
 Не отключать CSRF, CSP, permissions, throttling, origin validation ради обхода ошибки.
 Browser write-запросы защищены CSRF; throttle scopes реально настроены;
 IP не единственный rate-limit key (корпоративные NAT).
@@ -127,7 +133,7 @@ Healthcheck nginx проверяет реальный listener (nc -z), не ngi
 Ошибки структурированные, локализуемые, безопасные. Зависимости — lock-файлами.
 
 ## Git
-Локальный репозиторий, ветка main, origin — приватный GitHub
+Локальный репозиторий, ветка main, origin — GitHub
 git@github.com:ElkinVA/breaktime-arcade.git. Push только main, без force
 и переписывания истории.
 
