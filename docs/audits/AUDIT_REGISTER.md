@@ -615,6 +615,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **FIXED** (`8d55edc`); candidate untouched |
 | Остаток | unit test asserts command mapping, not a live negative migration drift |
 
+## AUTONOMY-TIMER-001 / control cycles — 2026-11-27
+
+| Поле | Значение |
+|---|---|
+| Тип | Systemd user timer activation + two autonomy cycles |
+| Результат | timer enabled/active/waiting; 30-min `OnUnitActiveSec`, `Persistent=true`, one `--max-tasks 1` oneshot; RUN_LOCK, QA/Reviewer, recovery/logging retained |
+| Проверки | control cycle `e84c90e` restore-check completed QA/Reviewer accept; timer-triggered `6719929` ratings completed QA/Reviewer accept; next 18:22:56 MSK |
+| Статус | **ACTIVE**; queue BLOCKED 5, COMPLETED 33, READY 1 |
+| Остаток | SEO candidate `b47f240` blocked on custom-404/test regression; next READY player restart |
+| Источник | `systemctl status/list-timers`, `.autonomy` evidence for both cycles |
+
 ## ARCADE-CRM-E2E-001 — CRM staff browser scenarios
 
 | Поле | Значение |

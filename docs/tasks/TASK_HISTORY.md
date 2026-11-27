@@ -10,6 +10,50 @@ player start-error i18n, email reset race, trusted sandbox).
 
 ## 1. Записи работ
 
+### AUTONOMY-TIMER-001 — permanent autonomous cycle
+
+- **ID:** AUTONOMY-TIMER-001.
+- **Результат:** `ba-autonomy-orchestrator.timer` enabled/active; 30-min
+  schedule, bounded `--max-tasks 1`, `RUN_LOCK`, QA/Reviewer gates and
+  recovery/logging retained. READY=0 performs one architect proposal per
+  activation, not a busy loop.
+- **Проверки:** `systemctl status` active waiting; next activation
+  18:22:56 MSK; timer-triggered `ARCADE-RATINGS-RECALC-QUERIES-001`
+  completed (`6719929`).
+- **Статус:** ACTIVE; timer leave enabled. Control cycle before activation:
+  `ARCADE-RESTORE-CHECK-SERIALIZE-001` (`e84c90e`).
+- **Дата:** 2026-11-27.
+
+### ARCADE-RESTORE-CHECK-SERIALIZE-001 — restore-check lock
+
+- **ID:** ARCADE-RESTORE-CHECK-SERIALIZE-001.
+- **Результат:** DB advisory lock serializes concurrent restore-check runs;
+  loser gets clear non-SUCCESS, no false SUCCESS; concurrency test.
+- **Проверки:** successful orchestrator cycle; QA pass; Reviewer ACCEPT
+  with two minor residuals (pooled lock, failed BackupRun alerting).
+- **Статус:** COMPLETED (`e84c90e`); product acceptance owner.
+- **Дата:** 2026-11-27.
+
+### ARCADE-RATINGS-RECALC-QUERIES-001 — single GROUP BY
+
+- **ID:** ARCADE-RATINGS-RECALC-QUERIES-001.
+- **Результат:** distribution in one GROUP BY query instead of five
+  per-star counts; output unchanged; query-count tests.
+- **Проверки:** first timer-triggered cycle completed (`6719929`); QA pass;
+  Reviewer ACCEPT (minor exact query-count pin).
+- **Статус:** COMPLETED; product acceptance owner.
+- **Дата:** 2026-11-27.
+
+### ARCADE-SEO-TECH-ACCEPTANCE-001 — blocked candidate
+
+- **ID:** ARCADE-SEO-TECH-ACCEPTANCE-001.
+- **Результат:** candidate `b47f240` includes SEO audit/fixes but full
+  sandbox pytest fails `test_unknown_language_prefix_is_404`: custom 404
+  page contains `id="lang-menu"` for unknown language.
+- **Статус:** BLOCKED / TEST_REGRESSION_CANDIDATE; not bypassed; needs
+  product fix or owner decision.
+- **Дата:** 2026-11-27.
+
 ### ARCADE-CRM-E2E-001 — CRM staff browser scenarios
 
 - **ID:** ARCADE-CRM-E2E-001.

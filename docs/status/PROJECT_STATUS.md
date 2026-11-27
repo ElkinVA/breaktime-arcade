@@ -1,9 +1,29 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-27 (CRM browser E2E; accounts browser E2E;
-player start-error i18n; email reset race; trusted sandbox config; owner
-checkpoint/notifications; autonomy heartbeat auth; player submit/restart
-hardening; LR-3; LR-2b; CI restore).
+**Дата актуализации:** 2026-11-27 (autonomous timer activated; CRM/accounts
+browser E2E; player start-error i18n; email reset race; trusted sandbox
+config; owner checkpoint/notifications; autonomy heartbeat auth; player
+submit/restart hardening; LR-3; LR-2b; CI restore).
+
+## 0.0l. Autonomous timer activated — 2026-11-27
+
+`ba-autonomy-orchestrator.timer` — **ENABLED / ACTIVE / WAITING**.
+- Schedule: `OnBootSec=5min`, `OnUnitActiveSec=30min`, `AccuracySec=1min`,
+  `Persistent=true`; next activation **18:22:56 MSK**.
+- Service: `Type=oneshot`, `ExecStart=... run --max-tasks 1`; `RUN_LOCK`
+  (`flock`) prevents overlapping cycles; `recover_running` and bounded
+  architect proposal handle READY=0 without a busy loop; QA/Reviewer remain
+  mandatory.
+- Control cycle: `ARCADE-RESTORE-CHECK-SERIALIZE-001` completed
+  (`e84c90e`, QA/Reviewer accept). First timer-triggered cycle:
+  `ARCADE-RATINGS-RECALC-QUERIES-001` completed (`6719929`, QA/Reviewer
+  accept).
+- `ARCADE-SEO-TECH-ACCEPTANCE-001` candidate blocked on existing
+  `test_unknown_language_prefix_is_404` regression (custom 404 includes
+  `lang-menu`); exact failure retained. Queue: **BLOCKED 5, COMPLETED 33,
+  READY 1**; next READY `ARCADE-PLAYER-RESTART-CONTROL-001`.
+- Logs: `journalctl --user -u ba-autonomy-orchestrator.service`;
+  `.autonomy/events.jsonl`, `.autonomy/reports/last_run_report.json`.
 
 ## 0.0k. CRM browser E2E — 2026-11-27
 

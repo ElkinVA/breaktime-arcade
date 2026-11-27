@@ -2,6 +2,27 @@
 
 **Дата:** 2026-11-27
 
+## Autonomous timer activated (2026-11-27)
+
+- `ba-autonomy-orchestrator.timer` **enabled and active (waiting)** since
+  17:52:58 MSK; schedule `OnBootSec=5min`, `OnUnitActiveSec=30min`,
+  `AccuracySec=1min`, `Persistent=true`; next activation **18:22:56 MSK**.
+- Service: `Type=oneshot`, `--max-tasks 1`, `RUN_LOCK` via `flock`,
+  `recover_running`, journal/events/report; QA and Reviewer remain
+  mandatory. READY=0 does not spin: one bounded architect/propose run per
+  timer activation, then next 30-min slot.
+- Control cycle before enable completed `ARCADE-RESTORE-CHECK-SERIALIZE-001`
+  (`e84c90e`, advisory lock; QA/Reviewer accept). First timer-triggered cycle
+  completed `ARCADE-RATINGS-RECALC-QUERIES-001` (`6719929`, single GROUP BY;
+  QA/Reviewer accept).
+- SEO acceptance candidate `b47f240` blocked: full pytest regression
+  `test_unknown_language_prefix_is_404` sees new custom 404 `lang-menu`;
+  exact cause retained, not bypassed. Queue now **BLOCKED 5, COMPLETED 33,
+  READY 1**; next READY `ARCADE-PLAYER-RESTART-CONTROL-001`.
+- Timer logs: `journalctl --user -u ba-autonomy-orchestrator.service`;
+  event/report paths in `.autonomy/events.jsonl`,
+  `.autonomy/reports/last_run_report.json`.
+
 ## CRM browser E2E (2026-11-27)
 
 - **ARCADE-CRM-E2E-001** — **COMPLETED / QA PASS / REVIEWER ACCEPT**
