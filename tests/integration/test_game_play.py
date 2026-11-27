@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import re
+
 import pytest
-from django.test import Client
+from django.core.cache import caches
+from django.test import Client, override_settings
 from django.utils import timezone
 
 from apps.catalog.models import Game, GameVersion, Genre
 from apps.gameplay.models import GameSession
+from apps.i18n.models import Language
+
+LOCMEM_CACHES = {
+    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    "throttle": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+}
 
 
 def _game(*, with_version: bool = True) -> Game:
@@ -81,3 +90,32 @@ def test_play_page_pins_the_site_language_for_the_session_api() -> None:
 
     assert response.status_code == 200
     assert response.cookies[settings.LANGUAGE_COOKIE_NAME].value == "ru"
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_play_page_injects_localized_start_error_for_each_active_locale() -> None:
+    _game()
+    active_codes = list(
+        Language.objects.filter(is_active=True)
+        .order_by("sort_order", "code")
+        .values_list("code", flat=True)
+    )
+    assert {"en", "ru"} <= set(active_codes)
+    expected = {
+        "en": "Could not start the game",
+        "ru": "Не удалось начать игру",
+    }
+
+    for code in active_codes:
+        caches["default"].clear()
+        response = Client().get(f"/{code}/games/play-runtime/play/")
+        assert response.status_code == 200
+        match = re.search(r'data-start-error="([^"]*)"', response.content.decode())
+        assert match is not None, f"start-error attribute missing for {code}"
+        # Locales without a published entry receive the English fallback (§2.15).
+        assert match.group(1), f"empty start-error message for {code}"
+        if code in expected:
+            assert match.group(1) == expected[code]
+        else:
+            assert match.group(1) == expected["en"]

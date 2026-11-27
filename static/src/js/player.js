@@ -9,6 +9,8 @@ if (frame) {
     const gameId = frame.dataset.gameId;
     const csrf = frame.dataset.csrf || "";
     const runtimeUrl = frame.dataset.src;
+    // Localized by the play page via {% ba_t %}; never hardcode a language here.
+    const startErrorMessage = frame.dataset.startError || "";
     const iframeOrigin = new URL(runtimeUrl).origin;
     let sessionId = "";
     let currentContext = {};
@@ -405,7 +407,7 @@ if (frame) {
         const status = document.getElementById("player-status");
         if (status) {
             status.hidden = false;
-            status.textContent = message;
+            status.textContent = message || startErrorMessage;
         }
     }
 
@@ -464,7 +466,7 @@ if (frame) {
             startHeartbeat();
             frame.src = `${runtimeUrl}&s=${encodeURIComponent(created.sessionId)}`;
         } catch (error) {
-            showPlayerError(error.message || "Не удалось начать игру");
+            showPlayerError(error.message);
         }
     }
 
