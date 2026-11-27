@@ -594,6 +594,27 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **BLOCKED / PROTECTED_PATH_SCOPE**; no bypass |
 | Остаток | Owner decision on SDK scope or split task; player/SDK residuals remain |
 
+## ARCADE-PLAYER-ERROR-I18N-001 — player start-error i18n
+
+| Поле | Значение |
+|---|---|
+| Тип | Product localization + independent QA/reviewer |
+| Результат | play page `data-start-error` from `{% ba_t %}`; player.js fallback; migration 0013 en/ru with English fallback |
+| Проверки | integrated `377fa6f`: pytest exit 0; makemigrations-check exit 0 (No changes detected); ruff 515 formatted; mypy 412; js 47/47; QA PASS; Reviewer ACCEPT |
+| Статус | **COMPLETED / QA PASS / REVIEWER ACCEPT**; product acceptance owner |
+| Остаток | three non-blocking reviewer minors: warm dictionary cache lag, reverse migration, coverage percentage; no real-browser E2E |
+| Источник | `qa-independent-player-i18n-2026-11-27.json`, `reviewer-independent-player-i18n-2026-11-27.json`, `player-i18n-integration-evidence-2026-11-27.json`; candidate `e0c6230`, merge `377fa6f` |
+
+## AUTONOMY-MAKEMIGRATIONS-EVIDENCE-001 — named migrations check
+
+| Поле | Значение |
+|---|---|
+| Тип | Operational evidence fix |
+| Результат | `--tool makemigrations-check` runs `python manage.py makemigrations --check --dry-run`; parent evidence includes label, command, sandbox command and result |
+| Проверки | focused unit tests pass; autonomy/devcontrol suite pass; sandbox check exit 0 / No changes detected; integrated checks green |
+| Статус | **FIXED** (`8d55edc`); candidate untouched |
+| Остаток | unit test asserts command mapping, not a live negative migration drift |
+
 ## APPF-RUNTIME-REVIEW-001 — App F Runtime
 
 | Поле | Значение |

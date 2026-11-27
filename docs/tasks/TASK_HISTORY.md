@@ -1,6 +1,7 @@
 # TASK_HISTORY — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-27 (email reset race и trusted sandbox).
+**Дата актуализации:** 2026-11-27 (player start-error i18n, email reset
+race, trusted sandbox).
 Хронология подтверждённых работ и аудитов. Запись не является приёмкой.
 Точные даты ранних работ в постоянных файлах не зафиксированы; ниже указано
 «дата не зафиксирована», а не выдуманная дата. Статусы: `COMPLETED`,
@@ -8,6 +9,42 @@
 `NOT_ACCEPTED`.
 
 ## 1. Записи работ
+
+### ARCADE-PLAYER-ERROR-I18N-001 — player start-error localization
+
+- **ID:** ARCADE-PLAYER-ERROR-I18N-001.
+- **Результат:** play page передаёт `{% ba_t 'gameplay.start_error' %}`
+  через `data-start-error`; `player.js` использует это значение как
+  fallback и не содержит hardcoded Russian. Migration `0013` сеет
+  published en/ru; de/nl/fr/es используют English fallback, coverage badge
+  остаётся честным.
+- **Проверки:** integrated trusted checks на `377fa6f`: pytest exit 0;
+  `makemigrations-check` exit 0 (`No changes detected`); ruff 515
+  formatted; mypy 412; js 47/47; `FAILED=[]`. QA PASS; Reviewer ACCEPT
+  (три non-blocking minors: cache lag, reverse migration, coverage).
+- **Интеграция:** product candidate `e0c6230` (tree `874631d`);
+  operational evidence fix `8d55edc`; merge `377fa6f`; коммиты не
+  дублированы, история не переписана.
+- **Статус:** COMPLETED / QA+REVIEWER ACCEPT; product acceptance owner.
+  Прежний QA failure сохранён в истории (`qa_failures=1`, `last_error`).
+- **Модели:** developer `deepseek-flash[1m]`; QA `deepseek-flash`;
+  reviewer `deepseek-v4-pro` (text-only).
+- **Дата:** 2026-11-27.
+
+### AUTONOMY-MAKEMIGRATIONS-EVIDENCE-001 — named migrations check
+
+- **ID:** AUTONOMY-MAKEMIGRATIONS-EVIDENCE-001.
+- **Результат:** `--tool makemigrations-check` реально выполняет
+  `python manage.py makemigrations --check --dry-run`; parent evidence
+  сохраняет label, semantic command, sandbox command и result. Старый
+  pytest `test_no_missing_migrations` остаётся регрессией в full suite.
+- **Проверки:** focused unit tests и autonomy/devcontrol suite pass;
+  sandbox `makemigrations-check` на кандидате — exit 0, `No changes
+  detected`; `make lint/types` clean.
+- **Статус:** FIXED / operational only; commit `8d55edc`.
+- **Модели:** implement — `deepseek-flash[1m]`; independent QA/Reviewer —
+  `deepseek-flash`/`deepseek-v4-pro`.
+- **Дата:** 2026-11-27.
 
 ### AUTONOMY-SANDBOX-CHECKS-001 — trusted ruff/mypy config
 

@@ -2,6 +2,27 @@
 
 **Дата:** 2026-11-27
 
+## Player start-error i18n (2026-11-27)
+
+- **ARCADE-PLAYER-ERROR-I18N-001** — **COMPLETED / QA PASS /
+  REVIEWER ACCEPT**; product acceptance owner. Play page injects
+  `{% ba_t 'gameplay.start_error' %}` through `data-start-error`;
+  `player.js` uses it as the fallback with no hardcoded Russian.
+  Migration `0013` seeds published en/ru rows; other active locales use the
+  English fallback and the coverage badge remains truthful.
+- Product candidate: `e0c6230` (tree `874631d`); operational evidence fix:
+  `8d55edc`; integration merge: `377fa6f`. Candidate and fix remain
+  separate commits; no history rewrite.
+- Integrated trusted checks: pytest, `makemigrations-check`
+  (`python manage.py makemigrations --check --dry-run` → `No changes
+  detected`), ruff (515 formatted), mypy (412), js (47/47) — all exit 0.
+  Independent QA pass; Reviewer ACCEPT (only three non-blocking minors).
+- Evidence: `.autonomy/evidence/qa-independent-player-i18n-2026-11-27.json`,
+  `.autonomy/evidence/reviewer-independent-player-i18n-2026-11-27.json`,
+  `.autonomy/evidence/player-i18n-integration-evidence-2026-11-27.json`.
+- Task status changed through `StateStore.transition`; previous QA failure
+  history remains in `last_error`/`qa_failures`.
+
 ## Email reset race + sandbox checks (2026-11-27)
 
 - **ARCADE-EMAIL-RESET-RACE-001** — **COMPLETED / CODE REVIEW ACCEPT /

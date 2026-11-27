@@ -1,8 +1,31 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-27 (email reset race; trusted sandbox
-config; owner checkpoint/notifications; autonomy heartbeat auth; player
-submit/restart hardening; LR-3; LR-2b; CI restore).
+**Дата актуализации:** 2026-11-27 (player start-error i18n; email reset
+race; trusted sandbox config; owner checkpoint/notifications; autonomy
+heartbeat auth; player submit/restart hardening; LR-3; LR-2b; CI restore).
+
+## 0.0i. Player start-error i18n — 2026-11-27
+
+`ARCADE-PLAYER-ERROR-I18N-001` — **COMPLETED / QA PASS / REVIEWER
+ACCEPT**; product acceptance owner.
+- Play page injects `{% ba_t 'gameplay.start_error' %}` through
+  `data-start-error`; `player.js::showPlayerError` uses the injected value
+  as fallback and contains no hardcoded Russian. Migration `0013` seeds
+  published en/ru rows; de/nl/fr/es resolve via the English fallback and
+  the coverage badge remains truthful.
+- Product candidate `e0c6230` (tree `874631d`); operational evidence fix
+  `8d55edc`; integration merge `377fa6f`. Both commits remain separate;
+  no history rewrite.
+- Integrated trusted checks on `377fa6f`: pytest exit 0;
+  `makemigrations-check` exit 0, `No changes detected`; ruff 515
+  formatted; mypy 412; js 47/47; `FAILED=[]`. Candidate remained
+  unchanged before/after QA.
+- Independent QA **PASS**; Reviewer **ACCEPT** with three non-blocking
+  minors (cache lag, reverse migration, coverage percentage). Previous
+  QA failure remains in task history (`qa_failures=1`, `last_error`).
+- Evidence: `.autonomy/evidence/qa-independent-player-i18n-2026-11-27.json`,
+  `.autonomy/evidence/reviewer-independent-player-i18n-2026-11-27.json`,
+  `.autonomy/evidence/player-i18n-integration-evidence-2026-11-27.json`.
 
 ## 0.0h. Email reset race + trusted sandbox — 2026-11-27
 
