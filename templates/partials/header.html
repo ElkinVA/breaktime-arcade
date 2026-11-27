@@ -31,7 +31,9 @@
                     {% ba_t "auth.register" %}
                 </a>
             {% endif %}
-            {% include "partials/language_switcher.html" %}
+            {% if not hide_language_switcher %}
+                {% include "partials/language_switcher.html" %}
+            {% endif %}
             {% include "partials/theme_toggle.html" %}
         </div>
     </div>

@@ -10,6 +10,8 @@ from django.urls import include, path
 from apps.core import health, sitemap
 from apps.i18n.views import root_redirect
 
+handler404 = "apps.core.views.page_not_found"
+
 urlpatterns = [
     # Пробы живучести без языкового префикса
     path("healthz", health.healthz, name="healthz"),
