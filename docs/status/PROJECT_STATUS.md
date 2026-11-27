@@ -1,8 +1,31 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-26 (owner checkpoint/notifications;
-autonomy heartbeat auth; player submit/restart hardening; LR-3; LR-2b;
-CI restore; owner directive continuous full product development).
+**Дата актуализации:** 2026-11-27 (email reset race; trusted sandbox
+config; owner checkpoint/notifications; autonomy heartbeat auth; player
+submit/restart hardening; LR-3; LR-2b; CI restore).
+
+## 0.0h. Email reset race + trusted sandbox — 2026-11-27
+
+`ARCADE-EMAIL-RESET-RACE-001` — **COMPLETED / CODE REVIEW ACCEPT /
+SECURITY REVIEW ACCEPT / SANDBOX FULL SUITE GREEN**; product acceptance
+owner.
+- `_update_email` (add/change/remove) and POST `password_reset_confirm`
+  lock the same `User` row before reading `EmailAddress` or consuming
+  reset tokens; both submission orders are linearizable. Notice email is
+  sent after commit; no schema/migration change.
+- Commits `401df05` + `11ea832`; race tests **4/4**; full sandbox
+  **1359 passed, 11 skipped, exit 0** (1370 collected); ruff **515
+  formatted**, mypy **412**; `make lint/types` clean on main.
+- `AUTONOMY-SANDBOX-CHECKS-001` (`71177d2`): sandbox omitted
+  `ruff.toml`/`mypy.ini` and ran `ruff check .`, causing 430 default-config
+  errors (then 4 `.claude/hooks` errors outside `make lint`); configs now
+  copied and ruff mirrors `make lint`. Independent review ACCEPT.
+- Первый повторный bounded-run дошёл до кандидата, но упал только на
+  тестовой настройке `force_login`/`update_last_login`; тест исправлен,
+  кандидат принят технически. End-to-end autonomy success ещё не
+  подтверждён; timer OFF.
+- Отчёты: `docs/foundation/ARCADE-EMAIL-RESET-RACE-001_REPORT.md`,
+  `docs/foundation/AUTONOMY_SANDBOX_CHECKS_FIX.md`.
 
 ## 0.0g. Product vision mapping — 2026-11-26
 
@@ -42,8 +65,10 @@ FULL GATE GREEN / CI #163 SUCCESS**; timer OFF.
 - Current credential file is accepted by systemd; service process has
   `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`.
 - Bounded run used architect `deepseek-v4-pro` and developer
-  `deepseek-flash[1m]`; task `ARCADE-EMAIL-RESET-RACE-001` failed
-  trusted ruff/mypy twice and is BLOCKED. No task completed.
+  `deepseek-flash[1m]`; after trusted sandbox config repair the task
+  `ARCADE-EMAIL-RESET-RACE-001` was completed technically (manual test
+  setup fix, full suite and independent reviews). A clean end-to-end
+  orchestrator success is still required before enabling the timer.
 - Timer **not enabled**; no next run. Historical journal leak came from
   the old `export` line; secret is not in Git; local journal only.
 - WSL must be running; Windows/WSL autostart not configured.

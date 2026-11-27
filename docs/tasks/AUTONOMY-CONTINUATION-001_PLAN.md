@@ -2,15 +2,17 @@
 
 **Дата:** 2026-11-23  
 **Статус:** **PARTIAL — owner approved WSL heartbeat 2026-11-26;
-auth verified, timer OFF.**
+auth verified, sandbox checks fixed, timer OFF.**
 **Основание:** фактическая проверка AI Headquarters 2026-11-23; owner
 разрешил 30-минутный systemd user timer для существующего
 `autonomy.orchestrator` (Pro architect/reviewer + Flash developer/QA,
 текущие лимиты). Units установлены/связаны, timer **не включён**:
 bounded-run авторизовался (`deepseek-v4-pro` / `deepseek-flash[1m]`),
-но задача `ARCADE-EMAIL-RESET-RACE-001` дважды упала на trusted
-ruff/mypy и стала BLOCKED. Не создавать параллельный оркестратор;
-включение timer — только после успешного bounded-run и owner review.
+задача `ARCADE-EMAIL-RESET-RACE-001` завершена технически после
+исправления sandbox-конфигурации и test setup, но чистый end-to-end
+bounded-run и проверка gate ещё не выполнены. Не создавать параллельный
+оркестратор; включение timer — только после успешного bounded-run и
+owner review.
 
 ## 1. Факты проверки
 
@@ -90,13 +92,15 @@ ba-autonomy-orchestrator.timer
   `systemctl --user link`, `daemon-reload` выполнен.
 - Timer **не включён**: bounded-run подтвердил авторизацию
   (`deepseek-v4-pro` architect, `deepseek-flash[1m]` developer) и
-  `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`; задача
-  `ARCADE-EMAIL-RESET-RACE-001` дважды упала на trusted ruff/mypy и
-  стала BLOCKED. Задача не завершена, timer-запусков не было.
-  Историческая journal-запись с секретом относится к старому
+  `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`. Sandbox
+  `ruff.toml`/`mypy.ini` исправлены (`71177d2`); задача
+  `ARCADE-EMAIL-RESET-RACE-001` технически завершена после test-setup
+  fix (`401df05`+`11ea832`), но повторный bounded-run для чистого
+  end-to-end результата и проверки gate ещё нужен. Timer-запусков не
+  было. Историческая journal-запись с секретом относится к старому
   `export`-файлу; в Git секрет не попал.
-- Следующее действие: разобрать check-ошибки или выбрать другую
-  READY-задачу; после успешного bounded-run и owner review —
+- Следующее действие: чистый bounded-run на READY-задаче, проверка
+  `OWNER_ACTION_REQUIRED`, затем
   `systemctl --user enable --now ba-autonomy-orchestrator.timer`.
 - WSL должен быть запущен; после завершения WSL/Windows timer не
   работает без отдельного Windows/WSL autostart (не настраивался).

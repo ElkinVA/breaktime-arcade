@@ -1,6 +1,6 @@
 # TASK_HISTORY — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-26 (LR-2b и CI restore).
+**Дата актуализации:** 2026-11-27 (email reset race и trusted sandbox).
 Хронология подтверждённых работ и аудитов. Запись не является приёмкой.
 Точные даты ранних работ в постоянных файлах не зафиксированы; ниже указано
 «дата не зафиксирована», а не выдуманная дата. Статусы: `COMPLETED`,
@@ -8,6 +8,39 @@
 `NOT_ACCEPTED`.
 
 ## 1. Записи работ
+
+### AUTONOMY-SANDBOX-CHECKS-001 — trusted ruff/mypy config
+
+- **ID:** AUTONOMY-SANDBOX-CHECKS-001.
+- **Результат:** `devcontrol/sandbox/run_tests.py` копирует `ruff.toml` и
+  `mypy.ini`; sandbox ruff зеркалит `make lint`; регрессия в
+  `tests/unit/test_devcontrol.py`.
+- **Проверки:** unit test 33 passed / 1 skipped; `make lint` 515 files;
+  mypy 412; sandbox ruff/mypy на кандидате — clean. Code review — ACCEPT
+  (два minor: candidate-controlled configs и отсутствие проверки строки
+  команды).
+- **Статус:** FIXED / REVIEW ACCEPT; commit `71177d2`.
+- **Модели:** implement — `deepseek-flash[1m]`; review — `deepseek-v4-pro`.
+- **Дата:** 2026-11-27.
+
+### ARCADE-EMAIL-RESET-RACE-001 — email change vs reset confirm
+
+- **ID:** ARCADE-EMAIL-RESET-RACE-001.
+- **Результат:** `_update_email` (add/change/remove) и POST
+  `password_reset_confirm` берут единый `User.objects.select_for_update()`
+  до `EmailAddress`/токенов; уведомление старому адресу после коммита;
+  новая race-интеграция на PostgreSQL. Схема/migrations не менялись.
+- **Проверки:** race tests 4/4; full sandbox **1359 passed, 11 skipped,
+  exit 0** (1370 collected); ruff 515 formatted; mypy 412; `make lint/types`
+  clean; code review ACCEPT, security review ACCEPT.
+- **Статус:** COMPLETED / CODE+SECURITY REVIEW ACCEPT / product acceptance
+  owner. Первый повторный bounded-run упал на test setup `force_login`/
+  `update_last_login`; исправлено `11ea832`. Candidate `401df05`.
+- **Модели:** developer `deepseek-flash[1m]`; code/security review —
+  `deepseek-v4-pro` text-only.
+- **Остатки:** reset-request читает адрес без lock; pre-existing AB-BA с
+  `verify_email_token`; lock удерживается на PBKDF2/session invalidation.
+- **Дата:** 2026-11-27.
 
 ### OWNER-VISION-MAPPING-2026-11-26 — product/SEO mapping
 
@@ -60,16 +93,18 @@
   `daemon-reload`. Timer **не включён**.
 - **Проверка:** текущий `~/.config/ba/deepseek.env` система принимает
   (без `export`), service process видит `ANTHROPIC_AUTH_TOKEN` и
-  `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`. Реальный
-  bounded-run использовал architect `deepseek-v4-pro` и developer
-  `deepseek-flash[1m]`; задача `ARCADE-EMAIL-RESET-RACE-001` дважды
-  упала на trusted ruff/mypy и стала BLOCKED. Задача не завершена,
-  timer остаётся выключенным; историческая journal-запись с секретом
-  относится к старому `export`-файлу, в Git секрет не попал.
-- **Статус:** PARTIAL — auth verified, timer disabled, last task blocked
-  on checks; Windows/WSL autostart не настраивался.
-- **Следующий шаг:** разобрать check-ошибки/выбрать другую READY-задачу,
-  затем успешный bounded-run и owner review перед включением timer.
+  `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`. После
+  исправления trusted sandbox (`71177d2`) задача
+  `ARCADE-EMAIL-RESET-RACE-001` завершена технически (race tests 4/4;
+  full sandbox 1359 passed / 11 skipped), но orchestrator bounded-run
+  упал на test setup и был завершён вручную после исправления теста.
+  Чистый end-to-end success ещё не подтверждён; timer остаётся
+  выключенным. Историческая journal-запись с секретом относится к
+  старому `export`-файлу, в Git секрет не попал.
+- **Статус:** PARTIAL — auth verified, timer disabled, end-to-end run
+  pending; Windows/WSL autostart не настраивался.
+- **Следующий шаг:** выполнить чистый bounded-run на READY-задаче,
+  проверить gate, затем owner review перед включением timer.
 - **Модели:** orchestrator routing Pro/Flash; установка/проверка —
   `deepseek-flash[1m]`.
 

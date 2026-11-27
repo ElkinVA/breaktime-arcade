@@ -1,6 +1,30 @@
 # NOW — Breaktime Arcade
 
-**Дата:** 2026-11-26
+**Дата:** 2026-11-27
+
+## Email reset race + sandbox checks (2026-11-27)
+
+- **ARCADE-EMAIL-RESET-RACE-001** — **COMPLETED / CODE REVIEW ACCEPT /
+  SECURITY REVIEW ACCEPT / SANDBOX FULL SUITE GREEN**; product acceptance
+  owner. `_update_email` и POST `password_reset_confirm` сериализуются на
+  `User.objects.select_for_update()`; email-change notice отправляется после
+  коммита. Коммиты `401df05` + `11ea832`; новый race suite **4/4**.
+- **AUTONOMY-SANDBOX-CHECKS-001** (`71177d2`) — trusted sandbox не копировал
+  `ruff.toml`/`mypy.ini`, поэтому два первых запуска задачи падали на
+  environment-конфигурации (ruff: 430 ошибок defaults; затем 4 ошибки
+  `.claude/hooks` вне `make lint`). Конфигурации добавлены, sandbox ruff
+  приведён к `make lint`; review ACCEPT.
+- Полный sandbox suite: **1359 passed, 11 skipped, exit 0**
+  (1370 collected). Ruff: **515 formatted**; mypy: **412**; `make lint/types`
+  на main clean. Без schema/migrations.
+- Bounded-run после `resume` дошёл до кандидата, но упал на двух новых
+  race-тестах: `force_login` в потоке email-change блокировался на
+  `update_last_login` о lock reset-confirm. Тест исправлен аутентификацией
+  до старта конкурирующей транзакции; кандидат принят технически. Это
+  **не** успешный end-to-end autonomy run: следующий bounded-run и проверка
+  gate ещё впереди, timer OFF.
+- Отчёты: `docs/foundation/AUTONOMY_SANDBOX_CHECKS_FIX.md`,
+  `docs/foundation/ARCADE-EMAIL-RESET-RACE-001_REPORT.md`.
 
 ## Product vision mapping (2026-11-26)
 
@@ -39,8 +63,9 @@ FULL GATE GREEN / CI #163 SUCCESS**; timer OFF.
   `~/.config/systemd/user`; `daemon-reload` выполнен.
 - **Timer НЕ включён.** Текущий credential file система принимает;
   bounded-run использовал architect `deepseek-v4-pro` и developer
-  `deepseek-flash[1m]`. Задача `ARCADE-EMAIL-RESET-RACE-001` дважды
-  упала на trusted ruff/mypy и стала BLOCKED; задача не завершена.
+  `deepseek-flash[1m]`. После исправления trusted sandbox задача
+  `ARCADE-EMAIL-RESET-RACE-001` технически завершена; повторный bounded-run
+  для проверки autonomy-loop и gate ещё required.
 - `ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic`; историческая
   journal-запись с секретом относится к старому `export`-файлу; в Git
   секрет не попал. WSL должен быть запущен; Windows/WSL autostart не

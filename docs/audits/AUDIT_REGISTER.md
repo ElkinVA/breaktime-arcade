@@ -552,6 +552,28 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Остаток | `enqueue`/`recover` owner exceptions; toast OS suppression; WSL shutdown; gate mid-flight boundary; runbook docs |
 | Источник | `docs/foundation/AUTONOMY_CHECKPOINT_POLICY_REPORT.md`; модели: plan — `deepseek-v4-pro`, implement — `deepseek-flash[1m]`, reviews — `deepseek-v4-pro` |
 
+## AUTONOMY-SANDBOX-CHECKS-001 — trusted ruff/mypy config
+
+| Поле | Значение |
+|---|---|
+| Тип | Control-plane sandbox quality-gate repair |
+| Результат | `ruff.toml`/`mypy.ini` added to sandbox copy allowlist; sandbox ruff mirrors `make lint`; regression test added |
+| Проверки | devcontrol 33 passed/1 skipped; ruff 515 formatted; mypy 412; sandbox ruff/mypy on candidates clean; independent code review ACCEPT |
+| Статус | **FIXED / CODE-REVIEW ACCEPT** (`71177d2`) |
+| Остаток | candidate-controlled config files (same trust model as `pyproject.toml`); no direct unit assertion of the ruff command string |
+| Источник | `docs/foundation/AUTONOMY_SANDBOX_CHECKS_FIX.md`; модели: implement `deepseek-flash[1m]`, review `deepseek-v4-pro` |
+
+## ARCADE-EMAIL-RESET-RACE-001 — email change vs reset confirm
+
+| Поле | Значение |
+|---|---|
+| Тип | Account security concurrency fix + race tests |
+| Результат | shared `User` row lock in `_update_email` and POST `password_reset_confirm`; notice after commit; no schema change |
+| Проверки | race tests **4/4**; full sandbox **1359 passed, 11 skipped, exit 0** (1370 collected); ruff 515 formatted; mypy 412; `make lint/types` clean; code review ACCEPT; security review ACCEPT |
+| Статус | **COMPLETED / CODE+SECURITY REVIEW ACCEPT** (`401df05`+`11ea832`); product acceptance owner; clean end-to-end autonomy run still pending |
+| Остаток | reset-request address read without lock; pre-existing verify-path AB-BA; User lock held during PBKDF2/session invalidation |
+| Источник | `docs/foundation/ARCADE-EMAIL-RESET-RACE-001_REPORT.md`; модели: developer `deepseek-flash[1m]`, code/security reviews `deepseek-v4-pro` |
+
 ## APPF-RUNTIME-REVIEW-001 — App F Runtime
 
 | Поле | Значение |
