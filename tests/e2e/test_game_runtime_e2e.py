@@ -142,7 +142,15 @@ def test_authenticated_player_submits_leaderboard_and_returns(page: Page) -> Non
 
     frame.locator("#probe-leaderboard").click()
     expect(status).to_have_attribute("data-state", "leaderboard", timeout=10000)
-    expect(status).to_contain_text(nickname)
+    payload = json.loads(status.inner_text())
+    # The leaderboard response is capped to the top entries; on a long-lived
+    # dev database a fresh personal best can be ranked below that cap. Assert
+    # the observable rank instead of assuming the new nickname is in the top.
+    assert isinstance(payload["myRank"], int)
+    assert payload["myRank"] >= 1
+    assert any(entry["nickname"] == nickname for entry in payload["entries"]) or payload[
+        "myRank"
+    ] > len(payload["entries"])
 
     page.locator("a[href$='/games/probe/']").first.click()
     page.wait_for_url("**/en/games/probe/", wait_until="domcontentloaded")
