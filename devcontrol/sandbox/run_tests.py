@@ -61,8 +61,10 @@ ALLOWED_ROOTS = (
     "compose.prod.yml",
     "conftest.py",
     "manage.py",
+    "mypy.ini",
     "pytest.ini",
     "pyproject.toml",
+    "ruff.toml",
 )
 FORBIDDEN_PARTS = {
     ".env",
@@ -395,7 +397,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.tool == "pytest":
         command = ["pytest", "-q", test_path] if test_path else ["pytest", "-q"]
     elif args.tool == "ruff":
-        command = ["/bin/sh", "-c", "ruff check . && ruff format --check ."]
+        # Mirror the project's `make lint` target. The sandbox also carries
+        # agent harness files (.claude/) that are intentionally outside the
+        # product quality gate; linting "." makes every candidate fail on
+        # those unrelated files before its own diff is considered.
+        command = [
+            "/bin/sh",
+            "-c",
+            "ruff check apps config tests devcontrol && "
+            "ruff format --check apps config tests devcontrol",
+        ]
     elif args.tool == "mypy":
         command = ["mypy"]
     else:

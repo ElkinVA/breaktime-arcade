@@ -613,6 +613,11 @@ def test_sandbox_copy_excludes_secrets(tmp_path: Path) -> None:
     assert copy_project(code) > 0
     assert (code / "apps").is_dir()
     assert (code / "pytest.ini").is_file()
+    # Trusted checks must use the project's lint/type configuration inside the
+    # sandbox; omitting these files makes ruff/mypy fall back to defaults and
+    # fail every candidate for reasons unrelated to its change.
+    assert (code / "ruff.toml").is_file()
+    assert (code / "mypy.ini").is_file()
     assert not (code / ".env").exists()
     assert not (code / "creds").exists()
 
