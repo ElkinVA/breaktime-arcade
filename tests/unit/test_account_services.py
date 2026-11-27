@@ -131,6 +131,21 @@ def test_registration_slot_is_released_for_invalid_form() -> None:
 
 
 @override_settings(CACHES=LOCMEM_CACHES)
+def test_concurrent_registration_releases_clamp_at_zero() -> None:
+    device, ip = "device-race-release", "198.51.100.5"
+    device_key = f"auth:register:device:{rate_limit._hash(device)}"
+    ip_key = f"auth:register:ip:{rate_limit._ip_hash(ip)}"
+    assert all(registration_attempt(device, ip).allowed for _ in range(3))
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        list(pool.map(lambda _: release_registration(device, ip), range(20)))
+    assert rate_limit._read(device_key) == 0
+    assert rate_limit._read(ip_key) == 0
+    release_registration(device, ip)
+    assert rate_limit._read(device_key) == 0
+    assert rate_limit._read(ip_key) == 0
+
+
+@override_settings(CACHES=LOCMEM_CACHES)
 def test_password_reset_limit_is_atomic() -> None:
     assert password_reset_attempt("alice@example.com", "203.0.113.20").allowed
     assert password_reset_attempt("alice@example.com", "203.0.113.20").allowed
