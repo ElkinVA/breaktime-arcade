@@ -40,11 +40,22 @@ def send_verification_email(user: User, request: HttpRequest) -> None:
 
 
 def verify_email_token(raw: str) -> EmailAddress | None:
-    token = consume_token(raw, AccountToken.PURPOSE_EMAIL_VERIFY)
-    if token is None:
+    # ARCADE-EMAIL-VERIFY-RESET-RACE-001: take the same User row lock as
+    # ``_update_email``/``password_reset_confirm`` before consuming the token
+    # or touching EmailAddress. A concurrent email change then linearizes:
+    # the link is only honoured while the address it was issued for is still
+    # current, so a change cannot leave the new address marked as verified.
+    pending = find_token(raw, AccountToken.PURPOSE_EMAIL_VERIFY)
+    if pending is None:
         return None
-    email = EmailAddress.objects.filter(user=token.user, email=token.email).first()
-    if email is None:
+    user = User.objects.select_for_update().filter(pk=pending.user_id).first()
+    if user is None:
+        return None
+    token = consume_token(raw, AccountToken.PURPOSE_EMAIL_VERIFY)
+    if token is None or token.user_id != user.pk:
+        return None
+    email = EmailAddress.objects.filter(user_id=user.pk).first()
+    if email is None or email.email.casefold() != token.email.casefold():
         return None
     if email.verified_at is None:
         email.verified_at = timezone.now()

@@ -466,6 +466,9 @@ def two_factor_disable(request: HttpRequest) -> HttpResponse:
 
 def verify_email(request: HttpRequest, token: str) -> HttpResponse:
     with transaction.atomic():
+        # ``verify_email_token`` takes the shared User row lock and re-checks
+        # the current EmailAddress before marking it verified
+        # (ARCADE-EMAIL-VERIFY-RESET-RACE-001).
         email = verify_email_token(token)
     if email is None:
         messages.error(request, "Ссылка недействительна или истекла.")
@@ -495,12 +498,29 @@ def password_reset_request(request: HttpRequest) -> HttpResponse:
             messages.error(request, "Сервис восстановления временно недоступен. Попробуйте позже.")
             return render(request, "accounts/password_reset.html", {"form": form}, status=503)
         if decision.allowed:
-            target = find_verified_email(email)
-            if target is not None:
-                try:
-                    send_password_reset_email(target, request)
-                except Exception:
-                    logger.warning("account.email.password_reset_send_failed", exc_info=True)
+            # ARCADE-EMAIL-VERIFY-RESET-RACE-001: resolve the account and take
+            # the same User row lock as ``_update_email`` before the
+            # authoritative verified-address read. A concurrent email
+            # change/removal then linearizes: either the token is issued for
+            # the still-current address and the change invalidates it, or the
+            # change commits first and the re-check below finds no verified
+            # address to send to.
+            with transaction.atomic():
+                verified_emails = EmailAddress.objects.filter(
+                    email__iexact=email.strip(),
+                    verified_at__isnull=False,
+                )
+                candidate_ids = list(verified_emails.values_list("user_id", flat=True))
+                locked_user = User.objects.select_for_update().filter(pk__in=candidate_ids).first()
+                if locked_user is not None:
+                    target = find_verified_email(email)
+                    if target is not None and target.user_id == locked_user.pk:
+                        try:
+                            send_password_reset_email(target, request)
+                        except Exception:
+                            logger.warning(
+                                "account.email.password_reset_send_failed", exc_info=True
+                            )
         messages.success(
             request,
             "Если для этого email есть подтверждённый аккаунт, письмо отправлено.",
