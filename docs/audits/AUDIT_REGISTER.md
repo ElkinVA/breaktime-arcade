@@ -615,6 +615,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **FIXED** (`8d55edc`); candidate untouched |
 | Остаток | unit test asserts command mapping, not a live negative migration drift |
 
+## ARCADE-ACCOUNTS-E2E-002 — account browser scenarios
+
+| Поле | Значение |
+|---|---|
+| Тип | Host Playwright E2E; test-only changes |
+| Результат | export download, password change, deletion request/cancel, staff 2FA enroll/verify/disable; leaderboard myRank assertion for top-10 cap |
+| Проверки | Accounts 5/5; baseline shell/account 13/13; standard 1366 passed/17 skipped; lint 515 formatted; mypy 412; QA PASS; Reviewer ACCEPT |
+| Статус | **COMPLETED / QA PASS / REVIEWER ACCEPT** (`5442127`); product acceptance owner |
+| Остаток | Full make e2e 31/1: later LR-3 host-loss due stale published whos_undercover_live runtime; reseed blocked by V_VERSION_DUP/V_PUBLISHED_UPDATE_BLOCKED; not skipped/masked |
+| Источник | `.autonomy/evidence/accounts-e2e-002-evidence-2026-11-27.json`, `qa-independent-accounts-e2e-002-2026-11-27.json`, `reviewer-independent-accounts-e2e-002-2026-11-27.json`; report `docs/foundation/ARCADE-ACCOUNTS-E2E-002_REPORT.md` |
+
 ## APPF-RUNTIME-REVIEW-001 — App F Runtime
 
 | Поле | Значение |

@@ -1,8 +1,31 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-27 (player start-error i18n; email reset
-race; trusted sandbox config; owner checkpoint/notifications; autonomy
-heartbeat auth; player submit/restart hardening; LR-3; LR-2b; CI restore).
+**Дата актуализации:** 2026-11-27 (accounts browser E2E; player start-error
+i18n; email reset race; trusted sandbox config; owner
+checkpoint/notifications; autonomy heartbeat auth; player submit/restart
+hardening; LR-3; LR-2b; CI restore).
+
+## 0.0j. Accounts browser E2E — 2026-11-27
+
+`ARCADE-ACCOUNTS-E2E-002` — **COMPLETED / QA PASS / REVIEWER ACCEPT**;
+product acceptance owner.
+- New host Playwright scenarios: export download, password change,
+  deletion request/cancel, staff 2FA enrollment/verify/disable.
+- Commit `5442127`; test-only changes (`test_accounts_e2e.py`,
+  `test_game_runtime_e2e.py`); no app/product code, migrations or lockfile
+  changes.
+- Accounts E2E **5/5**; baseline shell/account **13/13**; standard suite
+  **1366 passed, 17 skipped, exit 0**; lint/mypy clean.
+- Full local `make e2e`: **31 passed, 1 failed**; the later LR-3
+  host-loss scenario fails because the published `whos_undercover_live`
+  dev runtime lacks `#claim-host` and reseed is blocked by
+  `V_VERSION_DUP`/`V_PUBLISHED_UPDATE_BLOCKED`. Not skipped/masked;
+  Accounts acceptance is not blocked.
+- Evidence: `.autonomy/evidence/accounts-e2e-002-evidence-2026-11-27.json`,
+  `qa-independent-accounts-e2e-002-2026-11-27.json`,
+  `reviewer-independent-accounts-e2e-002-2026-11-27.json`,
+  `accounts-e2e-002-integration-evidence-2026-11-27.json`; report
+  `docs/foundation/ARCADE-ACCOUNTS-E2E-002_REPORT.md`.
 
 ## 0.0i. Player start-error i18n — 2026-11-27
 

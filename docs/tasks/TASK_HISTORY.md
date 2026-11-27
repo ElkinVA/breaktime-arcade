@@ -1,7 +1,7 @@
 # TASK_HISTORY — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-27 (player start-error i18n, email reset
-race, trusted sandbox).
+**Дата актуализации:** 2026-11-27 (accounts browser E2E, player start-error
+i18n, email reset race, trusted sandbox).
 Хронология подтверждённых работ и аудитов. Запись не является приёмкой.
 Точные даты ранних работ в постоянных файлах не зафиксированы; ниже указано
 «дата не зафиксирована», а не выдуманная дата. Статусы: `COMPLETED`,
@@ -9,6 +9,26 @@ race, trusted sandbox).
 `NOT_ACCEPTED`.
 
 ## 1. Записи работ
+
+### ARCADE-ACCOUNTS-E2E-002 — account browser scenarios
+
+- **ID:** ARCADE-ACCOUNTS-E2E-002.
+- **Результат:** host Playwright scenarios для export download, password
+  change, deletion request/cancel, staff 2FA enrollment/verify/disable;
+  test-only staff fixture через dev-lite shell; leaderboard rank assertion
+  исправлен для top-10 cap.
+- **Проверки:** Accounts **5/5**; baseline shell/account **13/13**;
+  standard **1366 passed, 17 skipped, exit 0**; lint 515 formatted; mypy
+  412. QA PASS; Reviewer ACCEPT.
+- **Full E2E:** 31 passed, 1 failed — later LR-3 host-loss из-за
+  устаревшего published runtime (`#claim-host` отсутствует;
+  `V_VERSION_DUP`/`V_PUBLISHED_UPDATE_BLOCKED`). Не skip/маска; вне
+  baseline 13, Accounts acceptance не блокирует.
+- **Статус:** COMPLETED / QA+REVIEWER ACCEPT; product acceptance owner.
+- **Интеграция:** commit `5442127`; test-only changes; main после push.
+- **Модели:** developer/QA — `deepseek-flash`; reviewer —
+  `deepseek-v4-pro` (text-only).
+- **Дата:** 2026-11-27.
 
 ### ARCADE-PLAYER-ERROR-I18N-001 — player start-error localization
 

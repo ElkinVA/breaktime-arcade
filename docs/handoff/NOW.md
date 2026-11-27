@@ -2,6 +2,26 @@
 
 **Дата:** 2026-11-27
 
+## Accounts browser E2E (2026-11-27)
+
+- **ARCADE-ACCOUNTS-E2E-002** — **COMPLETED / QA PASS / REVIEWER
+  ACCEPT** (`5442127`): export download, password change, deletion
+  request/cancel, staff 2FA enrollment/verify/disable added to host
+  Playwright runner. Accounts E2E **5/5**; baseline shell/account
+  scenarios **13/13**; standard suite **1366 passed / 17 skipped**.
+- Full local `make e2e`: **31 passed, 1 failed**. The only failure is the
+  later LR-3 `test_host_loss...`: published `whos_undercover_live` dev
+  runtime lacks `#claim-host`; reseed is rejected by
+  `V_VERSION_DUP`/`V_PUBLISHED_UPDATE_BLOCKED`. It is outside the
+  baseline 13, not skipped or masked; follow-up requires runtime
+  republish/fresh DB.
+- Evidence:
+  `.autonomy/evidence/accounts-e2e-002-evidence-2026-11-27.json`,
+  `qa-independent-accounts-e2e-002-2026-11-27.json`,
+  `reviewer-independent-accounts-e2e-002-2026-11-27.json`,
+  `accounts-e2e-002-integration-evidence-2026-11-27.json`.
+  Report: `docs/foundation/ARCADE-ACCOUNTS-E2E-002_REPORT.md`.
+
 ## Player start-error i18n (2026-11-27)
 
 - **ARCADE-PLAYER-ERROR-I18N-001** — **COMPLETED / QA PASS /
