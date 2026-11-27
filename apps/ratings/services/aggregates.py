@@ -42,7 +42,11 @@ def _computed_values(game) -> dict[str, object]:
     total = int(totals["total"] or 0)
     count = int(totals["count"] or 0)
     average = (Decimal(total) / count) if count else Decimal("0")
-    distribution = {str(star): votes.filter(value=star).count() for star in range(1, 6)}
+    # One grouped query builds the whole 1-5 histogram instead of five per-star
+    # ``count()`` round-trips. Keys are pre-seeded so zero-vote buckets are kept.
+    distribution: dict[str, int] = {str(star): 0 for star in range(1, 6)}
+    for row in votes.values("value").annotate(count=Count("id")):
+        distribution[str(row["value"])] = int(row["count"])
     return {
         "total": total,
         "count": count,
