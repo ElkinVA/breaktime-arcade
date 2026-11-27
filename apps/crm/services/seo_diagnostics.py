@@ -5,6 +5,7 @@ empty localized descriptions, duplicate per-language page titles, assets
 without alt text and incomplete translation coverage. Every diagnostic is a
 separate function so it can be tested in isolation; a screen build loads the
 published games once and reuses that prefetched list for all four queries.
+Rendered lists are capped, while the per-language summary uses the full sets.
 """
 
 from __future__ import annotations
@@ -21,6 +22,13 @@ DESCRIPTION_MISSING = "description"
 META_DESCRIPTION_MISSING = "meta_description"
 MISSING_TRANSLATION = "missing_translation"
 UNSUPPORTED_LANGUAGE = "unsupported_language"
+
+# A large catalog can produce thousands of findings. The screen renders at most
+# ``ISSUE_LIST_LIMIT`` items per category (and at most ``DUPLICATE_GAMES_LIMIT``
+# game links per duplicate group) so the HTML stays bounded; the per-language
+# summary is still computed from the complete issue sets and stays exact.
+ISSUE_LIST_LIMIT = 100
+DUPLICATE_GAMES_LIMIT = 20
 
 
 def _normalized_codes(codes: Iterable[str]) -> tuple[str, ...]:
@@ -73,11 +81,21 @@ class DescriptionIssue:
 
 @dataclass(frozen=True)
 class DuplicateTitleIssue:
-    """Two or more games sharing the same effective page title in one language."""
+    """Two or more games sharing the same effective page title in one language.
+
+    ``games`` may be truncated for display; ``game_count`` always holds the full
+    number of games in the duplicate group.
+    """
 
     language_code: str
     title: str
     games: tuple[Game, ...]
+    game_count: int
+
+    @property
+    def hidden_game_count(self) -> int:
+        """Games in the group that are not rendered in the bounded list."""
+        return self.game_count - len(self.games)
 
 
 @dataclass(frozen=True)
@@ -121,7 +139,12 @@ class LanguageSummary:
 
 @dataclass(frozen=True)
 class SeoDiagnostics:
-    """Everything the SEO diagnostics template needs, already resolved."""
+    """Everything the SEO diagnostics template needs, already resolved.
+
+    The per-category tuples are capped for rendering. The ``*_count`` fields
+    carry the full issue totals, so the overview stays exact even when a list
+    is truncated.
+    """
 
     language_codes: tuple[str, ...]
     summaries: tuple[LanguageSummary, ...]
@@ -129,15 +152,36 @@ class SeoDiagnostics:
     duplicate_titles: tuple[DuplicateTitleIssue, ...]
     missing_alt: tuple[MissingAltIssue, ...]
     incomplete_translations: tuple[TranslationIssue, ...]
+    description_count: int
+    duplicate_title_count: int
+    missing_alt_count: int
+    incomplete_translation_count: int
+    issue_limit: int | None = None
 
     @property
     def total_issues(self) -> int:
         return (
-            len(self.descriptions)
-            + len(self.duplicate_titles)
-            + len(self.missing_alt)
-            + len(self.incomplete_translations)
+            self.description_count
+            + self.duplicate_title_count
+            + self.missing_alt_count
+            + self.incomplete_translation_count
         )
+
+    @property
+    def descriptions_truncated(self) -> bool:
+        return self.description_count > len(self.descriptions)
+
+    @property
+    def duplicate_titles_truncated(self) -> bool:
+        return self.duplicate_title_count > len(self.duplicate_titles)
+
+    @property
+    def missing_alt_truncated(self) -> bool:
+        return self.missing_alt_count > len(self.missing_alt)
+
+    @property
+    def incomplete_translations_truncated(self) -> bool:
+        return self.incomplete_translation_count > len(self.incomplete_translations)
 
 
 def empty_description_issues(
@@ -197,6 +241,7 @@ def duplicate_title_issues(
                     language_code=code,
                     title=entries[0][0],
                     games=tuple(game for _title, game in entries),
+                    game_count=len(entries),
                 )
             )
     return tuple(issues)
@@ -256,8 +301,42 @@ def incomplete_translation_issues(
     return tuple(issues)
 
 
-def build_seo_diagnostics(active_language_codes: Iterable[str]) -> SeoDiagnostics:
-    """Run all four published-game diagnostics and add a per-language summary."""
+def _take[T](items: tuple[T, ...], limit: int | None) -> tuple[T, ...]:
+    """Return at most ``limit`` items; ``None`` keeps everything for tests."""
+    if limit is None:
+        return items
+    return items[: max(limit, 0)]
+
+
+def _bounded_duplicates(
+    issues: tuple[DuplicateTitleIssue, ...],
+    game_limit: int | None,
+) -> tuple[DuplicateTitleIssue, ...]:
+    """Cap the game links rendered inside each duplicate-title group."""
+    if game_limit is None:
+        return issues
+    return tuple(
+        DuplicateTitleIssue(
+            language_code=issue.language_code,
+            title=issue.title,
+            games=_take(issue.games, game_limit),
+            game_count=issue.game_count,
+        )
+        for issue in issues
+    )
+
+
+def build_seo_diagnostics(
+    active_language_codes: Iterable[str],
+    *,
+    issue_limit: int | None = ISSUE_LIST_LIMIT,
+    duplicate_game_limit: int | None = DUPLICATE_GAMES_LIMIT,
+) -> SeoDiagnostics:
+    """Run all four published-game diagnostics and add a per-language summary.
+
+    Summary counts are derived from the complete issue sets before the rendered
+    lists are capped by ``issue_limit`` / ``duplicate_game_limit``.
+    """
     active = _normalized_codes(active_language_codes)
     games = tuple(published_games())
     descriptions = empty_description_issues(active, games)
@@ -278,15 +357,22 @@ def build_seo_diagnostics(active_language_codes: Iterable[str]) -> SeoDiagnostic
     return SeoDiagnostics(
         language_codes=active,
         summaries=summaries,
-        descriptions=descriptions,
-        duplicate_titles=duplicates,
-        missing_alt=alts,
-        incomplete_translations=translations,
+        descriptions=_take(descriptions, issue_limit),
+        duplicate_titles=_bounded_duplicates(_take(duplicates, issue_limit), duplicate_game_limit),
+        missing_alt=_take(alts, issue_limit),
+        incomplete_translations=_take(translations, issue_limit),
+        description_count=len(descriptions),
+        duplicate_title_count=len(duplicates),
+        missing_alt_count=len(alts),
+        incomplete_translation_count=len(translations),
+        issue_limit=issue_limit,
     )
 
 
 __all__ = [
     "DESCRIPTION_MISSING",
+    "DUPLICATE_GAMES_LIMIT",
+    "ISSUE_LIST_LIMIT",
     "MISSING_TRANSLATION",
     "META_DESCRIPTION_MISSING",
     "UNSUPPORTED_LANGUAGE",
