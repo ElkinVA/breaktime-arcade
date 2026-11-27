@@ -90,14 +90,18 @@ def send_2fa_change_notice(user: User, *, enabled: bool) -> None:
     )
 
 
-def send_email_change_notice(old_email: EmailAddress, request: HttpRequest) -> None:
-    if old_email.verified_at is None:
-        return
+def send_email_change_notice(old_email: str, request: HttpRequest) -> None:
+    """Notify the previous (verified) address after a committed change.
+
+    The caller snapshots the old address while holding the account row lock
+    and invokes this after the transaction commits, so no mail is sent while
+    the lock is held.
+    """
     send_mail(
         subject="Your Breaktime Arcade email was changed",
         message="A new email was added to your account. If it was not you, contact support.",
         from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[old_email.email],
+        recipient_list=[old_email],
         fail_silently=True,
     )
 

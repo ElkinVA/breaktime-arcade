@@ -517,11 +517,20 @@ def password_reset_confirm(request: HttpRequest, token: str) -> HttpResponse:
     form = SetPasswordForm(request.POST or None, user=token_user)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
-            token_obj = consume_token(token, AccountToken.PURPOSE_PASSWORD_RESET)
-            if token_obj is None:
+            # ARCADE-EMAIL-RESET-RACE-001: ``_update_email`` takes the same
+            # User row lock before it reads or rewrites EmailAddress and
+            # invalidates reset tokens.
+            # Locking here first makes the two submissions serializable: the
+            # password reset either completes while the old address is still
+            # current or observes the token already invalidated.
+            user = User.objects.select_for_update().filter(pk=token_user.pk).first()
+            if user is None or not user.is_active:
                 messages.error(request, "Ссылка недействительна или истекла.")
                 return redirect("accounts:password_reset")
-            user = token_obj.user
+            token_obj = consume_token(token, AccountToken.PURPOSE_PASSWORD_RESET)
+            if token_obj is None or token_obj.user_id != user.pk:
+                messages.error(request, "Ссылка недействительна или истекла.")
+                return redirect("accounts:password_reset")
             email = EmailAddress.objects.filter(user=user).first()
             if (
                 email is None
@@ -644,22 +653,26 @@ def delete_cancel(request: HttpRequest) -> HttpResponse:
 
 
 def _update_email(request: HttpRequest, user: User, value: str) -> None:
-    current = EmailAddress.objects.filter(user=user).first()
-    if not value:
-        if current is not None:
-            with transaction.atomic():
+    old_verified_email: str | None = None
+    with transaction.atomic():
+        # ARCADE-EMAIL-RESET-RACE-001: lock the account row before reading
+        # EmailAddress or touching reset tokens. ``password_reset_confirm``
+        # takes the same lock, so an email change/removal and a reset-confirm
+        # submission execute in a single linear order.
+        locked_user = User.objects.select_for_update().filter(pk=user.pk).only("pk").first()
+        if locked_user is None:
+            return
+        current = EmailAddress.objects.filter(user=user).first()
+        if not value:
+            if current is not None:
                 current.delete()
                 invalidate_tokens(user, AccountToken.PURPOSE_EMAIL_VERIFY)
                 invalidate_tokens(user, AccountToken.PURPOSE_PASSWORD_RESET)
-        return
-    if current is not None and current.email.casefold() == value.casefold():
-        return
-    if current is not None:
-        try:
-            send_email_change_notice(current, request)
-        except Exception:
-            logger.warning("account.email.change_notice_failed", exc_info=True)
-    with transaction.atomic():
+            return
+        if current is not None and current.email.casefold() == value.casefold():
+            return
+        if current is not None and current.verified_at is not None:
+            old_verified_email = current.email
         if current is None:
             EmailAddress.objects.create(user=user, email=value)
         else:
@@ -671,6 +684,11 @@ def _update_email(request: HttpRequest, user: User, value: str) -> None:
         # survive the change.
         invalidate_tokens(user, AccountToken.PURPOSE_PASSWORD_RESET)
         invalidate_tokens(user, AccountToken.PURPOSE_EMAIL_VERIFY)
+    if old_verified_email is not None:
+        try:
+            send_email_change_notice(old_verified_email, request)
+        except Exception:
+            logger.warning("account.email.change_notice_failed", exc_info=True)
     try:
         send_verification_email(user, request)
     except Exception:
