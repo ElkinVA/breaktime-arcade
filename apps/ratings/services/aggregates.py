@@ -65,7 +65,12 @@ def recalculate(game) -> GameRatingAggregate:
     return aggregate
 
 
-def recalculate_all(*, apply: bool = True, limit: int | None = None) -> dict[str, int]:
+def recalculate_all(
+    *,
+    apply: bool = True,
+    limit: int | None = None,
+    offset: int = 0,
+) -> dict[str, int]:
     """Recompute every game that has votes or an existing aggregate (§2.9).
 
     ``apply=False`` is a read-only dry run: no advisory locks are taken and
@@ -73,6 +78,10 @@ def recalculate_all(*, apply: bool = True, limit: int | None = None) -> dict[str
     single advisory lock, in ascending pk order, so the nightly job cannot
     deadlock with vote/block transitions and never holds locks for the whole
     catalog. One failing game is logged and counted, not fatal.
+
+    ``offset`` skips the first N eligible games in pk order before ``limit`` is
+    applied, so ``limit``/``offset`` walk the catalog in deterministic backfill
+    pages without re-processing earlier ones.
     """
     from apps.catalog.models import Game
 
@@ -80,6 +89,8 @@ def recalculate_all(*, apply: bool = True, limit: int | None = None) -> dict[str
         set(GameRatingVote.objects.values_list("game_id", flat=True))
         | set(GameRatingAggregate.objects.values_list("game_id", flat=True))
     )
+    if offset > 0:
+        game_ids = game_ids[offset:]
     if limit is not None:
         game_ids = game_ids[: max(0, limit)]
     scanned = updated = unchanged = failed = 0

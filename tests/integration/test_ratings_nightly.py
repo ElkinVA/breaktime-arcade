@@ -180,6 +180,49 @@ def test_nightly_processes_games_in_pk_order(monkeypatch: pytest.MonkeyPatch) ->
     assert seen == [first.id, second.id, third.id]
 
 
+@pytest.mark.django_db
+def test_nightly_offset_skips_a_pk_ordered_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
+    games = []
+    for position in range(1, 6):
+        game = _game(f"nightly_offset_{position}", pk=UUID(int=position))
+        _vote(game, _user(f"nightly_offset_user_{position}"), position)
+        games.append(game)
+    seen: list[UUID] = []
+    monkeypatch.setattr(aggregates, "_lock", lambda game_id: seen.append(game_id))
+
+    result = recalculate_all(offset=2)
+
+    assert seen == [game.id for game in games[2:]]
+    assert result == {"scanned": 3, "updated": 3, "unchanged": 0, "failed": 0}
+
+
+@pytest.mark.django_db
+def test_nightly_offset_and_limit_select_one_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    games = []
+    for position in range(1, 6):
+        game = _game(f"nightly_window_{position}", pk=UUID(int=position))
+        _vote(game, _user(f"nightly_window_user_{position}"), position)
+        games.append(game)
+    seen: list[UUID] = []
+    monkeypatch.setattr(aggregates, "_lock", lambda game_id: seen.append(game_id))
+
+    windows = []
+    for offset in (0, 2, 4):
+        seen.clear()
+        result = recalculate_all(offset=offset, limit=2)
+        assert result["scanned"] == len(seen)
+        windows.append(list(seen))
+
+    assert windows == [
+        [games[0].id, games[1].id],
+        [games[2].id, games[3].id],
+        [games[4].id],
+    ]
+    covered = [game_id for batch in windows for game_id in batch]
+    assert covered == [game.id for game in games]
+    assert len(covered) == len(set(covered))
+
+
 def test_nightly_task_and_beat_registration() -> None:
     entry = settings.CELERY_BEAT_SCHEDULE["ratings-nightly-recalc"]
     annotation = settings.CELERY_TASK_ANNOTATIONS[
@@ -235,6 +278,45 @@ def test_recalculate_ratings_command_reports_failures(monkeypatch: pytest.Monkey
 def test_recalculate_ratings_command_rejects_non_positive_limit() -> None:
     with pytest.raises(CommandError):
         call_command("recalculate_ratings", "--limit", "0")
+
+
+@pytest.mark.django_db
+def test_recalculate_ratings_command_rejects_non_positive_offset() -> None:
+    for invalid in ("0", "-1"):
+        with pytest.raises(CommandError):
+            call_command("recalculate_ratings", "--offset", invalid)
+
+
+@pytest.mark.django_db
+def test_recalculate_ratings_command_offset_pages_dry_run_window(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    games = [_game(f"nightly_page_{position}", pk=UUID(int=position)) for position in range(1, 26)]
+    for game in games:
+        GameRatingAggregate.objects.create(game=game)
+    real = aggregates._computed_values
+    seen: list[UUID] = []
+
+    def tracking(game: Game) -> dict[str, object]:
+        seen.append(game.id)
+        return real(game)
+
+    monkeypatch.setattr(aggregates, "_computed_values", tracking)
+    output = io.StringIO()
+
+    call_command(
+        "recalculate_ratings",
+        "--dry-run",
+        "--limit",
+        "10",
+        "--offset",
+        "10",
+        stdout=output,
+    )
+
+    assert seen == [game.id for game in games[10:20]]
+    assert "scanned=10" in output.getvalue()
+    assert GameRatingAggregate.objects.get(game=games[-1]).count == 0
 
 
 @pytest.mark.django_db

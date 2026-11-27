@@ -24,13 +24,26 @@ class Command(BaseCommand):
             default=None,
             help="process at most N games in pk order (smoke/backfill batches)",
         )
+        parser.add_argument(
+            "--offset",
+            type=int,
+            default=None,
+            help="skip the first N eligible games in pk order before applying --limit",
+        )
 
     def handle(self, *args: Any, **options: Any) -> None:
         limit = options["limit"]
         if limit is not None and limit < 1:
             raise CommandError("--limit must be a positive integer")
+        offset = options["offset"]
+        if offset is not None and offset < 1:
+            raise CommandError("--offset must be a positive integer")
         dry_run = bool(options["dry_run"])
-        result = recalculate_all(apply=not dry_run, limit=limit)
+        result = recalculate_all(
+            apply=not dry_run,
+            limit=limit,
+            offset=offset if offset is not None else 0,
+        )
         verb = "would_update" if dry_run else "updated"
         message = (
             f"scanned={result['scanned']} {verb}={result['updated']} "
