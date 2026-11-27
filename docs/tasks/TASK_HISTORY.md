@@ -1,7 +1,7 @@
 # TASK_HISTORY — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-27 (accounts browser E2E, player start-error
-i18n, email reset race, trusted sandbox).
+**Дата актуализации:** 2026-11-27 (CRM browser E2E, accounts browser E2E,
+player start-error i18n, email reset race, trusted sandbox).
 Хронология подтверждённых работ и аудитов. Запись не является приёмкой.
 Точные даты ранних работ в постоянных файлах не зафиксированы; ниже указано
 «дата не зафиксирована», а не выдуманная дата. Статусы: `COMPLETED`,
@@ -9,6 +9,24 @@ i18n, email reset race, trusted sandbox).
 `NOT_ACCEPTED`.
 
 ## 1. Записи работ
+
+### ARCADE-CRM-E2E-001 — CRM staff browser scenarios
+
+- **ID:** ARCADE-CRM-E2E-001.
+- **Результат:** `tests/e2e/test_crm_e2e.py`: staff login + 2FA, dashboard,
+  games list/card/versions, step-up, complaint resolve, audit log; тестовая
+  fixture создаёт disposable owner/game/version/complaint через dev-lite
+  `manage.py shell`.
+- **Проверки:** host CRM E2E **2/2**; lint 516 formatted; mypy 412;
+  standard suite 1366 passed/17 skipped; QA PASS; Reviewer ACCEPT.
+- **Autonomy:** цикл создал candidate, но упал на `ruff format`; файл
+  отформатирован, проверен вручную; Reviewer сначала ошибочно отверг
+  Python 3.14 PEP 758 `except A, B:`, после correction — ACCEPT.
+- **Статус:** COMPLETED / QA+REVIEWER ACCEPT; commit `0eca6a0`; product
+  acceptance owner.
+- **Остаток:** dev fixture не делает cleanup; full `make e2e` 31/1 из-за
+  unrelated LR-3 stale runtime; `expect_navigation` deprecated.
+- **Дата:** 2026-11-27.
 
 ### ARCADE-ACCOUNTS-E2E-002 — account browser scenarios
 

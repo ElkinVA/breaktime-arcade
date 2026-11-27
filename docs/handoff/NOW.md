@@ -2,6 +2,28 @@
 
 **Дата:** 2026-11-27
 
+## CRM browser E2E (2026-11-27)
+
+- **ARCADE-CRM-E2E-001** — **COMPLETED / QA PASS / REVIEWER ACCEPT**
+  (`0eca6a0`): host Playwright suite для staff login + 2FA, dashboard,
+  games list/card/versions, step-up, complaint resolve и audit log.
+  Host CRM E2E **2/2**; без `BA_E2E` — module-level clean skip.
+- `make lint` — 516 formatted; `make types` — 412; standard suite
+  **1366 passed / 17 skipped**. Full local `make e2e` остаётся 31/1 из-за
+  unrelated LR-3 stale published runtime; CRM acceptance не блокируется,
+  skip/маскировки нет.
+- Autonomy cycle сначала упал на `ruff format` нового теста; файл
+  отформатирован и проверен вручную, затем независимые QA/Reviewer
+  приняли `0eca6a0`. Reviewer сначала ошибочно принял Python 3.14 PEP 758
+  `except A, B:` за Python-2 синтаксис; после проверки вердикт исправлен
+  на ACCEPT.
+- Evidence:
+  `.autonomy/evidence/crm-e2e-001-evidence-2026-11-27.json`,
+  `qa-independent-crm-e2e-001-2026-11-27.json`,
+  `reviewer-independent-crm-e2e-001-2026-11-27.json`,
+  `crm-e2e-001-integration-evidence-2026-11-27.json`.
+  Report: `docs/foundation/ARCADE-CRM-E2E-001_REPORT.md`.
+
 ## Accounts browser E2E (2026-11-27)
 
 - **ARCADE-ACCOUNTS-E2E-002** — **COMPLETED / QA PASS / REVIEWER

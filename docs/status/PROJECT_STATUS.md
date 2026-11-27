@@ -1,9 +1,30 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-27 (accounts browser E2E; player start-error
-i18n; email reset race; trusted sandbox config; owner
+**Дата актуализации:** 2026-11-27 (CRM browser E2E; accounts browser E2E;
+player start-error i18n; email reset race; trusted sandbox config; owner
 checkpoint/notifications; autonomy heartbeat auth; player submit/restart
 hardening; LR-3; LR-2b; CI restore).
+
+## 0.0k. CRM browser E2E — 2026-11-27
+
+`ARCADE-CRM-E2E-001` — **COMPLETED / QA PASS / REVIEWER ACCEPT**;
+product acceptance owner.
+- Host Playwright `tests/e2e/test_crm_e2e.py`: staff login + TOTP 2FA,
+  dashboard, games list/card/versions, step-up, complaint resolve and
+  audit log; disposable dev fixtures.
+- Host CRM E2E **2/2**; lint **516 formatted**; mypy **412**; standard
+  suite **1366 passed / 17 skipped**.
+- Autonomy cycle produced the candidate but failed only on `ruff format`;
+  formatted file validated manually and accepted as `0eca6a0`. Reviewer's
+  initial PEP 758 false-positive reject was corrected; final verdict
+  ACCEPT, QA PASS.
+- Full local `make e2e` remains 31/1 due unrelated LR-3 stale published
+  runtime (`V_VERSION_DUP`/`V_PUBLISHED_UPDATE_BLOCKED`); no skip/mask.
+- Evidence: `.autonomy/evidence/crm-e2e-001-evidence-2026-11-27.json`,
+  `qa-independent-crm-e2e-001-2026-11-27.json`,
+  `reviewer-independent-crm-e2e-001-2026-11-27.json`,
+  `crm-e2e-001-integration-evidence-2026-11-27.json`; report
+  `docs/foundation/ARCADE-CRM-E2E-001_REPORT.md`.
 
 ## 0.0j. Accounts browser E2E — 2026-11-27
 

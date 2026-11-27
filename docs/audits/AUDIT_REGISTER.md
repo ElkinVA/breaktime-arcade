@@ -615,6 +615,17 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Статус | **FIXED** (`8d55edc`); candidate untouched |
 | Остаток | unit test asserts command mapping, not a live negative migration drift |
 
+## ARCADE-CRM-E2E-001 — CRM staff browser scenarios
+
+| Поле | Значение |
+|---|---|
+| Тип | Host Playwright E2E; test-only changes |
+| Результат | staff login+2FA, dashboard, games list/card/versions, step-up, complaint resolve, audit log; disposable dev fixtures |
+| Проверки | host CRM E2E 2/2; lint 516 formatted; mypy 412; standard 1366/17; QA PASS; Reviewer ACCEPT after PEP 758 correction |
+| Статус | **COMPLETED / QA PASS / REVIEWER ACCEPT** (`0eca6a0`); product acceptance owner |
+| Остаток | fixture accumulation without cleanup; full make e2e 31/1 unrelated LR-3 stale runtime; deprecated expect_navigation |
+| Источник | `.autonomy/evidence/crm-e2e-001-evidence-2026-11-27.json`, `qa-independent-crm-e2e-001-2026-11-27.json`, `reviewer-independent-crm-e2e-001-2026-11-27.json`; report `docs/foundation/ARCADE-CRM-E2E-001_REPORT.md` |
+
 ## ARCADE-ACCOUNTS-E2E-002 — account browser scenarios
 
 | Поле | Значение |
