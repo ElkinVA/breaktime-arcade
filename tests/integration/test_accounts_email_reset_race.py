@@ -59,10 +59,19 @@ def _reset_token(user: User) -> str:
     )
 
 
-def _email_change_worker(user_id: UUID, new_email: str, result: dict[str, Any]) -> None:
+def _email_change_worker(
+    user_id: UUID,
+    new_email: str,
+    result: dict[str, Any],
+    client: Client | None = None,
+) -> None:
     try:
-        client = Client()
-        client.force_login(User.objects.get(pk=user_id))
+        # Authenticate before the competing reset takes the row lock. A
+        # ``force_login`` inside this thread updates ``last_login`` and would
+        # block on the same User row before the request reaches the view.
+        if client is None:
+            client = Client()
+            client.force_login(User.objects.get(pk=user_id))
         response = client.post(
             "/en/account/edit/",
             {
@@ -156,11 +165,15 @@ def test_committed_email_change_or_removal_wins_over_old_reset_token(
         reset_started.set()
         _reset_worker(token, reset_result)
 
+    # Authenticate up front so force_login's last_login write cannot contend
+    # for the User row lock under test.
+    change_client = Client()
+    change_client.force_login(user)
     # Change/removal acquires the User lock and pauses after rewriting the
     # address, before invalidating reset tokens.
     change_thread = threading.Thread(
         target=_email_change_worker,
-        args=(user.pk, new_email, change_result),
+        args=(user.pk, new_email, change_result, change_client),
         name="email-change",
     )
     reset_thread = threading.Thread(target=reset_worker, name="reset-confirm")
@@ -253,6 +266,8 @@ def test_reset_confirm_wins_against_current_address(
 
     change_result: dict[str, Any] = {}
     reset_result: dict[str, Any] = {}
+    change_client = Client()
+    change_client.force_login(user)
 
     reset_thread = threading.Thread(
         target=_reset_worker,
@@ -261,7 +276,7 @@ def test_reset_confirm_wins_against_current_address(
     )
     change_thread = threading.Thread(
         target=_email_change_worker,
-        args=(user.pk, new_email, change_result),
+        args=(user.pk, new_email, change_result, change_client),
         name="email-change",
     )
     reset_thread.start()
