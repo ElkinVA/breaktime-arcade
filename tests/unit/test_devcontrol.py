@@ -622,6 +622,44 @@ def test_sandbox_copy_excludes_secrets(tmp_path: Path) -> None:
     assert not (code / "creds").exists()
 
 
+def test_sandbox_makemigrations_check_command(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from devcontrol.sandbox import run_tests
+
+    runtime = tmp_path / "runtime"
+    monkeypatch.setattr(run_tests, "validate_source_root", lambda value: tmp_path)
+    monkeypatch.setattr(run_tests, "default_runtime_dir", lambda: runtime)
+    monkeypatch.setattr(run_tests, "acquire_lock", lambda: 1)
+    monkeypatch.setattr(run_tests, "cleanup_stale_projects", lambda: None)
+    monkeypatch.setattr(run_tests, "copy_project", lambda code_dir, source_root: 1)
+
+    captured: dict[str, list[str]] = {}
+
+    def fake_compose(project: str, code_dir: Path, command: list[str]) -> str:
+        captured["command"] = command
+        return "name: test"
+
+    class Result:
+        returncode = 0
+
+    monkeypatch.setattr(run_tests, "compose_document", fake_compose)
+    monkeypatch.setattr(run_tests.subprocess, "run", lambda *args, **kwargs: Result())
+
+    exit_code = run_tests.main(
+        ["--source-root", str(tmp_path), "--tool", "makemigrations-check", "--timeout", "1"]
+    )
+
+    assert exit_code == 0
+    assert captured["command"] == [
+        "python",
+        "manage.py",
+        "makemigrations",
+        "--check",
+        "--dry-run",
+    ]
+
+
 def test_sandbox_compose_is_isolated(tmp_path: Path) -> None:
     from devcontrol.sandbox.run_tests import compose_document
 

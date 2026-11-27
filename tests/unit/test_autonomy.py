@@ -12,6 +12,7 @@ from autonomy.orchestrator import (
     _reviewer_verdict,
     _run_orchestrator_checks,
     _safe_file,
+    _sandbox_commands,
     _stage_task,
     _unstage,
     _validate_worktree_git,
@@ -369,14 +370,40 @@ def test_reviewer_verdict_is_strict_and_fail_closed() -> None:
 
 
 def test_orchestrator_checks_report_failed_tools(monkeypatch: pytest.MonkeyPatch) -> None:
-    commands = ["/bin/true --tool pytest", "/bin/false --tool ruff"]
+    commands = [
+        ("pytest", "/bin/true --tool pytest", "pytest -q (full suite)"),
+        (
+            "makemigrations-check",
+            "/bin/true --tool makemigrations-check",
+            "python manage.py makemigrations --check --dry-run",
+        ),
+        ("ruff", "/bin/false --tool ruff", "ruff check apps config tests devcontrol"),
+    ]
     monkeypatch.setattr("autonomy.orchestrator._sandbox_commands", lambda: commands)
 
     text, failed = _run_orchestrator_checks(Path.cwd())
 
     assert failed == ["ruff"]
     assert "pytest: exit=0" in text
+    assert "makemigrations-check: exit=0" in text
+    assert "command: python manage.py makemigrations --check --dry-run" in text
+    assert "sandbox: /bin/true --tool makemigrations-check" in text
     assert "ruff: exit=1" in text
+
+
+def test_sandbox_commands_include_named_makemigrations_check() -> None:
+    checks = _sandbox_commands()
+
+    assert [label for label, _, _ in checks] == [
+        "pytest",
+        "makemigrations-check",
+        "ruff",
+        "mypy",
+        "js",
+    ]
+    makemigrations = next(check for check in checks if check[0] == "makemigrations-check")
+    assert "--tool makemigrations-check" in makemigrations[1]
+    assert makemigrations[2] == "python manage.py makemigrations --check --dry-run"
 
 
 def test_worktree_git_pointer_must_stay_inside_project(tmp_path: Path) -> None:

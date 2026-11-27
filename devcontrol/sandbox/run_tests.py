@@ -377,7 +377,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--tool",
-        choices=("pytest", "ruff", "mypy", "js"),
+        choices=("pytest", "makemigrations-check", "ruff", "mypy", "js"),
         default="pytest",
         help="check to run inside the sandbox",
     )
@@ -396,6 +396,8 @@ def main(argv: list[str] | None = None) -> int:
     project = f"ba-sandbox-{uuid.uuid4().hex[:12]}"
     if args.tool == "pytest":
         command = ["pytest", "-q", test_path] if test_path else ["pytest", "-q"]
+    elif args.tool == "makemigrations-check":
+        command = ["python", "manage.py", "makemigrations", "--check", "--dry-run"]
     elif args.tool == "ruff":
         # Mirror the project's `make lint` target. The sandbox also carries
         # agent harness files (.claude/) that are intentionally outside the

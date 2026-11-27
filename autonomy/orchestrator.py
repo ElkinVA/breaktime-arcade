@@ -479,17 +479,36 @@ def _sandbox_command() -> str:
     return f"{ROOT / '.venv/bin/python'} {ROOT / 'devcontrol/sandbox/run_tests.py'}"
 
 
-def _sandbox_commands() -> list[str]:
+def _sandbox_commands() -> list[tuple[str, str, str]]:
+    """Return ``(label, sandbox command, evidence command)`` checks."""
     command = _sandbox_command()
     return [
-        f"{command} --source-root . --tool pytest --timeout 1800",
         (
-            f"{command} --source-root . --tool pytest "
-            "tests/integration/test_migrations_check.py --timeout 1800"
+            "pytest",
+            f"{command} --source-root . --tool pytest --timeout 1800",
+            "pytest -q (full suite)",
         ),
-        f"{command} --source-root . --tool ruff --timeout 1800",
-        f"{command} --source-root . --tool mypy --timeout 1800",
-        f"{command} --source-root . --tool js --timeout 1800",
+        (
+            "makemigrations-check",
+            f"{command} --source-root . --tool makemigrations-check --timeout 1800",
+            "python manage.py makemigrations --check --dry-run",
+        ),
+        (
+            "ruff",
+            f"{command} --source-root . --tool ruff --timeout 1800",
+            "ruff check apps config tests devcontrol && "
+            "ruff format --check apps config tests devcontrol",
+        ),
+        (
+            "mypy",
+            f"{command} --source-root . --tool mypy --timeout 1800",
+            "mypy",
+        ),
+        (
+            "js",
+            f"{command} --source-root . --tool js --timeout 1800",
+            "node --test tests/js/*.test.mjs",
+        ),
     ]
 
 
@@ -551,9 +570,8 @@ def _run_orchestrator_checks(worktree: Path) -> tuple[str, list[str]]:
     """
     lines: list[str] = []
     failed: list[str] = []
-    for command in _sandbox_commands():
+    for label, command, evidence_command in _sandbox_commands():
         argv = shlex.split(command)
-        tool = argv[argv.index("--tool") + 1]
         try:
             completed = subprocess.run(  # noqa: S603 - fixed argv, no shell
                 argv,
@@ -564,15 +582,24 @@ def _run_orchestrator_checks(worktree: Path) -> tuple[str, list[str]]:
                 check=False,
             )
             output = (completed.stdout + completed.stderr)[-3000:]
-            lines.append(f"- {tool}: exit={completed.returncode}\n{output}")
+            lines.append(
+                f"- {label}: exit={completed.returncode}\n"
+                f"command: {evidence_command}\n"
+                f"sandbox: {command}\n{output}"
+            )
             if completed.returncode != 0:
-                failed.append(tool)
+                failed.append(label)
         except subprocess.TimeoutExpired:
-            lines.append(f"- {tool}: TIMEOUT")
-            failed.append(tool)
+            lines.append(
+                f"- {label}: TIMEOUT\ncommand: {evidence_command}\nsandbox: {command}"
+            )
+            failed.append(label)
         except Exception as exc:  # noqa: BLE001 - evidence must reach QA
-            lines.append(f"- {tool}: LAUNCH ERROR {type(exc).__name__}: {exc}")
-            failed.append(tool)
+            lines.append(
+                f"- {label}: LAUNCH ERROR {type(exc).__name__}: {exc}\n"
+                f"command: {evidence_command}\nsandbox: {command}"
+            )
+            failed.append(label)
     return "\n".join(lines) or "no checks configured", failed
 
 
