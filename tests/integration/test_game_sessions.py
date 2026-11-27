@@ -694,6 +694,42 @@ def test_heartbeat_throttle_is_per_session_with_structured_error() -> None:
 
 @pytest.mark.django_db
 @override_settings(CACHES=LOCMEM_CACHES)
+def test_heartbeat_invalid_session_ids_share_one_bucket() -> None:
+    game = _game(technical_id="hb_invalid_bucket_game")
+    client, csrf = _client()
+    first = _create(client, csrf, game)
+    _activate(client, csrf, str(first["sessionId"]), str(first["ticket"]))
+    identity = AnonymousIdentity.objects.latest("created_at")
+
+    # Unknown UUIDs must not mint a bucket each: the first 3/min share the
+    # per-subject "invalid" bucket and the fourth is rejected.
+    for _ in range(3):
+        response = client.post(f"{API}/{uuid4()}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+        assert response.status_code == 404
+    blocked = client.post(f"{API}/{uuid4()}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+    assert blocked.status_code == 429
+    assert blocked.json() == {"code": "E_RATE_LIMIT", "message": "Too many requests"}
+    assert "Retry-After" in blocked.headers
+    invalid_key = f"throttle_heartbeat_anon:{identity.id}:invalid"
+    assert caches["throttle"].get(invalid_key)
+
+    # Two valid active sessions keep separate buckets.
+    second = _create(client, csrf, game)
+    _activate(client, csrf, str(second["sessionId"]), str(second["ticket"]))
+    first_key = f"throttle_heartbeat_anon:{identity.id}:{first['sessionId']}"
+    try:
+        caches["throttle"].set(first_key, [time.time()] * 3, timeout=60)
+        first_response = client.post(f"{API}/{first['sessionId']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+        assert first_response.status_code == 429
+        other = client.post(f"{API}/{second['sessionId']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+        assert other.status_code == 204
+    finally:
+        caches["throttle"].delete(first_key)
+        caches["throttle"].delete(invalid_key)
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
 def test_guest_ip_secondary_cap_applies_across_identities() -> None:
     game = _game(technical_id="ip_cap_game")
     first_client, first_csrf = _client()

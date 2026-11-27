@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import time
+from uuid import UUID
 
 from django.core.cache import caches
 from redis.exceptions import RedisError
@@ -147,15 +148,40 @@ class ReportsSubjectRateThrottle(SubjectScopedRateThrottle):
 
 
 class SessionScopedRateThrottle(ThrottleCacheMixin, ResilientThrottleMixin, SimpleRateThrottle):
-    """Heartbeat bucket: 3/min per session (Приложение E), not per subject."""
+    """Heartbeat bucket: 3/min per active session (Приложение E).
+
+    The key derives from the active ``GameSession`` resolved for the request
+    subject, never from the raw URL ``session_id``: unknown, expired or foreign
+    IDs would otherwise mint an unbounded number of buckets. Those requests
+    share a single per-subject ``invalid`` bucket instead.
+    """
 
     scope = "heartbeat"
+
+    def _active_session_id(self, request, session_id: UUID) -> UUID | None:
+        user = getattr(request, "user", None)
+        if user is not None and user.is_authenticated:
+            subject_type, subject_id = GameSession.SUBJECT_USER, user.id
+        else:
+            identity = get_anonymous_identity(request)
+            if identity is None:
+                return None
+            subject_type, subject_id = GameSession.SUBJECT_ANON, identity.id
+        session = GameSession.objects.filter(
+            pk=session_id,
+            subject_type=subject_type,
+            subject_id=subject_id,
+            state=GameSession.STATE_ACTIVE,
+        ).first()
+        return None if session is None else session.id
 
     def get_cache_key(self, request, view):
         session_id = view.kwargs.get("session_id")
         if session_id is None:
             return None
-        return f"throttle_heartbeat_{_subject_ident(request)}:{session_id}"
+        resolved = self._active_session_id(request, session_id)
+        suffix = "invalid" if resolved is None else resolved
+        return f"throttle_heartbeat_{_subject_ident(request)}:{suffix}"
 
 
 class StorageSessionRateThrottle(ThrottleCacheMixin, ResilientThrottleMixin, SimpleRateThrottle):
