@@ -574,6 +574,26 @@ BA-AUDIT-001 (предшествующий аудит) выявил A-001–A-00
 | Остаток | reset-request address read without lock; pre-existing verify-path AB-BA; User lock held during PBKDF2/session invalidation |
 | Источник | `docs/foundation/ARCADE-EMAIL-RESET-RACE-001_REPORT.md`; модели: developer `deepseek-flash[1m]`, code/security reviews `deepseek-v4-pro` |
 
+## ARCADE-RATINGS-OFFSET-001 — ratings backfill paging
+
+| Поле | Значение |
+|---|---|
+| Тип | Backend deterministic paging + bounded autonomy run |
+| Результат | `recalculate_ratings --offset N`; `recalculate_all(offset=0)`; pk-ordered offset/limit pages; invalid offset rejected |
+| Проверки | Clean orchestrator run `status=completed`, service `Result=success`; QA pass; reviewer ACCEPT; full suite/ruff/mypy/js from orchestrator checks clean |
+| Статус | **COMPLETED / QA+REVIEWER ACCEPT** (`cef14b5`); product acceptance owner |
+| Остаток | Minor latent hardening: direct `recalculate_all(offset=-1)` slices from end; command rejects negative |
+| Источник | `.autonomy/evidence/developer-a07cc441...`, `qa-23fa54b5...`, `reviewer-73ce1e27...`; модели: developer/QA `deepseek-flash[1m]`, reviewer `deepseek-v4-pro` |
+
+## ARCADE-SUBMIT-RESTART-CLEANUP-001 — protected SDK scope
+
+| Поле | Значение |
+|---|---|
+| Тип | Task blocked by protected-path policy |
+| Результат | Developer proposed editing `sdk/1.1.0/ba-sdk.js`; `sdk/` is in `PROTECTED_PARTS` |
+| Статус | **BLOCKED / PROTECTED_PATH_SCOPE**; no bypass |
+| Остаток | Owner decision on SDK scope or split task; player/SDK residuals remain |
+
 ## APPF-RUNTIME-REVIEW-001 — App F Runtime
 
 | Поле | Значение |

@@ -20,10 +20,22 @@
 - Bounded-run после `resume` дошёл до кандидата, но упал на двух новых
   race-тестах: `force_login` в потоке email-change блокировался на
   `update_last_login` о lock reset-confirm. Тест исправлен аутентификацией
-  до старта конкурирующей транзакции; кандидат принят технически. Это
-  **не** успешный end-to-end autonomy run: следующий bounded-run и проверка
-  gate ещё впереди, timer OFF.
-- Отчёты: `docs/foundation/AUTONOMY_SANDBOX_CHECKS_FIX.md`,
+  до старта конкурирующей транзакции; кандидат принят технически.
+- **ARCADE-RATINGS-OFFSET-001** — **COMPLETED / CLEAN BOUNDED-RUN /
+  QA+REVIEWER ACCEPT** (`cef14b5`): `recalculate_ratings --offset`,
+  детерминированные pk-страницы, тесты offset/limit и invalid offset.
+  Orchestrator run завершился `status=completed`; service `Result=success`;
+  queue COMPLETED 28. Это подтверждает end-to-end autonomy-loop (developer
+  Flash, QA/reviewer Pro) после починки trusted sandbox.
+- `ARCADE-SUBMIT-RESTART-CLEANUP-001` — **BLOCKED /
+  PROTECTED_PATH_SCOPE**: developer предложил менять `sdk/1.1.0/ba-sdk.js`;
+  `sdk/` защищён и требует решения владельца. Задача не обходилась.
+- **Gate verification:** `autonomy pause` → `autonomy run --max-tasks 1`
+  вернул `status=paused`, `OWNER_ACTION_REQUIRED`, без claim/current;
+  очередь не изменилась; gate затем очищен через `resume`.
+- Full suite на merged main: **1363 passed, 17 skipped, exit 0**
+  (666.30 s); ruff 515 formatted, mypy 412. 30-минутный timer ещё не
+  включён. Отчёты: `docs/foundation/AUTONOMY_SANDBOX_CHECKS_FIX.md`,
   `docs/foundation/ARCADE-EMAIL-RESET-RACE-001_REPORT.md`.
 
 ## Product vision mapping (2026-11-26)

@@ -42,6 +42,32 @@
   `verify_email_token`; lock удерживается на PBKDF2/session invalidation.
 - **Дата:** 2026-11-27.
 
+### ARCADE-RATINGS-OFFSET-001 — ratings backfill paging
+
+- **ID:** ARCADE-RATINGS-OFFSET-001.
+- **Результат:** `recalculate_ratings --offset N`; `recalculate_all` принимает
+  keyword-only `offset=0`, детерминированные pk-страницы, сохранены
+  dry-run/failure isolation/unchanged skip; тесты offset/limit и invalid
+  offset. Схема не менялась.
+- **Проверки:** clean orchestrator bounded-run завершился `status=completed`
+  (`cef14b5`); QA pass; reviewer ACCEPT с minor (direct
+  `recalculate_all(offset=-1)` latent hardening; command already rejects).
+  Full suite/ruff/mypy/js — orchestrator checks clean; final main suite
+  **1363 passed, 17 skipped, exit 0** (666.30 s), ruff 515, mypy 412.
+- **Статус:** COMPLETED / QA+REVIEWER ACCEPT; product acceptance owner.
+- **Модели:** developer/QA — `deepseek-flash[1m]`; reviewer —
+  `deepseek-v4-pro`.
+- **Дата:** 2026-11-27.
+
+### ARCADE-SUBMIT-RESTART-CLEANUP-001 — protected SDK scope
+
+- **ID:** ARCADE-SUBMIT-RESTART-CLEANUP-001.
+- **Результат:** bounded-run остановлен до candidate: developer предложил
+  изменение `sdk/1.1.0/ba-sdk.js`, а `sdk/` входит в `PROTECTED_PARTS`.
+- **Статус:** BLOCKED / `PROTECTED_PATH_SCOPE`; обход protected path не
+  выполнялся; нужно решение владельца о scope SDK или отдельная задача.
+- **Дата:** 2026-11-27.
+
 ### OWNER-VISION-MAPPING-2026-11-26 — product/SEO mapping
 
 - **ID:** OWNER-VISION-MAPPING-2026-11-26.
@@ -101,10 +127,14 @@
   Чистый end-to-end success ещё не подтверждён; timer остаётся
   выключенным. Историческая journal-запись с секретом относится к
   старому `export`-файлу, в Git секрет не попал.
-- **Статус:** PARTIAL — auth verified, timer disabled, end-to-end run
-  pending; Windows/WSL autostart не настраивался.
-- **Следующий шаг:** выполнить чистый bounded-run на READY-задаче,
-  проверить gate, затем owner review перед включением timer.
+- **Gate check 2026-11-27:** `pause` + `run --max-tasks 1` вернул
+  `paused`/`OWNER_ACTION_REQUIRED` без claim; queue не изменилась; gate
+  очищен. Timer ещё не включён.
+- **Статус:** PARTIAL — auth verified, clean bounded-run confirmed
+  (ratings task), gate verified, timer pending; Windows/WSL autostart
+  не настраивался.
+- **Следующий шаг:** green full suite + docs commit, затем
+  `systemctl --user enable --now ba-autonomy-orchestrator.timer`.
 - **Модели:** orchestrator routing Pro/Flash; установка/проверка —
   `deepseek-flash[1m]`.
 

@@ -22,8 +22,20 @@ owner.
   copied and ruff mirrors `make lint`. Independent review ACCEPT.
 - Первый повторный bounded-run дошёл до кандидата, но упал только на
   тестовой настройке `force_login`/`update_last_login`; тест исправлен,
-  кандидат принят технически. End-to-end autonomy success ещё не
-  подтверждён; timer OFF.
+  кандидат принят технически.
+- `ARCADE-RATINGS-OFFSET-001` — **COMPLETED / CLEAN BOUNDED-RUN /
+  QA+REVIEWER ACCEPT** (`cef14b5`): `recalculate_ratings --offset`,
+  детерминированные pk-страницы, тесты offset/limit и invalid offset;
+  orchestrator `status=completed`, service `Result=success`, queue
+  COMPLETED 28. Это подтверждает end-to-end loop после починки sandbox.
+- `ARCADE-SUBMIT-RESTART-CLEANUP-001` — **BLOCKED /
+  PROTECTED_PATH_SCOPE**: требуется изменение `sdk/1.1.0/ba-sdk.js`,
+  `sdk/` защищён и требует owner approval; обход не выполнялся.
+- Gate verification completed: `autonomy pause` → `run --max-tasks 1`
+  returned `paused`/`OWNER_ACTION_REQUIRED` with no claim; queue unchanged;
+  gate cleared. Final main suite **1363 passed, 17 skipped, exit 0**
+  (666.30 s); ruff 515 formatted, mypy 412. 30-minute timer still OFF
+  pending docs commit.
 - Отчёты: `docs/foundation/ARCADE-EMAIL-RESET-RACE-001_REPORT.md`,
   `docs/foundation/AUTONOMY_SANDBOX_CHECKS_FIX.md`.
 

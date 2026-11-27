@@ -99,8 +99,11 @@ ba-autonomy-orchestrator.timer
   end-to-end результата и проверки gate ещё нужен. Timer-запусков не
   было. Историческая journal-запись с секретом относится к старому
   `export`-файлу; в Git секрет не попал.
-- Следующее действие: чистый bounded-run на READY-задаче, проверка
-  `OWNER_ACTION_REQUIRED`, затем
-  `systemctl --user enable --now ba-autonomy-orchestrator.timer`.
+- **2026-11-27 clean run:** `ARCADE-RATINGS-OFFSET-001` completed by the
+  orchestrator (`cef14b5`; QA pass, reviewer ACCEPT); service
+  `Result=success`, task `status=completed`. `ARCADE-SUBMIT-RESTART-
+  CLEANUP-001` blocked on protected `sdk/` scope, not bypassed.
+- Следующее действие: проверить `OWNER_ACTION_REQUIRED` на новом запуске,
+  затем `systemctl --user enable --now ba-autonomy-orchestrator.timer`.
 - WSL должен быть запущен; после завершения WSL/Windows timer не
   работает без отдельного Windows/WSL autostart (не настраивался).
