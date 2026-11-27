@@ -103,7 +103,12 @@ ba-autonomy-orchestrator.timer
   orchestrator (`cef14b5`; QA pass, reviewer ACCEPT); service
   `Result=success`, task `status=completed`. `ARCADE-SUBMIT-RESTART-
   CLEANUP-001` blocked on protected `sdk/` scope, not bypassed.
-- Следующее действие: проверить `OWNER_ACTION_REQUIRED` на новом запуске,
-  затем `systemctl --user enable --now ba-autonomy-orchestrator.timer`.
+- `OWNER_ACTION_REQUIRED` verified: a gated run returned `paused` without
+  claiming a task. Main suite **1363 passed / 17 skipped**, ruff/mypy clean;
+  main pushed (`dcc6070`).
+- **Timer OFF:** `systemctl --user enable --now ba-autonomy-orchestrator.timer`
+  was blocked by the auto-mode permission harness; owner must run it
+  manually. After enabling, the timer will launch the existing bounded run
+  every 30 minutes.
 - WSL должен быть запущен; после завершения WSL/Windows timer не
   работает без отдельного Windows/WSL autostart (не настраивался).

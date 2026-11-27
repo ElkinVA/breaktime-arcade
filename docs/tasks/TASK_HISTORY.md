@@ -129,12 +129,16 @@
   старому `export`-файлу, в Git секрет не попал.
 - **Gate check 2026-11-27:** `pause` + `run --max-tasks 1` вернул
   `paused`/`OWNER_ACTION_REQUIRED` без claim; queue не изменилась; gate
-  очищен. Timer ещё не включён.
-- **Статус:** PARTIAL — auth verified, clean bounded-run confirmed
-  (ratings task), gate verified, timer pending; Windows/WSL autostart
+  очищен. Full suite main **1363 passed / 17 skipped**, ruff/mypy clean;
+  main запушен (`dcc6070`).
+- **Timer OFF:** команда `systemctl --user enable --now
+  ba-autonomy-orchestrator.timer` заблокирована auto-mode permission
+  harness; требуется ручное действие владельца.
+- **Статус:** PARTIAL — auth verified, clean bounded-run confirmed,
+  gate verified; timer ожидает owner action; Windows/WSL autostart
   не настраивался.
-- **Следующий шаг:** green full suite + docs commit, затем
-  `systemctl --user enable --now ba-autonomy-orchestrator.timer`.
+- **Следующий шаг:** владельцу выполнить enable timer; затем CI/QA
+  следующего run.
 - **Модели:** orchestrator routing Pro/Flash; установка/проверка —
   `deepseek-flash[1m]`.
 

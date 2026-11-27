@@ -34,8 +34,12 @@
   вернул `status=paused`, `OWNER_ACTION_REQUIRED`, без claim/current;
   очередь не изменилась; gate затем очищен через `resume`.
 - Full suite на merged main: **1363 passed, 17 skipped, exit 0**
-  (666.30 s); ruff 515 formatted, mypy 412. 30-минутный timer ещё не
-  включён. Отчёты: `docs/foundation/AUTONOMY_SANDBOX_CHECKS_FIX.md`,
+  (666.30 s); ruff 515 formatted, mypy 412. Main запушен в origin
+  (`dcc6070`); CI run не проверен из этой среды (`gh` отсутствует).
+- **Timer остаётся OFF:** `systemctl --user enable --now
+  ba-autonomy-orchestrator.timer` заблокирован auto-mode permission
+  harness; владельцу нужно выполнить команду вручную. Отчёты:
+  `docs/foundation/AUTONOMY_SANDBOX_CHECKS_FIX.md`,
   `docs/foundation/ARCADE-EMAIL-RESET-RACE-001_REPORT.md`.
 
 ## Product vision mapping (2026-11-26)

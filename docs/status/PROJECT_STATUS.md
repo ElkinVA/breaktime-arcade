@@ -34,8 +34,12 @@ owner.
 - Gate verification completed: `autonomy pause` → `run --max-tasks 1`
   returned `paused`/`OWNER_ACTION_REQUIRED` with no claim; queue unchanged;
   gate cleared. Final main suite **1363 passed, 17 skipped, exit 0**
-  (666.30 s); ruff 515 formatted, mypy 412. 30-minute timer still OFF
-  pending docs commit.
+  (666.30 s); ruff 515 formatted, mypy 412. Main pushed to origin
+  (`dcc6070`); CI not verified (`gh` unavailable).
+- 30-minute timer remains **OFF**: the `systemctl --user enable --now`
+  call was blocked by the auto-mode permission harness; owner action is
+  required. Command:
+  `systemctl --user enable --now ba-autonomy-orchestrator.timer`.
 - Отчёты: `docs/foundation/ARCADE-EMAIL-RESET-RACE-001_REPORT.md`,
   `docs/foundation/AUTONOMY_SANDBOX_CHECKS_FIX.md`.
 
