@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import threading
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,6 +10,7 @@ import pytest
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import connections
 from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import timezone
@@ -16,6 +18,7 @@ from django.utils import timezone
 from apps.crm.models.backup import BackupRun
 from apps.crm.services.backup import (
     REQUIRED_TABLES,
+    RESTORE_CHECK_LOCK_BUSY_MESSAGE,
     _db_params,
     _pg_env,
     _rotate,
@@ -145,6 +148,66 @@ def test_restore_check_success(monkeypatch, tmp_path: Path) -> None:
     assert run.meta["table_count"] == 42
     assert run.meta["required_tables"] == len(REQUIRED_TABLES)
     assert run.meta["migration_count"] == 100
+
+
+@pytest.mark.django_db(transaction=True)
+def test_restore_check_concurrent_runs_are_serialized(monkeypatch, tmp_path: Path) -> None:
+    """Два параллельных запуска: ровно один успех, второй — явный failed."""
+    backup = tmp_path / "ba.dump"
+    backup.write_bytes(b"dump")
+    _full_run_for(backup)
+
+    loser_done = threading.Event()
+    barrier = threading.Barrier(2)
+    results: list[BackupRun] = []
+    failures: list[Exception] = []
+    results_lock = threading.Lock()
+
+    def blocking_run(cmd, **kwargs):
+        # Победитель держит advisory lock, пока проигравший не завершится:
+        # иначе второй прогон мог бы стартовать уже после освобождения.
+        if not loser_done.wait(timeout=30):
+            raise subprocess.TimeoutExpired(cmd, 30)
+        return _fake_restore_success(cmd, **kwargs)
+
+    monkeypatch.setattr("apps.crm.services.backup.subprocess.run", blocking_run)
+
+    def worker() -> None:
+        try:
+            barrier.wait(timeout=30)
+            run = run_restore_check(backup)
+        except Exception as exc:
+            with results_lock:
+                failures.append(exc)
+                loser_done.set()
+            return
+        finally:
+            connections.close_all()
+        with results_lock:
+            results.append(run)
+            if run.status != BackupRun.STATUS_SUCCESS:
+                loser_done.set()
+
+    threads = [threading.Thread(target=worker, name=f"restore-{i}") for i in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=60)
+    loser_done.set()
+
+    assert not any(thread.is_alive() for thread in threads)
+    assert not failures, failures
+    assert len(results) == 2
+    statuses = sorted(run.status for run in results)
+    assert statuses == [BackupRun.STATUS_FAILED, BackupRun.STATUS_SUCCESS]
+
+    failed = next(run for run in results if run.status == BackupRun.STATUS_FAILED)
+    assert failed.error_message == RESTORE_CHECK_LOCK_BUSY_MESSAGE
+    assert failed.verified_at is None
+    assert failed.meta["advisory_lock"] == "busy"
+
+    succeeded = next(run for run in results if run.status == BackupRun.STATUS_SUCCESS)
+    assert succeeded.verified_at is not None
 
 
 @pytest.mark.django_db

@@ -15,6 +15,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
+from django.db import connection
 from django.utils import timezone
 
 from apps.crm.models.backup import BackupRun
@@ -22,6 +23,13 @@ from apps.crm.models.backup import BackupRun
 logger = logging.getLogger(__name__)
 
 RESTORE_CHECK_TARGET_DB = "ba_restore_check"
+# Session advisory-lock, сериализующий проверки восстановления: параллельный
+# DROP/CREATE временной БД ломает чужой прогон и даёт ложные ошибки.
+# Ключ фиксированный (0x5245434B == "RECK"), помещается в signed int64.
+RESTORE_CHECK_ADVISORY_LOCK_KEY = 0x5245434B
+RESTORE_CHECK_LOCK_BUSY_MESSAGE = (
+    "Проверка восстановления уже выполняется другим процессом; повторный запуск пропущен"
+)
 REQUIRED_TABLES = (
     "django_migrations",
     "accounts_user",
@@ -188,12 +196,48 @@ def _required_tables_sql() -> str:
     )
 
 
+def _try_acquire_restore_lock() -> bool:
+    """Пытается взять advisory lock, не блокируя процесс."""
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_try_advisory_lock(%s)", [RESTORE_CHECK_ADVISORY_LOCK_KEY])
+        row = cursor.fetchone()
+    return bool(row and row[0])
+
+
+def _release_restore_lock() -> None:
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_advisory_unlock(%s)", [RESTORE_CHECK_ADVISORY_LOCK_KEY])
+    except Exception as exc:
+        # Снятие блокировки не должно скрывать результат самой проверки.
+        logger.warning("restore-check: не удалось освободить advisory lock: %s", exc)
+
+
 def run_restore_check(backup_path: Path | None = None) -> BackupRun:
-    """Восстанавливает дамп в ba_restore_check и проверяет его содержимое."""
+    """Восстанавливает дамп в ba_restore_check и проверяет его содержимое.
+
+    Параллельные запуски сериализуются session-level advisory lock: второй
+    процесс не трогает ba_restore_check и завершается с явным failed-статусом.
+    """
     run = BackupRun.objects.create(
         type=BackupRun.TYPE_RESTORE_CHECK, status=BackupRun.STATUS_RUNNING
     )
+    if not _try_acquire_restore_lock():
+        run.status = BackupRun.STATUS_FAILED
+        run.error_message = RESTORE_CHECK_LOCK_BUSY_MESSAGE
+        run.meta = {
+            "advisory_lock": "busy",
+            "advisory_lock_key": RESTORE_CHECK_ADVISORY_LOCK_KEY,
+        }
+        _finish(run)
+        return run
+    try:
+        return _run_restore_check_locked(run, backup_path)
+    finally:
+        _release_restore_lock()
 
+
+def _run_restore_check_locked(run: BackupRun, backup_path: Path | None) -> BackupRun:
     if backup_path is None:
         last = (
             BackupRun.objects.filter(type=BackupRun.TYPE_FULL, status=BackupRun.STATUS_SUCCESS)

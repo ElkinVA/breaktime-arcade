@@ -32,6 +32,11 @@ make restore-check
 8. удаляет `ba_restore_check` (best-effort) и сохраняет
    `BackupRun(type=restore_check)` и `verified_at` только при успехе.
 
+Параллельные запуски сериализуются session-level advisory lock PostgreSQL
+(`pg_try_advisory_lock`). Второй процесс не трогает `ba_restore_check` и
+завершается с `BackupRun(status=failed)` и сообщением, что проверка уже
+выполняется, — ложного успеха при гонке не бывает.
+
 Успех означает структурную проверку восстановления, а не проверку
 целостности всех данных: пустой по содержимому, но структурно корректный
 дамп пройдёт. Полноценный production restore и PITR не реализованы.
