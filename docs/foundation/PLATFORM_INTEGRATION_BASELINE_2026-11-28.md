@@ -54,7 +54,38 @@ Makefile/CI в этот блок не входят.
 
 `b035720` завершился после forensic cutoff, но до остановки таймера; он
 сохранён, а не отброшен. Все девять коммитов fast-forward-слиты в локальный
-`main`; reset, clean и удаление worktree не выполнялись.
+`main`; reset, clean и удаление worktree не выполнялись (worktree
+`ARCADE-CATALOG-GAME-TAXONOMY-001` был штатно удалён оркестратором после
+merge, не аудитом).
+
+### Изменённые файлы продуктовых коммитов
+
+- Accounts: `apps/accounts/services/email.py`,
+  `apps/accounts/services/rate_limit.py`, `apps/accounts/views.py`,
+  `tests/integration/test_accounts_email_verify_reset_race.py`,
+  `tests/unit/test_account_services.py`.
+- Catalog/SEO: `apps/catalog/services/catalog.py`,
+  `apps/catalog/views.py`,
+  `apps/catalog/templates/catalog/game_detail.html`,
+  `apps/crm/services/seo_diagnostics.py`,
+  `apps/crm/templates/crm/seo_diagnostics.html`,
+  `apps/core/views.py`, `config/urls.py`, `templates/partials/header.html`.
+- Gameplay/ratings: `apps/gameplay/api/throttling.py`,
+  `tests/integration/test_game_sessions.py`,
+  `tests/integration/test_ratings_block_race.py`,
+  `tests/integration/test_rate_limit_redis.py`,
+  `tests/integration/test_catalog_game_credits.py`,
+  `tests/integration/test_catalog_game_taxonomy.py`,
+  `tests/integration/test_crm_seo_diagnostics.py`,
+  `tests/integration/test_portal_shell.py`.
+- CRM browser E2E: `tests/e2e/test_crm_e2e.py`.
+- i18n data: `apps/i18n/migrations/0014_seed_game_credits_strings.py`,
+  `apps/i18n/migrations/0015_seed_game_taxonomy_strings.py`.
+- Integration: `autonomy/orchestrator.py` (formatting only).
+
+Полный diff review-ветки: **24 файла** в девяти продуктовых коммитах,
+плюс `autonomy/orchestrator.py` (formatting), отчёт и две записи handoff/
+status; всего 28 файлов от `b59cc12`.
 
 ## 4. Проверки
 
