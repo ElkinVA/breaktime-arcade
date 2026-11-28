@@ -142,8 +142,7 @@ def test_genre_language_switcher_slug_redirects_to_canonical_language_slug() -> 
 
     canonical = Client().get("/en/genres/logic-en/")
     assert canonical.status_code == 200
-    assert 'href="https://portal.test:8443/en/genres/logic-en/"' in canonical.content.decode()
-    assert (
-        'hreflang="ru" href="https://portal.test:8443/ru/genres/logika/"'
-        in canonical.content.decode()
-    )
+    origin = settings.PORTAL_ORIGIN.rstrip("/")
+    canonical_content = canonical.content.decode()
+    assert f'href="{origin}/en/genres/logic-en/"' in canonical_content
+    assert f'hreflang="ru" href="{origin}/ru/genres/logika/"' in canonical_content

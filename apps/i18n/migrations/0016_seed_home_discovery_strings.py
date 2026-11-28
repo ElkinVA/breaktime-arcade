@@ -17,7 +17,6 @@ STRINGS = {
             "apply": "Apply",
             "all_games": "All games",
         },
-        "nav": {"games": "Games"},
     },
     "ru": {
         "home": {
@@ -41,6 +40,7 @@ STRINGS = {
             "sort_old": "Сначала старые",
         },
         "nav": {"games": "Игры"},
+        "ui": {"go_home": "На главную"},
     },
 }
 

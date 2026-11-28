@@ -322,7 +322,18 @@ def genre_detail(
     # The language switcher swaps only the URL prefix. Resolve a slug from any
     # language first, then redirect to the current language's canonical slug
     # instead of returning 404 or serving a canonical/hreflang mismatch.
-    found = GenreTranslation.objects.filter(slug=slug).select_related("genre").first()
+    found = (
+        GenreTranslation.objects.filter(language__code=language_code, slug=slug)
+        .select_related("genre")
+        .first()
+        or GenreTranslation.objects.filter(language__code="en", slug=slug)
+        .select_related("genre")
+        .first()
+        or GenreTranslation.objects.filter(slug=slug)
+        .select_related("genre")
+        .order_by("language__code")
+        .first()
+    )
     genre = found.genre if found is not None else get_object_or_404(Genre, code=slug)
     translation = (
         GenreTranslation.objects.filter(genre=genre, language__code=language_code)
