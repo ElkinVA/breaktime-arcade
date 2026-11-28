@@ -9,18 +9,22 @@
   heartbeat preflight (`fc00333`, `5bc8a81`), post-commit password-reset
   delivery (`b6cb1d1`), CRM E2E teardown/ZIP checks (`ba36d8e`,
   `636259f`) and CI-scope Makefile lint (`3716d52`).
-- Final fresh-database regression: **1395 passed, 18 skipped, 1 warning,
+- Final fresh-database local regression: **1395 passed, 18 skipped, 1 warning,
   88.29% coverage, 800.89 s, exit 0** at `636259f`. Independent code review
   ACCEPT after the game-delete invariant fix; independent QA PASS for the
   code/delta and targeted tests.
-- Review branch is pushed through `21beb4b`; PR #1 is
-  Draft/open/unmerged. CI #172 (`9779622`) and CI #173 (`21beb4b`) both
-  completed **success**; `quality`, `frontend`, `e2e`, `image` and
-  `django-next` are green. A docs-only commit follows the code/test HEAD;
-  no merge and no product acceptance claimed.
-- Browser E2E was not run locally because dev-lite web remains unhealthy
-  (pre-existing permission error); the GitHub E2E job passed in both CI
-  #172 and CI #173.
+- Review branch HEAD `e7b1b0e`; PR #1 is Draft/open/unmerged. CI #174
+  (`46126028661`) completed **success**: GitHub Python **1406 passed,
+  8 skipped**, coverage **88.32%**, Browser E2E **36 passed in 321.37 s**;
+  `quality`, `frontend`, `e2e`, `image` and `django-next` are green.
+- Local vs GitHub counts: the dev-lite `web` container lacks `git`, so ten
+  tests skip locally (nine autonomy-worktree tests plus one devcontrol test)
+  while GitHub runs them. The local full run predates test-only `21beb4b`;
+  comparable local is 1396/18 vs CI 1406/8. This is an environment
+  difference, not a failure.
+- PR #1 remains Draft/open/unmerged; no product acceptance claimed. A
+  docs-only commit follows the code/test HEAD; no CI result is claimed for
+  that docs commit.
 
 ### Baseline history (99cb379)
 

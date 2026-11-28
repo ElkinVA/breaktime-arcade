@@ -19,6 +19,8 @@ New commits:
   version and leaves the append-only audit row intact.
 - `21beb4b` — regression test for authenticated-user exemption from the
   guest IP preflight.
+- `e7b1b0e` — documentation closeout: actual CI #174 results, local/CI
+  count explanation, and final state.
 
 ## 1. Heartbeat throttling
 
@@ -97,8 +99,22 @@ This matches the GitHub CI quality scope; no AI HQ functionality changed.
 | Mypy | Success: no issues found in 413 source files |
 | Django check / migrations | System check clean; No changes detected |
 | JS check/tests | 47 passed, 0 failed |
-| Full fresh-database pytest | **1395 passed, 18 skipped, 1 warning; 88.29% coverage; 800.89 s; exit 0** |
-| Browser E2E | NOT RUN locally: dev-lite web is unhealthy (pre-existing permission error) |
+| Full local fresh-database pytest | **1395 passed, 18 skipped, 1 warning; 88.29% coverage; 800.89 s; exit 0** at `636259f` |
+| Local after test-only `21beb4b` | targeted heartbeat 20 passed; full local not rerun |
+| GitHub CI quality (Python) | **1406 passed, 8 skipped, 1 warning; 88.32% coverage** |
+| GitHub CI browser E2E | **36 passed in 321.37 s** |
+| Browser E2E locally | NOT RUN: dev-lite web is unhealthy (pre-existing permission error); GitHub E2E job passed |
+
+**Local/CI difference:** the local full run executes inside the dev-lite
+`web` container, which has **no `git` executable**. Ten tests therefore skip
+locally with `git is required`: nine in
+`tests/integration/test_autonomy_worktree.py` and one in
+`tests/unit/test_devcontrol.py`. The GitHub Ubuntu runner has git, so it runs
+those ten. Verified directly:
+`pytest tests/integration/test_autonomy_worktree.py tests/unit/test_devcontrol.py -q -rs`
+reported exactly ten `git is required` skips. The local full run predates the
+test-only `21beb4b`; after adding that test the comparable local total is
+1396/18 vs CI 1406/8. This is an environment difference, not a test failure.
 
 Independent QA (read-only, separate from implementer): **PASS** for the
 seven follow-up commits plus targeted heartbeat/account evidence. QA did not
@@ -123,21 +139,25 @@ browser E2E/live HTTP were not executed. QA disclosed the residuals below.
 
 GitHub CI / Draft PR: **PR #1 exists and remains Draft/open/unmerged.**
 
-- CI run `#172` (`46123966569`) on earlier HEAD `9779622`: **success**;
+- CI run `#172` (`46123966569`) on HEAD `9779622`: **success**;
   `quality`, `frontend`, `e2e`, `image` and `django-next` all success.
-- CI run `#173` (`46125070605`) on current code/test HEAD `21beb4b`:
-  **success**; `quality`, `frontend`, `e2e`, `image` and `django-next` all
-  success.
+- CI run `#173` (`46125070605`) on code/test HEAD `21beb4b`: **success**;
+  all five jobs success.
+- CI run `#174` (`46126028661`) on final documentation HEAD `e7b1b0e`:
+  **success**; all five jobs success. Python: 1406 passed, 8 skipped;
+  coverage 88.32%; Browser E2E: 36 passed in 321.37 s.
 
 Run links:
 - https://github.com/ElkinVA/breaktime-arcade/actions/runs/46123966569
 - https://github.com/ElkinVA/breaktime-arcade/actions/runs/46125070605
+- https://github.com/ElkinVA/breaktime-arcade/actions/runs/46126028661
 
 PR: https://github.com/ElkinVA/breaktime-arcade/pull/1
 
-The `21beb4b` commit is test-only (authenticated-user guest-IP exemption
-coverage); CI #173 ran the full workflow on it. No merge and no
-Draft-to-ready transition was performed.
+`django-next` has `continue-on-error: true`; it is additional coverage, not
+the blocking gate. The `21beb4b` commit is test-only; `e7b1b0e` is the
+documentation closeout. No merge and no Draft-to-ready transition was
+performed.
 
 Branch compare:
 `https://github.com/ElkinVA/breaktime-arcade/compare/main...review/platform-integration-baseline-20261128`

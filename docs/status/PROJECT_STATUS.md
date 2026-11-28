@@ -19,21 +19,22 @@ hardening; LR-3; LR-2b; CI restore).
   `fc00333`/`5bc8a81` heartbeat preflight, `b6cb1d1` post-commit password
   reset delivery, `ba36d8e`/`636259f` CRM E2E cleanup/ZIP checks, and
   `3716d52` CI-scope Makefile lint.
-- Final fresh-database regression at `636259f`: **1395 passed, 18 skipped,
-  1 warning, 800.89 s, exit 0**, coverage **88.29%**. Independent code
-  review ACCEPT after the game-delete invariant fix; independent QA PASS for
-  the code/delta and targeted tests.
-- Review branch is pushed through `21beb4b`; PR #1 is
-  Draft/open/unmerged. CI #172 (`9779622`) and CI #173 (`21beb4b`) both
-  completed **success**; `quality`, `frontend`, `e2e`, `image` and
-  `django-next` are green. A docs-only commit follows the code/test HEAD;
-  no CI result is claimed for that docs commit.
-- Browser E2E was not run locally because the pre-existing dev-lite web
-  service is unhealthy and the portal returns 502; the GitHub E2E job
-  passed in both CI #172 and CI #173.
-- Initial baseline at `99cb379` (superseded by the follow-up) passed
-  **1387 passed, 18 skipped, 1108.54 s** with `--reuse-db`.
-- Local `main` remains unmerged; no product acceptance is claimed.
+- Final fresh-database local regression at `636259f`: **1395 passed, 18
+  skipped, 1 warning, 800.89 s, exit 0**, coverage **88.29%**. Independent
+  code review ACCEPT after the game-delete invariant fix; independent QA
+  PASS for the code/delta and targeted tests.
+- Review branch HEAD `e7b1b0e`; PR #1 is Draft/open/unmerged. CI #174
+  (`46126028661`) completed **success**: GitHub Python **1406 passed,
+  8 skipped**, coverage **88.32%**, Browser E2E **36 passed in 321.37 s**;
+  `quality`, `frontend`, `e2e`, `image` and `django-next` green.
+- Local vs GitHub counts: the dev-lite `web` container lacks `git`, so ten
+  tests skip locally (nine autonomy-worktree tests plus one devcontrol test)
+  while GitHub runs them. The local full run predates test-only `21beb4b`;
+  comparable local is 1396/18 vs CI 1406/8. This is an environment
+  difference, not a failure.
+- A documentation closeout commit follows the code/test HEAD; no CI result
+  is claimed for that docs commit. Local `main` remains unmerged; no
+  product acceptance is claimed.
 
 ## 0.0l. Autonomous timer activated — 2026-11-27
 
