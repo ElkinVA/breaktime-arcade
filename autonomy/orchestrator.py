@@ -590,9 +590,7 @@ def _run_orchestrator_checks(worktree: Path) -> tuple[str, list[str]]:
             if completed.returncode != 0:
                 failed.append(label)
         except subprocess.TimeoutExpired:
-            lines.append(
-                f"- {label}: TIMEOUT\ncommand: {evidence_command}\nsandbox: {command}"
-            )
+            lines.append(f"- {label}: TIMEOUT\ncommand: {evidence_command}\nsandbox: {command}")
             failed.append(label)
         except Exception as exc:  # noqa: BLE001 - evidence must reach QA
             lines.append(
