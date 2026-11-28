@@ -40,15 +40,40 @@ def _client_ip(request) -> str:
     return normalize_ip(request.META.get("REMOTE_ADDR") or "unknown")
 
 
+def _cached_anonymous_identity(request):
+    """Resolve the guest identity at most once for the current request.
+
+    Heartbeat checks otherwise resolve the same signed cookie twice: once for
+    the subject part of the key and once while validating the session. The
+    cache is request-local and never creates an identity.
+    """
+    sentinel = object()
+    cached = getattr(request, "_ba_anonymous_identity", sentinel)
+    if cached is sentinel:
+        cached = get_anonymous_identity(request)
+        request._ba_anonymous_identity = cached
+    return cached
+
+
 def _subject_ident(request) -> str:
     if request.user and request.user.is_authenticated:
         return f"user:{request.user.pk}"
-    identity = get_anonymous_identity(request)
+    identity = _cached_anonymous_identity(request)
     if identity is not None:
         return f"anon:{identity.id}"
     # Distinct namespace from GuestIpRateThrottle: the subject limit does not
     # apply to an unknown subject, and sharing the key would double-count hits.
     return f"nosubject:{_client_ip(request)}"
+
+
+def _preflight_subject_ident(request) -> str | None:
+    """Cheap subject identity for the heartbeat preflight; never touches the DB."""
+    user = getattr(request, "user", None)
+    if user is not None and user.is_authenticated:
+        return f"user:{user.pk}"
+    # Guests are capped by the shared IP preflight instead of the signed
+    # cookie: an arbitrary cookie must not mint unbounded Redis buckets.
+    return None
 
 
 class ThrottleCacheMixin:
@@ -147,6 +172,58 @@ class ReportsSubjectRateThrottle(SubjectScopedRateThrottle):
     fail_open = False
 
 
+class HeartbeatPreflightMixin:
+    """Record a preflight denial for the later session-scoped throttle.
+
+    DRF evaluates every configured throttle before raising, so a denied
+    preflight cannot stop ``SessionScopedRateThrottle`` from being constructed.
+    The flag lets that throttle skip its GameSession lookup while the preflight
+    denial still produces the 429.
+    """
+
+    def allow_request(self, request, view) -> bool:
+        allowed = super().allow_request(request, view)  # type: ignore[misc]
+        if not allowed:
+            request._heartbeat_preflight_denied = True
+        return bool(allowed)
+
+
+class HeartbeatSubjectPreflightRateThrottle(
+    HeartbeatPreflightMixin, ThrottleCacheMixin, ResilientThrottleMixin, SimpleRateThrottle
+):
+    """Cheap authenticated-subject cap checked before any session lookup.
+
+    Guest requests have no database-free subject identifier, so they are
+    covered by :class:`HeartbeatIpPreflightRateThrottle` instead. A denial is
+    recorded by :class:`HeartbeatPreflightMixin`, so the later per-session
+    throttle skips its ``GameSession`` lookup even though DRF evaluates every
+    throttle class before raising.
+    """
+
+    scope = "heartbeat_preflight_subject"
+
+    def get_cache_key(self, request, view):
+        ident = _preflight_subject_ident(request)
+        if ident is None:
+            return None
+        return f"throttle_heartbeat_preflight_subject:{ident}"
+
+
+class HeartbeatIpPreflightRateThrottle(
+    HeartbeatPreflightMixin, ThrottleCacheMixin, ResilientThrottleMixin, SimpleRateThrottle
+):
+    """Cheap shared IP cap for every heartbeat, including unknown UUIDs.
+
+    The key is fixed by the normalized client IP (IPv6 /64), so arbitrary
+    session IDs or guest cookies cannot create an unbounded key space.
+    """
+
+    scope = "heartbeat_preflight_ip"
+
+    def get_cache_key(self, request, view):
+        return f"throttle_heartbeat_preflight_ip:{_client_ip(request)}"
+
+
 class SessionScopedRateThrottle(ThrottleCacheMixin, ResilientThrottleMixin, SimpleRateThrottle):
     """Heartbeat bucket: 3/min per active session (Приложение E).
 
@@ -163,7 +240,7 @@ class SessionScopedRateThrottle(ThrottleCacheMixin, ResilientThrottleMixin, Simp
         if user is not None and user.is_authenticated:
             subject_type, subject_id = GameSession.SUBJECT_USER, user.id
         else:
-            identity = get_anonymous_identity(request)
+            identity = _cached_anonymous_identity(request)
             if identity is None:
                 return None
             subject_type, subject_id = GameSession.SUBJECT_ANON, identity.id
@@ -178,6 +255,11 @@ class SessionScopedRateThrottle(ThrottleCacheMixin, ResilientThrottleMixin, Simp
     def get_cache_key(self, request, view):
         session_id = view.kwargs.get("session_id")
         if session_id is None:
+            return None
+        if getattr(request, "_heartbeat_preflight_denied", False):
+            # The preflight already produced the 429; do not resolve the UUID
+            # (or load a guest identity) merely because DRF evaluates all
+            # throttle classes before raising.
             return None
         resolved = self._active_session_id(request, session_id)
         suffix = "invalid" if resolved is None else resolved
@@ -205,7 +287,7 @@ class StorageSessionRateThrottle(ThrottleCacheMixin, ResilientThrottleMixin, Sim
                 state=GameSession.STATE_ACTIVE,
             ).first()
         else:
-            identity = get_anonymous_identity(request)
+            identity = _cached_anonymous_identity(request)
             if identity is None:
                 return None
             session = GameSession.objects.filter(

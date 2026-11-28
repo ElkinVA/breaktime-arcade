@@ -432,6 +432,11 @@ REST_FRAMEWORK = {
         "results": "60/hour",
         "results_ip": "1200/hour",
         "heartbeat": "3/min",
+        # Cheap preflight caps checked before the session UUID is resolved in
+        # PostgreSQL. The IP bucket is shared by guests and authenticated
+        # users; the subject bucket covers authenticated users.
+        "heartbeat_preflight_subject": "30/min",
+        "heartbeat_preflight_ip": "120/min",
         "storage": "600/hour",
         "storage_session": "60/min",
         # Read hardening for public leaderboards (Приложение E не задаёт ставку).
