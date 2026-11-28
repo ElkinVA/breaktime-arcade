@@ -39,7 +39,7 @@ from apps.catalog.services.pagination import (
     should_noindex,
 )
 from apps.catalog.services.popularity import popularity
-from apps.catalog.services.seo import catalog_seo, game_seo
+from apps.catalog.services.seo import catalog_seo, game_seo, genre_seo, home_seo
 from apps.catalog.services.slugs import canonical_game_path, resolve_old_slug
 from apps.i18n.services.language_registry import get_active_language_codes_safely
 from apps.leaderboards.services.queries import get_leaderboard, get_personal_section
@@ -77,14 +77,27 @@ def _page_number(request: HttpRequest) -> int:
     return number if number >= 1 else 1
 
 
+def canonical_url_for_home(language_code: str) -> str:
+    """Canonical home URL without relying on the request host/path."""
+    return f"{settings.PORTAL_ORIGIN.rstrip('/')}/{language_code}/"
+
+
 def home(request: HttpRequest) -> TemplateResponse:
     language_code = _language(request)
     active_language_codes = get_active_language_codes_safely()
+    canonical_url = canonical_url_for_home(language_code)
+    seo = home_seo(
+        language_code,
+        active_language_codes,
+        canonical_url=canonical_url,
+    )
     return TemplateResponse(
         request,
         "catalog/home.html",
         {
-            "title": "Breaktime Arcade",
+            "title": seo.title,
+            "seo": seo,
+            "genres": genre_options(language_code),
             "popular_cards": card_items(popular_games(), language_code, active_language_codes),
             "rated_cards": card_items(top_rated_games(), language_code, active_language_codes),
             "latest_cards": card_items(
@@ -317,8 +330,9 @@ def genre_detail(request: HttpRequest, slug: str) -> TemplateResponse:
         )
     genre = translation.genre if translation is not None else get_object_or_404(Genre, code=slug)
     params = request.GET
+    filters = parse_filters(params)
     games = (
-        filter_games(parse_filters(params), language_code)
+        filter_games(filters, language_code)
         .filter(Q(primary_genre=genre) | Q(additional_genres=genre))
         .distinct()
     )
@@ -326,13 +340,28 @@ def genre_detail(request: HttpRequest, slug: str) -> TemplateResponse:
     active_language_codes = get_active_language_codes_safely()
     page_canonical_url = canonical_url(request, params, page_obj.number)
     robots_noindex = should_noindex(page_obj.number)
+    seo = genre_seo(
+        genre,
+        translation,
+        language_code,
+        active_language_codes,
+        canonical_url=page_canonical_url,
+        noindex=robots_noindex,
+    )
+    genre_name = translation.name if translation else genre.code
     return TemplateResponse(
         request,
         "catalog/genre_list.html",
         {
-            "title": translation.name if translation else genre.code,
+            "title": seo.title,
+            "seo": seo,
             "genre": genre,
-            "genre_name": translation.name if translation else genre.code,
+            "genre_name": genre_name,
+            "genre_description": translation.description if translation else "",
+            "genre_image": genre.image if genre.image else None,
+            "genre_image_alt": genre_name,
+            "genre_game_count": page_obj.paginator.count,
+            "filters": filters,
             "games": page_obj.object_list,
             "cards": card_items(page_obj.object_list, language_code, active_language_codes),
             "language_code": language_code,

@@ -18,7 +18,7 @@ from typing import Any
 from django.conf import settings
 
 from apps.catalog.constants import FALLBACK_LANGUAGE_CODE
-from apps.catalog.models import Game, GameTranslation
+from apps.catalog.models import Game, GameTranslation, Genre, GenreTranslation
 from apps.i18n.models import Language
 from apps.i18n.services import translate
 
@@ -208,6 +208,118 @@ def _json_ld(payload: dict[str, Any]) -> str:
     """Serialize JSON-LD and make it safe to embed inside ``<script>``."""
     serialized = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     return serialized.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+
+
+def _genre_title(translation: GenreTranslation | None, genre: Genre) -> str:
+    if translation is not None:
+        if translation.seo_title.strip():
+            return translation.seo_title.strip()
+        if translation.name.strip():
+            return translation.name.strip()
+    return genre.code
+
+
+def _genre_description(translation: GenreTranslation | None, language_code: str) -> str:
+    if translation is not None:
+        if translation.seo_description.strip():
+            return translation.seo_description.strip()
+        if translation.description.strip():
+            return translation.description.strip()
+    return _ui_string(language_code, "meta_description") or _ui_string(language_code, "title")
+
+
+def _genre_translation_slugs(genre: Genre) -> dict[str, str]:
+    return {
+        str(translation.language.code).lower(): translation.slug
+        for translation in genre.translations.all()
+    }
+
+
+def home_seo(
+    language_code: str,
+    active_language_codes: Iterable[str],
+    *,
+    canonical_url: str,
+) -> SeoMeta:
+    """SEO metadata for the localized public home page."""
+    language_code = str(language_code).lower()
+    codes = _normalize_codes(active_language_codes)
+    if not codes:
+        codes = (FALLBACK_LANGUAGE_CODE,)
+    title = (
+        _ui_string(language_code, "meta_title")
+        or _ui_string(language_code, "hero_title")
+        or SITE_NAME
+    )
+    description = (
+        _ui_string(language_code, "meta_description")
+        or _ui_string(language_code, "hero_subtitle")
+        or title
+    )
+
+    def path_for(code: str) -> str:
+        return f"/{code}/"
+
+    return SeoMeta(
+        title=title,
+        description=description,
+        canonical_url=canonical_url,
+        alternates=_alternates(codes, path_for),
+        og_type="website",
+        og_locale=_og_locale(language_code),
+    )
+
+
+def genre_seo(
+    genre: Genre,
+    translation: GenreTranslation | None,
+    language_code: str,
+    active_language_codes: Iterable[str],
+    *,
+    canonical_url: str,
+    noindex: bool = False,
+) -> SeoMeta:
+    """SEO metadata for one localized genre landing page."""
+    language_code = str(language_code).lower()
+    codes = _normalize_codes(active_language_codes)
+    if not codes:
+        codes = (FALLBACK_LANGUAGE_CODE,)
+    title = _genre_title(translation, genre)
+    description = _genre_description(translation, language_code)
+    slugs = _genre_translation_slugs(genre)
+
+    def path_for(code: str) -> str:
+        slug = _slug_for(slugs, code, genre.code)
+        return f"/{code}/genres/{slug}/"
+
+    breadcrumbs = _breadcrumb_payload(
+        (
+            (SITE_NAME, _absolute(f"/{language_code}/")),
+            (
+                _ui_string(language_code, "title") or "Game catalog",
+                _absolute(f"/{language_code}/games/"),
+            ),
+            (title, canonical_url),
+        )
+    )
+    collection = {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": title,
+        "description": description,
+        "url": canonical_url,
+        "inLanguage": language_code,
+    }
+    return SeoMeta(
+        title=title,
+        description=description,
+        canonical_url=canonical_url,
+        alternates=_alternates(codes, path_for),
+        og_type="website",
+        og_locale=_og_locale(language_code),
+        noindex=noindex,
+        json_ld=(_json_ld(breadcrumbs), _json_ld(collection)),
+    )
 
 
 def game_seo(

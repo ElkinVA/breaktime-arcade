@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% load ba_i18n %}
 
-{% block title %}Breaktime Arcade{% endblock %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block meta %}{% include "partials/seo_meta.html" %}{% endblock %}
 
 {% block content %}
 <section class="max-w-7xl mx-auto px-4 py-12">
@@ -37,6 +39,21 @@
             <h2 class="text-2xl font-display font-bold mb-4">{% ba_t "home.block_new" %}</h2>
             {% include "catalog/_game_cards.html" with cards=latest_cards %}
         </div>
+    {% endif %}
+
+    {% if genres %}
+        <nav class="mb-12" aria-label="{% ba_t "home.block_genres" %}" data-testid="home-genres">
+            <h2 class="text-2xl font-display font-bold mb-4">{% ba_t "home.block_genres" %}</h2>
+            <ul class="flex flex-wrap gap-2">
+                {% for genre in genres %}
+                    <li>
+                        <a class="inline-flex min-h-11 items-center rounded-full border border-text/15 px-4 py-2 text-sm hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                           href="{% url 'catalog:genre_detail' slug=genre.slug %}"
+                           data-testid="home-genre-link">{{ genre.name }}</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </nav>
     {% endif %}
 
     <div class="text-center">
