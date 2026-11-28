@@ -82,6 +82,7 @@ from apps.crm.services.access import safe_next_path
 from apps.crm.services.audit import record_audit
 from apps.crm.services.dashboard import dashboard_stats
 from apps.crm.services.exports import ReportFormatError, report_response
+from apps.crm.services.game_audit import build_game_audit
 from apps.crm.services.game_records import build_game_records
 from apps.crm.services.games import (
     GameCard,
@@ -315,6 +316,10 @@ def game_detail(request: HttpRequest, game_id: UUID) -> TemplateResponse:
         epoch=request.GET.get("epoch"),
         page=request.GET.get("page"),
     )
+    audit = build_game_audit(
+        card.game,
+        page=request.GET.get("audit_page"),
+    )
     return TemplateResponse(
         request,
         "crm/games/detail.html",
@@ -322,6 +327,7 @@ def game_detail(request: HttpRequest, game_id: UUID) -> TemplateResponse:
             "title": f"{card.title} · CRM",
             "card": card,
             "records": records,
+            "audit": audit,
             # Keep the selected archive epoch while paging; the current epoch
             # is the default and needs no extra query parameter.
             "pagination_query": (

@@ -68,4 +68,14 @@
     </div>
     {% include "crm/games/records.html" with records=records %}
 </section>
+
+<section class="bg-surface rounded-card border border-text/10 p-5 mt-8" data-testid="crm-game-audit">
+    <div class="mb-4">
+        <h2 class="text-xl font-display font-bold">История изменений</h2>
+        <p class="text-sm text-muted">
+            Публикации и откаты этой игры из журнала CRM. Раздел доступен только для чтения.
+        </p>
+    </div>
+    {% include "crm/games/audit.html" with audit=audit %}
+</section>
 {% endblock %}

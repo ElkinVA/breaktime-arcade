@@ -1,0 +1,29 @@
+{% if audit.rows %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="text-left text-muted border-b border-text/10">
+                <tr>
+                    <th class="px-3 py-2">Действие</th>
+                    <th class="px-3 py-2">Сотрудник</th>
+                    <th class="px-3 py-2">Дата</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in audit.rows %}
+                    <tr class="border-b border-text/5 last:border-0"
+                        data-testid="crm-audit-row"
+                        data-action="{{ row.action }}">
+                        <td class="px-3 py-2" data-testid="crm-audit-action">{{ row.action_label }}</td>
+                        <td class="px-3 py-2" data-testid="crm-audit-actor">{{ row.actor_login|default:"—" }}</td>
+                        <td class="px-3 py-2 text-muted" data-testid="crm-audit-occurred-at">{{ row.occurred_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "components/pagination.html" with page_obj=audit.page_obj pagination_page_param="audit_page" %}
+{% else %}
+    <p class="text-muted" data-testid="crm-audit-empty">
+        История изменений этой игры пока пуста.
+    </p>
+{% endif %}
