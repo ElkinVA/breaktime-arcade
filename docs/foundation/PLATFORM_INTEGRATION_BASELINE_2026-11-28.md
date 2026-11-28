@@ -126,7 +126,7 @@ Independent code review (read-only, separate from the implementer):
   same three interpolations, 96 characters, within the 100-character limit.
 - No secrets in the changed hunk; `.env`, `certs/`, `creds/` not touched.
 - Non-blocking disclosures for external review:
-  1. The untracked stray file `": refresh Claude project guidance\""` in the
+  1. The untracked stray file `: refresh Claude project guidance"` in the
      repository root is not part of the branch and was not deleted; it is a
      botched redirect artifact, not a secret. It must not be staged.
   2. The `subprocess.TimeoutExpired` branch omits captured stdout/stderr
@@ -185,7 +185,7 @@ live HTTP is unavailable because the dev-lite web service is unhealthy
 - GitHub Actions для review-ветки ещё не запускался: workflow реагирует на
   push в `main` и на pull request, а не на push произвольной ветки.
   Локальные CI-scope команды воспроизведены; remote CI не заявляется.
-- Untracked-файл `": refresh Claude project guidance\""` не входит в diff,
+- Untracked-файл `: refresh Claude project guidance"` не входит в diff,
   не стейджился и не удалялся.
 - Следующий шаг: независимая проверка ChatGPT diff review-ветки. Новый
   крупный продуктовый блок не начинать до этой проверки и указаний
