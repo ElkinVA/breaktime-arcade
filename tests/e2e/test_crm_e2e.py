@@ -7,18 +7,21 @@
 Фикстура создаёт одноразового сотрудника с ролью owner, обычного
 пользователя без роли, одну игру с версией, реальные файлы пакета/runtime и
 одну жалобу через ``manage.py shell`` в контейнере ``web``. Данные
-уникальны для запуска и не являются production-данными; очистка не
-выполняется, как и в остальных браузерных сценариях.
+уникальны для запуска; teardown удаляет только точные ID и пути этого
+запуска. Append-only ``AdminAuditLog`` не удаляется: его delete запрещён
+моделью и PostgreSQL-триггером.
 """
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import shutil
 import subprocess
 import time
 import uuid
+import zipfile
 from pathlib import Path
 
 import pyotp
@@ -100,7 +103,9 @@ def _seed_crm_fixture() -> dict[str, str]:
 
     seed_lines = [
         "import hashlib",
+        "import io",
         "import json",
+        "import zipfile",
         "from pathlib import Path",
         "from django.conf import settings",
         "from django.utils import timezone",
@@ -169,7 +174,15 @@ def _seed_crm_fixture() -> dict[str, str]:
         "        'published_at': timezone.now(),",
         "    },",
         ")",
-        "package_bytes = bytes.fromhex('504b0304') + b'e2e-crm-package'",
+        "package_buffer = io.BytesIO()",
+        "with zipfile.ZipFile(package_buffer, 'w') as package_archive:",
+        "    package_archive.writestr(",
+        "        'index.html', '<!doctype html><html><body>package</body></html>'",
+        "    )",
+        "    package_archive.writestr(",
+        "        'manifest.json', json.dumps({'name': 'E2E CRM fixture'})",
+        "    )",
+        "package_bytes = package_buffer.getvalue()",
         "package_hash = hashlib.sha256(package_bytes).hexdigest()",
         "runtime_files = {",
         "    'index.html': b'<!doctype html><html><body>e2e</body></html>',",
@@ -237,6 +250,8 @@ def _seed_crm_fixture() -> dict[str, str]:
         "    'plain_login': plain_user.login,",
         "    'password': password,",
         "    'secret': secret,",
+        "    'user_id': str(user.pk),",
+        "    'plain_user_id': str(plain_user.pk),",
         "    'game_id': str(game.pk),",
         "    'version_id': str(version.pk),",
         "    'technical_id': game.technical_id,",
@@ -245,6 +260,8 @@ def _seed_crm_fixture() -> dict[str, str]:
         "    'complaint_id': str(complaint.pk),",
         "    'complaint_subject': complaint.subject,",
         "    'resolution': resolution,",
+        "    'package_path': str(package_file),",
+        "    'runtime_path': str(runtime_dir),",
         "}))",
     ]
 
@@ -283,6 +300,65 @@ def _seed_crm_fixture() -> dict[str, str]:
     )
 
 
+def _cleanup_crm_fixture(seed: dict[str, str]) -> None:
+    """Remove only the exact users, game, version, complaint and files seeded here."""
+    cleanup_lines = [
+        "import shutil",
+        "from pathlib import Path",
+        "from apps.accounts.models import User",
+        "from apps.catalog.models import Game, GameVersion",
+        "from apps.moderation.models import Complaint",
+        f"user_ids = [{seed['user_id']!r}, {seed['plain_user_id']!r}]",
+        f"complaint_id = {seed['complaint_id']!r}",
+        f"game_id = {seed['game_id']!r}",
+        f"version_id = {seed['version_id']!r}",
+        f"package_path = {seed['package_path']!r}",
+        f"runtime_path = {seed['runtime_path']!r}",
+        "Complaint.objects.filter(pk=complaint_id).delete()",
+        "game = Game.objects.filter(pk=game_id).first()",
+        "if game is not None:",
+        "    game.current_version = None",
+        "    game.save(update_fields=['current_version'])",
+        "GameVersion.objects.filter(pk=version_id).delete()",
+        "Game.objects.filter(pk=game_id).delete()",
+        "User.objects.filter(pk__in=user_ids).delete()",
+        "for raw in (package_path, runtime_path):",
+        "    path = Path(raw)",
+        "    if path.is_file():",
+        "        path.unlink(missing_ok=True)",
+        "    elif path.is_dir():",
+        "        shutil.rmtree(path, ignore_errors=True)",
+        "print('CRM_E2E_CLEANUP=ok')",
+    ]
+    docker = shutil.which("docker")
+    assert docker is not None, "docker is required for the CRM E2E cleanup"
+    completed = subprocess.run(  # noqa: S603 - fixed local dev stack fixture
+        [
+            docker,
+            "compose",
+            "-f",
+            "compose.yml",
+            "-f",
+            "compose.dev-lite.yml",
+            "exec",
+            "-T",
+            "web",
+            "python",
+            "manage.py",
+            "shell",
+            "-c",
+            "\n".join(cleanup_lines),
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    if "CRM_E2E_CLEANUP=ok" not in completed.stdout:
+        raise AssertionError(f"CRM E2E cleanup did not confirm: {completed.stdout}")
+
+
 @pytest.fixture
 def seeded_crm() -> dict[str, str]:
     """Seed a fresh staff/game/version/complaint for each browser scenario.
@@ -290,7 +366,11 @@ def seeded_crm() -> dict[str, str]:
     Function scope keeps each disposable staff account's TOTP counter fresh,
     so scenarios do not race on the one-time TOTP window.
     """
-    return _seed_crm_fixture()
+    seed = _seed_crm_fixture()
+    try:
+        yield seed
+    finally:
+        _cleanup_crm_fixture(seed)
 
 
 def _login_with_2fa(page: Page, seed: dict[str, str]) -> int:
@@ -475,7 +555,10 @@ def test_crm_artifact_downloads(page: Page, seeded_crm: dict[str, str]) -> None:
     assert package.suggested_filename == f"{expected_version}-package.zip"
     package_bytes = _downloaded_bytes(package)
     assert package_bytes.startswith(b"PK\x03\x04")
-    assert package_bytes == bytes.fromhex("504b0304") + b"e2e-crm-package"
+    with zipfile.ZipFile(io.BytesIO(package_bytes)) as package_archive:
+        assert {"index.html", "manifest.json"} <= set(package_archive.namelist())
+        assert package_archive.read("index.html").startswith(b"<!doctype html>")
+        assert json.loads(package_archive.read("manifest.json"))["name"] == "E2E CRM fixture"
 
     page.goto(_game_detail_url(seeded_crm), wait_until="domcontentloaded")
     version_row = page.locator('[data-testid="crm-version-row"]').filter(
@@ -487,6 +570,9 @@ def test_crm_artifact_downloads(page: Page, seeded_crm: dict[str, str]) -> None:
     assert runtime.suggested_filename == f"{expected_version}-runtime.zip"
     runtime_bytes = _downloaded_bytes(runtime)
     assert runtime_bytes.startswith(b"PK\x03\x04")
+    with zipfile.ZipFile(io.BytesIO(runtime_bytes)) as runtime_archive:
+        assert {"index.html", "js/ba-sdk.js"} <= set(runtime_archive.namelist())
+        assert runtime_archive.read("js/ba-sdk.js") == b"/* e2e sdk */"
 
     with page.expect_download() as download_info:
         version_row.get_by_role("link", name="Валидация JSON").click()
