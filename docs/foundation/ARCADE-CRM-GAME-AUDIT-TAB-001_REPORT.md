@@ -69,6 +69,12 @@ No schema change, no migration, no new write path, no public-page change.
 ## Residuals
 
 - No product acceptance; this is a technical implementation.
-- No PR/CI for the feature branch yet; no GitHub credentials in the shell.
-- The task remains READY in `.autonomy/state.json`; timer is STOPPED and no
-  state transition was performed during this bounded implementation.
+- Branch `feature/ARCADE-CRM-GAME-AUDIT-TAB-001` is pushed through
+  `418026a`. A separate PR is not created from this shell because no
+  GitHub API credentials are available; use the GitHub PR link after review.
+- No remote CI is claimed for this feature branch.
+- The task is marked COMPLETED technically in `.autonomy/state.json` with
+  candidate `9557520`; timer remains STOPPED and no product acceptance is
+  implied.
+- Full fresh-DB local run was at `9557520`; the later `418026a` commit is
+  docs-only.
