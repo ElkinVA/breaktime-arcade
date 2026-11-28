@@ -7,9 +7,11 @@
 Фикстура создаёт одноразового сотрудника с ролью owner, обычного
 пользователя без роли, одну игру с версией, реальные файлы пакета/runtime и
 одну жалобу через ``manage.py shell`` в контейнере ``web``. Данные
-уникальны для запуска; teardown удаляет только точные ID и пути этого
-запуска. Append-only ``AdminAuditLog`` не удаляется: его delete запрещён
-моделью и PostgreSQL-триггером.
+уникальны для запуска; teardown удаляет пользователей, версию, жалобу и
+точные пути пакета/runtime. Строка игры физически не удаляется: PostgreSQL
+триггер ``catalog_game`` запрещает DELETE, поэтому фикстура переводит её в
+архив и оставляет инертную UUID-строку. Append-only ``AdminAuditLog`` также
+не удаляется: его delete запрещён моделью и триггером.
 """
 
 from __future__ import annotations
@@ -314,20 +316,29 @@ def _cleanup_crm_fixture(seed: dict[str, str]) -> None:
         f"version_id = {seed['version_id']!r}",
         f"package_path = {seed['package_path']!r}",
         f"runtime_path = {seed['runtime_path']!r}",
-        "Complaint.objects.filter(pk=complaint_id).delete()",
-        "game = Game.objects.filter(pk=game_id).first()",
-        "if game is not None:",
-        "    game.current_version = None",
-        "    game.save(update_fields=['current_version'])",
-        "GameVersion.objects.filter(pk=version_id).delete()",
-        "Game.objects.filter(pk=game_id).delete()",
-        "User.objects.filter(pk__in=user_ids).delete()",
+        # Remove mutable fixture data first so a later game-row policy failure
+        # cannot leak the disposable users or artifact files.
         "for raw in (package_path, runtime_path):",
         "    path = Path(raw)",
         "    if path.is_file():",
         "        path.unlink(missing_ok=True)",
         "    elif path.is_dir():",
         "        shutil.rmtree(path, ignore_errors=True)",
+        "User.objects.filter(pk__in=user_ids).delete()",
+        "Complaint.objects.filter(pk=complaint_id).delete()",
+        "game = Game.objects.filter(pk=game_id).first()",
+        "if game is not None:",
+        "    game.current_version = None",
+        "    game.save(update_fields=['current_version'])",
+        "GameVersion.objects.filter(pk=version_id).delete()",
+        # catalog_game has a permanent BEFORE DELETE trigger: game rows are
+        # never physically deleted (published identity invariant). Archive the
+        # exact fixture row instead of bypassing the trigger; its UUID suffix
+        # keeps it inert and non-reusable for future runs.
+        "game = Game.objects.filter(pk=game_id).first()",
+        "if game is not None:",
+        "    game.status = Game.STATUS_ARCHIVED",
+        "    game.save(update_fields=['status'])",
         "print('CRM_E2E_CLEANUP=ok')",
     ]
     docker = shutil.which("docker")
