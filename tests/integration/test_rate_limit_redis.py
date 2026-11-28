@@ -56,3 +56,37 @@ def test_registration_ip_cap_is_atomic_on_real_redis() -> None:
     finally:
         for key in keys:
             caches["throttle"].delete(key)
+
+
+def test_registration_release_is_floor_safe_and_atomic_on_real_redis() -> None:
+    suffix = uuid.uuid4().hex
+    device = f"release-{suffix}"
+    ip = "198.18.7.8"
+    cache = caches["throttle"]
+    device_key = _device_key(device)
+    ip_key = _ip_key(ip)
+    for key in (device_key, ip_key):
+        cache.delete(key)
+    try:
+        # Two reservations -> a single release must leave exactly one slot.
+        assert rate_limit.registration_attempt(device, ip).allowed
+        assert rate_limit.registration_attempt(device, ip).allowed
+        assert int(cache.get(device_key)) == 2
+        assert int(cache.get(ip_key)) == 2
+        rate_limit.release_registration(device, ip)
+        assert int(cache.get(device_key)) == 1
+        assert int(cache.get(ip_key)) == 1
+
+        # Simultaneous releases beyond the reservation count must clamp at 0.
+        with ThreadPoolExecutor(max_workers=16) as pool:
+            list(pool.map(lambda _: rate_limit.release_registration(device, ip), range(16)))
+        assert int(cache.get(device_key)) == 0
+        assert int(cache.get(ip_key)) == 0
+
+        # A late release on an empty counter must not undercount it.
+        rate_limit.release_registration(device, ip)
+        assert int(cache.get(device_key)) == 0
+        assert int(cache.get(ip_key)) == 0
+    finally:
+        for key in (device_key, ip_key):
+            cache.delete(key)

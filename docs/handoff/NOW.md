@@ -1,6 +1,53 @@
 # NOW — Breaktime Arcade
 
-**Дата:** 2026-11-27
+**Дата:** 2026-11-28
+
+## Product completion mode — 2026-11-28
+
+- ChatGPT follow-up fixes are implemented on
+  `review/platform-integration-baseline-20261128`:
+  heartbeat preflight (`fc00333`, `5bc8a81`), post-commit password-reset
+  delivery (`b6cb1d1`), CRM E2E teardown/ZIP checks (`ba36d8e`,
+  `636259f`) and CI-scope Makefile lint (`3716d52`).
+- Final fresh-database local regression: **1395 passed, 18 skipped, 1 warning,
+  88.29% coverage, 800.89 s, exit 0** at `636259f`. Independent code review
+  ACCEPT after the game-delete invariant fix; independent QA PASS for the
+  code/delta and targeted tests.
+- Review branch HEAD `e7b1b0e`; PR #1 is Draft/open/unmerged. CI #174
+  (`46126028661`) completed **success**: GitHub Python **1406 passed,
+  8 skipped**, coverage **88.32%**, Browser E2E **36 passed in 321.37 s**;
+  `quality`, `frontend`, `e2e`, `image` and `django-next` are green.
+- Local vs GitHub counts: the dev-lite `web` container lacks `git`, so ten
+  tests skip locally (nine autonomy-worktree tests plus one devcontrol test)
+  while GitHub runs them. The local full run predates test-only `21beb4b`;
+  comparable local is 1396/18 vs CI 1406/8. This is an environment
+  difference, not a failure.
+- PR #1 remains Draft/open/unmerged; no product acceptance claimed. A
+  docs-only commit follows the code/test HEAD; no CI result is claimed for
+  that docs commit.
+
+### Baseline history (99cb379)
+
+- Owner switched development to large product blocks. Autonomous task
+  selection is paused: `ba-autonomy-orchestrator.timer` is stopped
+  (it was already inactive; no active cycle was interrupted). The active
+  `ARCADE-CATALOG-GAME-TAXONOMY-001` cycle completed naturally at 09:01 MSK;
+  the service is inactive.
+- Actual local `main` is `b035720`, **9 commits ahead** of `origin/main`
+  (`b59cc12`): the eight forensic-audit commits plus
+  `ARCADE-CATALOG-GAME-TAXONOMY-001`. No reset, clean, stash drop or
+  worktree deletion was performed.
+- Platform Integration Baseline review branch:
+  `review/platform-integration-baseline-20261128`; it adds `721fedc`
+  (formatting-only fix in `autonomy/orchestrator.py`). Local `main` is not
+  merged into it and no merge to `main` has been made.
+- Initial Platform Integration Baseline at `99cb379`: CI-scope checks and
+  full Python regression green (**1387 passed, 18 skipped, 1108.54 s**,
+  `--reuse-db`), independent review/QA accepted the static evidence; the
+  later ChatGPT follow-up supersedes those results with the fresh-database
+  run above. Browser E2E was not run locally because the pre-existing
+  dev-lite web service is unhealthy. Timer remains stopped; no next product
+  block starts without owner instruction.
 
 ## Autonomous timer activated (2026-11-27)
 

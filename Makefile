@@ -96,8 +96,8 @@ coverage:
 > $(PYU) -m pytest --cov=apps --cov-report=term-missing
 
 lint:
-> $(PYU) -m ruff check apps config tests devcontrol
-> $(PYU) -m ruff format --check apps config tests devcontrol
+> $(PYU) -m ruff check apps config tests devcontrol autonomy scripts
+> $(PYU) -m ruff format --check apps config tests devcontrol autonomy scripts
 
 fmt:
 > $(PYU) -m ruff check --fix apps config tests devcontrol

@@ -12,9 +12,12 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import threading
 from dataclasses import dataclass
+from typing import Any
 
 from django.core.cache import caches
+from django_redis.cache import RedisCache  # type: ignore[import-untyped]
 from django_redis.exceptions import ConnectionInterrupted  # type: ignore[import-untyped]
 from redis.exceptions import RedisError
 
@@ -49,6 +52,24 @@ class LimitDecision:
 ALLOWED = LimitDecision(True)
 DENIED = LimitDecision(False)
 UNAVAILABLE = LimitDecision(False, True)
+
+# Floor-safe decrement in one Redis round trip: GET and DECR cannot interleave
+# with another release, and the counter never drops below zero. A missing key
+# or a foreign non-integer value stays untouched (fail closed, no crash).
+_RELEASE_FLOOR_SCRIPT = """
+local value = redis.call('GET', KEYS[1])
+if not value then
+    return 0
+end
+local current = tonumber(value)
+if not current or current <= 0 then
+    return 0
+end
+return redis.call('DECR', KEYS[1])
+"""
+
+# LocMem (unit tests) cannot run Lua; serialise its read-then-decr in-process.
+_RELEASE_LOCK = threading.Lock()
 
 
 def _cache():
@@ -207,6 +228,26 @@ def registration_attempt(device: str, ip: str | None) -> LimitDecision:
     )
 
 
+def _release_counter(cache: Any, key: str) -> None:
+    """Decrement ``key`` once, never below zero, without a read/decr gap.
+
+    The production ``throttle`` alias is Redis, where the Lua script makes the
+    check and decrement a single operation. Other backends (LocMem in unit
+    tests) cannot execute Lua, so their read-then-decr runs under a
+    process-local lock.
+    """
+    if isinstance(cache, RedisCache):
+        client = cache.client
+        get_client = getattr(client, "get_client", None)
+        if get_client is not None:
+            client = get_client(write=True)
+        client.eval(_RELEASE_FLOOR_SCRIPT, 1, cache.make_key(key))
+        return
+    with _RELEASE_LOCK:
+        if int(cache.get(key) or 0) > 0:
+            cache.decr(key)
+
+
 def release_registration(device: str, ip: str | None) -> None:
     """Return a reserved slot when the form is invalid or saving failed."""
     keys = (
@@ -216,8 +257,7 @@ def release_registration(device: str, ip: str | None) -> None:
     try:
         cache = _cache()
         for key in keys:
-            if int(cache.get(key) or 0) > 0:
-                cache.decr(key)
+            _release_counter(cache, key)
     except CacheError as exc:
         logger.error(
             "security.rate_limit.release_failed",

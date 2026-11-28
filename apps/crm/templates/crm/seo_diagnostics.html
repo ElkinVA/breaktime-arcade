@@ -49,6 +49,9 @@
 
 <section class="mb-8" data-testid="crm-seo-descriptions">
     <h2 class="text-xl font-display font-bold mb-3">Пустые локализованные описания</h2>
+    {% if diagnostics.descriptions_truncated %}
+        <p class="text-xs text-muted mb-2" data-testid="crm-seo-descriptions-truncated">Показаны первые {{ diagnostics.descriptions|length }} из {{ diagnostics.description_count }} проблем.</p>
+    {% endif %}
     <ul class="space-y-2">
         {% for issue in diagnostics.descriptions %}
             <li class="p-4 bg-surface rounded-card border border-text/10 text-sm" data-testid="crm-seo-description-issue">
@@ -65,14 +68,20 @@
 
 <section class="mb-8" data-testid="crm-seo-duplicates">
     <h2 class="text-xl font-display font-bold mb-3">Дубли Title</h2>
+    {% if diagnostics.duplicate_titles_truncated %}
+        <p class="text-xs text-muted mb-2" data-testid="crm-seo-duplicates-truncated">Показаны первые {{ diagnostics.duplicate_titles|length }} из {{ diagnostics.duplicate_title_count }} групп.</p>
+    {% endif %}
     <ul class="space-y-2">
         {% for issue in diagnostics.duplicate_titles %}
             <li class="p-4 bg-surface rounded-card border border-text/10 text-sm" data-testid="crm-seo-duplicate-issue">
                 <span class="font-semibold">{{ issue.title }}</span>
-                <span class="text-muted"> · {{ issue.language_code }} · {{ issue.games|length }} игры:</span>
+                <span class="text-muted"> · {{ issue.language_code }} · {{ issue.game_count }} игры:</span>
                 {% for game in issue.games %}
                     <a class="hover:text-accent" href="{% url 'crm:game_detail' game.id %}" data-testid="crm-seo-game-link">{{ game.technical_id }}</a>{% if not forloop.last %}, {% endif %}
                 {% endfor %}
+                {% if issue.hidden_game_count %}
+                    <span class="text-muted" data-testid="crm-seo-duplicates-games-hidden">… и ещё {{ issue.hidden_game_count }}</span>
+                {% endif %}
             </li>
         {% empty %}
             <li class="text-muted" data-testid="crm-seo-duplicates-empty">Дублей Title нет.</li>
@@ -82,6 +91,9 @@
 
 <section class="mb-8" data-testid="crm-seo-alt">
     <h2 class="text-xl font-display font-bold mb-3">Отсутствующий alt у ассетов</h2>
+    {% if diagnostics.missing_alt_truncated %}
+        <p class="text-xs text-muted mb-2" data-testid="crm-seo-alt-truncated">Показаны первые {{ diagnostics.missing_alt|length }} из {{ diagnostics.missing_alt_count }} проблем.</p>
+    {% endif %}
     <ul class="space-y-2">
         {% for issue in diagnostics.missing_alt %}
             <li class="p-4 bg-surface rounded-card border border-text/10 text-sm" data-testid="crm-seo-alt-issue">
@@ -96,6 +108,9 @@
 
 <section data-testid="crm-seo-translations">
     <h2 class="text-xl font-display font-bold mb-3">Неполное покрытие переводов</h2>
+    {% if diagnostics.incomplete_translations_truncated %}
+        <p class="text-xs text-muted mb-2" data-testid="crm-seo-translations-truncated">Показаны первые {{ diagnostics.incomplete_translations|length }} из {{ diagnostics.incomplete_translation_count }} проблем.</p>
+    {% endif %}
     <ul class="space-y-2">
         {% for issue in diagnostics.incomplete_translations %}
             <li class="p-4 bg-surface rounded-card border border-text/10 text-sm" data-testid="crm-seo-translation-issue">

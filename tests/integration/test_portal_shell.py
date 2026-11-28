@@ -181,6 +181,18 @@ def test_unknown_language_prefix_is_404(anon_client: Client) -> None:
 
 
 @pytest.mark.django_db
+def test_known_language_404_keeps_localized_shell(anon_client: Client) -> None:
+    response = anon_client.get("/en/games/does-not-exist/")
+
+    content = _content(response)
+    assert response.status_code == 404
+    assert 'id="lang-menu"' in content
+    assert "Page not found" in content
+    assert "The page you requested does not exist or was moved." in content
+    assert '<a href="/en/" class="btn btn-primary">' in content
+
+
+@pytest.mark.django_db
 def test_language_switcher_does_not_preserve_unknown_prefix() -> None:
     request = RequestFactory().get("/xx/games/?page=2")
 

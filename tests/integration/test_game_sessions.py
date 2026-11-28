@@ -694,6 +694,202 @@ def test_heartbeat_throttle_is_per_session_with_structured_error() -> None:
 
 @pytest.mark.django_db
 @override_settings(CACHES=LOCMEM_CACHES)
+def test_heartbeat_invalid_session_ids_share_one_bucket() -> None:
+    game = _game(technical_id="hb_invalid_bucket_game")
+    client, csrf = _client()
+    first = _create(client, csrf, game)
+    _activate(client, csrf, str(first["sessionId"]), str(first["ticket"]))
+    identity = AnonymousIdentity.objects.latest("created_at")
+
+    # Unknown UUIDs must not mint a bucket each: the first 3/min share the
+    # per-subject "invalid" bucket and the fourth is rejected.
+    for _ in range(3):
+        response = client.post(f"{API}/{uuid4()}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+        assert response.status_code == 404
+    blocked = client.post(f"{API}/{uuid4()}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+    assert blocked.status_code == 429
+    assert blocked.json() == {"code": "E_RATE_LIMIT", "message": "Too many requests"}
+    assert "Retry-After" in blocked.headers
+    invalid_key = f"throttle_heartbeat_anon:{identity.id}:invalid"
+    assert caches["throttle"].get(invalid_key)
+
+    # Two valid active sessions keep separate buckets.
+    second = _create(client, csrf, game)
+    _activate(client, csrf, str(second["sessionId"]), str(second["ticket"]))
+    first_key = f"throttle_heartbeat_anon:{identity.id}:{first['sessionId']}"
+    try:
+        caches["throttle"].set(first_key, [time.time()] * 3, timeout=60)
+        first_response = client.post(f"{API}/{first['sessionId']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+        assert first_response.status_code == 429
+        other = client.post(f"{API}/{second['sessionId']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+        assert other.status_code == 204
+    finally:
+        caches["throttle"].delete(first_key)
+        caches["throttle"].delete(invalid_key)
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_heartbeat_allows_three_per_active_session_then_429() -> None:
+    game = _game(technical_id="hb_three_per_session_game")
+    client, csrf = _client()
+    result = _create(client, csrf, game)
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
+    url = f"{API}/{result['sessionId']}/heartbeat"
+
+    for _ in range(3):
+        response = client.post(url, HTTP_X_CSRFTOKEN=csrf)
+        assert response.status_code == 204
+
+    blocked = client.post(url, HTTP_X_CSRFTOKEN=csrf)
+    assert blocked.status_code == 429
+    assert blocked.json() == {"code": "E_RATE_LIMIT", "message": "Too many requests"}
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_heartbeat_preflight_blocks_before_session_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    game = _game(technical_id="hb_preflight_game")
+    client, csrf = _client()
+    result = _create(client, csrf, game)
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
+    ip_key = "throttle_heartbeat_preflight_ip:127.0.0.1"
+    caches["throttle"].set(ip_key, [time.time()] * 120, timeout=60)
+    called = False
+
+    def fail_if_session_lookup(*args: object, **kwargs: object) -> None:
+        nonlocal called
+        called = True
+        raise AssertionError("preflight must reject before GameSession lookup")
+
+    monkeypatch.setattr(
+        throttling.SessionScopedRateThrottle,
+        "_active_session_id",
+        fail_if_session_lookup,
+    )
+    try:
+        response = client.post(f"{API}/{result['sessionId']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+    finally:
+        caches["throttle"].delete(ip_key)
+    assert response.status_code == 429
+    assert called is False
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_authenticated_heartbeat_preflight_blocks_before_session_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    game = _game(technical_id="hb_auth_preflight_game")
+    user = User.objects.create_user(login="hb_preflight_user", password="correct horse battery")
+    client, csrf = _client(user)
+    result = _create(client, csrf, game)
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
+    subject_key = f"throttle_heartbeat_preflight_subject:user:{user.id}"
+    caches["throttle"].set(subject_key, [time.time()] * 30, timeout=60)
+    called = False
+
+    def fail_if_session_lookup(*args: object, **kwargs: object) -> None:
+        nonlocal called
+        called = True
+        raise AssertionError("preflight must reject before GameSession lookup")
+
+    monkeypatch.setattr(
+        throttling.SessionScopedRateThrottle,
+        "_active_session_id",
+        fail_if_session_lookup,
+    )
+    try:
+        response = client.post(f"{API}/{result['sessionId']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+    finally:
+        caches["throttle"].delete(subject_key)
+    assert response.status_code == 429
+    assert called is False
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_authenticated_heartbeat_is_exempt_from_guest_ip_preflight() -> None:
+    game = _game(technical_id="hb_auth_ip_exempt_game")
+    user = User.objects.create_user(login="hb_ip_exempt_user", password="correct horse battery")
+    client, csrf = _client(user)
+    result = _create(client, csrf, game)
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
+    ip_key = "throttle_heartbeat_preflight_ip:127.0.0.1"
+    caches["throttle"].set(ip_key, [time.time()] * 120, timeout=60)
+    try:
+        response = client.post(f"{API}/{result['sessionId']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+    finally:
+        caches["throttle"].delete(ip_key)
+    assert response.status_code == 204
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_heartbeat_preflight_is_shared_across_guest_identities() -> None:
+    game = _game(technical_id="hb_shared_guest_ip_game")
+    first_client, first_csrf = _client()
+    second_client, second_csrf = _client()
+    first = _create(first_client, first_csrf, game)
+    second = _create(second_client, second_csrf, game)
+    _activate(first_client, first_csrf, str(first["sessionId"]), str(first["ticket"]))
+    _activate(second_client, second_csrf, str(second["sessionId"]), str(second["ticket"]))
+    ip_key = "throttle_heartbeat_preflight_ip:127.0.0.1"
+    caches["throttle"].set(ip_key, [time.time()] * 120, timeout=60)
+    try:
+        for client, csrf, result in (
+            (first_client, first_csrf, first),
+            (second_client, second_csrf, second),
+        ):
+            response = client.post(f"{API}/{result['sessionId']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+            assert response.status_code == 429
+    finally:
+        caches["throttle"].delete(ip_key)
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_heartbeat_resolves_guest_identity_once_per_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    game = _game(technical_id="hb_identity_cache_game")
+    client, csrf = _client()
+    result = _create(client, csrf, game)
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
+    calls: list[object] = []
+    real_get_identity = throttling.get_anonymous_identity
+
+    def counted(request: object) -> object:
+        calls.append(request)
+        return real_get_identity(request)
+
+    monkeypatch.setattr(throttling, "get_anonymous_identity", counted)
+    response = client.post(f"{API}/{result['sessionId']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+    assert response.status_code == 204
+    assert len(calls) == 1
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_heartbeat_throttles_fail_open_when_backend_is_unavailable() -> None:
+    game = _game(technical_id="hb_throttle_down_game")
+    client, csrf = _client()
+    result = _create(client, csrf, game)
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
+    with patch.object(
+        throttling.ThrottleCacheMixin,
+        "cache",
+        new_callable=PropertyMock,
+        side_effect=RedisError("throttle backend down"),
+    ):
+        response = client.post(f"{API}/{result['sessionId']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+    assert response.status_code == 204
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
 def test_guest_ip_secondary_cap_applies_across_identities() -> None:
     game = _game(technical_id="ip_cap_game")
     first_client, first_csrf = _client()
@@ -919,6 +1115,8 @@ def test_rate_limits_match_appendix_e() -> None:
     assert rates["results"] == "60/hour"
     assert rates["results_ip"] == "1200/hour"
     assert rates["heartbeat"] == "3/min"
+    assert rates["heartbeat_preflight_subject"] == "30/min"
+    assert rates["heartbeat_preflight_ip"] == "120/min"
     assert rates["reports"] == "5/day"
     assert rates["reports_ip"] == "30/day"
 

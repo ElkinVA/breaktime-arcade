@@ -41,8 +41,8 @@ from apps.accounts.models import (
 )
 from apps.accounts.services.audit import record_login_event
 from apps.accounts.services.email import (
-    find_verified_email,
     password_reset_token_user,
+    prepare_password_reset_email,
     send_2fa_change_notice,
     send_email_change_notice,
     send_password_reset_email,
@@ -466,6 +466,9 @@ def two_factor_disable(request: HttpRequest) -> HttpResponse:
 
 def verify_email(request: HttpRequest, token: str) -> HttpResponse:
     with transaction.atomic():
+        # ``verify_email_token`` takes the shared User row lock and re-checks
+        # the current EmailAddress before marking it verified
+        # (ARCADE-EMAIL-VERIFY-RESET-RACE-001).
         email = verify_email_token(token)
     if email is None:
         messages.error(request, "Ссылка недействительна или истекла.")
@@ -495,15 +498,42 @@ def password_reset_request(request: HttpRequest) -> HttpResponse:
             messages.error(request, "Сервис восстановления временно недоступен. Попробуйте позже.")
             return render(request, "accounts/password_reset.html", {"form": form}, status=503)
         if decision.allowed:
-            target = find_verified_email(email)
-            if target is not None:
+            # ARCADE-EMAIL-VERIFY-RESET-RACE-001: resolve the account and take
+            # the same User row lock as ``_update_email`` before the
+            # authoritative verified-address read. A concurrent email
+            # change/removal then linearizes: either the token is issued for
+            # the still-current address and the change invalidates it, or the
+            # change commits first and the re-check below finds no verified
+            # address to send to.
+            delivery = None
+            with transaction.atomic():
+                verified_emails = EmailAddress.objects.filter(
+                    email__iexact=email.strip(),
+                    verified_at__isnull=False,
+                )
+                candidate_ids = list(verified_emails.values_list("user_id", flat=True))
+                locked_user = User.objects.select_for_update().filter(pk__in=candidate_ids).first()
+                if locked_user is not None:
+                    target = EmailAddress.objects.filter(
+                        user=locked_user,
+                        email__iexact=email.strip(),
+                        verified_at__isnull=False,
+                    ).first()
+                    if target is not None:
+                        # Token creation and old-token invalidation happen
+                        # under the User lock; SMTP below happens after commit.
+                        delivery = prepare_password_reset_email(locked_user, target)
+            if delivery is not None:
                 try:
-                    send_password_reset_email(target, request)
+                    send_password_reset_email(delivery, request)
                 except Exception:
+                    # The transaction is already committed and the token is
+                    # valid; do not turn an SMTP outage into a 500 or claim
+                    # successful delivery.
                     logger.warning("account.email.password_reset_send_failed", exc_info=True)
         messages.success(
             request,
-            "Если для этого email есть подтверждённый аккаунт, письмо отправлено.",
+            "Если для этого email есть подтверждённый аккаунт, запрос на восстановление принят.",
         )
         return redirect("accounts:login")
     return render(request, "accounts/password_reset.html", {"form": form})

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from django.test import Client
 from django.urls import reverse
@@ -11,6 +13,8 @@ from apps.accounts.models import StaffRole, User
 from apps.catalog.models import Game, GameAsset, GameTranslation, GameVersion, Genre
 from apps.crm.services.seo_diagnostics import (
     DESCRIPTION_MISSING,
+    DUPLICATE_GAMES_LIMIT,
+    ISSUE_LIST_LIMIT,
     META_DESCRIPTION_MISSING,
     MISSING_TRANSLATION,
     UNSUPPORTED_LANGUAGE,
@@ -21,6 +25,10 @@ from apps.crm.services.seo_diagnostics import (
     missing_alt_issues,
 )
 from apps.i18n.models import Language
+from apps.i18n.services.language_registry import (
+    get_active_language_codes_safely,
+    invalidate_language_cache,
+)
 
 PASSWORD = "correct horse battery staple"
 
@@ -266,3 +274,140 @@ def test_screen_redirects_anonymous_to_staff_login() -> None:
     response = Client().get(reverse("crm:seo_diagnostics"))
     assert response.status_code == 302
     assert response.url == reverse("crm:login")
+
+
+def _summary_row(content: str, code: str) -> tuple[int, int, int, int, int]:
+    """Extract (descriptions, duplicates, alt, translations, total) for a language."""
+    pattern = re.compile(
+        rf'data-testid="crm-seo-language-code">{re.escape(code)}</td>'
+        r'.*?data-testid="crm-seo-count-descriptions">(\d+)</td>'
+        r'.*?data-testid="crm-seo-count-duplicates">(\d+)</td>'
+        r'.*?data-testid="crm-seo-count-alt">(\d+)</td>'
+        r'.*?data-testid="crm-seo-count-translations">(\d+)</td>'
+        r'.*?data-testid="crm-seo-count-total">(\d+)</td>',
+        re.DOTALL,
+    )
+    match = pattern.search(content)
+    assert match is not None, f"summary row for {code!r} is missing"
+    return (
+        int(match.group(1)),
+        int(match.group(2)),
+        int(match.group(3)),
+        int(match.group(4)),
+        int(match.group(5)),
+    )
+
+
+@pytest.mark.django_db
+def test_screen_bounds_lists_for_large_catalog_and_keeps_summary_exact() -> None:
+    """A 1000+ game catalog must not render an unbounded diagnostics page."""
+    invalidate_language_cache()
+    active = get_active_language_codes_safely()
+    assert "en" in active
+
+    total_games = 1001
+    common_title = "Shared catalog title"
+    published_at = timezone.now()
+    genre = _genre()
+    games = Game.objects.bulk_create(
+        [
+            Game(
+                technical_id=f"bulk_{index:04d}",
+                host_label=f"bulk-{index:04d}.games.test",
+                slug=f"slug-bulk-{index:04d}",
+                primary_genre=genre,
+                status=Game.STATUS_PUBLISHED,
+                published_at=published_at,
+            )
+            for index in range(total_games)
+        ]
+    )
+    versions = GameVersion.objects.bulk_create(
+        [
+            GameVersion(
+                game=game,
+                semver="1.0.0",
+                package_hash="a" * 64,
+                runtime_hash="b" * 64,
+                sdk_version="1.1.0",
+                size_bytes=1000,
+                manifest={},
+                supported_languages=["en"],
+                validation_report={"ok": True, "summary": {"blocker": 0}},
+                e2e_report={"passed": True},
+            )
+            for game in games
+        ]
+    )
+    for game, version in zip(games, versions, strict=True):
+        game.current_version = version
+    Game.objects.bulk_update(games, ["current_version"])
+
+    en = Language.objects.get(code="en")
+    GameTranslation.objects.bulk_create(
+        [
+            GameTranslation(
+                game=game,
+                language=en,
+                name=common_title,
+                slug=f"slug-{game.technical_id}-en",
+                short_description="Short description",
+                description="",
+                seo_description="",
+            )
+            for game in games
+        ]
+    )
+    GameAsset.objects.bulk_create(
+        [
+            GameAsset(
+                game=game,
+                type=GameAsset.TYPE_COVER,
+                file=f"games/assets/{game.technical_id}.png",
+                alt={},
+                sort_order=0,
+            )
+            for game in games
+        ]
+    )
+
+    client = _staff_client(StaffRole.OWNER)
+    response = client.get(reverse("crm:seo_diagnostics"))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+
+    # Every diagnostic category renders a bounded number of entries even though
+    # the catalog produces thousands of findings.
+    assert content.count('data-testid="crm-seo-description-issue"') == ISSUE_LIST_LIMIT
+    assert content.count('data-testid="crm-seo-alt-issue"') == ISSUE_LIST_LIMIT
+    assert content.count('data-testid="crm-seo-translation-issue"') == ISSUE_LIST_LIMIT
+    assert content.count('data-testid="crm-seo-duplicate-issue"') == 1
+    assert content.count('data-testid="crm-seo-game-link"') <= (
+        3 * ISSUE_LIST_LIMIT + DUPLICATE_GAMES_LIMIT
+    )
+    assert len(response.content) < 500_000
+    assert 'data-testid="crm-seo-descriptions-truncated"' in content
+    assert 'data-testid="crm-seo-alt-truncated"' in content
+    assert 'data-testid="crm-seo-translations-truncated"' in content
+    assert 'data-testid="crm-seo-duplicates-games-hidden"' in content
+
+    # The per-language summary is still computed from the complete issue sets.
+    assert _summary_row(content, "en") == (
+        total_games,
+        1,
+        total_games,
+        0,
+        2 * total_games + 1,
+    )
+    assert _summary_row(content, "de") == (
+        0,
+        0,
+        total_games,
+        total_games,
+        2 * total_games,
+    )
+    expected_total = total_games + 1
+    expected_total += total_games * len(active)
+    expected_total += total_games * (len(active) - 1)
+    assert f"Проблем: {expected_total}" in content

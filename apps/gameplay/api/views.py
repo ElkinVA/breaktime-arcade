@@ -14,6 +14,8 @@ from apps.gameplay.api.serializers import (
 )
 from apps.gameplay.api.throttling import (
     GuestIpRateThrottle,
+    HeartbeatIpPreflightRateThrottle,
+    HeartbeatSubjectPreflightRateThrottle,
     ResultsIpRateThrottle,
     SessionScopedRateThrottle,
     SubjectScopedRateThrottle,
@@ -105,7 +107,11 @@ class SessionActivateView(APIView):
 class SessionHeartbeatView(APIView):
     authentication_classes = [CsrfEnforcedSessionAuthentication]
     permission_classes = [AllowAny]
-    throttle_classes = [SessionScopedRateThrottle]
+    throttle_classes = [
+        HeartbeatSubjectPreflightRateThrottle,
+        HeartbeatIpPreflightRateThrottle,
+        SessionScopedRateThrottle,
+    ]
     throttle_scope = "heartbeat"
 
     def post(self, request, session_id: UUID):
