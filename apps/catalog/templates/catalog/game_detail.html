@@ -48,6 +48,49 @@
             <dd><span data-testid="game-popularity">{{ popularity }}</span> {% ba_plural "catalog.credit" count=popularity %}</dd>
         </div>
     </dl>
+    {% if taxonomy.additional_genres or taxonomy.tags %}
+        <section class="mb-8" aria-labelledby="taxonomy-heading" data-testid="game-taxonomy">
+            <h2 id="taxonomy-heading" class="text-xl font-semibold mb-2">{% ba_t "catalog.taxonomy_title" %}</h2>
+            <dl class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                {% if taxonomy.primary_genre %}
+                    <div>
+                        <dt class="text-muted">{% ba_t "catalog.taxonomy_primary_genre" %}</dt>
+                        <dd data-testid="game-primary-genre">
+                            <a class="text-accent" href="{% url 'catalog:genre_detail' slug=taxonomy.primary_genre.slug %}">{{ taxonomy.primary_genre.name }}</a>
+                        </dd>
+                    </div>
+                {% endif %}
+                {% if taxonomy.additional_genres %}
+                    <div>
+                        <dt class="text-muted">{% ba_t "catalog.taxonomy_additional_genres" %}</dt>
+                        <dd>
+                            <ul class="flex flex-wrap gap-x-3 gap-y-1">
+                                {% for genre in taxonomy.additional_genres %}
+                                    <li data-testid="game-additional-genre">
+                                        <a class="text-accent" href="{% url 'catalog:genre_detail' slug=genre.slug %}">{{ genre.name }}</a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </dd>
+                    </div>
+                {% endif %}
+                {% if taxonomy.tags %}
+                    <div>
+                        <dt class="text-muted">{% ba_t "catalog.taxonomy_tags" %}</dt>
+                        <dd>
+                            <ul class="flex flex-wrap gap-x-3 gap-y-1">
+                                {% for tag in taxonomy.tags %}
+                                    <li data-testid="game-tag">
+                                        <a class="text-accent" href="{% url 'catalog:game_list' %}?tag={{ tag.code|urlencode }}">{{ tag.name }}</a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </dd>
+                    </div>
+                {% endif %}
+            </dl>
+        </section>
+    {% endif %}
     {% if game.credits %}
         <section class="mb-8" aria-labelledby="credits-heading" data-testid="game-credits">
             <h2 id="credits-heading" class="text-xl font-semibold mb-2">{% ba_t "catalog.credits_title" %}</h2>

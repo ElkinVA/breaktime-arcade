@@ -21,6 +21,7 @@ from apps.catalog.models import GameAsset, Genre, GenreTranslation
 from apps.catalog.services.catalog import (
     card_items,
     filter_games,
+    game_taxonomy,
     genre_options,
     localized_translation,
     parse_filters,
@@ -153,7 +154,17 @@ def game_detail(
     request: HttpRequest, slug: str
 ) -> TemplateResponse | HttpResponsePermanentRedirect:
     language = _language(request)
-    game = published_games().filter(Q(slug=slug) | Q(translations__slug=slug)).distinct().first()
+    game = (
+        published_games()
+        .prefetch_related(
+            "primary_genre__translations__language",
+            "additional_genres__translations__language",
+            "tags__translations__language",
+        )
+        .filter(Q(slug=slug) | Q(translations__slug=slug))
+        .distinct()
+        .first()
+    )
     if game is None:
         # A slug recorded before a rename: permanent redirect to the current
         # canonical URL for the requested language (§2.4.1/§2.6).
@@ -190,6 +201,7 @@ def game_detail(
             "rating_values": [1, 2, 3, 4, 5],
             "popularity": popularity(game.pk),
             "localization": localization_coverage(game, active_language_codes),
+            "taxonomy": game_taxonomy(game, language),
             "seo": seo,
         },
     )

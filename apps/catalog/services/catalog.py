@@ -28,7 +28,9 @@ from django.db.models.functions import Coalesce
 from apps.catalog.models import (
     Game,
     GameTranslation,
+    Genre,
     GenreTranslation,
+    Tag,
     TagTranslation,
 )
 from apps.catalog.services.localization import localization_coverage
@@ -282,6 +284,62 @@ def card_items(
             }
         )
     return items
+
+
+def _localized_term(
+    translations: Iterable[GenreTranslation | TagTranslation], language_code: str
+) -> tuple[str, str]:
+    """Localized name/slug for one genre or tag.
+
+    Mirrors the English-fallback pattern of ``genre_options``/``tag_options``
+    (requested language first, then ``en``) but per term, so a missing
+    translation never hides a term that exists in another language.
+    """
+    rows = list(translations)
+    chosen: GenreTranslation | TagTranslation | None = None
+    for translation in rows:
+        if translation.language.code == language_code and str(translation.name).strip():
+            chosen = translation
+            break
+    if chosen is None:
+        for translation in rows:
+            if translation.language.code == "en" and str(translation.name).strip():
+                chosen = translation
+                break
+    if chosen is None:
+        return "", ""
+    return str(chosen.name).strip(), str(chosen.slug)
+
+
+def _localized_genres(genres: Iterable[Genre], language_code: str) -> list[dict[str, str]]:
+    items: list[dict[str, str]] = []
+    for genre in genres:
+        name, slug = _localized_term(genre.translations.all(), language_code)
+        if not name:
+            # Raw codes are never rendered as display names.
+            continue
+        items.append({"code": str(genre.code), "name": name, "slug": slug or str(genre.code)})
+    return items
+
+
+def _localized_tags(tags: Iterable[Tag], language_code: str) -> list[dict[str, str]]:
+    items: list[dict[str, str]] = []
+    for tag in tags:
+        name, _slug = _localized_term(tag.translations.all(), language_code)
+        if not name:
+            continue
+        items.append({"code": str(tag.code), "name": name})
+    return items
+
+
+def game_taxonomy(game: Game, language_code: str) -> dict[str, Any]:
+    """Localized primary/additional genres and tags for the game detail page."""
+    primary = _localized_genres([game.primary_genre], language_code)
+    return {
+        "primary_genre": primary[0] if primary else None,
+        "additional_genres": _localized_genres(game.additional_genres.all(), language_code),
+        "tags": _localized_tags(game.tags.all(), language_code),
+    }
 
 
 def tag_options(language_code: str) -> list[dict[str, str]]:
