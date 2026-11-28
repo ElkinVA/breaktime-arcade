@@ -48,6 +48,31 @@
             <dd><span data-testid="game-popularity">{{ popularity }}</span> {% ba_plural "catalog.credit" count=popularity %}</dd>
         </div>
     </dl>
+    {% if game.credits %}
+        <section class="mb-8" aria-labelledby="credits-heading" data-testid="game-credits">
+            <h2 id="credits-heading" class="text-xl font-semibold mb-2">{% ba_t "catalog.credits_title" %}</h2>
+            <ul class="space-y-2 text-sm">
+                {% for credit in game.credits %}
+                    <li class="flex flex-wrap items-baseline gap-x-2" data-testid="game-credit">
+                        <span>
+                            <span class="text-muted">{% ba_t "catalog.credits_author" %}:</span>
+                            <span class="font-semibold">{{ credit.author }}</span>
+                        </span>
+                        {% if credit.license %}
+                            <span>
+                                <span class="text-muted">{% ba_t "catalog.credits_license" %}:</span>
+                                {{ credit.license }}
+                            </span>
+                        {% endif %}
+                        {% if credit.aiGenerated %}
+                            <span class="rounded-full border border-text/10 px-2 py-0.5 text-xs text-muted"
+                                  data-testid="game-credit-ai">{% ba_t "catalog.credits_ai_generated" %}</span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
     <section class="mb-8" aria-labelledby="rating-summary-heading">
         <h2 id="rating-summary-heading" class="text-xl font-semibold mb-2">{% ba_t "catalog.rating_title" %}</h2>
         {% if rating_count %}
