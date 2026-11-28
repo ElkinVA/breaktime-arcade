@@ -4,6 +4,23 @@
 
 ## Product completion mode — 2026-11-28
 
+- ChatGPT follow-up fixes are implemented on
+  `review/platform-integration-baseline-20261128`:
+  heartbeat preflight (`fc00333`, `5bc8a81`), post-commit password-reset
+  delivery (`b6cb1d1`), CRM E2E teardown/ZIP checks (`ba36d8e`,
+  `636259f`) and CI-scope Makefile lint (`3716d52`).
+- Final fresh-database regression: **1395 passed, 18 skipped, 1 warning,
+  88.29% coverage, 800.89 s, exit 0** at `636259f`. Independent code review
+  ACCEPT after the game-delete invariant fix; independent QA PASS for the
+  code/delta and targeted tests.
+- Review branch is pushed through `636259f`; Draft PR creation is blocked
+  because this shell has no `gh` and no `GITHUB_TOKEN`/`GH_TOKEN`. No merge
+  to `main`; no product acceptance or GitHub CI result claimed.
+- Browser E2E was not run locally because dev-lite web remains unhealthy
+  (pre-existing permission error); GitHub CI is still required.
+
+### Baseline history (99cb379)
+
 - Owner switched development to large product blocks. Autonomous task
   selection is paused: `ba-autonomy-orchestrator.timer` is stopped
   (it was already inactive; no active cycle was interrupted). The active
@@ -17,13 +34,13 @@
   `review/platform-integration-baseline-20261128`; it adds `721fedc`
   (formatting-only fix in `autonomy/orchestrator.py`). Local `main` is not
   merged into it and no merge to `main` has been made.
-- CI-scope Ruff/mypy/Django/migrations/JS checks and the full Python
-  regression are green: **1387 passed, 18 skipped, 1 warning, 1108.54 s,
-  exit 0**, coverage **88.26%**. The full suite used the configured
-  `--reuse-db`; browser E2E was not run because the pre-existing dev-lite
-  web service is unhealthy. Independent review ACCEPT and independent QA
-  PASS for the static evidence; external ChatGPT review is pending. Timer
-  remains stopped; no next product block starts without owner instruction.
+- Initial Platform Integration Baseline at `99cb379`: CI-scope checks and
+  full Python regression green (**1387 passed, 18 skipped, 1108.54 s**,
+  `--reuse-db`), independent review/QA accepted the static evidence; the
+  later ChatGPT follow-up supersedes those results with the fresh-database
+  run above. Browser E2E was not run locally because the pre-existing
+  dev-lite web service is unhealthy. Timer remains stopped; no next product
+  block starts without owner instruction.
 
 ## Autonomous timer activated (2026-11-27)
 

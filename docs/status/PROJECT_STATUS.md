@@ -15,17 +15,21 @@ hardening; LR-3; LR-2b; CI restore).
 - Actual local `main` is `b035720`, **9 commits ahead** of `origin/main`
   (`b59cc12`): eight forensic-audit commits plus
   `ARCADE-CATALOG-GAME-TAXONOMY-001`. No reset/clean/history rewrite.
-- Review branch `review/platform-integration-baseline-20261128` adds
-  `721fedc`, a formatting-only change in `autonomy/orchestrator.py` that
-  fixes the CI `ruff format` failure at line 593. No functional change.
-- CI-scope Ruff, mypy, Django checks, migrations and JS checks are green;
-  the full Python suite passed **1387 passed, 18 skipped, 1 warning,
-  1108.54 s, exit 0** with **88.26%** coverage. The suite used the
-  configured `--reuse-db`; browser E2E was not run because the pre-existing
-  dev-lite web service is unhealthy and the portal returns 502.
-- Independent review ACCEPT; independent QA PASS for the static evidence.
-  External ChatGPT review is pending. Local `main` remains unmerged; no
-  product acceptance is claimed.
+- ChatGPT follow-up fixes are implemented on the review branch:
+  `fc00333`/`5bc8a81` heartbeat preflight, `b6cb1d1` post-commit password
+  reset delivery, `ba36d8e`/`636259f` CRM E2E cleanup/ZIP checks, and
+  `3716d52` CI-scope Makefile lint.
+- Final fresh-database regression at `636259f`: **1395 passed, 18 skipped,
+  1 warning, 800.89 s, exit 0**, coverage **88.29%**. Independent code
+  review ACCEPT after the game-delete invariant fix; independent QA PASS for
+  the code/delta and targeted tests.
+- Review branch is pushed through `636259f`. Draft PR creation is blocked by
+  missing GitHub API authentication in this shell; no CI result is claimed.
+- Initial baseline at `99cb379` (superseded by the follow-up) passed
+  **1387 passed, 18 skipped, 1108.54 s** with `--reuse-db`; browser E2E
+  was not run locally because the pre-existing dev-lite web service is
+  unhealthy and the portal returns 502.
+- Local `main` remains unmerged; no product acceptance is claimed.
 
 ## 0.0l. Autonomous timer activated — 2026-11-27
 
