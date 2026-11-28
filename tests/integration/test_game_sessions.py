@@ -811,6 +811,23 @@ def test_authenticated_heartbeat_preflight_blocks_before_session_lookup(
 
 @pytest.mark.django_db
 @override_settings(CACHES=LOCMEM_CACHES)
+def test_authenticated_heartbeat_is_exempt_from_guest_ip_preflight() -> None:
+    game = _game(technical_id="hb_auth_ip_exempt_game")
+    user = User.objects.create_user(login="hb_ip_exempt_user", password="correct horse battery")
+    client, csrf = _client(user)
+    result = _create(client, csrf, game)
+    _activate(client, csrf, str(result["sessionId"]), str(result["ticket"]))
+    ip_key = "throttle_heartbeat_preflight_ip:127.0.0.1"
+    caches["throttle"].set(ip_key, [time.time()] * 120, timeout=60)
+    try:
+        response = client.post(f"{API}/{result['sessionId']}/heartbeat", HTTP_X_CSRFTOKEN=csrf)
+    finally:
+        caches["throttle"].delete(ip_key)
+    assert response.status_code == 204
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
 def test_heartbeat_preflight_is_shared_across_guest_identities() -> None:
     game = _game(technical_id="hb_shared_guest_ip_game")
     first_client, first_csrf = _client()
