@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from django.conf import settings
 from django.core.mail import send_mail
 from django.http import HttpRequest
@@ -63,23 +65,44 @@ def verify_email_token(raw: str) -> EmailAddress | None:
     return email
 
 
-def send_password_reset_email(email: EmailAddress, request: HttpRequest) -> None:
-    if email.verified_at is None:
-        return
-    invalidate_tokens(email.user, AccountToken.PURPOSE_PASSWORD_RESET)
+@dataclass(frozen=True)
+class PasswordResetDelivery:
+    """Token data snapshotted under the User lock for post-commit delivery."""
+
+    recipient: str
+    raw_token: str
+
+
+def prepare_password_reset_email(
+    user: User,
+    email: EmailAddress,
+) -> PasswordResetDelivery:
+    """Invalidate old tokens and issue a reset token while the caller holds the lock.
+
+    This function deliberately performs no I/O outside the database. The
+    caller must invoke it inside the transaction that holds the User row lock,
+    then pass the returned immutable snapshot to
+    :func:`send_password_reset_email` only after that transaction commits.
+    """
+    invalidate_tokens(user, AccountToken.PURPOSE_PASSWORD_RESET)
     raw = issue_token(
-        email.user,
+        user,
         AccountToken.PURPOSE_PASSWORD_RESET,
         ttl_seconds=settings.PASSWORD_RESET_TIMEOUT,
         email=email.email,
     )
-    path = reverse("accounts:password_reset_confirm", args=[raw])
+    return PasswordResetDelivery(recipient=email.email, raw_token=raw)
+
+
+def send_password_reset_email(delivery: PasswordResetDelivery, request: HttpRequest) -> None:
+    """Deliver an already-created reset token; never touches the User lock."""
+    path = reverse("accounts:password_reset_confirm", args=[delivery.raw_token])
     url = request.build_absolute_uri(path)
     send_mail(
         subject="Reset your Breaktime Arcade password",
         message=f"Reset your password: {url}",
         from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[email.email],
+        recipient_list=[delivery.recipient],
         fail_silently=False,
     )
 

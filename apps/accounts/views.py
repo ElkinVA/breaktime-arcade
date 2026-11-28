@@ -41,8 +41,8 @@ from apps.accounts.models import (
 )
 from apps.accounts.services.audit import record_login_event
 from apps.accounts.services.email import (
-    find_verified_email,
     password_reset_token_user,
+    prepare_password_reset_email,
     send_2fa_change_notice,
     send_email_change_notice,
     send_password_reset_email,
@@ -505,6 +505,7 @@ def password_reset_request(request: HttpRequest) -> HttpResponse:
             # the still-current address and the change invalidates it, or the
             # change commits first and the re-check below finds no verified
             # address to send to.
+            delivery = None
             with transaction.atomic():
                 verified_emails = EmailAddress.objects.filter(
                     email__iexact=email.strip(),
@@ -513,17 +514,26 @@ def password_reset_request(request: HttpRequest) -> HttpResponse:
                 candidate_ids = list(verified_emails.values_list("user_id", flat=True))
                 locked_user = User.objects.select_for_update().filter(pk__in=candidate_ids).first()
                 if locked_user is not None:
-                    target = find_verified_email(email)
-                    if target is not None and target.user_id == locked_user.pk:
-                        try:
-                            send_password_reset_email(target, request)
-                        except Exception:
-                            logger.warning(
-                                "account.email.password_reset_send_failed", exc_info=True
-                            )
+                    target = EmailAddress.objects.filter(
+                        user=locked_user,
+                        email__iexact=email.strip(),
+                        verified_at__isnull=False,
+                    ).first()
+                    if target is not None:
+                        # Token creation and old-token invalidation happen
+                        # under the User lock; SMTP below happens after commit.
+                        delivery = prepare_password_reset_email(locked_user, target)
+            if delivery is not None:
+                try:
+                    send_password_reset_email(delivery, request)
+                except Exception:
+                    # The transaction is already committed and the token is
+                    # valid; do not turn an SMTP outage into a 500 or claim
+                    # successful delivery.
+                    logger.warning("account.email.password_reset_send_failed", exc_info=True)
         messages.success(
             request,
-            "Если для этого email есть подтверждённый аккаунт, письмо отправлено.",
+            "Если для этого email есть подтверждённый аккаунт, запрос на восстановление принят.",
         )
         return redirect("accounts:login")
     return render(request, "accounts/password_reset.html", {"form": form})

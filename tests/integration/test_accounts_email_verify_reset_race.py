@@ -158,17 +158,23 @@ def test_reset_request_first_invalidates_token_after_email_change(
     release_reset = threading.Event()
     change_entered = threading.Event()
 
-    real_send = accounts_views.send_password_reset_email
+    real_prepare = accounts_views.prepare_password_reset_email
 
-    def send_password_reset_email(target: EmailAddress, request: Any) -> None:
-        real_send(target, request)
+    def prepare_password_reset_email(user: User, target: EmailAddress) -> Any:
+        delivery = real_prepare(user, target)
         if threading.current_thread().name == "reset-request" and not reset_paused.is_set():
-            # The User row lock is still held by the surrounding transaction.
+            # The User row lock is still held by the surrounding transaction;
+            # SMTP delivery is deferred until after that transaction commits.
             reset_paused.set()
             if not release_reset.wait(timeout=30):
                 raise AssertionError("test never released the paused reset request")
+        return delivery
 
-    monkeypatch.setattr(accounts_views, "send_password_reset_email", send_password_reset_email)
+    monkeypatch.setattr(
+        accounts_views,
+        "prepare_password_reset_email",
+        prepare_password_reset_email,
+    )
 
     real_update_email = accounts_views._update_email
 
@@ -465,3 +471,116 @@ def test_email_change_first_blocks_stale_verify(
     assert address.verified_at is None
 
     assert find_token(token, AccountToken.PURPOSE_EMAIL_VERIFY) is None
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+def test_delayed_smtp_does_not_hold_user_lock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The email is sent after commit, so SMTP latency cannot serialize email change."""
+    mail.outbox.clear()
+    user = _make_user("race_smtp_delay", verified=True)
+    monkeypatch.setattr(accounts_views, "password_reset_attempt", lambda email, ip: ALLOWED)
+
+    send_started = threading.Event()
+    release_send = threading.Event()
+    change_entered = threading.Event()
+    real_send = accounts_views.send_password_reset_email
+
+    def send_wrapper(delivery: object, request: object) -> None:
+        send_started.set()
+        if not release_send.wait(timeout=30):
+            raise AssertionError("test never released SMTP delivery")
+        real_send(delivery, request)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(accounts_views, "send_password_reset_email", send_wrapper)
+
+    real_update_email = accounts_views._update_email
+
+    def update_email(request: object, locked: User, value: str) -> None:
+        change_entered.set()
+        real_update_email(request, locked, value)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(accounts_views, "_update_email", update_email)
+
+    change_client = Client()
+    change_client.force_login(user)
+    reset_result: dict[str, Any] = {}
+    change_result: dict[str, Any] = {}
+    reset_thread = threading.Thread(
+        target=_reset_request_worker,
+        args=(reset_result,),
+        name="reset-request",
+    )
+    change_thread = threading.Thread(
+        target=_email_change_worker,
+        args=(user.pk, NEW_EMAIL, change_result, change_client),
+        name="email-change",
+    )
+    reset_thread.start()
+    change_started = False
+    try:
+        assert send_started.wait(timeout=15), "reset request never reached SMTP delivery"
+        change_thread.start()
+        change_started = True
+        assert change_entered.wait(timeout=15), "email change never entered _update_email"
+        change_thread.join(timeout=15)
+        assert not change_thread.is_alive(), "SMTP latency held the User lock"
+    finally:
+        release_send.set()
+        reset_thread.join(timeout=30)
+        if change_started:
+            change_thread.join(timeout=30)
+
+    assert not reset_thread.is_alive()
+    assert "error" not in reset_result, reset_result.get("error")
+    assert "error" not in change_result, change_result.get("error")
+    assert reset_result["status"] == 302
+    assert change_result["status"] == 302
+    address = EmailAddress.objects.filter(user=user).first()
+    assert address is not None
+    assert address.email == NEW_EMAIL
+    reset_tokens = [
+        message.body for message in mail.outbox if "password-reset/confirm/" in message.body
+    ]
+    assert len(reset_tokens) == 1
+    match = RESET_CONFIRM_PATH.search(reset_tokens[0])
+    assert match is not None
+    assert password_reset_token_valid(match.group(1)) is False
+
+
+@pytest.mark.django_db(transaction=True)
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+def test_smtp_failure_after_commit_does_not_500_or_claim_delivery(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A committed token survives SMTP failure without a false success message."""
+    mail.outbox.clear()
+    user = _make_user("race_smtp_failure", verified=True)
+    old_raw = issue_token(
+        user,
+        AccountToken.PURPOSE_PASSWORD_RESET,
+        ttl_seconds=1800,
+        email=OLD_EMAIL,
+    )
+    monkeypatch.setattr(accounts_views, "password_reset_attempt", lambda email, ip: ALLOWED)
+    monkeypatch.setattr(
+        accounts_views,
+        "send_password_reset_email",
+        lambda delivery, request: (_ for _ in ()).throw(RuntimeError("smtp down")),
+    )
+
+    response = Client().post("/en/auth/password-reset/", {"email": OLD_EMAIL}, follow=True)
+
+    assert response.status_code == 200
+    assert not any("письмо отправлено" in text for text in response.content.decode().splitlines())
+    assert password_reset_token_valid(old_raw) is False
+    assert (
+        AccountToken.objects.filter(
+            user=user,
+            purpose=AccountToken.PURPOSE_PASSWORD_RESET,
+            used_at__isnull=True,
+        ).count()
+        == 1
+    )
