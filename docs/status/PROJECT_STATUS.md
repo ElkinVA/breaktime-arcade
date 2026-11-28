@@ -6,6 +6,18 @@ player start-error i18n; email reset race; trusted sandbox config; owner
 checkpoint/notifications; autonomy heartbeat auth; player submit/restart
 hardening; LR-3; LR-2b; CI restore).
 
+## 0.0o. Genre discovery milestone — 2026-11-28
+
+- `ARCADE-GENRE-DISCOVERY-STAGE-001` on
+  `feature/ARCADE-HOME-DISCOVERY-001`, based on baseline `fb2b45f`:
+  home localized genres block, home SEO, genre-page description/count/sort/
+  breadcrumb/image/SEO, cross-language slug 301 and data-only i18n migration.
+- Code commits `9f30113`, `3e39a5f`, `4f461e8`; full fresh-DB local gate **1402
+  passed, 19 skipped, 88.34% coverage, exit 0**; independent reviewer ACCEPT
+  after fixes; independent QA PASS.
+- Browser E2E is code-only locally because dev-lite web is unhealthy; no
+  feature PR or remote CI is claimed. Product acceptance pending.
+
 ## 0.0m. Product completion mode / Platform Integration Baseline — 2026-11-28
 
 - Owner paused autonomous task selection and moved development to large

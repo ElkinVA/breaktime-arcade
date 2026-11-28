@@ -2,6 +2,24 @@
 
 **Дата:** 2026-11-28
 
+## Genre discovery milestone — 2026-11-28
+
+- `ARCADE-GENRE-DISCOVERY-STAGE-001` on
+  `feature/ARCADE-HOME-DISCOVERY-001`, based on baseline `fb2b45f`.
+  Code commits: `9f30113` (home genres, genre SEO/sort/count, data-only i18n
+  migration), `3e39a5f` (cross-language genre-slug 301/canonical and
+  localized home SEO fixes) and `4f461e8` (deterministic lookup/migration
+  reversal hardening).
+- Home now links localized genres to genre pages; genre pages render
+  description, count, sort, breadcrumb, image/alt and canonical/hreflang/
+  JSON-LD.
+- Full fresh-DB local gate: **1402 passed, 19 skipped, 88.34% coverage,
+  exit 0**. Independent reviewer ACCEPT after fixes; independent QA PASS.
+- Browser E2E code is present but not locally runnable; dev-lite web is
+  unhealthy. No feature PR is claimed; branch base remains the Draft
+  baseline PR #1.
+- Product acceptance remains owner-level.
+
 ## Product completion mode — 2026-11-28
 
 - ChatGPT follow-up fixes are implemented on
