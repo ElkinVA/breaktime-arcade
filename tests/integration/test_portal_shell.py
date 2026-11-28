@@ -214,6 +214,48 @@ def test_language_switcher_rejects_protocol_relative_path() -> None:
 
 
 @pytest.mark.django_db
+def test_language_switcher_uses_page_specific_localized_path() -> None:
+    request = RequestFactory().get("/de/genres/shared/?sort=old")
+
+    assert (
+        language_url(
+            {
+                "request": request,
+                "language_paths": {"fr": "/fr/genres/autre/?sort=old"},
+            },
+            "fr",
+        )
+        == "/fr/genres/autre/?sort=old"
+    )
+
+
+@pytest.mark.django_db
+def test_language_switcher_ignores_non_local_page_specific_path() -> None:
+    request = RequestFactory().get("/de/genres/shared/?sort=old")
+
+    assert (
+        language_url(
+            {
+                "request": request,
+                "language_paths": {"fr": "https://evil.example/fr/"},
+            },
+            "fr",
+        )
+        == "/fr/genres/shared/?sort=old"
+    )
+    assert (
+        language_url(
+            {
+                "request": request,
+                "language_paths": {"fr": "//evil.example/fr/"},
+            },
+            "fr",
+        )
+        == "/fr/genres/shared/?sort=old"
+    )
+
+
+@pytest.mark.django_db
 def test_public_language_route_returns_503_when_en_is_inactive(anon_client: Client) -> None:
     try:
         Language.objects.filter(code="en").update(is_active=False)

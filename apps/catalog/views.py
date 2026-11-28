@@ -373,6 +373,14 @@ def genre_detail(
         canonical_url=page_canonical_url,
         noindex=robots_noindex,
     )
+    query = request.META.get("QUERY_STRING", "")
+    language_paths = {
+        alternate.hreflang: (
+            f"{urlparse(alternate.url).path}?{query}" if query else urlparse(alternate.url).path
+        )
+        for alternate in seo.alternates
+        if alternate.hreflang != "x-default"
+    }
     genre_name = translation.name if translation else genre.code
     return TemplateResponse(
         request,
@@ -394,5 +402,6 @@ def genre_detail(
             "pagination_query": pagination_query(params),
             "canonical_url": page_canonical_url,
             "robots_noindex": robots_noindex,
+            "language_paths": language_paths,
         },
     )
