@@ -315,20 +315,34 @@ def game_leaderboard(request: HttpRequest, slug: str) -> TemplateResponse:
     )
 
 
-def genre_detail(request: HttpRequest, slug: str) -> TemplateResponse:
+def genre_detail(
+    request: HttpRequest, slug: str
+) -> TemplateResponse | HttpResponsePermanentRedirect:
     language_code = _language(request)
+    # The language switcher swaps only the URL prefix. Resolve a slug from any
+    # language first, then redirect to the current language's canonical slug
+    # instead of returning 404 or serving a canonical/hreflang mismatch.
+    found = GenreTranslation.objects.filter(slug=slug).select_related("genre").first()
+    genre = found.genre if found is not None else get_object_or_404(Genre, code=slug)
     translation = (
-        GenreTranslation.objects.filter(language__code=language_code, slug=slug)
+        GenreTranslation.objects.filter(genre=genre, language__code=language_code)
         .select_related("genre")
         .first()
     )
     if translation is None:
         translation = (
-            GenreTranslation.objects.filter(language__code="en", slug=slug)
+            GenreTranslation.objects.filter(genre=genre, language__code="en")
             .select_related("genre")
             .first()
         )
-    genre = translation.genre if translation is not None else get_object_or_404(Genre, code=slug)
+    if translation is None:
+        translation = found
+    if found is not None and translation is not None and translation.slug != slug:
+        target = f"/{language_code}/genres/{translation.slug}/"
+        query = request.META.get("QUERY_STRING", "")
+        if query:
+            target = f"{target}?{query}"
+        return HttpResponsePermanentRedirect(target)
     params = request.GET
     filters = parse_filters(params)
     games = (

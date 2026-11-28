@@ -53,7 +53,8 @@ def test_home_genres_render_localized_links_in_sort_order() -> None:
     assert 'data-testid="home-genre-link"' in content
     origin = settings.PORTAL_ORIGIN.rstrip("/")
     assert f'<link rel="canonical" href="{origin}/en/">' in content
-    assert '<meta name="description"' in content
+    assert "Play short browser games instantly" in content
+    assert "<title>Breaktime Arcade — short browser games</title>" in content
     assert 'hreflang="x-default"' in content
 
     russian = Client().get("/ru/")
@@ -61,6 +62,8 @@ def test_home_genres_render_localized_links_in_sort_order() -> None:
     russian_content = russian.content.decode()
     assert 'href="/ru/genres/puzzle-ru/"' in russian_content
     assert "Головоломки" in russian_content
+    assert "Играйте в короткие браузерные игры" in russian_content
+    assert "Breaktime Arcade — короткие игры в браузере" in russian_content
     assert "Puzzle" not in russian_content
 
 

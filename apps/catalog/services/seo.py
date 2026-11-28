@@ -88,14 +88,14 @@ def _x_default(codes: tuple[str, ...]) -> str:
     return FALLBACK_LANGUAGE_CODE if FALLBACK_LANGUAGE_CODE in codes else codes[0]
 
 
-def _ui_string(language_code: str, key: str) -> str:
+def _ui_string(language_code: str, key: str, namespace: str = "catalog") -> str:
     language = Language.objects.filter(code=language_code).first()
     fallback = Language.objects.filter(code=FALLBACK_LANGUAGE_CODE).first()
     if language is None:
         language = fallback
     if language is None:
         return ""
-    return translate("catalog", key, language, fallback=fallback)
+    return translate(namespace, key, language, fallback=fallback)
 
 
 def _translation_slugs(game: Game) -> dict[str, str]:
@@ -247,13 +247,13 @@ def home_seo(
     if not codes:
         codes = (FALLBACK_LANGUAGE_CODE,)
     title = (
-        _ui_string(language_code, "meta_title")
-        or _ui_string(language_code, "hero_title")
+        _ui_string(language_code, "meta_title", "home")
+        or _ui_string(language_code, "hero_title", "home")
         or SITE_NAME
     )
     description = (
-        _ui_string(language_code, "meta_description")
-        or _ui_string(language_code, "hero_subtitle")
+        _ui_string(language_code, "meta_description", "home")
+        or _ui_string(language_code, "hero_subtitle", "home")
         or title
     )
 

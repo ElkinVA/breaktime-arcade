@@ -121,3 +121,29 @@ def test_genre_page_canonical_uses_portal_origin() -> None:
     content = Client().get("/en/genres/logic-en/").content.decode()
     origin = settings.PORTAL_ORIGIN.rstrip("/")
     assert f'<link rel="canonical" href="{origin}/en/genres/logic-en/">' in content
+
+
+@pytest.mark.django_db
+@override_settings(CACHES=LOCMEM_CACHES)
+def test_genre_language_switcher_slug_redirects_to_canonical_language_slug() -> None:
+    _genre()
+
+    english_switcher = Client().get("/ru/genres/logika/")
+    assert english_switcher.status_code == 200
+    assert 'href="/en/genres/logika/"' in english_switcher.content.decode()
+
+    redirected = Client().get("/en/genres/logika/")
+    assert redirected.status_code == 301
+    assert redirected["Location"] == "/en/genres/logic-en/"
+
+    russian_redirect = Client().get("/ru/genres/logic-en/")
+    assert russian_redirect.status_code == 301
+    assert russian_redirect["Location"] == "/ru/genres/logika/"
+
+    canonical = Client().get("/en/genres/logic-en/")
+    assert canonical.status_code == 200
+    assert 'href="https://portal.test:8443/en/genres/logic-en/"' in canonical.content.decode()
+    assert (
+        'hreflang="ru" href="https://portal.test:8443/ru/genres/logika/"'
+        in canonical.content.decode()
+    )
