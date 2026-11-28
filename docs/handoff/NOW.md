@@ -4,21 +4,36 @@
 
 ## Genre discovery milestone — 2026-11-28
 
+- **Status: Partial** — code/test closeout done; full fresh-DB gate is not
+  green and remains a test-stability residual.
 - `ARCADE-GENRE-DISCOVERY-STAGE-001` on
   `feature/ARCADE-HOME-DISCOVERY-001`, based on baseline `fb2b45f`.
-  Code commits: `9f30113` (home genres, genre SEO/sort/count, data-only i18n
-  migration), `3e39a5f` (cross-language genre-slug 301/canonical and
-  localized home SEO fixes) and `4f461e8` (deterministic lookup/migration
-  reversal hardening).
-- Home now links localized genres to genre pages; genre pages render
-  description, count, sort, breadcrumb, image/alt and canonical/hreflang/
-  JSON-LD.
-- Full fresh-DB local gate: **1402 passed, 19 skipped, 88.34% coverage,
-  exit 0**. Independent reviewer ACCEPT after fixes; independent QA PASS.
-- Browser E2E code is present but not locally runnable; dev-lite web is
-  unhealthy. No feature PR is claimed; branch base remains the Draft
-  baseline PR #1.
-- Product acceptance remains owner-level.
+  Implementation commits: `9f30113`, `3e39a5f`, `4f461e8`, `901cdc7`.
+  Acceptance closeout code commit: `b2309a7`; this docs-only commit follows
+  it.
+- Home links localized genres to genre pages; genre pages render description,
+  count, sort, breadcrumb, image/alt and canonical/hreflang/JSON-LD.
+- Acceptance closeout adds the full EN/RU real-browser journey
+  home → genre → card → detail → play/runtime with disposable fixtures,
+  query-preserving cross-language 301/canonical regressions and ambiguous
+  same-slug resolution with a same-genre language switcher.
+- Genre browser E2E (`BA_E2E=1`): **2 passed (en, ru), ~46 s**; nginx logs show
+  both generated runtime requests 200, the served script executed, and cleanup
+  left zero fixture genres/runtime dirs; archived Game rows remain by design.
+- Full local browser suite: **37 passed, 1 failed**. The failure is the
+  pre-existing LR-3 host-loss test (`#claim-host` timeout, R-060 stale local
+  runtime), not genre discovery; all other E2E scenarios passed.
+- Two full fresh-DB runs each ended with **1405 passed, 19 skipped, 1 failed**
+  and a different test outside this diff: CRM rating restore in run 1,
+  GameSession activation expiry in run 2. Both pass in isolation; the full
+  gate is **not green**. Independent reviewer **ACCEPT**; independent QA
+  **PASS WITH RESERVATIONS** (six-file targeted 97 passed; both full-gate
+  failures pass in isolation/modules; new E2E 2/2).
+- Dev-lite was restored from a host-side source-permission failure
+  (`PermissionError`/nginx 502) without content changes; migrations
+  `i18n.0014`–`0016` applied and both health endpoints returned 200.
+- No feature PR or hosted CI is claimed; PR #1 was not modified. Product
+  acceptance remains owner-level.
 
 ## Product completion mode — 2026-11-28
 

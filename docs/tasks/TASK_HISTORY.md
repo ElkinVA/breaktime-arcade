@@ -2796,3 +2796,29 @@ tests: 1056 passed, 8 skipped, exit 0**.
   API LocaleMiddleware отдаёт контекст с языком сайта.
 - **Проверки:** play page 4/4, ru game E2E PASS, full E2E 25/25.
 - **Commit:** `16af4f9`.
+
+### ARCADE-GENRE-DISCOVERY-STAGE-001 — home/genre discovery closeout
+
+- **Статус:** PARTIAL — code/test closeout и E2E/review/QA выполнены; full
+  fresh-DB gate не зелёный из-за двух разных unrelated time/order-флейков.
+- **Результат:** home genre block, genre landing description/count/sort/
+  breadcrumb/image/SEO, cross-language genre-slug 301, data-only i18n
+  migration; acceptance closeout adds the full EN/RU browser journey
+  home → genre → card → detail → play/runtime, query-preserving redirect and
+  ambiguous-slug regressions, and page-specific language-switcher paths.
+- **Проверки:** genre browser E2E **2 passed (en, ru), ~46 s**, nginx runtime
+  200 and script executed, fixture cleanup verified; full local E2E
+  **37 passed / 1 failed** (pre-existing LR-3 host-loss `#claim-host` timeout,
+  R-060); QA six-file targeted fresh DB
+  **97 passed** (wider nine-file selection 108 passed); two full fresh-DB runs
+  each **1405 passed / 19 skipped / 1 failed** with different unrelated
+  time/order-sensitive tests, both pass in isolation and modules (70 passed),
+  so the full gate is **not green**; ruff **497 formatted / checks pass**, mypy
+  **371**, Django check and makemigrations/migrate-plan clean.
+- **Review/QA:** reviewer **ACCEPT** (non-blocking minors retained) / QA
+  **PASS WITH RESERVATIONS**; product acceptance owner.
+- **Остаток:** minimal fixture runtime, archived fixture Game rows, theoretical
+  genre-code/translation-slug collision; no PR/CI.
+- **Модели:** реализация — `deepseek-flash[1m]`; review — `code-reviewer`
+  (text-only); QA — `qa-engineer`.
+- **Commit:** `b2309a7`; docs-only record follows.

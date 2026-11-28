@@ -8,15 +8,32 @@ hardening; LR-3; LR-2b; CI restore).
 
 ## 0.0o. Genre discovery milestone — 2026-11-28
 
+- **Status: Partial** — code/test closeout done; full fresh-DB gate is not
+  green and remains a test-stability residual.
 - `ARCADE-GENRE-DISCOVERY-STAGE-001` on
   `feature/ARCADE-HOME-DISCOVERY-001`, based on baseline `fb2b45f`:
   home localized genres block, home SEO, genre-page description/count/sort/
   breadcrumb/image/SEO, cross-language slug 301 and data-only i18n migration.
-- Code commits `9f30113`, `3e39a5f`, `4f461e8`; full fresh-DB local gate **1402
-  passed, 19 skipped, 88.34% coverage, exit 0**; independent reviewer ACCEPT
-  after fixes; independent QA PASS.
-- Browser E2E is code-only locally because dev-lite web is unhealthy; no
-  feature PR or remote CI is claimed. Product acceptance pending.
+- Implementation commits `9f30113`, `3e39a5f`, `4f461e8`, `901cdc7`;
+  acceptance closeout code commit `b2309a7`.
+- Acceptance closeout adds the full EN/RU browser journey home → genre →
+  card → detail → play/runtime with deterministic disposable fixtures,
+  query-preserving cross-language 301/canonical regressions and ambiguous
+  same-slug resolution with same-genre language-switcher paths.
+- Genre browser E2E `BA_E2E=1`: **2 passed (en, ru)**; generated runtime loaded
+  through nginx and its JavaScript executed; fixture cleanup verified.
+- Full local browser suite: **37 passed, 1 failed** — pre-existing LR-3
+  host-loss test `#claim-host` timeout (R-060 stale local runtime); all other
+  scenarios passed.
+- Two full fresh-DB runs each ended **1405 passed, 19 skipped, 1 failed** with
+  a different test outside this diff (CRM rating restore; GameSession
+  activation expiry). Both pass in isolation; the full gate is **not green**.
+- Independent reviewer **ACCEPT**; independent QA **PASS WITH RESERVATIONS**
+  (six-file targeted 97 passed; both full-gate failures pass in isolation;
+  new E2E 2/2 with nginx runtime proof and clean fixture teardown).
+- Dev-lite source-permission failure (`PermissionError`/502) was repaired
+  locally with `chmod -R a+rX` + web restart; no content/secret change.
+- No feature PR or remote CI is claimed. Product acceptance pending.
 
 ## 0.0m. Product completion mode / Platform Integration Baseline — 2026-11-28
 
