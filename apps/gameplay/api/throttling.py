@@ -212,15 +212,21 @@ class HeartbeatSubjectPreflightRateThrottle(
 class HeartbeatIpPreflightRateThrottle(
     HeartbeatPreflightMixin, ThrottleCacheMixin, ResilientThrottleMixin, SimpleRateThrottle
 ):
-    """Cheap shared IP cap for every heartbeat, including unknown UUIDs.
+    """Cheap shared IP cap for guest heartbeats, including unknown UUIDs.
 
     The key is fixed by the normalized client IP (IPv6 /64), so arbitrary
     session IDs or guest cookies cannot create an unbounded key space.
+    Authenticated users are covered by the subject preflight and are exempt
+    from the shared IP cap, matching the session-creation NAT policy.
     """
 
     scope = "heartbeat_preflight_ip"
 
     def get_cache_key(self, request, view):
+        if request.user and request.user.is_authenticated:
+            # Authenticated users have the subject preflight; a shared NAT IP
+            # must not throttle an office with many legitimate players.
+            return None
         return f"throttle_heartbeat_preflight_ip:{_client_ip(request)}"
 
 

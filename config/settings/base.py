@@ -433,8 +433,8 @@ REST_FRAMEWORK = {
         "results_ip": "1200/hour",
         "heartbeat": "3/min",
         # Cheap preflight caps checked before the session UUID is resolved in
-        # PostgreSQL. The IP bucket is shared by guests and authenticated
-        # users; the subject bucket covers authenticated users.
+        # PostgreSQL. The IP bucket is shared by guests; authenticated users
+        # retain the per-subject bucket and do not consume a NAT IP cap.
         "heartbeat_preflight_subject": "30/min",
         "heartbeat_preflight_ip": "120/min",
         "storage": "600/hour",
