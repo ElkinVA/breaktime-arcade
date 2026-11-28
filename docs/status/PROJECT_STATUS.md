@@ -1,9 +1,20 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-27 (autonomous timer activated; CRM/accounts
-browser E2E; player start-error i18n; email reset race; trusted sandbox
-config; owner checkpoint/notifications; autonomy heartbeat auth; player
-submit/restart hardening; LR-3; LR-2b; CI restore).
+**Дата актуализации:** 2026-11-28 (Platform Integration Baseline technical
+verification PASS; CRM game audit task; autonomous timer stopped; historical
+CRM/accounts E2E, i18n, race fixes, LR-3, CI restore).
+
+## 0.0n. Current development state — 2026-11-28
+
+- PR #1 `review/platform-integration-baseline-20261128` is Draft/open/unmerged;
+  CI #174 and #175 are green; technical verification PASS, product acceptance
+  pending. Local `main` remains `b035720`; no merge.
+- `ba-autonomy-orchestrator.timer` and service are **STOPPED/inactive**.
+- `ARCADE-CRM-GAME-AUDIT-TAB-001` is implemented on
+  `feature/ARCADE-CRM-GAME-AUDIT-TAB-001` (`9557520`): read-only
+  `AdminAuditLog` section on the CRM game card, with pagination, empty state,
+  role-gated endpoint and tests. Full fresh-DB pytest: **1390 passed,
+  18 skipped, 88.25% coverage, exit 0**; independent reviewer ACCEPT; independent QA PASS for targeted/static evidence. No schema or product acceptance change.
 
 ## 0.0l. Autonomous timer activated — 2026-11-27
 

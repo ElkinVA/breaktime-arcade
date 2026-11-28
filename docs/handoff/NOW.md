@@ -1,6 +1,17 @@
 # NOW — Breaktime Arcade
 
-**Дата:** 2026-11-27
+**Дата:** 2026-11-28
+
+## Current state — 2026-11-28
+
+- Platform Integration Baseline: PR #1 `review/platform-integration-baseline-20261128` is Draft/open/unmerged; CI #174/#175 green; technical verification PASS, product acceptance pending. Local `main` is `b035720`; no merge.
+- Autonomous timer/service are **STOPPED/inactive**; no re-enable without owner instruction.
+- Current bounded task: `ARCADE-CRM-GAME-AUDIT-TAB-001` on
+  `feature/ARCADE-CRM-GAME-AUDIT-TAB-001`, commit `9557520`: read-only
+  per-game `AdminAuditLog` section on the CRM game card. Full fresh-DB
+  pytest: **1390 passed, 18 skipped, 88.25% coverage, exit 0**; independent
+  reviewer ACCEPT; independent QA PASS for targeted/static evidence. No schema change and no product acceptance.
+- This branch is based on local `main`, not on the Draft PR branch.
 
 ## Autonomous timer activated (2026-11-27)
 
