@@ -11,10 +11,18 @@ CRM/accounts E2E, i18n, race fixes, LR-3, CI restore).
   pending. Local `main` remains `b035720`; no merge.
 - `ba-autonomy-orchestrator.timer` and service are **STOPPED/inactive**.
 - `ARCADE-CRM-GAME-AUDIT-TAB-001` is implemented on
-  `feature/ARCADE-CRM-GAME-AUDIT-TAB-001` (`9557520`): read-only
-  `AdminAuditLog` section on the CRM game card, with pagination, empty state,
-  role-gated endpoint and tests. Full fresh-DB pytest: **1390 passed,
-  18 skipped, 88.25% coverage, exit 0**; independent reviewer ACCEPT; independent QA PASS for targeted/static evidence. No schema or product acceptance change.
+  `feature/ARCADE-CRM-GAME-AUDIT-TAB-001` (`9557520`; docs HEAD `d02a040`):
+  read-only `AdminAuditLog` section on the CRM game card, with pagination,
+  empty state, role-gated endpoint and tests. Full fresh-DB pytest: **1390
+  passed, 18 skipped, 88.25% coverage, exit 0**; independent QA PASS;
+  **ChatGPT independent code review ACCEPT** at `d02a040`. GitHub CI and
+  product acceptance are pending.
+- A normal feature PR to `main` must not be created while the branch is based
+  on `b035720`: it would show the unrelated baseline/product diff. After
+  owner integration of PR #1, create a new branch from updated `main`,
+  cherry-pick `9557520`, `418026a`, `d02a040`, verify only CRM audit files
+  differ, then open a separate PR. Do not rebase or force-push the existing
+  branch.
 
 ## 0.0l. Autonomous timer activated — 2026-11-27
 

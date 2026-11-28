@@ -40,41 +40,58 @@ No schema change, no migration, no new write path, no public-page change.
 | JS | not affected |
 | Live browser | not run locally; dev-lite web unhealthy |
 
-## Independent review / QA
+## Independent review / QA / CI
 
-- Independent reviewer: **ACCEPT**; no blockers.
-- Independent QA: **PASS** for targeted/static evidence. QA independently ran
-  the three audit tests on a fresh DB, the existing CRM game-card regression
-  tests, Ruff, mypy, `manage.py check` and `makemigrations --check`; all
-  passed. QA did not claim live browser/HTTP.
+- **ChatGPT independent code review: ACCEPT** directly through GitHub at
+  feature HEAD `d02a040`; no blocking defects. ChatGPT verified the
+  `AdminAuditLog` filters, `select_related("actor")`, append-only invariant
+  and the real publish/rollback audit shapes.
+- **Independent QA: PASS** for targeted/static evidence; QA independently
+  ran the audit tests on a fresh DB, the existing CRM regression tests,
+  Ruff, mypy, `manage.py check` and `makemigrations --check`.
+- **Local full fresh-DB gate: PASS** on `9557520`: **1390 passed, 18
+  skipped, 1 warning; 88.25% coverage; exit 0**.
+- **GitHub CI: PENDING**. No feature PR exists yet (no GitHub API
+  credentials in this shell); no CI result is claimed.
+- **Product acceptance: PENDING**.
+- ChatGPT non-blocking notes: cross-pagination position is not preserved
+  between records/audit; no single end-to-end publish/rollback render test;
+  deleted-actor, malformed-page and unknown-action branches are not directly
+  covered.
 
-- Reviewer minor findings:
-  - Paging the audit section and the records section does not preserve the
-    other section's page parameter (UX-only).
-  - The new test's role-guard check covers anonymous redirect; the endpoint's
-    broader role matrix remains covered by the existing records-tab test.
-  - Tests construct audit rows directly; the real publish/rollback writers
-    were statically verified to emit the same `object_type`/`object_id`
-    shape.
-- QA residual:
-  - No single end-to-end test from real `publish_version`/`rollback_version`
-    through the rendered section; writer contract is covered by existing
-    tests.
-  - The new module's targeted coverage is 78%: deleted-actor, malformed-page
-    and unknown-action branches are not directly covered.
-  - `crm-audit-*` test IDs are distinct from `crm-record-*`; the global
-    journal page uses its own `crm-audit-*` IDs on a different page.
-  - Timestamps render in UTC per project settings.
+## Git base warning and safe PR scenario
+
+The feature branch is based on local `main` `b035720`, while the baseline
+review branch contains 15 additional commits. A normal PR directly into
+`main` today would show 12 commits / 34 files, including unrelated unmerged
+baseline and product work. **Do not create that mixed PR.**
+
+Safe path after the owner integrates PR #1:
+
+1. Update local `main` from `origin` after the owner-authorized integration.
+2. Create a **new** branch from the updated `main`.
+3. Cherry-pick the three task commits in order:
+   `9557520`, `418026a`, `d02a040`.
+4. Verify `git diff --name-only updated-main...new-branch` contains only the
+   CRM audit task files.
+5. Push the new branch and create a separate PR; wait for all GitHub CI jobs.
+6. Do not rebase or force-push the existing feature branch.
+
+If immediate review is explicitly needed, a stacked Draft PR with base
+`review/platform-integration-baseline-20261128` is allowed; it must be
+labelled as dependent on PR #1 and must not be merged.
 
 ## Residuals
 
 - No product acceptance; this is a technical implementation.
 - Branch `feature/ARCADE-CRM-GAME-AUDIT-TAB-001` is pushed through
-  `418026a`. A separate PR is not created from this shell because no
+  `d02a040`. A separate PR is not created from this shell because no
   GitHub API credentials are available; use the GitHub PR link after review.
 - No remote CI is claimed for this feature branch.
 - The task is marked COMPLETED technically in `.autonomy/state.json` with
   candidate `9557520`; timer remains STOPPED and no product acceptance is
   implied.
-- Full fresh-DB local run was at `9557520`; the later `418026a` commit is
-  docs-only.
+- Full fresh-DB local run was at `9557520`; later `418026a` and `d02a040`
+  commits are documentation-only.
+- No rebase, force-push, reset, clean, merge or protected-path bypass was
+  performed.

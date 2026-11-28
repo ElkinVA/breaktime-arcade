@@ -7,10 +7,18 @@
 - Platform Integration Baseline: PR #1 `review/platform-integration-baseline-20261128` is Draft/open/unmerged; CI #174/#175 green; technical verification PASS, product acceptance pending. Local `main` is `b035720`; no merge.
 - Autonomous timer/service are **STOPPED/inactive**; no re-enable without owner instruction.
 - Current bounded task: `ARCADE-CRM-GAME-AUDIT-TAB-001` on
-  `feature/ARCADE-CRM-GAME-AUDIT-TAB-001`, commit `9557520`: read-only
-  per-game `AdminAuditLog` section on the CRM game card. Full fresh-DB
-  pytest: **1390 passed, 18 skipped, 88.25% coverage, exit 0**; independent
-  reviewer ACCEPT; independent QA PASS for targeted/static evidence. No schema change and no product acceptance.
+  `feature/ARCADE-CRM-GAME-AUDIT-TAB-001`, implementation `9557520`, docs
+  HEAD `d02a040`: read-only per-game `AdminAuditLog` section on the CRM game
+  card. Full fresh-DB pytest: **1390 passed, 18 skipped, 88.25% coverage,
+  exit 0**; independent QA PASS; **ChatGPT independent code review ACCEPT**
+  at `d02a040`; GitHub CI and product acceptance are pending. No schema
+  change.
+- A normal feature PR directly to `main` must not be created while it is
+  based on `b035720`: it would include the unrelated 12-commit/34-file
+  baseline diff. After owner integration of PR #1, create a new branch from
+  updated `main` and cherry-pick `9557520`, `418026a`, `d02a040`; verify only
+  the CRM audit files differ before opening the PR. Do not rebase or
+  force-push this branch.
 - This branch is based on local `main`, not on the Draft PR branch.
 
 ## Autonomous timer activated (2026-11-27)
