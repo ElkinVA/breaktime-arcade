@@ -13,11 +13,14 @@
   88.29% coverage, 800.89 s, exit 0** at `636259f`. Independent code review
   ACCEPT after the game-delete invariant fix; independent QA PASS for the
   code/delta and targeted tests.
-- Review branch is pushed through `636259f`; Draft PR creation is blocked
-  because this shell has no `gh` and no `GITHUB_TOKEN`/`GH_TOKEN`. No merge
-  to `main`; no product acceptance or GitHub CI result claimed.
+- Review branch is pushed through `21beb4b`; PR #1 is
+  Draft/open/unmerged. CI #172 (`9779622`) and CI #173 (`21beb4b`) both
+  completed **success**; `quality`, `frontend`, `e2e`, `image` and
+  `django-next` are green. A docs-only commit follows the code/test HEAD;
+  no merge and no product acceptance claimed.
 - Browser E2E was not run locally because dev-lite web remains unhealthy
-  (pre-existing permission error); GitHub CI is still required.
+  (pre-existing permission error); the GitHub E2E job passed in both CI
+  #172 and CI #173.
 
 ### Baseline history (99cb379)
 

@@ -23,12 +23,16 @@ hardening; LR-3; LR-2b; CI restore).
   1 warning, 800.89 s, exit 0**, coverage **88.29%**. Independent code
   review ACCEPT after the game-delete invariant fix; independent QA PASS for
   the code/delta and targeted tests.
-- Review branch is pushed through `636259f`. Draft PR creation is blocked by
-  missing GitHub API authentication in this shell; no CI result is claimed.
+- Review branch is pushed through `21beb4b`; PR #1 is
+  Draft/open/unmerged. CI #172 (`9779622`) and CI #173 (`21beb4b`) both
+  completed **success**; `quality`, `frontend`, `e2e`, `image` and
+  `django-next` are green. A docs-only commit follows the code/test HEAD;
+  no CI result is claimed for that docs commit.
+- Browser E2E was not run locally because the pre-existing dev-lite web
+  service is unhealthy and the portal returns 502; the GitHub E2E job
+  passed in both CI #172 and CI #173.
 - Initial baseline at `99cb379` (superseded by the follow-up) passed
-  **1387 passed, 18 skipped, 1108.54 s** with `--reuse-db`; browser E2E
-  was not run locally because the pre-existing dev-lite web service is
-  unhealthy and the portal returns 502.
+  **1387 passed, 18 skipped, 1108.54 s** with `--reuse-db`.
 - Local `main` remains unmerged; no product acceptance is claimed.
 
 ## 0.0l. Autonomous timer activated — 2026-11-27

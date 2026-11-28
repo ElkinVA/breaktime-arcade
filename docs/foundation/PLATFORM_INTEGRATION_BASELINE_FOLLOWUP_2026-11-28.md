@@ -17,6 +17,8 @@ New commits:
 - `636259f` — CRM teardown no longer attempts the forbidden physical
   `Game` delete; it archives the exact fixture row after clearing the
   version and leaves the append-only audit row intact.
+- `21beb4b` — regression test for authenticated-user exemption from the
+  guest IP preflight.
 
 ## 1. Heartbeat throttling
 
@@ -98,11 +100,11 @@ This matches the GitHub CI quality scope; no AI HQ functionality changed.
 | Full fresh-database pytest | **1395 passed, 18 skipped, 1 warning; 88.29% coverage; 800.89 s; exit 0** |
 | Browser E2E | NOT RUN locally: dev-lite web is unhealthy (pre-existing permission error) |
 
-Independent QA (read-only, separate from implementer): **PASS** for the six
-follow-up commits plus targeted heartbeat/account evidence. QA did not run
-the full suite; the fresh-database result above is main-agent evidence, not
-an independent QA result. QA verified the delete trigger is enabled and that
-the E2E cleanup never attempts `Game.delete()`.
+Independent QA (read-only, separate from implementer): **PASS** for the
+seven follow-up commits plus targeted heartbeat/account evidence. QA did not
+run the full suite; the fresh-database result above is main-agent evidence,
+not an independent QA result. QA verified the delete trigger is enabled and
+that the E2E cleanup never attempts `Game.delete()`.
 
 ## QA / Review / CI
 
@@ -119,10 +121,23 @@ Independent code review, delta after the first review's blocker:
 Independent QA verdict: **PASS** for the code/delta and targeted tests;
 browser E2E/live HTTP were not executed. QA disclosed the residuals below.
 
-GitHub CI / Draft PR: **BLOCKED**. The branch is pushed at `636259f`
-(`origin/review/platform-integration-baseline-20261128`), but this shell has
-no `gh` and no `GITHUB_TOKEN`/`GH_TOKEN`; no Draft PR can be created and no
-GitHub CI result is claimed.
+GitHub CI / Draft PR: **PR #1 exists and remains Draft/open/unmerged.**
+
+- CI run `#172` (`46123966569`) on earlier HEAD `9779622`: **success**;
+  `quality`, `frontend`, `e2e`, `image` and `django-next` all success.
+- CI run `#173` (`46125070605`) on current code/test HEAD `21beb4b`:
+  **success**; `quality`, `frontend`, `e2e`, `image` and `django-next` all
+  success.
+
+Run links:
+- https://github.com/ElkinVA/breaktime-arcade/actions/runs/46123966569
+- https://github.com/ElkinVA/breaktime-arcade/actions/runs/46125070605
+
+PR: https://github.com/ElkinVA/breaktime-arcade/pull/1
+
+The `21beb4b` commit is test-only (authenticated-user guest-IP exemption
+coverage); CI #173 ran the full workflow on it. No merge and no
+Draft-to-ready transition was performed.
 
 Branch compare:
 `https://github.com/ElkinVA/breaktime-arcade/compare/main...review/platform-integration-baseline-20261128`
@@ -140,8 +155,9 @@ Branch compare:
 - The preflight rates (`30/min` subject, `120/min` guest IP) are
   implementation-defined; Appendix E specifies only the normative `3/min`
   per-session heartbeat.
-- There is no committed test specifically asserting authenticated-user
-  exemption from the guest IP preflight; it was checked manually.
+- Authenticated users have no aggregate per-IP bound; per-subject `30/min`
+  and per-session `3/min` still bound each account. The new `21beb4b`
+  regression test covers only the IP-preflight exemption.
 - The expired/foreign `invalid` bucket path is covered implicitly by the
   unknown-UUID test, not by a dedicated expired/foreign test.
 - `make fmt` remains narrower than `make lint`; only lint was required to
