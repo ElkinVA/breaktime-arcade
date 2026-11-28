@@ -130,7 +130,9 @@ live HTTP is unavailable because the dev-lite web service is unhealthy
   commits + the formatting commit).
 - The review branch is **not merged into main**. Local `main` remains
   `b035720`.
-- Push to origin: [pending].
+- Push to origin: **done** (`review/platform-integration-baseline-20261128`
+  is a new remote branch). Push URL:
+  `https://github.com/ElkinVA/breaktime-arcade/tree/review/platform-integration-baseline-20261128`.
 - External ChatGPT review: pending; no product acceptance is claimed.
 
 ## 7. Критерии приёмки блока
@@ -140,7 +142,7 @@ live HTTP is unavailable because the dev-lite web service is unhealthy
 - [x] Проверки выполнены в CI-scope, включая `autonomy` и `scripts`.
 - [x] Полный regression подтверждён: 1387 passed, 18 skipped, exit 0.
 - [x] Review-ветка создана от фактического HEAD.
-- [ ] Review-ветка отправлена в origin.
+- [x] Review-ветка отправлена в origin.
 - [x] Merge в `main` не выполнялся.
 
 ## 8. Ограничения и следующий шаг
