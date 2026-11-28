@@ -1,6 +1,29 @@
 # NOW — Breaktime Arcade
 
-**Дата:** 2026-11-27
+**Дата:** 2026-11-28
+
+## Product completion mode — 2026-11-28
+
+- Owner switched development to large product blocks. Autonomous task
+  selection is paused: `ba-autonomy-orchestrator.timer` is stopped
+  (it was already inactive; no active cycle was interrupted). The active
+  `ARCADE-CATALOG-GAME-TAXONOMY-001` cycle completed naturally at 09:01 MSK;
+  the service is inactive.
+- Actual local `main` is `b035720`, **9 commits ahead** of `origin/main`
+  (`b59cc12`): the eight forensic-audit commits plus
+  `ARCADE-CATALOG-GAME-TAXONOMY-001`. No reset, clean, stash drop or
+  worktree deletion was performed.
+- Platform Integration Baseline review branch:
+  `review/platform-integration-baseline-20261128`; it adds `721fedc`
+  (formatting-only fix in `autonomy/orchestrator.py`). Local `main` is not
+  merged into it and no merge to `main` has been made.
+- CI-scope Ruff/mypy/Django/migrations/JS checks and the full Python
+  regression are green: **1387 passed, 18 skipped, 1 warning, 1108.54 s,
+  exit 0**, coverage **88.26%**. The full suite used the configured
+  `--reuse-db`; browser E2E was not run because the pre-existing dev-lite
+  web service is unhealthy. Independent review ACCEPT and independent QA
+  PASS for the static evidence; external ChatGPT review is pending. Timer
+  remains stopped; no next product block starts without owner instruction.
 
 ## Autonomous timer activated (2026-11-27)
 

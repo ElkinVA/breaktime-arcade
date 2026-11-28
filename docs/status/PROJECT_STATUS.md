@@ -1,9 +1,31 @@
 # PROJECT_STATUS — Breaktime Arcade
 
-**Дата актуализации:** 2026-11-27 (autonomous timer activated; CRM/accounts
-browser E2E; player start-error i18n; email reset race; trusted sandbox
-config; owner checkpoint/notifications; autonomy heartbeat auth; player
-submit/restart hardening; LR-3; LR-2b; CI restore).
+**Дата актуализации:** 2026-11-28 (product completion mode; Platform
+Integration Baseline; autonomous timer stopped; CRM/accounts browser E2E;
+player start-error i18n; email reset race; trusted sandbox config; owner
+checkpoint/notifications; autonomy heartbeat auth; player submit/restart
+hardening; LR-3; LR-2b; CI restore).
+
+## 0.0m. Product completion mode / Platform Integration Baseline — 2026-11-28
+
+- Owner paused autonomous task selection and moved development to large
+  product blocks. `ba-autonomy-orchestrator.timer` is stopped; the last
+  active cycle (`ARCADE-CATALOG-GAME-TAXONOMY-001`) completed naturally at
+  09:01 MSK; service inactive; timer remains stopped.
+- Actual local `main` is `b035720`, **9 commits ahead** of `origin/main`
+  (`b59cc12`): eight forensic-audit commits plus
+  `ARCADE-CATALOG-GAME-TAXONOMY-001`. No reset/clean/history rewrite.
+- Review branch `review/platform-integration-baseline-20261128` adds
+  `721fedc`, a formatting-only change in `autonomy/orchestrator.py` that
+  fixes the CI `ruff format` failure at line 593. No functional change.
+- CI-scope Ruff, mypy, Django checks, migrations and JS checks are green;
+  the full Python suite passed **1387 passed, 18 skipped, 1 warning,
+  1108.54 s, exit 0** with **88.26%** coverage. The suite used the
+  configured `--reuse-db`; browser E2E was not run because the pre-existing
+  dev-lite web service is unhealthy and the portal returns 502.
+- Independent review ACCEPT; independent QA PASS for the static evidence.
+  External ChatGPT review is pending. Local `main` remains unmerged; no
+  product acceptance is claimed.
 
 ## 0.0l. Autonomous timer activated — 2026-11-27
 
